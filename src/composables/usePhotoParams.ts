@@ -54,6 +54,7 @@ export function usePhotoParams(options: {
   const uidRequired = ref(false)
   const progress = ref<PhotoParamsProgress>({ stage: 'idle', percent: 0, message: '' })
   let runId = 0
+  let photoBytes: Uint8Array | null = null
 
   function setStage(stage: PhotoParamsStage, percent: number) {
     progress.value = { stage, percent, message: messages.value.stages[stage] }
@@ -116,6 +117,7 @@ export function usePhotoParams(options: {
   async function openForPhoto(selectedPhoto: PhotoItem) {
     if (selectedPhoto.source === 'file') return openForFile(selectedPhoto.file, selectedPhoto)
     const run = ++runId
+    photoBytes = null
     isVisible.value = true
     photo.value = selectedPhoto
     uploadFile.value = null
@@ -134,6 +136,7 @@ export function usePhotoParams(options: {
       if (run !== runId) return null
       const bytes = new Uint8Array(await (await readPhotoFile(selectedPhoto)).arrayBuffer())
       if (run !== runId) return
+      photoBytes = bytes
       const directoryUids = await listGamePlayPhotoAccounts(x6Game)
       if (run !== runId) return
       const savedUids = await getSavedCameraParamUids()
@@ -153,6 +156,7 @@ export function usePhotoParams(options: {
 
   async function openForFile(file: File, sourcePhoto?: FilePhotoItem) {
     const run = ++runId
+    photoBytes = null
     isVisible.value = true
     photo.value = sourcePhoto ?? { name: file.name }
     uploadFile.value = file
@@ -163,6 +167,7 @@ export function usePhotoParams(options: {
       setStage('readingPhoto', 30)
       const bytes = new Uint8Array(await file.arrayBuffer())
       if (run !== runId) return
+      photoBytes = bytes
       const x6Game = sourcePhoto ? null : await getSavedX6GameDirectoryHandle()
       if (run !== runId) return
       const directoryUids = x6Game ? await listGamePlayPhotoAccounts(x6Game) : []
@@ -197,12 +202,15 @@ export function usePhotoParams(options: {
     uidRequired.value = false
     setStage('readingPhoto', 30)
     try {
-      const bytes = uploadFile.value
-        ? new Uint8Array(await uploadFile.value.arrayBuffer())
-        : isAlbumPhoto(selectedPhoto)
-          ? new Uint8Array(await (await readPhotoFile(selectedPhoto)).arrayBuffer())
-          : null
+      const bytes =
+        photoBytes ??
+        (uploadFile.value
+          ? new Uint8Array(await uploadFile.value.arrayBuffer())
+          : isAlbumPhoto(selectedPhoto)
+            ? new Uint8Array(await (await readPhotoFile(selectedPhoto)).arrayBuffer())
+            : null)
       if (!bytes || run !== runId) return
+      photoBytes = bytes
       const decoded = await decodePhoto<DecodedPhoto>(bytes, normalized)
       if (run !== runId) return
       if (!decoded.ok || !decoded.value) {
@@ -226,8 +234,18 @@ export function usePhotoParams(options: {
     }
   }
 
+  async function loadSourcePhoto(): Promise<Blob> {
+    // Use an owned in-memory copy; mobile file-provider references may expire.
+    if (photoBytes)
+      return new Blob([photoBytes.slice().buffer], { type: uploadFile.value?.type || 'image/jpeg' })
+    if (uploadFile.value) return uploadFile.value
+    if (photo.value && isAlbumPhoto(photo.value)) return readPhotoFile(photo.value)
+    throw new Error('Source photo unavailable')
+  }
+
   function openCameraParamsTool() {
     runId += 1
+    photoBytes = null
     isVisible.value = true
     photo.value = null
     uploadFile.value = null
@@ -259,6 +277,7 @@ export function usePhotoParams(options: {
 
   function close() {
     runId += 1
+    photoBytes = null
     isVisible.value = false
     photo.value = null
     uploadFile.value = null
@@ -270,9 +289,12 @@ export function usePhotoParams(options: {
 
   onScopeDispose(() => {
     runId += 1
+    photoBytes = null
   })
 
   return {
+    loadSourcePhoto,
+    uploadFile,
     photo,
     isVisible,
     result,

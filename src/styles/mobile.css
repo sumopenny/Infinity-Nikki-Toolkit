@@ -1428,6 +1428,7 @@
   }
   .confirm-dialog-enter-active
     :is(
+      .share-image-panel,
       .dialog-panel,
       .confirm-dialog-panel,
       .outfit-editor-panel,
@@ -1441,6 +1442,7 @@
   }
   .confirm-dialog-leave-active
     :is(
+      .share-image-panel,
       .dialog-panel,
       .confirm-dialog-panel,
       .outfit-editor-panel,
@@ -1454,6 +1456,7 @@
   }
   .confirm-dialog-enter-from
     :is(
+      .share-image-panel,
       .dialog-panel,
       .confirm-dialog-panel,
       .outfit-editor-panel,
@@ -1463,6 +1466,7 @@
     ),
   .confirm-dialog-leave-to
     :is(
+      .share-image-panel,
       .dialog-panel,
       .confirm-dialog-panel,
       .outfit-editor-panel,

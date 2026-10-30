@@ -351,3 +351,98 @@
   border-radius: 6px;
   cursor: pointer;
 }
+
+/* Share entry joins the existing top-right card actions. */
+.card-share-button {
+  position: absolute;
+  z-index: 6;
+  top: 8px;
+  right: 112px;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 9px;
+  background: rgba(25, 22, 22, 0.34);
+  color: #fff;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity var(--motion-fast),
+    background var(--motion-fast);
+}
+.outfit-card .card-share-button {
+  right: 80px;
+}
+.photo-card:hover .card-share-button,
+.photo-card:focus-within .card-share-button {
+  opacity: 1;
+}
+.card-share-button:hover:not(:disabled) {
+  background: rgba(25, 22, 22, 0.65);
+}
+.card-share-button:disabled {
+  cursor: default;
+}
+.photo-card:hover .card-share-button:disabled {
+  opacity: 0.5;
+}
+@media (hover: none) {
+  .photo-card .card-share-button {
+    opacity: 1;
+  }
+}
+
+/* 小缩略图的悬停操作保持单行，四个按钮共占 108px。 */
+@media (min-width: 900px) {
+  .thumbnail-size-small
+    .photo-card
+    :is(
+      .card-share-button,
+      .photo-params-parse,
+      .photo-note-edit,
+      .favorite-heart,
+      .outfit-card-parse,
+      .outfit-card-delete
+    ) {
+    box-sizing: border-box;
+    top: 6px;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    padding: 0;
+    border-radius: 7px;
+  }
+  .thumbnail-size-small
+    .photo-card
+    :is(
+      .card-share-button,
+      .photo-params-parse,
+      .photo-note-edit,
+      .favorite-heart,
+      .outfit-card-parse,
+      .outfit-card-delete
+    )
+    svg {
+    width: 13px;
+    height: 13px;
+  }
+  .thumbnail-size-small .favorite-heart,
+  .thumbnail-size-small .outfit-card-parse {
+    right: 6px;
+  }
+  .thumbnail-size-small .photo-note-edit,
+  .thumbnail-size-small .outfit-card-delete {
+    right: 34px;
+  }
+  .thumbnail-size-small .photo-params-parse,
+  .thumbnail-size-small .outfit-card .card-share-button {
+    right: 62px;
+  }
+  .thumbnail-size-small .card-share-button {
+    right: 90px;
+  }
+}

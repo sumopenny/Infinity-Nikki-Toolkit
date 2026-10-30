@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount } from 'vue'
-import { Check, Copy, Edit3, ScanSearch, Shirt, Trash2 } from 'lucide-vue-next'
+import { Check, Copy, Edit3, ScanSearch, Shirt, Trash2, Share2 } from 'lucide-vue-next'
 import type { OutfitMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 import type { OutfitItem } from '../utils/outfit/outfitFileSystem'
@@ -25,6 +25,7 @@ const emit = defineEmits<{
   edit: [outfit: OutfitItem]
   delete: [outfit: OutfitItem]
   parse: [outfit: OutfitItem]
+  share: [outfit: OutfitItem]
   openPreview: [outfit: OutfitItem]
   toggleOutfit: [outfitId: string]
 }>()
@@ -92,6 +93,17 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
             >
           </div>
           <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
+          <button
+            class="card-share-button"
+            type="button"
+            :disabled="disabled || !outfit.code"
+            :title="language === 'en' ? 'Export share image' : '导出分享图'"
+            :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
+            @click.stop="emit('share', outfit)"
+            @dblclick.stop
+            @keydown.stop
+            ><Share2 :size="16" aria-hidden="true"
+          /></button>
           <button
             class="outfit-card-delete desktop-only"
             type="button"

@@ -6,7 +6,8 @@ const OutfitParseDialog = defineAsyncComponent(() => import('./OutfitParseDialog
 import { useCompactLayout } from '../composables/useCompactLayout'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { useModalFocus } from '../composables/useModalFocus'
-import { Bookmark, Columns2, Rows2, Copy, ScanSearch, X } from 'lucide-vue-next'
+import { Share2, Bookmark, Columns2, Rows2, Copy, ScanSearch, X } from 'lucide-vue-next'
+import { isAlbumPhoto, readPhotoFile } from '../utils/photoGrouping'
 import type { PhotoItem } from '../utils/photoGrouping'
 import type { PhotoParamsProgress, PhotoParamsResult } from '../utils/photo-params/types'
 import type { PhotoParamsMessages } from '../i18n/messages/photoParams'
@@ -16,6 +17,8 @@ import { needsOriginalPhotoHint } from '../utils/photo-params/parseError'
 const props = defineProps<{
   language?: Language
   visible: boolean
+  sourceFile?: File | null
+  loadSourcePhoto?: () => Promise<Blob>
   saved?: boolean
   favoriteLabel?: string
   photo: PhotoItem | { name: string } | null
@@ -28,6 +31,23 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ close: []; copy: []; favorite: []; submitUid: [uid: string] }>()
+const ShareImageDialog = defineAsyncComponent(() => import('./ShareImageDialog.vue'))
+const shareVisible = ref(false)
+const canShare = computed(
+  () => !!props.result && (!!props.sourceFile || (!!props.photo && isAlbumPhoto(props.photo)))
+)
+async function loadSharePhoto(): Promise<Blob> {
+  if (props.loadSourcePhoto) return props.loadSourcePhoto()
+  if (props.sourceFile) return props.sourceFile
+  if (props.photo && isAlbumPhoto(props.photo)) return readPhotoFile(props.photo)
+  throw new Error('Source photo unavailable')
+}
+watch(
+  () => [props.visible, props.photo, props.result],
+  () => {
+    shareVisible.value = false
+  }
+)
 const panel = ref<HTMLElement | null>(null)
 const compact = useCompactLayout()
 const layoutStorageKey = 'nikki-photo-params-layout'
@@ -120,6 +140,14 @@ function markImageFailed(title: string, name: string) {
               <p v-if="photo" class="photo-params-file-name">{{ photo.name }}</p>
             </div>
           </div>
+          <button
+            v-if="canShare"
+            type="button"
+            :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
+            :title="language === 'en' ? 'Export share image' : '导出分享图'"
+            @click="shareVisible = true"
+            ><Share2 :size="18"
+          /></button>
           <button
             v-if="result?.outfit && !compact"
             type="button"
@@ -330,6 +358,14 @@ function markImageFailed(title: string, name: string) {
       </section>
     </div>
   </Teleport>
+  <ShareImageDialog
+    v-if="visible && shareVisible"
+    :language="language ?? 'zh'"
+    :result="result"
+    :load-photo="loadSharePhoto"
+    :name="photo?.name"
+    @close="shareVisible = false"
+  />
 </template>
 
 <style scoped>

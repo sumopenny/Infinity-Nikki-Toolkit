@@ -804,10 +804,12 @@
   background: var(--icon-button-bg);
   color: var(--text);
 }
+.update-log-close-button:hover,
 .update-log-header button:hover,
 .help-about-header button:hover {
   background: var(--icon-button-hover-bg);
 }
+.update-log-close-button:focus-visible,
 .update-log-header button:focus-visible,
 .help-about-header button:focus-visible {
   outline: none;
@@ -1875,8 +1877,10 @@
   transition: opacity 0.24s ease;
 }
 
+.confirm-dialog-enter-active .share-image-panel,
 .confirm-dialog-enter-active .confirm-dialog-panel,
 .confirm-dialog-enter-active .outfit-editor-panel,
+.confirm-dialog-leave-active .share-image-panel,
 .confirm-dialog-leave-active .confirm-dialog-panel,
 .confirm-dialog-leave-active .outfit-editor-panel {
   transition:
@@ -1889,8 +1893,10 @@
   opacity: 0;
 }
 
+.confirm-dialog-enter-from .share-image-panel,
 .confirm-dialog-enter-from .confirm-dialog-panel,
 .confirm-dialog-enter-from .outfit-editor-panel,
+.confirm-dialog-leave-to .share-image-panel,
 .confirm-dialog-leave-to .confirm-dialog-panel,
 .confirm-dialog-leave-to .outfit-editor-panel {
   opacity: 0;

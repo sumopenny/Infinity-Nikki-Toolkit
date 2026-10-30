@@ -1,3 +1,4 @@
+import { onRequestGet as shareImageRequest } from './functions/api/share-image'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { assertDiagnosticsBuild } from './scripts/error-build-policy.mjs'
@@ -10,6 +11,19 @@ function localPearpalApi(): Plugin {
   return {
     name: 'local-pearpal-api',
     configureServer(server) {
+      server.middlewares.use('/api/share-image', async (req, res) => {
+        if (req.method !== 'GET') {
+          res.statusCode = 405
+          res.end()
+          return
+        }
+        const response = await shareImageRequest({
+          request: new Request(`http://localhost/api/share-image${req.url ?? ''}`)
+        })
+        res.statusCode = response.status
+        response.headers.forEach((value, key) => res.setHeader(key, value))
+        res.end(Buffer.from(await response.arrayBuffer()))
+      })
       server.middlewares.use('/api/errors', (_req, res) => {
         res.statusCode = 204
         res.end()

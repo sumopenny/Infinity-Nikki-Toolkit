@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
+import { buildParseItems, type ParseItemView } from '../utils/outfit/parseItemView'
 import CatalogImage from './CatalogImage.vue'
 import WardrobeFormNav from './WardrobeFormNav.vue'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 // 搭配码与照片共用部件列表和详情；照片传入解码结果时不请求搭配码服务。
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
-import { ExternalLink, RefreshCw, X } from 'lucide-vue-next'
-import type { Language, OutfitMessages } from '../i18n'
 import {
-  getCatalogEntryName,
-  getCatalogImageUrl,
-  loadItemCatalog,
-  type ItemCatalogEntry
-} from '../utils/outfit/itemCatalog'
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onBeforeUnmount,
+  ref,
+  shallowRef,
+  watch
+} from 'vue'
+import { Share2, ExternalLink, RefreshCw, X } from 'lucide-vue-next'
+import type { Language, OutfitMessages } from '../i18n'
+import { loadItemCatalog, type ItemCatalogEntry } from '../utils/outfit/itemCatalog'
 import {
   OutfitCodeParseError,
   parseOutfitCode,
@@ -50,23 +54,20 @@ const props = defineProps<{
   code: string
   embedded?: boolean
   suppliedResult?: LookbookDecodeResult
+  loadPhoto?: () => Promise<Blob>
   language: Language
   messages: OutfitMessages
 }>()
 
+const ShareImageDialog = defineAsyncComponent(() => import('./ShareImageDialog.vue'))
+const shareVisible = ref(false)
+watch(
+  () => [props.visible, props.code],
+  () => {
+    shareVisible.value = false
+  }
+)
 const emit = defineEmits<{ close: []; copy: [code: string] }>()
-
-interface ParseItemView {
-  id: number
-  name: string
-  imageUrl: string | null
-  resolved: boolean
-  outfitId: number | null
-  clothType: number | null
-  dyes: LookbookDecodeResult['dyeItems'][number]['dyes']
-  hasSpecialEffect: boolean
-  dyeColors: string[]
-}
 
 const status = ref<'loading' | 'success' | 'error'>('loading')
 const errorKind = ref<'invalid' | 'unavailable'>('unavailable')
@@ -125,32 +126,9 @@ useBodyScrollLock(computed(() => props.visible && !props.embedded))
 
 const requestCode = computed(() => decoded.value?.code || props.code)
 
-const items = computed<ParseItemView[]>(() => {
-  const result = decoded.value
-  if (!result) return []
-  const catalogIndex = catalog.value
-  const dyeByItemId = new Map(result.dyeItems.map((entry) => [entry.itemId, entry]))
-
-  return result.wearingClothes.map(({ itemId, clothType, outfitId }) => {
-    const entry = catalogIndex?.get(itemId)
-    const baseName = entry ? getCatalogEntryName(entry, props.language) : String(itemId)
-    const resolvedClothType = clothType ?? inferClothTypeFromItemId(itemId)
-    const typeLabel = getClothTypeLabel(resolvedClothType, props.language)
-    const dyeEntry = dyeByItemId.get(itemId)
-    const dyes = dyeEntry?.dyes ?? []
-    return {
-      id: itemId,
-      name: typeLabel ? `${baseName}(${typeLabel})` : baseName,
-      imageUrl: entry ? getCatalogImageUrl(entry) : null,
-      resolved: Boolean(entry),
-      outfitId,
-      clothType: resolvedClothType,
-      dyes,
-      hasSpecialEffect: dyeEntry?.hasSpecialEffect ?? false,
-      dyeColors: [...new Set(dyes.map((dye) => dye.color))]
-    }
-  })
-})
+const items = computed(() =>
+  decoded.value ? buildParseItems(decoded.value, catalog.value, props.language) : []
+)
 
 async function openItemDetail(item: ParseItemView, event?: Event) {
   if (!item.resolved || !item.imageUrl) return
@@ -317,7 +295,7 @@ async function startParse() {
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (!props.visible || event.defaultPrevented || outfitPreview.value) return
+  if (!props.visible || event.defaultPrevented || outfitPreview.value || shareVisible.value) return
   if (props.embedded && !detailVisible.value) return
   if (event.key === 'Escape') {
     event.preventDefault()
@@ -410,6 +388,15 @@ onBeforeUnmount(() => {
                 {{ requestCode }}
               </p>
             </div>
+            <button
+              v-if="status === 'success' && requestCode"
+              class="outfit-share-button"
+              type="button"
+              :title="language === 'en' ? 'Export share image' : '导出分享图'"
+              :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
+              @click="shareVisible = true"
+              ><Share2 :size="18"
+            /></button>
             <button
               type="button"
               :title="messages.parseClose"
@@ -662,6 +649,13 @@ onBeforeUnmount(() => {
       </div>
     </Transition>
   </Teleport>
+  <ShareImageDialog
+    v-if="visible && !embedded && shareVisible"
+    :language="language"
+    :code="requestCode"
+    :load-photo="loadPhoto"
+    @close="shareVisible = false"
+  />
   <WardrobeOutfitDialog
     :detail="outfitPreview"
     @open-outfit="outfitPreview = $event"
@@ -673,6 +667,18 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.outfit-parse-panel > header {
+  gap: 10px;
+}
+.outfit-parse-panel > header > button {
+  flex-shrink: 0;
+}
+.outfit-parse-heading {
+  flex: 1;
+}
+.outfit-share-button {
+  margin-left: auto;
+}
 /* 内嵌列表跟随参数窗口滚动，避免内部滚动容器裁掉悬停上移和焦点描边。 */
 .photo-outfit-panel .outfit-parse-content {
   overflow: visible;

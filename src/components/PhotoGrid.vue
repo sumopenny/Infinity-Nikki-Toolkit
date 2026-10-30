@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue'
-import { Check, Edit3, Heart, ScanSearch } from 'lucide-vue-next'
+import { Check, Edit3, Heart, ScanSearch, Share2 } from 'lucide-vue-next'
 import type { LocaleMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 import type { ActionGroup, DateGroup, PhotoItem } from '../utils/photoGrouping'
 import { createPhotoLoadQueue } from '../utils/photoLoader'
 import LazyPhotoImage from './LazyPhotoImage.vue'
 import WindowedPhotoBatch from './WindowedPhotoBatch.vue'
-const batches = (photos: PhotoItem[]) => Array.from({ length: Math.ceil(photos.length / 36) }, (_, i) => photos.slice(i * 36, (i + 1) * 36))
+const batches = (photos: PhotoItem[]) =>
+  Array.from({ length: Math.ceil(photos.length / 36) }, (_, i) =>
+    photos.slice(i * 36, (i + 1) * 36)
+  )
 
 const props = defineProps<{
+  language?: 'zh' | 'en'
   readOnly?: boolean
   readOnlyHint?: string
   dateGroups: DateGroup[]
@@ -31,6 +35,7 @@ const emit = defineEmits<{
   openPreview: [photo: PhotoItem]
   editNote: [photo: PhotoItem]
   parsePhoto: [photo: PhotoItem]
+  sharePhoto: [photo: PhotoItem]
 }>()
 
 const photoLoadQueue = createPhotoLoadQueue(3)
@@ -122,7 +127,11 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
         </button>
       </div>
 
-      <WindowedPhotoBatch v-for="(batch, index) in batches(group.photos)" :key="index" :count="batch.length">
+      <WindowedPhotoBatch
+        v-for="(batch, index) in batches(group.photos)"
+        :key="index"
+        :count="batch.length"
+      >
         <article
           v-for="photo in batch"
           :key="photo.id"
@@ -143,6 +152,16 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
               <span>{{ getPhotoMeta(photo) }}</span>
             </div>
             <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
+            <button
+              class="card-share-button"
+              type="button"
+              :title="language === 'en' ? 'Export share image' : '导出分享图'"
+              :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
+              @click.stop="emit('sharePhoto', photo)"
+              @dblclick.stop
+              @keydown.stop
+              ><Share2 :size="16" aria-hidden="true"
+            /></button>
             <button
               class="photo-params-parse"
               type="button"

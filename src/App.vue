@@ -105,6 +105,10 @@ import MobileNavigation from './components/MobileNavigation.vue'
 import { useCompactLayout, useVisualViewport } from './composables/useCompactLayout'
 import TopBar from './components/TopBar.vue'
 import PhotoTransferProgressDialog from './components/PhotoTransferProgressDialog.vue'
+const CardShareDialog = lazyFeature(() => import('./components/ShareImageDialog.vue'), () => language.value)
+const sharingOutfit = ref<OutfitItem | null>(null)
+const autoSharePhoto = ref(false)
+const loadCardSharePhoto = () => readPhotoBlob(sharingOutfit.value!)
 const PhotoParamsDialog = lazyFeature(
   () => import('./components/PhotoParamsDialog.vue'),
   () => language.value
@@ -150,7 +154,7 @@ import {
   readAlbumMetadata,
   savePhotoNote
 } from './utils/file-system/photoMetadata'
-import { releasePhotoUrl, releasePhotoUrls } from './utils/file-system/photoUrl'
+import { readPhotoBlob, releasePhotoUrl, releasePhotoUrls } from './utils/file-system/photoUrl'
 import { preparePhotoTransfer, runPhotoTransfer } from './utils/file-system/photoTransfer'
 import {
   readOutfitLibrary,
@@ -224,6 +228,7 @@ const normalizedCameraParamsInput = computed(() => cameraParamsInput.value.trim(
 const isParseToolsVisible = ref(false)
 const isFortuneTimeVisible = ref(false)
 const parsingOutfitCode = ref('')
+const parsingOutfitImage = ref<(() => Promise<Blob>) | undefined>()
 const isOutfitParseVisible = ref(false)
 const reopenParseToolsAfterOutfitClose = ref(false)
 const reopenParseToolsAfterPhotoClose = ref(false)
@@ -1590,6 +1595,13 @@ function openOutfitParse(target: OutfitItem | string) {
   const code = normalizeOutfitCode(typeof target === 'string' ? target : target.code)
   if (!code) return
   parsingOutfitCode.value = code
+  const source =
+    typeof target === 'string'
+      ? outfits.value.find(
+          (item) => normalizeOutfitCode(item.code).replace(/#$/, '') === code.replace(/#$/, '')
+        )
+      : target
+  parsingOutfitImage.value = source ? () => readPhotoBlob(source) : undefined
   isOutfitParseVisible.value = true
 }
 
@@ -1598,6 +1610,7 @@ function closeOutfitParse() {
   reopenParseToolsAfterOutfitClose.value = false
   isOutfitParseVisible.value = false
   parsingOutfitCode.value = ''
+  parsingOutfitImage.value = undefined
   parseCodeInput.value = ''
   if (shouldReopenParseTools) isParseToolsVisible.value = true
 }
@@ -1639,7 +1652,8 @@ async function editPhotoNote(photo: PhotoDisplayItem | null) {
   }
 }
 
-function openPhotoParams(photo: PhotoDisplayItem) {
+function openPhotoParams(photo: PhotoDisplayItem, share = false) {
+  autoSharePhoto.value = share
   if (!isAlbumPhoto(photo)) return
   reopenParseToolsAfterPhotoClose.value = false
   return photoParams.openForPhoto(photo as PhotoItem)
@@ -1650,6 +1664,7 @@ async function parseHeaderCameraParams(input?: string) {
   reopenParseToolsAfterPhotoClose.value = true
   cameraParamsInput.value = ''
   closeParseTools()
+  autoSharePhoto.value = false
   photoParams.openCameraParamsTool()
   await photoParams.parseRawCameraParams(raw)
 }
@@ -2646,10 +2661,12 @@ function importAllDataFromMenu() {
           @edit="openOutfitEditor"
           @delete="removeOutfit"
           @parse="openOutfitParse"
+          @share="sharingOutfit = $event"
           @open-preview="openPreview"
           @toggle-outfit="toggleOutfit"
         />
         <PhotoGrid
+          :language="language"
           v-else-if="hasAlbum && !isCameraFavoritesView"
           :read-only="isCompatibleAlbum"
           :read-only-hint="compatibleMessages.writeDisabled"
@@ -2668,7 +2685,8 @@ function importAllDataFromMenu() {
           @toggle-group="togglePhotoGroup"
           @open-preview="openPreview"
           @edit-note="editPhotoNote"
-          @parse-photo="openPhotoParams"
+          @parse-photo="openPhotoParams($event)"
+          @share-photo="openPhotoParams($event, true)"
         />
       </section>
     </main>
@@ -2779,10 +2797,25 @@ function importAllDataFromMenu() {
       @parse-photo="currentPreview && openPhotoParams(currentPreview)"
     />
 
+    <CardShareDialog v-if="sharingOutfit" :language="language" :code="sharingOutfit.code" :load-photo="loadCardSharePhoto" @close="sharingOutfit = null" />
+    <CardShareDialog
+      v-if="autoSharePhoto && isPhotoParamsVisible"
+      :language="language"
+      :result="photoParamsResult"
+      :load-photo="photoParams.loadSourcePhoto"
+      :name="photoParamsPhoto?.name"
+      :preparing="!photoParamsResult"
+      :preparation-error="photoParamsError"
+      :preparation-message="photoParamsProgress.message"
+      :uid-required="photoParamsUidRequired"
+      @submit-uid="photoParams.submitUid"
+      @retry-preparation="photoParamsPhoto && isAlbumPhoto(photoParamsPhoto) && photoParams.openForPhoto(photoParamsPhoto)"
+      @close="closePhotoParams"
+    />
     <PhotoParamsDialog
       :language="language"
       v-if="mountedDialogs.has('PhotoParamsDialog')"
-      :visible="isPhotoParamsVisible && !cameraFavoriteModal"
+      :visible="isPhotoParamsVisible && !cameraFavoriteModal && !autoSharePhoto"
       :saved="photoParamsSaved"
       :favorite-label="
         photoParamsSaved
@@ -2795,6 +2828,8 @@ function importAllDataFromMenu() {
       "
       @favorite="saveCameraFavoriteFromParams"
       :photo="photoParamsPhoto"
+      :source-file="photoParams.uploadFile.value"
+      :load-source-photo="photoParams.loadSourcePhoto"
       :progress="photoParamsProgress"
       :result="photoParamsResult"
       :error="photoParamsError"
@@ -2859,6 +2894,7 @@ function importAllDataFromMenu() {
       v-if="mountedDialogs.has('OutfitParseDialog')"
       :visible="isOutfitParseVisible"
       :code="parsingOutfitCode"
+      :load-photo="parsingOutfitImage"
       :language="language"
       :messages="outfitLocale"
       @close="closeOutfitParse"
