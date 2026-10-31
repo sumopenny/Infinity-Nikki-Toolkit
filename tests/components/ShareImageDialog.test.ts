@@ -16,6 +16,20 @@ function setup() {
   URL.revokeObjectURL = vi.fn()
 }
 describe('ShareImageDialog', () => {
+  it('shares original-photo hints without a parsing retry button', async () => {
+    setup()
+    const wrapper = mount(ShareImageDialog, {
+      props: { language: 'en', preparing: true, preparationError: 'Invalid photo',
+        preparationErrorCodes: ['jpeg_second_end_marker_missing'] },
+      global: { stubs: { Teleport: true } }
+    })
+    await flushPromises()
+    expect(wrapper.get('.photo-params-error').text()).toContain('HighQuality')
+    expect(wrapper.get('.photo-params-error').text()).toContain('compressed')
+    expect(wrapper.get('.photo-params-error').find('button').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('handles parsing and UID entry inside the share window before loading the cached photo', async () => {
     setup()
     const loadPhoto = vi.fn(async () => new Blob(['cached photo']))
@@ -28,7 +42,7 @@ describe('ShareImageDialog', () => {
     expect(loadPhoto).not.toHaveBeenCalled()
     expect(renderShareImage).not.toHaveBeenCalled()
     await wrapper.setProps({ preparationError: '需要 UID', uidRequired: true })
-    await wrapper.get('#share-photo-uid').setValue('123456')
+    await wrapper.get('#photo-params-uid-input').setValue('123456')
     await wrapper.get('form').trigger('submit')
     expect(wrapper.emitted('submitUid')).toEqual([['123456']])
     await wrapper.setProps({

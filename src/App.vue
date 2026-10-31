@@ -2350,19 +2350,16 @@ function importAllDataFromMenu() {
               }} </button
             ><template #secondary>
               <label
-                class="auto-parse-actions-toggle"
+                class="auto-parse-actions-toggle app-checkbox-label"
                 :data-tooltip="locale.grid.autoParseActionsHint"
               >
                 <input
                   v-model="autoParseActionsEnabled"
+                  class="app-checkbox"
+                  style="--checkbox-size: 17px"
                   type="checkbox"
                   :aria-label="locale.grid.autoParseActions"
                 />
-                <span
-                  class="auto-parse-actions-checkbox"
-                  :class="{ checked: autoParseActionsEnabled }"
-                  aria-hidden="true"
-                ></span>
                 <span>{{ locale.grid.autoParseActions }}</span>
                 <span class="auto-parse-actions-help" aria-hidden="true">?</span>
               </label>
@@ -2429,6 +2426,7 @@ function importAllDataFromMenu() {
               {{ isLoading ? locale.topBar.loading : locale.topBar.chooseDirectory }}
             </button>
             <button
+              v-if="!compactLayout"
               type="button"
               class="album-compatible-button"
               :disabled="isAnyFileOperationBusy"
@@ -2436,7 +2434,7 @@ function importAllDataFromMenu() {
               >{{ compatibleMessages.open }}</button
             >
           </div>
-          <div class="empty-album-guidance">
+          <div v-if="!compactLayout" class="empty-album-guidance">
             <p>{{ compatibleMessages.openingHint }}</p>
             <p class="empty-album-reload-hint">{{ compatibleMessages.reloadHint }}</p>
           </div>
@@ -2538,19 +2536,16 @@ function importAllDataFromMenu() {
               }} </button
             ><template #secondary>
               <label
-                class="auto-parse-actions-toggle"
+                class="auto-parse-actions-toggle app-checkbox-label"
                 :data-tooltip="locale.grid.autoParseActionsHint"
               >
                 <input
                   v-model="autoParseActionsEnabled"
+                  class="app-checkbox"
+                  style="--checkbox-size: 17px"
                   type="checkbox"
                   :aria-label="locale.grid.autoParseActions"
                 />
-                <span
-                  class="auto-parse-actions-checkbox"
-                  :class="{ checked: autoParseActionsEnabled }"
-                  aria-hidden="true"
-                ></span>
                 <span>{{ locale.grid.autoParseActions }}</span>
                 <span class="auto-parse-actions-help" aria-hidden="true">?</span>
               </label>
@@ -2806,10 +2801,11 @@ function importAllDataFromMenu() {
       :name="photoParamsPhoto?.name"
       :preparing="!photoParamsResult"
       :preparation-error="photoParamsError"
+      :preparation-error-codes="photoParamsErrorCodes"
+      :preparation-progress="photoParamsProgress"
       :preparation-message="photoParamsProgress.message"
       :uid-required="photoParamsUidRequired"
       @submit-uid="photoParams.submitUid"
-      @retry-preparation="photoParamsPhoto && isAlbumPhoto(photoParamsPhoto) && photoParams.openForPhoto(photoParamsPhoto)"
       @close="closePhotoParams"
     />
     <PhotoParamsDialog

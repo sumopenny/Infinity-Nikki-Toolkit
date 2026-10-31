@@ -768,54 +768,6 @@
   transform: translateY(0);
 }
 
-.auto-parse-actions-toggle input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.auto-parse-actions-checkbox {
-  position: relative;
-  display: inline-grid;
-  width: 17px;
-  height: 17px;
-  flex: 0 0 17px;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-strong);
-  transition:
-    background var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-spring);
-}
-.auto-parse-actions-checkbox::after {
-  width: 7px;
-  height: 4px;
-  border-bottom: 2px solid var(--primary-text);
-  border-left: 2px solid var(--primary-text);
-  content: '';
-  opacity: 0;
-  transform: translateY(-1px) rotate(-45deg) scale(0.7);
-  transition:
-    opacity var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-spring);
-}
-.auto-parse-actions-checkbox.checked {
-  border-color: var(--pink-deep);
-  background: var(--pink-deep);
-  transform: scale(1.02);
-}
-.auto-parse-actions-checkbox.checked::after {
-  opacity: 1;
-  transform: translateY(-1px) rotate(-45deg) scale(1);
-}
-
 .auto-parse-actions-help {
   display: inline-grid;
   width: 17px;

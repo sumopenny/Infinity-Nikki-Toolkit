@@ -122,8 +122,13 @@ watch(
           </div>
 
           <footer>
-            <label>
-              <input v-model="dontShowAgain" type="checkbox" />
+            <label class="app-checkbox-label">
+              <input
+                v-model="dontShowAgain"
+                class="app-checkbox"
+                style="--checkbox-size: 18px"
+                type="checkbox"
+              />
               <span>{{ messages.guideDontShowAgain }}</span>
             </label>
             <button class="primary-button" type="button" @click="closeGuide">{{

@@ -42,7 +42,7 @@ describe('PhotoParamsDialog', () => {
         expect(wrapper.get('input').attributes('aria-invalid')).toBe('true')
         expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
       }
-      await input.setValue('456')
+      await wrapper.get('input').setValue('456')
       expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     } finally {
       wrapper.unmount()

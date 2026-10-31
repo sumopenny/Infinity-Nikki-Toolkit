@@ -377,7 +377,8 @@
   right: 80px;
 }
 .photo-card:hover .card-share-button,
-.photo-card:focus-within .card-share-button {
+.photo-card:focus-visible .card-share-button,
+.photo-card:has(:focus-visible) .card-share-button {
   opacity: 1;
 }
 .card-share-button:hover:not(:disabled) {

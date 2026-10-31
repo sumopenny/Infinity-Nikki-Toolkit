@@ -3,7 +3,7 @@ import type { PhotoItem, PhotoActionInfo } from '../photoGrouping'
 import { decodePhoto } from './wasmClient'
 import { PHOTO_ACTION_CATALOG_VERSION, resourceImage, resourceName } from './resourceManifest'
 
-export const PHOTO_ACTION_PARSER_VERSION = 'v1'
+export const PHOTO_ACTION_PARSER_VERSION = 'v2'
 
 type DecodedPhoto = { photo?: Record<string, unknown> }
 

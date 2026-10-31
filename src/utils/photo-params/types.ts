@@ -20,7 +20,7 @@ export interface PhotoParamsResult {
   outfit?: LookbookDecodeResult | null
   rawOutfit?: { nikkiClothes: number[]; nikkiDIY: unknown } | null
   environmentFields: Array<{ label: string; value: string }>
-  cameraFields: Array<{ label: string; value: string; position?: number }>
+  cameraFields: Array<{ label: string; value: string; position?: number; static?: boolean }>
   imageFields: Array<{ label: string; value: string; position?: number }>
   resourceGroups: Array<{
     title: string

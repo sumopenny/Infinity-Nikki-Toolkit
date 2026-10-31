@@ -520,7 +520,7 @@ function openDonate() {
                 <span>{{ messages.chooseDirectory }}</span>
               </button>
               <button
-                v-if="compatibleLabel"
+                v-if="compatibleLabel && !compact"
                 type="button"
                 role="menuitem"
                 :disabled="isBusy"
@@ -823,14 +823,6 @@ function openDonate() {
                     role="menuitem"
                     @click="runMenuAction(() => emit('openFortuneTime'))"
                     >✦ {{ messages.fortuneTime }}</button
-                  >
-                  <button
-                    v-if="compatibleLabel"
-                    type="button"
-                    role="menuitem"
-                    :disabled="isBusy"
-                    @click="runMenuAction(() => emit('chooseCompatible'))"
-                    ><FolderOpen :size="18" />{{ compatibleLabel }}</button
                   >
                   <template v-if="directorySupported !== false">
                     <button

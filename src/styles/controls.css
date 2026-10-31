@@ -15,6 +15,58 @@
   min-height: 48px;
 }
 
+/* 普通勾选框共用分享窗口的外观；各入口通过 --checkbox-size 保留原有尺寸。 */
+.app-checkbox-label {
+  cursor: pointer;
+}
+.app-checkbox-label:has(> .app-checkbox:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.app-checkbox {
+  appearance: none;
+  box-sizing: border-box;
+  display: inline-grid;
+  place-content: center;
+  width: var(--checkbox-size, 20px);
+  height: var(--checkbox-size, 20px);
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  border: 1.5px solid var(--surface-accent-border);
+  border-radius: 6px;
+  background: var(--surface-strong);
+  cursor: inherit;
+  transition:
+    border-color var(--motion-fast),
+    background var(--motion-fast);
+}
+.app-checkbox:checked {
+  border-color: var(--pink-deep);
+  background: var(--pink-deep);
+}
+.app-checkbox::before {
+  content: '';
+  width: calc(var(--checkbox-size, 20px) * 0.55);
+  height: calc(var(--checkbox-size, 20px) * 0.55);
+  background: #fff;
+  clip-path: polygon(14% 44%, 38% 68%, 86% 16%, 100% 29%, 39% 94%, 0 58%);
+  visibility: hidden;
+}
+.app-checkbox:checked::before {
+  visibility: visible;
+}
+.app-checkbox-label:hover > .app-checkbox:not(:disabled) {
+  border-color: var(--pink-deep);
+}
+.app-checkbox:focus-visible {
+  outline: 2px solid var(--pink-deep);
+  outline-offset: 3px;
+}
+.app-checkbox:disabled {
+  cursor: not-allowed;
+}
+
 /* 解析与照片传输共用轨道和填充；业务只提供高度、实际进度及等待/失败状态。 */
 .progress-track {
   height: var(--progress-track-height, 12px);

@@ -162,12 +162,22 @@ watch(cleanAllAccounts, (checked) => {
               </DesktopMenuTransition>
             </div>
             <div class="cleanup-account-options">
-              <label class="cleanup-account-all">
-                <input v-model="cleanAllAccounts" type="checkbox" />
+              <label class="cleanup-account-all app-checkbox-label">
+                <input
+                  v-model="cleanAllAccounts"
+                  class="app-checkbox"
+                  style="--checkbox-size: 13px"
+                  type="checkbox"
+                />
                 <span>{{ messages.allAccounts }}</span>
               </label>
-              <label class="cleanup-account-all">
-                <input v-model="rememberChoice" type="checkbox" />
+              <label class="cleanup-account-all app-checkbox-label">
+                <input
+                  v-model="rememberChoice"
+                  class="app-checkbox"
+                  style="--checkbox-size: 13px"
+                  type="checkbox"
+                />
                 <span>{{ messages.rememberChoice }}</span>
               </label>
             </div>

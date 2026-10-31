@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, ref, toRef, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, toRef, watch } from 'vue'
 import type { Language } from '../i18n'
 import { outfitMessages } from '../i18n/messages/outfit'
 const OutfitParseDialog = defineAsyncComponent(() => import('./OutfitParseDialog.vue'))
@@ -12,7 +12,8 @@ import type { PhotoItem } from '../utils/photoGrouping'
 import type { PhotoParamsProgress, PhotoParamsResult } from '../utils/photo-params/types'
 import type { PhotoParamsMessages } from '../i18n/messages/photoParams'
 import { readLocalStorage, writeLocalStorage } from '../utils/localStorage'
-import { needsOriginalPhotoHint } from '../utils/photo-params/parseError'
+import { usePhotoParseFailure } from '../composables/usePhotoParseFailure'
+import PhotoParseFailure from './PhotoParseFailure.vue'
 
 const props = defineProps<{
   language?: Language
@@ -67,46 +68,37 @@ const layoutLabel = computed(() =>
 // 参数窗口可从照片卡片独立打开，需自行管理滚动锁和焦点生命周期。
 useBodyScrollLock(toRef(props, 'visible'))
 useModalFocus(toRef(props, 'visible'), panel, () => emit('close'))
-const showNonOriginalPhotoHint = computed(() => needsOriginalPhotoHint(props.errorCodes ?? []))
-const uidInput = ref('')
-const uidField = ref<HTMLInputElement | null>(null)
-const uidAttempt = ref(0)
-const uidParsing = ref(false)
-const uidFeedback = ref('')
-function resetUidAttempt() {
-  uidInput.value = ''
-  uidAttempt.value = 0
-  uidParsing.value = false
-  uidFeedback.value = ''
-}
-watch(() => props.photo, resetUidAttempt)
-function submitUid() {
-  if (uidParsing.value || !uidInput.value.trim()) return
-  uidFeedback.value = ''
-  uidAttempt.value += 1
-  uidParsing.value = true
-  emit('submitUid', uidInput.value.trim())
-}
-watch(
-  () => [props.progress.stage, props.error] as const,
-  async ([stage, error]) => {
-    if (!uidParsing.value) return
-    if (stage === 'ready') uidParsing.value = false
-    if (stage !== 'error' || !error) return
-    uidParsing.value = false
-    uidFeedback.value = props.uidRequired ? props.messages.uidMismatch : error
-    await nextTick()
-    uidField.value?.focus()
+const failureState = usePhotoParseFailure(
+  {
+    get error() {
+      return props.error
+    },
+    get errorCodes() {
+      return props.errorCodes
+    },
+    get uidRequired() {
+      return props.uidRequired
+    },
+    get progress() {
+      return props.progress
+    },
+    get result() {
+      return props.result
+    },
+    get messages() {
+      return props.messages
+    },
+    get resetKey() {
+      return props.visible ? props.photo : null
+    }
   },
-  { flush: 'post' }
+  (uid) => emit('submitUid', uid)
 )
+const { uidAttempt } = failureState
 const failedImages = ref<Set<string>>(new Set())
 watch(
   () => props.visible,
-  (visible) => {
-    if (!visible) {
-      resetUidAttempt()
-    }
+  () => {
     failedImages.value = new Set()
   }
 )
@@ -191,55 +183,13 @@ function markImageFailed(title: string, name: string) {
             <p>{{ progress.message }}</p>
           </div>
 
-          <div v-if="error || (uidAttempt && !result)" class="photo-params-error">
-            <p v-if="error">{{ error }}</p>
-            <p v-if="showNonOriginalPhotoHint" class="photo-params-original-hint">{{
-              messages.nonOriginalPhotoHint
-            }}</p>
-            <p class="photo-params-original-hint photo-params-folder-hint">{{
-              messages.originalFolderHint
-            }}</p>
-            <!-- uid 表单收进报错模块内部，跟随整体垂直居中，避免与报错区堆叠导致窗口出现滚动条。 -->
-            <form
-              v-if="!result && (uidRequired || uidAttempt)"
-              class="photo-params-uid-form"
-              :aria-busy="uidParsing"
-              @submit.prevent="submitUid"
-            >
-              <label for="photo-params-uid-input">{{ messages.uidPrompt }}</label>
-              <div>
-                <input
-                  id="photo-params-uid-input"
-                  ref="uidField"
-                  v-model="uidInput"
-                  :disabled="uidParsing"
-                  :aria-invalid="uidFeedback ? 'true' : undefined"
-                  :aria-describedby="uidFeedback ? 'photo-params-uid-feedback' : undefined"
-                  @input="uidFeedback = ''"
-                  :placeholder="messages.uidPlaceholder"
-                  autocomplete="off"
-                />
-                <button
-                  type="submit"
-                  class="confirm-dialog-button primary"
-                  :disabled="uidParsing || !uidInput.trim()"
-                  ><ScanSearch :size="15" />{{
-                    uidParsing ? messages.uidParsing : messages.uidParse
-                  }}</button
-                >
-              </div>
-              <p v-if="uidParsing" role="status" aria-live="polite">{{ messages.uidParsing }}</p>
-              <p
-                v-if="uidFeedback"
-                id="photo-params-uid-feedback"
-                :key="uidAttempt"
-                class="photo-params-uid-feedback"
-                role="alert"
-                >{{ messages.uidRetryFailed }} {{ uidFeedback }}</p
-              >
-            </form>
-          </div>
-
+          <PhotoParseFailure
+            :state="failureState"
+            :error="error"
+            :uid-required="uidRequired"
+            :result="result"
+            :messages="messages"
+          />
           <div v-if="result" class="photo-params-content">
             <div class="photo-params-columns">
               <div class="photo-params-main">
@@ -263,9 +213,11 @@ function markImageFailed(title: string, name: string) {
                       v-for="item in result.cameraFields"
                       :key="item.label"
                       class="photo-params-value"
+                      :class="{ 'photo-params-value--static': item.static }"
                     >
                       <span>{{ item.label }}</span>
                       <span
+                        v-if="!item.static"
                         class="photo-params-slider"
                         :style="{ '--photo-params-slider-ratio': (item.position ?? 50) / 100 }"
                         aria-hidden="true"
@@ -424,14 +376,6 @@ function markImageFailed(title: string, name: string) {
   font-size: 12px;
 }
 
-.photo-params-original-hint {
-  margin-top: 8px;
-  color: var(--muted);
-}
-.photo-params-folder-hint {
-  max-width: 560px;
-  width: 100%;
-}
 /* 仅动作图片使用梦幻背景，加载失败时保留默认占位背景。 */
 .photo-params-resource-row--pose img {
   background: var(--surface-soft) url('../../img/dreamy.webp') center / cover no-repeat;

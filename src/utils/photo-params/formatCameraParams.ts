@@ -8,7 +8,7 @@ import {
   rawFocalLengthDisplay,
   sliderPercent
 } from './slider'
-import { weatherName } from './weather'
+import { weatherWithWind } from './weather'
 
 export function formatCameraParams(
   camera: Record<string, unknown>,
@@ -39,6 +39,11 @@ export function formatCameraParams(
     photoData?.focalLength != null
       ? photoFocalLengthDisplay(photoData.focalLength)
       : rawFocalLengthDisplay(camera.focalLength)
+  const weather = weatherWithWind(photoData, language)
+  const zoom =
+    typeof photoData?.zoom === 'number' && Number.isFinite(photoData.zoom) ? photoData.zoom : null
+  const nikkiPose = camera.nikkiPoseInfo as
+    { poseId?: number; playingPercent?: number | null } | null | undefined
   const captureTime = photoData?.captureTime as
     { hour?: number; minute?: number; second?: number } | undefined
   const pad = (value: unknown) =>
@@ -71,6 +76,12 @@ export function formatCameraParams(
           : String(poseId),
       title: messages.action,
       name: poseId == null ? messages.noValue : resourceName('pose', poseId, language),
+      value:
+        nikkiPose?.playingPercent != null &&
+        Number.isFinite(nikkiPose.playingPercent) &&
+        String(nikkiPose.poseId) === String(poseId)
+          ? formatPercent(nikkiPose.playingPercent)
+          : undefined,
       imageUrl: poseId == null ? undefined : resourceImage('pose', poseId)
     })
   }
@@ -94,7 +105,7 @@ export function formatCameraParams(
   )
   return {
     environmentFields:
-      captureTime || photoData?.weatherType != null
+      captureTime || weather
         ? [
             ...(captureTime
               ? [
@@ -104,11 +115,11 @@ export function formatCameraParams(
                   }
                 ]
               : []),
-            ...(photoData?.weatherType != null
+            ...(weather
               ? [
                   {
                     label: messages.labels.weather,
-                    value: weatherName(photoData.weatherType, language)
+                    value: weather
                   }
                 ]
               : [])
@@ -119,6 +130,11 @@ export function formatCameraParams(
         label: messages.labels.focalLength,
         value: focal ? `${formatNumber(focal.millimeters, 0)}mm` : messages.noValue,
         position: focal?.position
+      },
+      {
+        label: messages.labels.zoom,
+        value: zoom == null ? messages.noValue : `${zoom.toFixed(1)}×`,
+        static: true
       },
       {
         label: messages.labels.aperture,

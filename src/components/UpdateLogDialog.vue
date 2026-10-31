@@ -151,10 +151,13 @@ watch(
             </section>
           </div>
           <footer class="update-log-footer">
-            <label
-              ><input v-model="dontShowAgain" type="checkbox" /><span>{{
-                messages.dontShowAgain
-              }}</span></label
+            <label class="app-checkbox-label"
+              ><input
+                v-model="dontShowAgain"
+                class="app-checkbox"
+                style="--checkbox-size: 18px"
+                type="checkbox"
+              /><span>{{ messages.dontShowAgain }}</span></label
             >
             <button class="primary-button" type="button" @click="closeDialog">{{
               messages.confirm

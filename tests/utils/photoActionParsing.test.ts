@@ -264,3 +264,21 @@ describe('persistent failed action results and explicit retry', () => {
     expect(savePhotoActionCache).not.toHaveBeenCalled()
   })
 })
+
+it('retries failed photos cached by the previous parser version', async () => {
+  vi.clearAllMocks()
+  const old = {
+    ...cache('album'),
+    status: 'unparsed' as const,
+    errorCode: 'camera_params_invalid_length',
+    parserVersion: 'v1',
+    fingerprint: photoActionFingerprint('album', cached).replace('|v2|', '|v1|')
+  }
+  vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map([[cached.name, old]]))
+  vi.mocked(parsePhotoAction).mockResolvedValue({ status: 'none', parsedAt: 2 })
+  const parser = usePhotoActionParsing({ language: ref('zh') })
+  await parser.start([cached], 'album', async () => ['123'], true)
+  expect(parsePhotoAction).toHaveBeenCalledTimes(1)
+  expect(parser.actionInfo.value.get(cached.id)?.status).toBe('none')
+  expect(savePhotoActionCache).toHaveBeenCalled()
+})

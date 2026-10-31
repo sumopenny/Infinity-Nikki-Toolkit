@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { Download, RefreshCw, X, ZoomIn, ZoomOut } from 'lucide-vue-next'
-import type { PhotoParamsResult } from '../utils/photo-params/types'
+import { usePhotoParseFailure } from '../composables/usePhotoParseFailure'
+import PhotoParseFailure from './PhotoParseFailure.vue'
+import { photoParamsZh, photoParamsEn } from '../i18n/messages/photoParams'
+import type { PhotoParamsProgress, PhotoParamsResult } from '../utils/photo-params/types'
 import { loadItemCatalog } from '../utils/outfit/itemCatalog'
 import { buildParseItems } from '../utils/outfit/parseItemView'
 import { loadShareImage, renderShareImage } from '../utils/shareImage'
@@ -19,9 +22,11 @@ const props = defineProps<{
   preparing?: boolean
   preparationError?: string | null
   preparationMessage?: string
+  preparationErrorCodes?: readonly string[]
+  preparationProgress?: PhotoParamsProgress
   uidRequired?: boolean
 }>()
-const emit = defineEmits<{ close: []; submitUid: [uid: string]; retryPreparation: [] }>()
+const emit = defineEmits<{ close: []; submitUid: [uid: string] }>()
 const en = computed(() => props.language === 'en')
 const panel = ref<HTMLElement | null>(null)
 const active = ref(true)
@@ -40,8 +45,45 @@ const source = shallowRef<HTMLImageElement | null>(null)
 const preview = ref(''),
   busy = ref(false),
   error = ref('')
-const uidInput = ref('')
-const loading = computed(() => (props.preparing ? !props.preparationError : busy.value))
+const parseMessages = computed(() => (en.value ? photoParamsEn : photoParamsZh))
+const parseProgress = computed<PhotoParamsProgress>(
+  () =>
+    props.preparationProgress ?? {
+      stage: props.preparationError ? 'error' : 'idle',
+      percent: 0,
+      message: props.preparationMessage ?? ''
+    }
+)
+const failureState = usePhotoParseFailure(
+  {
+    get error() {
+      return props.preparationError ?? null
+    },
+    get errorCodes() {
+      return props.preparationErrorCodes
+    },
+    get uidRequired() {
+      return !!props.uidRequired
+    },
+    get progress() {
+      return parseProgress.value
+    },
+    get result() {
+      return props.result
+    },
+    get messages() {
+      return parseMessages.value
+    },
+    get resetKey() {
+      return props.name
+    }
+  },
+  (uid) => emit('submitUid', uid)
+)
+const { uidAttempt } = failureState
+const loading = computed(() =>
+  props.preparing ? !props.preparationError && !uidAttempt.value : busy.value
+)
 const zoomDisabled = computed(
   () => props.preparing || busy.value || !!error.value || !preview.value
 )
@@ -168,7 +210,10 @@ function download() {
   const url = URL.createObjectURL(renderedBlob),
     anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `${(props.name || props.code || 'nikki').replace(/[\\/:*?"<>|#]/g, '-').replace(/\.[^.]+$/, '')}-share${props.code ? '-9x16' : ''}.jpg`
+  const name = (props.name || props.code || '')
+    .replace(/[\\/:*?"<>|#]/g, '-')
+    .replace(/\.[^.]+$/, '')
+  anchor.download = `nikkicube${name ? '_' + name : ''}_share${props.code ? '_9x16' : ''}.jpg`
   document.body.append(anchor)
   anchor.click()
   anchor.remove()
@@ -210,21 +255,23 @@ onBeforeUnmount(() => {
           <header>
             <h2>{{ label('导出分享图', 'Export share image') }}</h2>
             <div v-if="!code && !preparing" class="share-image-controls">
-              <label
-                ><input v-model="parameters" type="checkbox" />{{
+              <label class="app-checkbox-label"
+                ><input v-model="parameters" class="app-checkbox" type="checkbox" />{{
                   label('图片参数', 'Photo parameters')
                 }}</label
               >
-              <label
+              <label class="app-checkbox-label"
                 ><input
                   v-model="clothes"
+                  class="app-checkbox"
                   type="checkbox"
                   :disabled="!result?.outfit?.wearingClothes.length"
                 />{{ label('穿搭部件', 'Outfit and dyes') }}</label
               >
-              <label
+              <label class="app-checkbox-label"
                 ><input
                   v-model="cameraCode"
+                  class="app-checkbox"
                   type="checkbox"
                   :disabled="!result?.rawCameraParams"
                 />{{ label('相机参数码', 'Camera code') }}</label
@@ -253,32 +300,15 @@ onBeforeUnmount(() => {
                   : label('正在生成预览…', 'Generating preview…')
               }}</p>
             </div>
-            <div v-if="preparing && preparationError" class="share-image-preparation">
-              <p role="alert">{{ preparationError }}</p>
-              <form
-                v-if="uidRequired"
-                @submit.prevent="uidInput.trim() && emit('submitUid', uidInput.trim())"
-              >
-                <label for="share-photo-uid">{{
-                  label('请输入拍摄此照片所用账号的 UID', 'Enter the UID used to take this photo')
-                }}</label>
-                <div class="share-image-uid-row">
-                  <input
-                    id="share-photo-uid"
-                    v-model="uidInput"
-                    inputmode="numeric"
-                    autocomplete="off"
-                    :placeholder="label('账号 UID', 'Account UID')"
-                  />
-                  <button type="submit" :disabled="!uidInput.trim()">{{
-                    label('解析', 'Parse')
-                  }}</button>
-                </div>
-              </form>
-              <button v-else type="button" @click="emit('retryPreparation')"
-                ><RefreshCw :size="16" />{{ label('重试', 'Retry') }}</button
-              >
-            </div>
+            <PhotoParseFailure
+              :state="failureState"
+              class="share-image-preparation"
+              v-if="preparing"
+              :error="preparationError ?? null"
+              :uid-required="!!uidRequired"
+              :result="result"
+              :messages="parseMessages"
+            />
             <div v-if="error" role="alert"
               ><p>{{ error }}</p
               ><button type="button" @click="source ? generate() : loadOriginal()"
@@ -413,51 +443,6 @@ label {
   align-items: center;
   font-size: 14px;
 }
-label:has(input[type='checkbox']) {
-  cursor: pointer;
-}
-label:has(input:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-input[type='checkbox'] {
-  appearance: none;
-  display: grid;
-  place-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  margin: 0;
-  border: 1.5px solid var(--surface-accent-border);
-  border-radius: 6px;
-  background: var(--surface-strong);
-  cursor: inherit;
-  transition:
-    border-color var(--motion-fast),
-    background var(--motion-fast);
-}
-input[type='checkbox']:checked {
-  border-color: var(--pink-deep);
-  background: var(--pink-deep);
-}
-input[type='checkbox']::before {
-  content: '';
-  width: 11px;
-  height: 11px;
-  background: #fff;
-  clip-path: polygon(14% 44%, 38% 68%, 86% 16%, 100% 29%, 39% 94%, 0 58%);
-  visibility: hidden;
-}
-input[type='checkbox']:checked::before {
-  visibility: visible;
-}
-label:hover input[type='checkbox']:not(:disabled) {
-  border-color: var(--pink-deep);
-}
-input[type='checkbox']:focus-visible {
-  outline: 2px solid var(--pink-deep);
-  outline-offset: 3px;
-}
 .share-image-preview {
   position: relative;
   overflow: hidden;
@@ -481,28 +466,6 @@ input[type='checkbox']:focus-visible {
   padding: 24px;
   overflow: auto;
   background: var(--surface-strong);
-}
-.share-image-preparation p {
-  max-width: 560px;
-  overflow-wrap: anywhere;
-}
-.share-image-preparation form {
-  width: min(100%, 440px);
-}
-.share-image-uid-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-.share-image-uid-row input {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
 }
 .share-image-stage {
   width: 100%;

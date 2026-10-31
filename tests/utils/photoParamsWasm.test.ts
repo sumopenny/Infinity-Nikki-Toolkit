@@ -148,7 +148,13 @@ describe('photo parameter wasm', () => {
 })
 
 // 构造游戏尾部加密格式，直接验证实际 WASM，而不是模拟解码返回值。
-function decodeSyntheticPhoto(info: Record<string, unknown>, uid = '123456', decodeUid = uid) {
+function decodeSyntheticPhoto(
+  info: Record<string, unknown>,
+  uid = '123456',
+  decodeUid = uid,
+  cameraRaw?: Array<string | number>,
+  extra: Record<string, unknown> = {}
+) {
   const raw = [
     1,
     0,
@@ -182,9 +188,10 @@ function decodeSyntheticPhoto(info: Record<string, unknown>, uid = '123456', dec
     'None',
     0
   ]
-  const camera = call('encodeCameraParams', JSON.stringify({ rawArray: raw })).value
+  const camera = call('encodeCameraParams', JSON.stringify({ rawArray: cameraRaw ?? raw })).value
   const text = JSON.stringify({
     decoy: { nikkiClothes: [999], nikkiDIY: [] },
+    ...extra,
     SocialPhoto: { CameraParams: camera, PhotoInfo: info }
   })
   const bytes = Buffer.from(text)
@@ -267,4 +274,202 @@ describe('photo dressing in encrypted originals', () => {
       decodeSyntheticPhoto({ nikkiClothes: [], nikkiDIY: {} }).value.outfit.wearingClothes
     ).toEqual([])
   })
+})
+
+function v3Raw(visible = false): Array<string | number> {
+  const raw: Array<string | number> = [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    55,
+    2,
+    0,
+    'None',
+    0,
+    0,
+    0,
+    0,
+    0.3,
+    0,
+    0.55,
+    0,
+    0,
+    0,
+    0,
+    'None',
+    0
+  ]
+  return [
+    ...raw,
+    ...(visible
+      ? [1, 123, 0.1, 0.2, 0.3, 0.5, 1, 0, 1, 456, 0.75, 0, 0.4]
+      : [0, '', '', '', '', '', '', '', '', '', '', '', ''])
+  ]
+}
+
+// Independent encryption fixture prevents encode/decode bugs from masking one another.
+function cameraCipher(raw: unknown[]) {
+  const key = Buffer.from([
+    181, 177, 91, 47, 227, 157, 144, 240, 111, 98, 69, 198, 173, 140, 44, 155, 236, 227, 183, 244,
+    95, 80, 65, 80, 69, 82, 95, 71, 65, 77, 69, 83
+  ])
+  const bytes = Buffer.from(JSON.stringify(raw))
+  const padded = Buffer.alloc(Math.ceil(bytes.length / 16) * 16)
+  bytes.copy(padded)
+  const cipher = createCipheriv('aes-256-ecb', key, null)
+  cipher.setAutoPadding(false)
+  return Buffer.concat([cipher.update(padded), cipher.final()]).toString('base64')
+}
+
+describe('CameraParams V3 compatibility', () => {
+  it.each([false, true])('decodes independent 44-value fixture, Momo visible=%s', (visible) => {
+    const raw = v3Raw(visible)
+    const result = call('decodeCameraParams', cameraCipher(raw))
+    expect(result.ok).toBe(true)
+    expect(result.value).toMatchObject({ version: 'v3', arrayLength: 44, rawArray: raw })
+    expect(result.value.momo.enabled).toBe(!visible)
+    expect(result.value.nikkiPoseInfo).toEqual(
+      visible ? { poseId: 456, playingPercent: 0.75, inIdle: 0 } : null
+    )
+    if (visible)
+      expect(result.value.momo).toMatchObject({ poseId: 123, poseTime: 0.4, horizontal: 40 })
+    const encoded = call('encodeCameraParams', JSON.stringify(result.value))
+    expect(encoded.ok).toBe(true)
+    expect(call('decodeCameraParams', encoded.value).value.rawArray).toEqual(raw)
+  })
+  it('preserves an absent animation progress and separates Nikki and Momo edits', () => {
+    const raw = v3Raw(true)
+    raw[41] = ''
+    const result = call('decodeCameraParams', cameraCipher(raw))
+    expect(result.value.nikkiPoseInfo.playingPercent).toBeNull()
+    const model = {
+      ...result.value,
+      nikkiPoseInfo: { poseId: 789, playingPercent: null, inIdle: 1 },
+      momo: { ...result.value.momo, poseId: 321, poseTime: 0.9, autoGroundSnap: false }
+    }
+    const encoded = call('encodeCameraParams', JSON.stringify(model))
+    const decoded = call('decodeCameraParams', encoded.value).value
+    expect(decoded.nikkiPoseInfo).toEqual({ poseId: 789, playingPercent: null, inIdle: 1 })
+    expect(decoded.momo).toMatchObject({ poseId: 321, poseTime: 0.9, autoGroundSnap: false })
+    expect(decoded.rawArray[41]).toBe('')
+  })
+  it('still accepts the 32-value hidden Momo layout', () => {
+    const raw = v3Raw(false).slice(0, 32)
+    expect(call('decodeCameraParams', cameraCipher(raw)).value).toMatchObject({
+      version: 'v2',
+      arrayLength: 32,
+      momo: { enabled: true }
+    })
+  })
+  it('rejects unsupported lengths and malformed visible Momo values', () => {
+    expect(call('decodeCameraParams', cameraCipher(v3Raw(false).slice(0, 43))).ok).toBe(false)
+    const raw = v3Raw(true)
+    raw[33] = ''
+    expect(call('decodeCameraParams', cameraCipher(raw)).ok).toBe(false)
+    expect(call('encodeCameraParams', JSON.stringify({ rawArray: raw })).ok).toBe(false)
+  })
+  it('prefers a valid V3 Nikki pose and scopes duplicated fields to SocialPhoto', () => {
+    const result = decodeSyntheticPhoto(
+      { poseId: 55, cameraFocalLength: 55, nikkiClothes: [1020100001], nikkiDIY: [] },
+      '123456',
+      '123456',
+      v3Raw(true),
+      {
+        decoy: { poseId: 999, cameraFocalLength: 999, CameraParams: 'wrong' },
+        NormalPhotoInfo: {
+          PhotoMode: 0,
+          WindIntensity: 1,
+          WindDirection: 2,
+          Time: { hour: 9, min: 8, sec: 7 }
+        },
+        MultiPlayerHandler: { RoleID: 123, PoseID: '', PosePlayingPercent: '' }
+      }
+    )
+    expect(result.ok).toBe(true)
+    expect(result.value.photo).toMatchObject({
+      poseId: 456,
+      focalLength: 55,
+      photoMode: 0,
+      windIntensity: 1,
+      windDirection: 2,
+      captureTime: { hour: 9, minute: 8, second: 7 },
+      multiPlayer: { roleId: 123, poseId: null, playingPercent: null }
+    })
+    expect(result.value.outfit.wearingClothes[0].itemId).toBe(1020100001)
+  })
+  it('falls back to PhotoInfo pose when V3 has no pose', () => {
+    expect(
+      decodeSyntheticPhoto({ poseId: 55 }, '123456', '123456', v3Raw(false)).value.photo.poseId
+    ).toBe(55)
+    expect(
+      decodeSyntheticPhoto({ poseId: 0 }, '123456', '123456', v3Raw(false)).value.photo.poseId
+    ).toBe(0)
+  })
+})
+
+it('supports V3 Momo visibility changes and explicitly cleared optional pose data', () => {
+  const decoded = call('decodeCameraParams', cameraCipher(v3Raw(true))).value
+  const hidden = call(
+    'encodeCameraParams',
+    JSON.stringify({ ...decoded, momo: { enabled: true }, nikkiPoseInfo: null })
+  )
+  expect(call('decodeCameraParams', hidden.value).value.rawArray.slice(31)).toEqual([
+    0,
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ''
+  ])
+  const cleared = call(
+    'encodeCameraParams',
+    JSON.stringify({
+      ...decoded,
+      nikkiPoseInfo: { ...decoded.nikkiPoseInfo, playingPercent: null }
+    })
+  )
+  expect(call('decodeCameraParams', cleared.value).value.rawArray[41]).toBe('')
+  const shown = call(
+    'encodeCameraParams',
+    JSON.stringify({ rawArray: v3Raw(false), momo: { enabled: false, poseId: 123, poseTime: 0.5 } })
+  )
+  expect(call('decodeCameraParams', shown.value).value.momo).toMatchObject({
+    enabled: false,
+    poseId: 123,
+    poseTime: 0.5
+  })
+})
+
+it('calculates zoom from all three photo position coordinates and preserves missing data', () => {
+  const photo = {
+    nikkiLocX: 300,
+    nikkiLocY: 400,
+    nikkiLocZ: 0,
+    cameraActorLocX: 0,
+    cameraActorLocY: 0,
+    cameraActorLocZ: 0
+  }
+  expect(decodeSyntheticPhoto(photo).value.photo.zoom).toBeCloseTo(4.7)
+  expect(
+    decodeSyntheticPhoto({ ...photo, nikkiLocX: 0, nikkiLocY: 0 }).value.photo.zoom
+  ).toBeCloseTo(6.45)
+  expect(decodeSyntheticPhoto({ nikkiLocX: 300 }).value.photo.zoom).toBeNull()
 })

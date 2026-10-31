@@ -6,7 +6,14 @@
       "zh": "c10bb28a-fd10-4276-9e21-e18a9829a6b0",
       "en": "c10bb28a-fd10-4276-9e21-e18a9829a6b0"
     },
-    "pose": "2.10.2"
+    "pose": "2.11.0",
+    "lightFilter": {
+      "database": "9d889426-a44b-4a45-a9c8-f126b839b3a9",
+      "language": {
+        "zh": "b82da435-c664-41ba-8921-ae1c593dd5ba",
+        "en": "b82da435-c664-41ba-8921-ae1c593dd5ba"
+      }
+    }
   },
   "templates": {
     "light": {
@@ -197,6 +204,15 @@
         ],
         "zh": "",
         "en": ""
+      },
+      {
+        "key": "1090030021",
+        "aliases": [
+          "1090030021",
+          "VibeLight_009"
+        ],
+        "zh": "",
+        "en": ""
       }
     ],
     "filter": [
@@ -382,6 +398,15 @@
         ],
         "zh": "焦糖",
         "en": "Caramel"
+      },
+      {
+        "key": "1090020022",
+        "aliases": [
+          "1090020022",
+          "Vibe_013"
+        ],
+        "zh": "",
+        "en": ""
       }
     ],
     "pose": [
@@ -1385,6 +1410,33 @@
         "image": "T_Icon_Performance_086_Respond.png"
       },
       {
+        "key": "1340020060",
+        "aliases": [
+          "1340020060"
+        ],
+        "zh": "快乐定格时",
+        "en": "快乐定格时",
+        "image": "T_Icon_Performance_112.png"
+      },
+      {
+        "key": "13400200600",
+        "aliases": [
+          "13400200600"
+        ],
+        "zh": "快乐定格时_发起",
+        "en": "快乐定格时_发起",
+        "image": "T_Icon_Performance_112_Host.png"
+      },
+      {
+        "key": "13400200601",
+        "aliases": [
+          "13400200601"
+        ],
+        "zh": "快乐定格时_接受",
+        "en": "快乐定格时_接受",
+        "image": "T_Icon_Performance_112_Respond.png"
+      },
+      {
         "key": "1340020001",
         "aliases": [
           "1340020001"
@@ -1527,6 +1579,15 @@
         "zh": "到你咯！",
         "en": "到你咯！",
         "image": "T_Icon_Performance_088.png"
+      },
+      {
+        "key": "1340020052",
+        "aliases": [
+          "1340020052"
+        ],
+        "zh": "开怀大笑",
+        "en": "开怀大笑",
+        "image": "T_Icon_Performance_093.png"
       },
       {
         "key": "1340020011",
@@ -2058,6 +2119,24 @@
         "zh": "暖暖韵律",
         "en": "暖暖韵律",
         "image": "T_Icon_Performance_111.png"
+      },
+      {
+        "key": "1340010061",
+        "aliases": [
+          "1340010061"
+        ],
+        "zh": "嘘，别说话",
+        "en": "嘘，别说话",
+        "image": "T_Icon_Performance_116.png"
+      },
+      {
+        "key": "1340010062",
+        "aliases": [
+          "1340010062"
+        ],
+        "zh": "双手点赞",
+        "en": "双手点赞",
+        "image": "T_Icon_Performance_118.png"
       },
       {
         "key": "1090010001",
@@ -3462,6 +3541,51 @@
         "zh": "回身致意",
         "en": "回身致意",
         "image": "T_Icon_Static_92.png"
+      },
+      {
+        "key": "1090010166",
+        "aliases": [
+          "1090010166"
+        ],
+        "zh": "远眺寻觅",
+        "en": "远眺寻觅",
+        "image": "T_Icon_Static_88.png"
+      },
+      {
+        "key": "1090010167",
+        "aliases": [
+          "1090010167"
+        ],
+        "zh": "俯身问好",
+        "en": "俯身问好",
+        "image": "T_Icon_Static_89.png"
+      },
+      {
+        "key": "1090010168",
+        "aliases": [
+          "1090010168"
+        ],
+        "zh": "弯腰轻嘘",
+        "en": "弯腰轻嘘",
+        "image": "T_Icon_Static_90.png"
+      },
+      {
+        "key": "1090010169",
+        "aliases": [
+          "1090010169"
+        ],
+        "zh": "意气扬扬",
+        "en": "意气扬扬",
+        "image": "T_Icon_Trends_Plaza.png"
+      },
+      {
+        "key": "1090010170",
+        "aliases": [
+          "1090010170"
+        ],
+        "zh": "哈气暖手",
+        "en": "哈气暖手",
+        "image": "T_Icon_Trends_PAWJ0010.png"
       },
       {
         "key": "1090011001",
@@ -5822,6 +5946,51 @@
         "image": "T_Icon_S0326_Idle_01.png"
       },
       {
+        "key": "1090012185",
+        "aliases": [
+          "1090012185"
+        ],
+        "zh": "雪舞逐愿",
+        "en": "雪舞逐愿",
+        "image": "T_Icon_S0438_Trends_01.png"
+      },
+      {
+        "key": "1090012186",
+        "aliases": [
+          "1090012186"
+        ],
+        "zh": "杖启新愿",
+        "en": "杖启新愿",
+        "image": "T_Icon_S0438_Static_01.png"
+      },
+      {
+        "key": "1090012187",
+        "aliases": [
+          "1090012187"
+        ],
+        "zh": "筑愿飞扬",
+        "en": "筑愿飞扬",
+        "image": "T_Icon_S0438_Suit_01.png"
+      },
+      {
+        "key": "1090012188",
+        "aliases": [
+          "1090012188"
+        ],
+        "zh": "旋舞颂愿",
+        "en": "旋舞颂愿",
+        "image": "T_Icon_S0438_Idle_01.png"
+      },
+      {
+        "key": "1090012189",
+        "aliases": [
+          "1090012189"
+        ],
+        "zh": "誓约新绽",
+        "en": "誓约新绽",
+        "image": "T_Icon_S0122_Suit_01.png"
+      },
+      {
         "key": "1090012190",
         "aliases": [
           "1090012190"
@@ -6045,6 +6214,15 @@
         "zh": "花香沉醉",
         "en": "花香沉醉",
         "image": "T_Icon_S0347_Scene_01.png"
+      },
+      {
+        "key": "1090060025",
+        "aliases": [
+          "1090060025"
+        ],
+        "zh": "雪愿纷飞",
+        "en": "雪愿纷飞",
+        "image": "T_Icon_S0438_Scene_01.png"
       },
       {
         "key": "1090060026",

@@ -42,6 +42,7 @@ export interface PhotoParamsMessages {
     gameTime: string
     weather: string
     focalLength: string
+    zoom: string
     aperture: string
     vignette: string
     imageFields: Record<PhotoParamsImageField, string>
@@ -94,6 +95,7 @@ export const photoParamsZh: PhotoParamsMessages = {
     gameTime: '游戏时间',
     weather: '天气',
     focalLength: '焦距',
+    zoom: '缩放',
     aperture: '光圈',
     vignette: '晕影',
     imageFields: {
@@ -117,7 +119,7 @@ export const photoParamsZh: PhotoParamsMessages = {
       camera_params_missing: '照片中没有 CameraParams 参数',
       camera_base64_invalid: 'CameraParams 不是有效的 Base64 数据',
       camera_decrypt_failed: 'CameraParams 解密失败',
-      camera_params_invalid_length: 'CameraParams 数组长度不是支持的 31、32 或 40 项',
+      camera_params_invalid_length: 'CameraParams 数组长度不是支持的 31、32、40 或 44 项',
       camera_params_encode_failed: 'CameraParams 原始数组不存在或格式无效',
       photo_parse_failed: '照片参数解析失败'
     },
@@ -169,6 +171,7 @@ export const photoParamsEn: PhotoParamsMessages = {
     gameTime: 'Game time',
     weather: 'Weather',
     focalLength: 'Focal length',
+    zoom: 'Zoom',
     aperture: 'Aperture',
     vignette: 'Vignette',
     imageFields: {
@@ -193,7 +196,7 @@ export const photoParamsEn: PhotoParamsMessages = {
       camera_base64_invalid: 'CameraParams is not valid Base64 data',
       camera_decrypt_failed: 'CameraParams decryption failed',
       camera_params_invalid_length:
-        'The CameraParams array length is not a supported 31, 32, or 40 items',
+        'The CameraParams array length is not a supported 31, 32, 40, or 44 items',
       camera_params_encode_failed: 'The raw CameraParams array is missing or invalid',
       photo_parse_failed: 'The photo parameters could not be parsed'
     },
