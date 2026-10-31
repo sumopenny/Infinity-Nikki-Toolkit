@@ -156,7 +156,7 @@ describe('Lightbox preview navigation', () => {
     expect(wrapper.findAll('.lightbox-zoom-controls button')[1].text()).toBe('150%')
     for (let index = 0; index < 10; index += 1)
       await wrapper.findAll('.lightbox-zoom-controls button')[2].trigger('click')
-    expect(wrapper.findAll('.lightbox-zoom-controls button')[1].text()).toBe('300%')
+    expect(wrapper.findAll('.lightbox-zoom-controls button')[1].text()).toBe('400%')
     expect(
       wrapper.findAll('.lightbox-zoom-controls button')[2].attributes('disabled')
     ).toBeDefined()
@@ -386,7 +386,7 @@ describe('Lightbox touch gestures', () => {
         clientX: 600,
         clientY: 100
       })
-      expect(wrapper.findAll('.lightbox-zoom-controls button')[1]!.text()).toBe('300%')
+      expect(wrapper.findAll('.lightbox-zoom-controls button')[1]!.text()).toBe('400%')
       await stage.trigger('pointerup', {
         pointerType: 'touch',
         pointerId: 2,
@@ -399,7 +399,7 @@ describe('Lightbox touch gestures', () => {
         clientX: 160,
         clientY: 130
       })
-      expect(wrapper.get('.lightbox-stage > img').attributes('style')).toContain('translate3d')
+      expect(wrapper.get('.lightbox-stage img').attributes('style')).toContain('translate3d')
       await stage.trigger('pointerup', {
         pointerType: 'touch',
         pointerId: 1,
@@ -526,3 +526,131 @@ it.each(['outfit', 'home'] as const)(
     wrapper.unmount()
   }
 )
+
+it('half-hides the toolbar after one second and only expands on toolbar hover or keyboard activity', async () => {
+  vi.useFakeTimers()
+  loadPhotoMock.mockResolvedValue('blob:photo')
+  const wrapper = mount(Lightbox, {
+    props: {
+      photo: createPhoto('idle.jpeg'),
+      hasPrevious: true,
+      hasNext: true,
+      isDeleting: false,
+      isFavorite: false,
+      keyboardEnabled: true,
+      mode: 'album',
+      messages: messages.zh.lightbox,
+      dateMessages: messages.zh.date
+    },
+    global: { stubs: { Teleport: true } }
+  })
+  try {
+    await vi.advanceTimersByTimeAsync(0)
+    expect(wrapper.get('.lightbox-footer').classes()).not.toContain('is-idle')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(wrapper.get('.lightbox-footer').classes()).toContain('is-idle')
+    expect(wrapper.find('.lightbox-close').exists()).toBe(true)
+    expect(wrapper.find('.lightbox-stage .lightbox-nav-button').exists()).toBe(false)
+    await wrapper.get('.lightbox > .lightbox-nav-zone--prev button').trigger('click')
+    await wrapper.get('.lightbox > .lightbox-nav-zone--next button').trigger('click')
+    expect(wrapper.emitted('previous')).toHaveLength(1)
+    expect(wrapper.emitted('next')).toHaveLength(1)
+    await wrapper.setProps({ photo: createPhoto('next-idle.jpeg') })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(wrapper.get('.lightbox-footer').classes()).toContain('is-idle')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(wrapper.get('.lightbox-footer').classes()).toContain('is-idle')
+    await wrapper.setProps({ hasPrevious: false })
+    expect(wrapper.find('.lightbox-nav-zone--prev button').exists()).toBe(false)
+    expect(wrapper.find('.lightbox-nav-zone--next button').exists()).toBe(true)
+
+    await wrapper.get('.lightbox').trigger('pointermove')
+    await wrapper.get('.lightbox-stage').trigger('pointermove')
+    expect(wrapper.get('.lightbox-footer').classes()).toContain('is-idle')
+    await wrapper.get('.lightbox-footer').trigger('pointerenter')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(wrapper.get('.lightbox-footer').classes()).not.toContain('is-idle')
+    await wrapper.get('.lightbox-footer').trigger('pointerleave')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(wrapper.get('.lightbox-footer').classes()).toContain('is-idle')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(wrapper.get('.lightbox-footer').classes()).not.toContain('is-idle')
+    await wrapper.setProps({ photo: null })
+    expect(vi.getTimerCount()).toBe(0)
+  } finally {
+    wrapper.unmount()
+    vi.useRealTimers()
+  }
+})
+
+describe('camera cover preview', () => {
+  it('renders module actions with loading guards and ignores album Delete shortcuts', async () => {
+    let finishLoad: ((url: string) => void) | undefined
+    loadPhotoMock.mockResolvedValueOnce('blob:camera').mockImplementationOnce(() => new Promise((resolve) => { finishLoad = resolve }))
+    const wrapper = mount(Lightbox, {
+      props: {
+        photo: createPhoto('camera-cover.webp'),
+        hasPrevious: false,
+        hasNext: false,
+        isDeleting: false,
+        isFavorite: false,
+        keyboardEnabled: true,
+        mode: 'camera',
+        messages: messages.zh.lightbox,
+        dateMessages: messages.zh.date
+      },
+      slots: {
+        metadata: '<span class="camera-test-meta">Camera name</span>',
+        actions: '<template #default="{ disabled }"><button class="camera-test-action" :disabled="disabled">Copy</button></template>'
+      },
+      global: { stubs: { Teleport: true } }
+    })
+    try {
+      await flushPromises()
+      expect(wrapper.get('.camera-test-meta').text()).toBe('Camera name')
+      expect(wrapper.get('.camera-test-action').attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('.lightbox-delete').exists()).toBe(false)
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete' }))
+      expect(wrapper.emitted('deleteCurrent')).toBeUndefined()
+      await wrapper.setProps({ photo: createPhoto('next-camera-cover.webp') })
+      expect(wrapper.get('.camera-test-action').attributes('disabled')).toBeDefined()
+      finishLoad?.('blob:next-camera')
+      await flushPromises()
+      expect(wrapper.get('.camera-test-action').attributes('disabled')).toBeUndefined()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+})
+
+describe('seamless preview switching', () => {
+  it('keeps the current image during loading and overlaps both images when the next is ready', async () => {
+    let completeNext: ((url: string) => void) | undefined
+    loadPhotoMock.mockResolvedValueOnce('blob:first').mockImplementationOnce(
+      () => new Promise((resolve) => { completeNext = resolve })
+    )
+    const wrapper = mount(Lightbox, {
+      props: {
+        photo: createPhoto('first.jpeg'),
+        hasPrevious: false, hasNext: true, isDeleting: false,
+        isFavorite: false, keyboardEnabled: true, mode: 'album',
+        messages: messages.zh.lightbox, dateMessages: messages.zh.date
+      },
+      global: { stubs: { Teleport: true, Transition: false } }
+    })
+    try {
+      await flushPromises()
+      expect(wrapper.get('.lightbox-stage img').attributes('alt')).toBe('first.jpeg')
+      await wrapper.setProps({ photo: createPhoto('second.jpeg') })
+      expect(wrapper.get('.lightbox-stage img').attributes('alt')).toBe('first.jpeg')
+      completeNext?.('blob:second')
+      await flushPromises()
+      const images = wrapper.findAll('.lightbox-stage img')
+      expect(images.map((img) => img.attributes('alt')).sort()).toEqual(['first.jpeg', 'second.jpeg'])
+      expect(images.some((img) => img.classes().includes('lightbox-photo-leave-active'))).toBe(true)
+      expect(images.some((img) => img.classes().includes('lightbox-photo-enter-active'))).toBe(true)
+    } finally { wrapper.unmount() }
+  })
+})

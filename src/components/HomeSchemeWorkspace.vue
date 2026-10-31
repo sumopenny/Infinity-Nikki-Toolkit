@@ -942,7 +942,6 @@ function handleAddTag(value: string) {
     <div class="home-scheme-main">
       <header class="gallery-header is-outfit-header home-scheme-header"
         ><div class="home-scheme-heading"
-          ><p class="eyebrow">HOME SCHEMES</p
           ><div class="home-scheme-title-row"
             ><h2>{{ messages.title }}</h2
             ><strong class="home-scheme-count"

@@ -25,7 +25,7 @@ import { useBodyScrollLock } from '../utils/bodyScrollLock'
 
 type PreviewPhoto = PhotoDisplayItem
 
-import { useImageZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '../composables/useImageZoom'
+import { useImageZoom, MIN_ZOOM, ZOOM_STEP } from '../composables/useImageZoom'
 
 const props = defineProps<{
   photo: PhotoItem | PreviewPhoto | null
@@ -36,7 +36,7 @@ const props = defineProps<{
   isDeleting: boolean
   isFavorite: boolean
   keyboardEnabled: boolean
-  mode: 'album' | 'trash' | 'outfit' | 'home'
+  mode: 'album' | 'trash' | 'outfit' | 'home' | 'camera'
   outfit?: OutfitItem | null
   outfitMessages?: OutfitMessages
   homeScheme?: HomeSchemeItem | null
@@ -65,14 +65,46 @@ const emit = defineEmits<{
 const displayedPhoto = ref<PhotoItem | PreviewPhoto | null>(null)
 const imageAspectRatio = ref<number | null>(null)
 const viewportSize = ref({ width: 0, height: 0 })
-const navigationButtonsHidden = ref(false)
+const controlsVisible = ref(true)
+let controlsTimer: ReturnType<typeof setTimeout> | undefined
+let toolbarHovered = false
+function clearControlsTimer() {
+  clearTimeout(controlsTimer)
+  controlsTimer = undefined
+}
+function showControls() {
+  controlsVisible.value = true
+  clearControlsTimer()
+  if (!props.photo) return
+  controlsTimer = setTimeout(() => {
+    if (
+      toolbarHovered ||
+      !props.keyboardEnabled ||
+      (document.activeElement?.matches(':focus-visible') &&
+        document.activeElement.closest('.lightbox-footer'))
+    )
+      return
+    controlsVisible.value = false
+  }, 680)
+}
+function enterToolbar() {
+  toolbarHovered = true
+  controlsVisible.value = true
+  clearControlsTimer()
+}
+function leaveToolbar() {
+  toolbarHovered = false
+  showControls()
+}
+const LIGHTBOX_MAX_ZOOM = 400
 const { zoom, imageTransform, resetTransform, setZoom, handleWheel, startDrag, moveDrag, endDrag } =
   useImageZoom(
     () => true,
     (direction) => {
       if (direction === 'next' && props.hasNext) emit('next')
       if (direction === 'previous' && props.hasPrevious) emit('previous')
-    }
+    },
+    LIGHTBOX_MAX_ZOOM
   )
 let previewLoadToken = 0
 let previewAbortController: AbortController | null = null
@@ -95,20 +127,11 @@ const lightboxLayout = computed(() => {
     return null
   const viewportWidth = viewportSize.value.width
   const viewportHeight = viewportSize.value.height
-  const overlayPadding = getClampedValue(12, viewportWidth * 0.04, 32) * 2
-  const availableWidth = Math.max(0, viewportWidth - overlayPadding)
-  const panelHorizontalChrome = 30
-  const panelVerticalChrome = getClampedValue(104, viewportHeight * 0.14, 148)
-  const imageMaxHeight = Math.max(160, viewportHeight - overlayPadding - panelVerticalChrome)
-  const preferredWidth = imageMaxHeight * imageAspectRatio.value + panelHorizontalChrome
-  const minWidth = Math.min(availableWidth, imageOrientation.value === 'portrait' ? 300 : 420)
-  const panelWidth = Math.round(Math.min(Math.max(preferredWidth, minWidth), availableWidth, 1500))
-  const stageHeight = Math.round(
-    Math.min(
-      imageMaxHeight,
-      Math.max(160, (panelWidth - panelHorizontalChrome) / imageAspectRatio.value)
-    )
-  )
+  // Controls float above the image instead of reserving header/footer space.
+  const availableWidth = Math.max(1, viewportWidth - 16)
+  const availableHeight = Math.max(1, viewportHeight - 16)
+  const panelWidth = Math.min(availableWidth, availableHeight * imageAspectRatio.value)
+  const stageHeight = panelWidth / imageAspectRatio.value
   return { panelWidth, stageHeight }
 })
 
@@ -122,9 +145,11 @@ const lightboxPanelStyle = computed(() =>
     : undefined
 )
 
-/** 把数值限制在指定范围内。参数：min、preferred、max 分别为最小值、目标值和最大值。 */
-function getClampedValue(min: number, preferred: number, max: number) {
-  return Math.min(Math.max(preferred, min), max)
+/** 鼠标切图不保留按钮焦点；键盘操作继续使用原生焦点提示。 */
+function handleNavigationPointerDown(event: PointerEvent) {
+  if (event.pointerType !== 'mouse') return
+  event.preventDefault()
+  ;(event.currentTarget as HTMLButtonElement).blur()
 }
 
 /** 同步当前可视窗口尺寸。参数：无。 */
@@ -135,17 +160,9 @@ function updateViewportSize() {
   }
 }
 
-function hideNavigationButtons() {
-  navigationButtonsHidden.value = true
-  ;(document.activeElement as HTMLElement | null)?.blur()
-}
-
-function showNavigationButtons() {
-  navigationButtonsHidden.value = false
-}
-
 /** 优先读取并解码用户主动打开的原图；尺寸直接复用解码结果，不再二次探测。参数：nextPhoto 为待显示照片。 */
 async function updateDisplayedPhoto(nextPhoto: PhotoItem | PreviewPhoto): Promise<void> {
+  const opening = !displayedPhoto.value
   const currentToken = ++previewLoadToken
   previewAbortController?.abort()
   previewAbortController = new AbortController()
@@ -158,6 +175,7 @@ async function updateDisplayedPhoto(nextPhoto: PhotoItem | PreviewPhoto): Promis
     if (currentToken !== previewLoadToken) return
     if (width && height) imageAspectRatio.value = width / height
     displayedPhoto.value = nextPhoto
+    if (opening) showControls()
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return
     // 解码失败仍打开预览面板，由失败占位呈现
@@ -167,10 +185,13 @@ async function updateDisplayedPhoto(nextPhoto: PhotoItem | PreviewPhoto): Promis
 
 watch(
   () => props.photo,
-  (nextPhoto) => {
+  (nextPhoto, previousPhoto) => {
     updateViewportSize()
     resetTransform()
-    navigationButtonsHidden.value = false
+    if (!previousPhoto || !nextPhoto) {
+      toolbarHovered = false
+      showControls()
+    }
     if (!nextPhoto) {
       previewLoadToken += 1
       previewAbortController?.abort()
@@ -187,14 +208,14 @@ watch(
 /** 处理预览快捷键；确认弹窗等上层弹窗打开时不响应。参数：event 为键盘事件。 */
 function handleKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || !props.photo || !props.keyboardEnabled) return
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') showControls()
   if (event.key === 'Escape') emit('close')
   if (event.key === 'ArrowLeft' && props.hasPrevious) emit('previous')
   if (event.key === 'ArrowRight' && props.hasNext) emit('next')
   if (
     event.key === 'Delete' &&
     !props.readOnly &&
-    props.mode !== 'outfit' &&
-    props.mode !== 'home' &&
+    (props.mode === 'album' || props.mode === 'trash') &&
     !props.isDeleting &&
     !isPreviewLoading.value
   ) {
@@ -223,17 +244,12 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearControlsTimer()
   previewAbortController?.abort()
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', updateViewportSize)
   window.visualViewport?.removeEventListener('resize', updateViewportSize)
 })
-/** 手动翻页时先隐藏手势导航提示，再通知父组件切换照片。 */
-function navigatePreview(direction: 'previous' | 'next') {
-  hideNavigationButtons()
-  if (direction === 'previous') emit('previous')
-  else emit('next')
-}
 </script>
 
 <template>
@@ -246,27 +262,26 @@ function navigatePreview(direction: 'previous' | 'next') {
         aria-modal="true"
         @click.self="emit('close')"
       >
-        <div class="lightbox-panel" :class="lightboxPanelClass" :style="lightboxPanelStyle">
-          <div class="lightbox-header">
-            <div class="lightbox-caption">
-              <strong
-                >{{ dateMessages.displayDate(displayedPhoto.dateKey) }}
-                {{ displayedPhoto.timeText }}</strong
-              >
-              <span v-if="mode !== 'home'">{{ displayedPhoto.fileSizeText }}</span>
-              <span v-if="mode === 'album' && displayedPhoto.note">{{ displayedPhoto.note }}</span>
-            </div>
-            <button
-              class="lightbox-close"
-              type="button"
-              :title="messages.closeAria"
-              :aria-label="messages.closeAria"
-              @click="emit('close')"
+        <div class="lightbox-header">
+          <div class="lightbox-caption">
+            <strong
+              >{{ dateMessages.displayDate(displayedPhoto.dateKey) }}
+              {{ displayedPhoto.timeText }}</strong
             >
-              <X :size="19" />
-            </button>
+            <span v-if="mode !== 'home'">{{ displayedPhoto.fileSizeText }}</span>
+            <span v-if="mode === 'album' && displayedPhoto.note">{{ displayedPhoto.note }}</span>
           </div>
-
+          <button
+            class="lightbox-close"
+            type="button"
+            :title="messages.closeAria"
+            :aria-label="messages.closeAria"
+            @click="emit('close')"
+          >
+            <X :size="19" />
+          </button>
+        </div>
+        <div class="lightbox-panel" :class="lightboxPanelClass" :style="lightboxPanelStyle">
           <div
             class="lightbox-stage"
             @wheel="handleWheel"
@@ -275,48 +290,52 @@ function navigatePreview(direction: 'previous' | 'next') {
             @pointerup="endDrag"
             @pointercancel="endDrag"
           >
-            <img
-              :key="displayedPhoto.id"
-              :src="displayedPhoto.url ?? undefined"
-              :alt="displayedPhoto.name"
-              :style="imageTransform"
-              draggable="false"
-            />
-            <div
-              class="lightbox-nav-zone lightbox-nav-zone--prev"
-              :class="{ 'is-navigation-hidden': navigationButtonsHidden }"
-              @pointerleave="showNavigationButtons"
-            >
-              <button
-                v-if="hasPrevious"
-                class="lightbox-nav-button"
-                type="button"
-                :title="messages.previousAria"
-                :aria-label="messages.previousAria"
-                @click="navigatePreview('previous')"
-              >
-                <ChevronLeft :size="22" />
-              </button>
-            </div>
-            <div
-              class="lightbox-nav-zone lightbox-nav-zone--next"
-              :class="{ 'is-navigation-hidden': navigationButtonsHidden }"
-              @pointerleave="showNavigationButtons"
-            >
-              <button
-                v-if="hasNext"
-                class="lightbox-nav-button"
-                type="button"
-                :title="messages.nextAria"
-                :aria-label="messages.nextAria"
-                @click="navigatePreview('next')"
-              >
-                <ChevronRight :size="22" />
-              </button>
-            </div>
+            <Transition name="lightbox-photo">
+              <img
+                :key="displayedPhoto.id"
+                :src="displayedPhoto.url ?? undefined"
+                :alt="displayedPhoto.name"
+                :style="imageTransform"
+                draggable="false"
+              />
+            </Transition>
           </div>
         </div>
-        <div class="lightbox-footer">
+        <div class="lightbox-nav-zone lightbox-nav-zone--prev">
+          <button
+            v-if="hasPrevious"
+            class="lightbox-nav-button"
+            type="button"
+            :title="messages.previousAria"
+            :aria-label="messages.previousAria"
+            @pointerdown="handleNavigationPointerDown"
+            @click="emit('previous')"
+          >
+            <ChevronLeft :size="22" />
+          </button>
+        </div>
+        <div class="lightbox-nav-zone lightbox-nav-zone--next">
+          <button
+            v-if="hasNext"
+            class="lightbox-nav-button"
+            type="button"
+            :title="messages.nextAria"
+            :aria-label="messages.nextAria"
+            @pointerdown="handleNavigationPointerDown"
+            @click="emit('next')"
+          >
+            <ChevronRight :size="22" />
+          </button>
+        </div>
+        <div
+          class="lightbox-footer"
+          :class="{ 'is-idle': !controlsVisible }"
+          @pointerenter="enterToolbar"
+          @pointerleave="leaveToolbar"
+          @pointerdown="showControls"
+          @focusin="showControls"
+          @focusout="showControls"
+        >
           <div class="lightbox-toolbar">
             <div v-if="mode === 'outfit' && outfit && outfitMessages" class="lightbox-outfit-meta">
               <span
@@ -346,8 +365,9 @@ function navigatePreview(direction: 'previous' | 'next') {
                 ><strong>{{ homeMessages.note }}：</strong>{{ homeScheme.note }}</span
               >
             </div>
+            <slot name="metadata" />
             <div
-              v-if="mode === 'outfit' || mode === 'home'"
+              v-if="mode === 'outfit' || mode === 'home' || mode === 'camera'"
               class="lightbox-toolbar-divider"
               aria-hidden="true"
             ></div>
@@ -372,12 +392,13 @@ function navigatePreview(direction: 'previous' | 'next') {
                 type="button"
                 :title="messages.zoomIn"
                 :aria-label="messages.zoomIn"
-                :disabled="zoom >= MAX_ZOOM"
+                :disabled="zoom >= LIGHTBOX_MAX_ZOOM"
                 @click="setZoom(zoom + ZOOM_STEP)"
               >
                 <ZoomIn :size="17" />
               </button>
             </div>
+            <slot name="actions" :disabled="photoActionsDisabled" />
             <template v-if="mode === 'outfit' && outfitMessages">
               <button
                 type="button"

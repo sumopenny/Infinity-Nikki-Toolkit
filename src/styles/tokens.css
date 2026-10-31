@@ -31,6 +31,8 @@
     linear-gradient(135deg, #fffdf9 0%, #fbf6f1 48%, #f7efe9 100%);
   --surface: rgba(255, 255, 255, 0.94);
   --surface-strong: var(--share-surface);
+  /* 大图工具栏：对应强背景色的 75% 不透明度。 */
+  --lightbox-toolbar-bg: rgba(255, 255, 255, 0.84);
   --surface-soft: rgba(253, 250, 250, 0.82);
   --soft-accent: rgba(255, 239, 237, 0.92);
   --soft-accent-bottom: #fff6d9;
@@ -131,6 +133,7 @@
     linear-gradient(135deg, #0d0d0f 0%, #121216 52%, #0a0a0c 100%);
   --surface: rgba(23, 23, 27, 0.95);
   --surface-strong: #1b1b1f;
+  --lightbox-toolbar-bg: rgba(27, 27, 31, 0.75);
   --surface-soft: rgba(32, 32, 37, 0.86);
   --soft-accent: rgba(74, 70, 70, 0.7);
   --soft-accent-bottom: rgba(74, 70, 70, 0.7);

@@ -3,7 +3,6 @@ import type { Language } from '../types'
 
 export interface OutfitMessages {
   viewName: string
-  eyebrow: string
   tagsTitle: string
   all: string
   pending: string
@@ -119,7 +118,6 @@ export interface OutfitMessages {
 export const outfitMessages: Record<Language, OutfitMessages> = {
   zh: {
     viewName: '搭配码',
-    eyebrow: 'OUTFITS',
     tagsTitle: '标签',
     all: '全部',
     pending: '待填写',
@@ -257,7 +255,6 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
   },
   en: {
     viewName: 'Outfit Codes',
-    eyebrow: 'OUTFITS',
     tagsTitle: 'Tags',
     all: 'All',
     pending: 'Pending',

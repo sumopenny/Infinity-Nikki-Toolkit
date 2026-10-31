@@ -15,6 +15,7 @@ import {
   History,
   BookOpen,
   Music2,
+  TvMinimal,
   Moon,
   MoreHorizontal,
   Wrench,
@@ -944,7 +945,7 @@ function openDonate() {
                   </a>
                   <a
                     class="author-social-link douyin-link"
-                    href="https://v.douyin.com/VdLd5oOXz8I/"
+                    href="https://v.douyin.com/20n3l83uJ40/"
                     target="_blank"
                     rel="noopener noreferrer"
                     role="menuitem"
@@ -956,7 +957,20 @@ function openDonate() {
                     <span>{{ messages.douyin }}</span>
                   </a>
                   <a
-                    class="author-social-link"
+                    class="author-social-link bilibili-link"
+                    href="https://space.bilibili.com/3747574722858304"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    role="menuitem"
+                    :title="messages.bilibiliAuthor"
+                    :aria-label="messages.bilibiliAuthor"
+                    @click="closeMenus"
+                  >
+                    <TvMinimal :size="17" aria-hidden="true" />
+                    <span>{{ messages.bilibili }}</span>
+                  </a>
+                  <a
+                    class="author-social-link repository-link"
                     href="https://github.com/sumopenny/Infinity-Nikki-Toolkit"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -969,7 +983,7 @@ function openDonate() {
                     <span>{{ messages.githubText }}</span>
                   </a>
                   <a
-                    class="author-social-link"
+                    class="author-social-link repository-link"
                     href="https://gitee.com/sumopenny/Infinity-Nikki-Toolkit"
                     target="_blank"
                     rel="noopener noreferrer"

@@ -155,6 +155,8 @@ export interface FullLocaleMessages {
     xiaohongshuAuthor: string
     douyin: string
     douyinAuthor: string
+    bilibili: string
+    bilibiliAuthor: string
     donate: string
     donateTitle: string
     donateDescription: string

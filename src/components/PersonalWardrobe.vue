@@ -505,7 +505,6 @@ async function clearRecords() {
   <section class="wardrobe-page" aria-labelledby="wardrobe-title">
     <header class="gallery-header wardrobe-header" :class="{ 'is-empty': !hasRecords }">
       <div class="wardrobe-heading">
-        <p class="eyebrow">WARDROBE</p>
         <div class="wardrobe-title-row">
           <h2 id="wardrobe-title">{{ text('个人衣橱', 'Personal wardrobe') }}</h2>
           <div v-if="loaded && hasRecords" class="wardrobe-summary">

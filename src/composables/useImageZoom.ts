@@ -5,7 +5,8 @@ export const ZOOM_STEP = 25
 
 export function useImageZoom(
   enabled: () => boolean = () => true,
-  onSwipe?: (direction: 'next' | 'previous') => void
+  onSwipe?: (direction: 'next' | 'previous') => void,
+  maxZoom = MAX_ZOOM
 ) {
   const zoom = ref(100)
   const pan = ref({ x: 0, y: 0 })
@@ -38,7 +39,7 @@ export function useImageZoom(
 
   /** 更新缩放比例并在回到 100% 时复位位移。参数：nextZoom 为目标百分比。 */
   function setZoom(nextZoom: number) {
-    zoom.value = Math.max(MIN_ZOOM, Math.min(Math.round(nextZoom), MAX_ZOOM))
+    zoom.value = Math.max(MIN_ZOOM, Math.min(Math.round(nextZoom), maxZoom))
     if (zoom.value <= 100) pan.value = { x: 0, y: 0 }
   }
 

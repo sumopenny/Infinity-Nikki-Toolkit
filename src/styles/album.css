@@ -216,34 +216,25 @@
   display: flex;
   width: max-content;
   max-width: calc(100vw - 32px);
-  min-height: 50px;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
   gap: 4px;
   margin: 0 auto;
-  padding: 7px 8px 7px 14px;
+  padding: 5px 6px 5px 14px;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius);
-  background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--lightbox-toolbar-bg);
   box-shadow: 0 14px 38px rgba(37, 32, 30, 0.22);
   backdrop-filter: blur(14px) saturate(1.35);
   -webkit-backdrop-filter: blur(14px) saturate(1.35);
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .selection-bar {
-    background: rgba(255, 255, 255, 0.78);
-  }
-
-  :where(:root[data-theme='dark']) .selection-bar {
-    background: rgba(27, 27, 31, 0.78);
-  }
 }
 
 .selection-bar strong {
   padding-right: 5px;
   color: var(--heading);
   font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -255,36 +246,83 @@
 }
 
 .selection-bar button {
+  position: relative;
   display: inline-flex;
-  min-height: 46px;
+  flex-shrink: 0;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: 6px 10px;
   border: 0;
-  border-radius: var(--ui-radius);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
+  transition:
+    background var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
+}
+
+.selection-bar button svg {
+  flex-shrink: 0;
 }
 
 .selection-bar button:hover:not(:disabled) {
-  background: var(--soft-accent-bottom);
+  background: var(--interactive-hover-bg);
+}
+
+.selection-bar button:active:not(:disabled) {
+  transform: scale(0.96);
+  transition-duration: 0s;
+}
+
+.selection-bar button:has(.lucide-upload) {
+  color: var(--notice-warning);
 }
 
 .selection-bar .selection-danger {
-  background: #bd656a;
-  color: #fff;
+  background: transparent;
+  color: var(--notice-error);
 }
 
 .selection-bar .selection-danger:hover:not(:disabled) {
-  background: #a94f55;
+  background: var(--menu-hover-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-bar button {
+    transition: none;
+  }
+
+  .selection-bar button:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* 操作组以细线分隔，按钮默认不铺色。 */
+.selection-bar button:not(.selection-danger) + .selection-danger,
+.selection-bar .selection-close {
+  margin-left: 8px;
+}
+
+.selection-bar button:not(.selection-danger) + .selection-danger::before,
+.selection-bar .selection-close::before {
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  content: '';
+  transform: translateY(-50%);
 }
 
 .selection-bar .selection-close {
-  width: 46px;
+  width: 38px;
   padding: 0;
+  color: var(--muted);
 }
 
 .selection-bar-enter-active,
@@ -375,6 +413,11 @@
 }
 .outfit-card .card-share-button {
   right: 80px;
+}
+@media (max-width: 899px) {
+  .outfit-card .card-share-button {
+    right: 8px;
+  }
 }
 .photo-card:hover .card-share-button,
 .photo-card:focus-visible .card-share-button,

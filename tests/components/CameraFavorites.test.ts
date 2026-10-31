@@ -76,7 +76,7 @@ const item: CameraFavorite = {
   updatedAt: '2026-10-11T00:00:00Z'
 }
 let wrapper: ReturnType<typeof mount> | null = null
-function create() {
+function create(stubLightbox = false) {
   wrapper = mount(CameraFavorites, {
     props: {
       active: true,
@@ -85,6 +85,7 @@ function create() {
       searchQuery: '',
       confirmAction: vi.fn().mockResolvedValue(true)
     },
+    global: { stubs: stubLightbox ? { Lightbox: true } : {} },
     attachTo: document.body
   })
   return wrapper
@@ -131,6 +132,36 @@ afterEach(() => {
 })
 
 describe('camera favorite UI', () => {
+  it('opens stored covers, skips missing covers, and closes when the preview leaves the filter', async () => {
+    const cover = { name: 'cover.webp', type: 'image/webp', size: 12, sha256: 'a'.repeat(64) }
+    const first = { ...item, id: 'first', name: 'first', cover }
+    const last = { ...item, id: 'last', name: 'last', cover }
+    mocks.read.mockResolvedValue({ records: [first, item, last], covers: new Map() })
+    const view = create(true)
+    await flushPromises()
+    const lightbox = view.findComponent({ name: 'Lightbox' })
+    expect(lightbox.props('photo')).toBeNull()
+    await view.findAll('.camera-favorite-card')[1].trigger('dblclick')
+    expect(lightbox.props('photo')).toBeNull()
+    await view.findAll('.camera-favorite-card')[0].trigger('dblclick')
+    expect(lightbox.props('photo').id).toBe('first')
+    expect(lightbox.props('hasPrevious')).toBe(false)
+    expect(lightbox.props('hasNext')).toBe(true)
+    const blob = new Blob(['cover'], { type: 'image/webp' })
+    mocks.readCover.mockResolvedValueOnce(blob)
+    expect(await lightbox.props('photo').loadImageBlob()).toBe(blob)
+    expect(mocks.readCover).toHaveBeenLastCalledWith('first')
+    lightbox.vm.$emit('next')
+    await flushPromises()
+    expect(lightbox.props('photo').id).toBe('last')
+    expect(lightbox.props('hasNext')).toBe(false)
+    lightbox.vm.$emit('previous')
+    await flushPromises()
+    expect(lightbox.props('photo').id).toBe('first')
+    await view.setProps({ searchQuery: 'last' })
+    expect(lightbox.props('photo')).toBeNull()
+  })
+
   it('shows the screenshot for an empty library but not search or tag misses', async () => {
     const view = create()
     await flushPromises()

@@ -281,7 +281,6 @@ defineExpose({ reload })
   <section class="resonance-page" aria-labelledby="resonance-title">
     <header class="gallery-header resonance-header">
       <div>
-        <p class="eyebrow">RESONANCE</p>
         <h2 id="resonance-title">{{ t.title }}</h2>
       </div>
       <ResonanceDataActions

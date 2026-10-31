@@ -958,9 +958,6 @@
     padding-bottom: 12px;
     margin-bottom: 12px;
   }
-  .gallery-header .eyebrow {
-    display: none;
-  }
   .gallery-header h2 {
     font-size: 18px;
   }
@@ -1062,7 +1059,7 @@
   .home-scheme-card .home-scheme-name-tag .home-scheme-card-tag {
     display: none;
   }
-  .home-scheme-card .home-scheme-code-tag {
+  .home-scheme-card .home-scheme-card-footer .home-scheme-code-tag {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
@@ -1129,22 +1126,29 @@
     left: 8px;
     right: 8px;
     bottom: calc(var(--mobile-nav-height) + 8px);
-    width: auto;
-    max-width: none;
-    margin: 0;
-    padding: 8px;
-    flex-wrap: wrap;
-    overflow: visible;
-    justify-content: space-between;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 4px;
+    width: max-content;
+    max-width: calc(100vw - 16px);
+    margin: 0 auto;
+    padding: 6px;
+    overflow-x: auto;
   }
   .selection-bar > strong {
-    flex: 1;
+    flex: 0 0 auto;
+    padding-left: 8px;
   }
   .selection-bar .selection-divider {
-    display: none;
+    flex-shrink: 0;
   }
   .selection-bar > button {
+    flex: 0 0 auto;
     min-height: var(--mobile-control-size);
+    padding: 6px 8px;
+    gap: 4px;
+    white-space: nowrap;
   }
   .selection-bar .selection-close {
     width: var(--mobile-control-size);
@@ -1318,15 +1322,19 @@
   }
   .lightbox-panel {
     max-height: 100%;
-    border-radius: var(--mobile-dialog-radius);
+    border-radius: 12px;
   }
-  /* 工具栏独立于图片面板：限制宽度并保留安全区留白，窄屏按钮换行后仍有完整圆角。 */
+  /* 悬浮工具栏保留安全区留白，窄屏按钮换行后仍有完整圆角。 */
   .lightbox-footer {
     min-width: 0;
     max-width: calc(
       100vw - max(var(--mobile-dialog-gap), env(safe-area-inset-left, 0px)) -
         max(var(--mobile-dialog-gap), env(safe-area-inset-right, 0px))
     );
+  }
+  /* 手机端工具栏常驻，不随空闲状态下移。 */
+  .lightbox-footer.is-idle {
+    transform: none;
   }
   .lightbox-toolbar {
     flex: 0 1 auto;

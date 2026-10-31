@@ -7,83 +7,113 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.10.30 更新',
+  currentDate: '2026.10.31 更新',
   currentItems: [
     {
-      title: '照片里的穿搭，现在也能解析了！',
-      text: '解析游戏原图，可同时查看拍摄参数和穿搭部件。点击部件还能查看所属套装、进化形态、染色条件，以及染色情况，方便还原喜欢的搭配。'
+      title: '新增照片与搭配码分享图功能。',
+      text: '照片支持从卡片或参数窗口进入分享，自由选择附带“图片参数”“穿搭部件”和“相机参数码”；搭配码支持从卡片或解析窗口生成包含搭配图片与搭配码的 9:16 竖版分享卡。'
     },
     {
-      title: '照片解析窗口支持两种布局。',
-      text: '电脑端可自由切换上下排列或左右分栏，并记住你的选择；手机端自动上下排列。同步优化窗口比例、背景和滚动体验，让参数与穿搭更方便对照查看。'
+      title: '参数解析信息补充。',
+      text: '新增独立的“缩放”倍数，支持显示动态动作的播放进度（仅 2.11 版本之后的照片）。天气信息补充风力和风向，例如“晴天 小风 南风”。'
     },
     {
-      title: '衣橱支持合并展示进化形态。',
-      text: '新增“显示进化形态”开关：开启时展示全部形态，关闭时将同系列合并为一张卡片，让衣橱更清爽。显示偏好会自动保存，合并后仍可展开查看其他形态。'
+      title: '大图预览布局与交互优化。',
+      text: '图片充分利用屏幕空间，风格样式全面优化。'
     },
     {
-      title: '套装与部件详情支持快速切换形态。',
-      text: '在衣橱和搭配解析详情中，可直接浏览同系列的不同形态及拥有状态，无需退出后重新查找。'
+      title: '相机参数收藏接入大图预览。',
+      text: '双击有封面的卡片即可查看大图。支持缩放、拖动及前后切换，也可直接复制参数、编辑收藏和查看详情。'
     },
     {
-      title: '共鸣与衣橱云同步合二为一。',
-      text: '在同一个窗口中管理共鸣记录和个人衣橱，可单独同步，也可一起上传、下载或删除云端存档。操作前可对照本机与云端记录，查看更新时间、覆盖范围和区服变化。'
+      title: '批量操作工具栏样式优化。',
+      text: '调整为紧凑分组样式，通过文字颜色区分不同操作。'
     },
     {
-      title: '云同步提示更清楚，存档保护更完善。',
-      text: '本机或云端记录发生变化时，会提醒重新确认，避免覆盖刚更新的数据。完善同步失败时的原记录保护；某个模块异常时，也有更明确的提示。'
-    },
-    {
-      title: '新增“兼容打开（只读）”相册模式。',
-      text: '普通授权无法打开相册文件夹时，可尝试此模式，继续浏览、解析、收藏和导出照片，支持分包 ZIP 下载。照片仅在本地读取，不修改原文件；刷新网页或查看新照片时需重新选择文件夹。只读模式不支持修改备注、删除、恢复和专项清理，收藏与普通模式分别保存。'
-    },
-    {
-      title: '网站打开更轻快。',
-      text: '衣橱、共鸣、相机收藏、解析工具及图鉴内容会在需要时加载，减少首次打开的等待。优化大量收藏封面的加载与滚动表现，减少后台资源占用。'
-    },
-    {
-      title: '加载与重试更顺畅。',
-      text: '页面或窗口加载失败时可重新尝试，导入过程中也能更顺畅地取消退出。修复部分窗口首次打开、关闭后重新打开，以及取消操作后内容再次弹出的问题。'
-    },
-    {
-      title: '照片解析失败后，重试更方便。',
-      text: '手动输入 UID 后可看到解析进度，失败时会显示更清楚的原因，并方便继续修改重试。补充游戏原图位置提示，帮助确认照片来源。'
-    },
-    {
-      title: '备份导入提示更易懂。',
-      text: '选错备份类型、文件过大、图片缺失或备份损坏时，会给出对应提示。误将总备份导入相机收藏时，会指引前往正确入口；同步优化恢复后的提示和下载保存按钮。'
-    },
-    {
-      title: '清除数据前，先看清楚、再做决定。',
-      text: '重新优化清除确认窗口，清楚列出会删除和会保留的内容，并新增“先导出备份”快捷入口。'
-    },
-    {
-      title: '抽卡吉时更新至游戏 2.11 版本。',
-      text: '更新推荐日期、时段、方位与主推排序，新增“需避开生肖”提示，供娱乐参考。'
-    },
-    {
-      title: '衣橱详情更清晰。',
-      text: '优化套装总览、收集进度、属性、版本、描述和部件列表的排版；电脑端新增来源标签，不同信息使用更容易区分的配色。'
-    },
-    {
-      title: '手机端浏览更舒适。',
-      text: '优化衣橱形态切换、详情窗口和操作区布局，共鸣页套装快速导航改为双列。'
-    },
-    {
-      title: '菜单与设置操作更快捷。',
-      text: '电脑端顶部菜单支持鼠标悬停展开。主题与语言切换即时生效，并优化切换动画和选中提示。'
-    },
-    {
-      title: '统一打磨浅色、深色主题与界面细节。',
-      text: '优化按钮、菜单、标签、输入框、卡片和弹窗的配色、圆角、阴影及操作反馈。同步调整相机收藏标签、家园信息区、衣橱提示、共鸣卡片和导入文本框，让各页面的观感更协调，并改善部分旧版浏览器的显示。'
-    },
-    {
-      title: '其他修复与优化。',
-      text: '修复部分资源数据解析异常，优化缓存清理和导入取消操作。'
+      title: '作者主页入口补充。',
+      text: '“更多”菜单新增 B 站主页入口，并更新抖音主页链接。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.3',
+      date: '2026.10.30',
+      items: [
+        {
+          title: '照片里的穿搭，现在也能解析了！',
+          text: '解析游戏原图，可同时查看拍摄参数和穿搭部件。点击部件还能查看所属套装、进化形态、染色条件，以及染色情况，方便还原喜欢的搭配。'
+        },
+        {
+          title: '照片解析窗口支持两种布局。',
+          text: '电脑端可自由切换上下排列或左右分栏，并记住你的选择；手机端自动上下排列。同步优化窗口比例、背景和滚动体验，让参数与穿搭更方便对照查看。'
+        },
+        {
+          title: '衣橱支持合并展示进化形态。',
+          text: '新增“显示进化形态”开关：开启时展示全部形态，关闭时将同系列合并为一张卡片，让衣橱更清爽。显示偏好会自动保存，合并后仍可展开查看其他形态。'
+        },
+        {
+          title: '套装与部件详情支持快速切换形态。',
+          text: '在衣橱和搭配解析详情中，可直接浏览同系列的不同形态及拥有状态，无需退出后重新查找。'
+        },
+        {
+          title: '共鸣与衣橱云同步合二为一。',
+          text: '在同一个窗口中管理共鸣记录和个人衣橱，可单独同步，也可一起上传、下载或删除云端存档。操作前可对照本机与云端记录，查看更新时间、覆盖范围和区服变化。'
+        },
+        {
+          title: '云同步提示更清楚，存档保护更完善。',
+          text: '本机或云端记录发生变化时，会提醒重新确认，避免覆盖刚更新的数据。完善同步失败时的原记录保护；某个模块异常时，也有更明确的提示。'
+        },
+        {
+          title: '新增“兼容打开（只读）”相册模式。',
+          text: '普通授权无法打开相册文件夹时，可尝试此模式，继续浏览、解析、收藏和导出照片，支持分包 ZIP 下载。照片仅在本地读取，不修改原文件；刷新网页或查看新照片时需重新选择文件夹。只读模式不支持修改备注、删除、恢复和专项清理，收藏与普通模式分别保存。'
+        },
+        {
+          title: '网站打开更轻快。',
+          text: '衣橱、共鸣、相机收藏、解析工具及图鉴内容会在需要时加载，减少首次打开的等待。优化大量收藏封面的加载与滚动表现，减少后台资源占用。'
+        },
+        {
+          title: '加载与重试更顺畅。',
+          text: '页面或窗口加载失败时可重新尝试，导入过程中也能更顺畅地取消退出。修复部分窗口首次打开、关闭后重新打开，以及取消操作后内容再次弹出的问题。'
+        },
+        {
+          title: '照片解析失败后，重试更方便。',
+          text: '手动输入 UID 后可看到解析进度，失败时会显示更清楚的原因，并方便继续修改重试。补充游戏原图位置提示，帮助确认照片来源。'
+        },
+        {
+          title: '备份导入提示更易懂。',
+          text: '选错备份类型、文件过大、图片缺失或备份损坏时，会给出对应提示。误将总备份导入相机收藏时，会指引前往正确入口；同步优化恢复后的提示和下载保存按钮。'
+        },
+        {
+          title: '清除数据前，先看清楚、再做决定。',
+          text: '重新优化清除确认窗口，清楚列出会删除和会保留的内容，并新增“先导出备份”快捷入口。'
+        },
+        {
+          title: '抽卡吉时更新至游戏 2.11 版本。',
+          text: '更新推荐日期、时段、方位与主推排序，新增“需避开生肖”提示，供娱乐参考。'
+        },
+        {
+          title: '衣橱详情更清晰。',
+          text: '优化套装总览、收集进度、属性、版本、描述和部件列表的排版；电脑端新增来源标签，不同信息使用更容易区分的配色。'
+        },
+        {
+          title: '手机端浏览更舒适。',
+          text: '优化衣橱形态切换、详情窗口和操作区布局，共鸣页套装快速导航改为双列。'
+        },
+        {
+          title: '菜单与设置操作更快捷。',
+          text: '电脑端顶部菜单支持鼠标悬停展开。主题与语言切换即时生效，并优化切换动画和选中提示。'
+        },
+        {
+          title: '统一打磨浅色、深色主题与界面细节。',
+          text: '优化按钮、菜单、标签、输入框、卡片和弹窗的配色、圆角、阴影及操作反馈。同步调整相机收藏标签、家园信息区、衣橱提示、共鸣卡片和导入文本框，让各页面的观感更协调，并改善部分旧版浏览器的显示。'
+        },
+        {
+          title: '其他修复与优化。',
+          text: '修复部分资源数据解析异常，优化缓存清理和导入取消操作。'
+        }
+      ]
+    },
     {
       version: 'v2.2',
       items: [
@@ -660,83 +690,113 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.10.30',
+  currentDate: 'Updated 2026.10.31',
   currentItems: [
     {
-      title: 'Decode outfits from your photos!',
-      text: 'Decode an original game photo to see both camera settings and outfit pieces. Select a piece to view its outfit, evolution form, dyeing requirements and applied dyes, making it easier to recreate your favorite looks.'
+      title: 'New share images for photos and outfit codes.',
+      text: 'Open Share from a photo card or the parameter window and choose whether to include photo parameters, outfit parts, and the camera parameter code. Outfit cards and parsing windows can also generate a 9:16 portrait share card with the outfit image and code.'
     },
     {
-      title: 'Two layouts for photo decoding.',
-      text: 'On desktop, switch between stacked and side-by-side layouts and save your preference. Mobile uses a stacked layout automatically. Improved proportions, backgrounds and scrolling make settings and outfits easier to compare.'
+      title: 'Additional photo parameter details.',
+      text: 'Added a separate zoom value and animation playback progress for photos taken after game version 2.11. Weather details now include wind strength and direction, such as Sunny, Light wind, South.'
     },
     {
-      title: 'Group evolution forms in your wardrobe.',
-      text: 'The new Show evolution forms switch displays every form when enabled, or combines each family into one card when disabled. Your preference is saved, and other forms remain available to expand and view.'
+      title: 'Improved large-image preview layout and interactions.',
+      text: 'Images make fuller use of screen space, with refreshed visual styling.'
     },
     {
-      title: 'Switch forms directly in outfit and piece details.',
-      text: 'Browse different forms in the same family and their ownership status from wardrobe and outfit decoding details, without closing the window to search again.'
+      title: 'Large-image previews for camera parameter favorites.',
+      text: 'Double-click a card with a cover to preview the image. Zoom, pan, and switch between images, or copy parameters, edit the favorite, and view details directly.'
     },
     {
-      title: 'Unified cloud sync for Resonance and Wardrobe.',
-      text: 'Manage both modules in one window. Upload, download or delete cloud saves separately or together. Compare local and cloud records, update times, replacement scope and server changes before proceeding.'
+      title: 'Refined batch action toolbar styling.',
+      text: 'A compact grouped layout uses text colors to distinguish different actions.'
     },
     {
-      title: 'Clearer cloud messages and better save protection.',
-      text: 'If local or cloud records change, you will be asked to confirm again to avoid overwriting recent updates. Improved protection for existing records when sync fails, with clearer messages when a module encounters a problem.'
-    },
-    {
-      title: 'New Compatibility open (read-only) album mode.',
-      text: 'If normal folder authorization fails, try this mode to browse, decode, favorite and export photos, including split ZIP downloads. Photos are read locally without changing originals. Select the folder again after reloading or to view new photos. Editing notes, deleting, restoring and targeted cleanup are unavailable; favorites are saved separately from normal mode.'
-    },
-    {
-      title: 'A lighter, faster start.',
-      text: 'Wardrobe, Resonance, camera favorites, decoding tools and catalog content load when needed, reducing the initial wait. Improved cover loading and scrolling for large favorite collections reduce background resource use.'
-    },
-    {
-      title: 'Smoother loading and retries.',
-      text: 'Retry pages or windows that fail to load, and cancel imports more smoothly. Fixed issues with opening windows for the first time, reopening them and content appearing again after cancellation.'
-    },
-    {
-      title: 'Easier retries when photo decoding fails.',
-      text: 'See decoding progress after entering a UID manually, with clearer failure reasons and easier editing and retries. Added guidance on finding original game photos to help check their source.'
-    },
-    {
-      title: 'Clearer backup import messages.',
-      text: 'Get specific guidance for incorrect backup types, oversized files, missing images or damaged backups. Importing a full backup into camera favorites points you to the correct entry. Also improved restore messages and download save buttons.'
-    },
-    {
-      title: 'Review before clearing your data.',
-      text: 'Improved the confirmation window to clearly list what will be deleted and kept, with a new shortcut to export a backup first.'
-    },
-    {
-      title: 'Lucky pull times updated for game version 2.11.',
-      text: 'Updated recommended dates, times, directions and rankings, with a new Zodiac to avoid column. For entertainment only.'
-    },
-    {
-      title: 'Clearer wardrobe details.',
-      text: 'Improved the layout of outfit overviews, collection progress, attributes, versions, descriptions and piece lists. Desktop now shows source labels, with more distinct colors for different information.'
-    },
-    {
-      title: 'More comfortable browsing on mobile.',
-      text: 'Improved wardrobe form switching, detail windows and action layouts. Outfit quick navigation on the Resonance page now uses two columns.'
-    },
-    {
-      title: 'Quicker menus and settings.',
-      text: 'Desktop top menus open on hover. Theme and language changes apply immediately, with improved switching animations and selection indicators.'
-    },
-    {
-      title: 'Refined light and dark themes and interface details.',
-      text: 'Improved colors, corners, shadows and interaction feedback for buttons, menus, tags, inputs, cards and dialogs. Updated camera favorite tags, home information, wardrobe notices, Resonance cards and import text areas for a more consistent appearance, with better display in some older browsers.'
-    },
-    {
-      title: 'Other fixes and improvements.',
-      text: 'Fixed decoding issues with some resource data and improved cache clearing and import cancellation.'
+      title: 'Additional creator profile links.',
+      text: 'Added a Bilibili profile link to the More menu and updated the Douyin profile link.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.3',
+      date: '2026.10.30',
+      items: [
+        {
+          title: 'Decode outfits from your photos!',
+          text: 'Decode an original game photo to see both camera settings and outfit pieces. Select a piece to view its outfit, evolution form, dyeing requirements and applied dyes, making it easier to recreate your favorite looks.'
+        },
+        {
+          title: 'Two layouts for photo decoding.',
+          text: 'On desktop, switch between stacked and side-by-side layouts and save your preference. Mobile uses a stacked layout automatically. Improved proportions, backgrounds and scrolling make settings and outfits easier to compare.'
+        },
+        {
+          title: 'Group evolution forms in your wardrobe.',
+          text: 'The new Show evolution forms switch displays every form when enabled, or combines each family into one card when disabled. Your preference is saved, and other forms remain available to expand and view.'
+        },
+        {
+          title: 'Switch forms directly in outfit and piece details.',
+          text: 'Browse different forms in the same family and their ownership status from wardrobe and outfit decoding details, without closing the window to search again.'
+        },
+        {
+          title: 'Unified cloud sync for Resonance and Wardrobe.',
+          text: 'Manage both modules in one window. Upload, download or delete cloud saves separately or together. Compare local and cloud records, update times, replacement scope and server changes before proceeding.'
+        },
+        {
+          title: 'Clearer cloud messages and better save protection.',
+          text: 'If local or cloud records change, you will be asked to confirm again to avoid overwriting recent updates. Improved protection for existing records when sync fails, with clearer messages when a module encounters a problem.'
+        },
+        {
+          title: 'New Compatibility open (read-only) album mode.',
+          text: 'If normal folder authorization fails, try this mode to browse, decode, favorite and export photos, including split ZIP downloads. Photos are read locally without changing originals. Select the folder again after reloading or to view new photos. Editing notes, deleting, restoring and targeted cleanup are unavailable; favorites are saved separately from normal mode.'
+        },
+        {
+          title: 'A lighter, faster start.',
+          text: 'Wardrobe, Resonance, camera favorites, decoding tools and catalog content load when needed, reducing the initial wait. Improved cover loading and scrolling for large favorite collections reduce background resource use.'
+        },
+        {
+          title: 'Smoother loading and retries.',
+          text: 'Retry pages or windows that fail to load, and cancel imports more smoothly. Fixed issues with opening windows for the first time, reopening them and content appearing again after cancellation.'
+        },
+        {
+          title: 'Easier retries when photo decoding fails.',
+          text: 'See decoding progress after entering a UID manually, with clearer failure reasons and easier editing and retries. Added guidance on finding original game photos to help check their source.'
+        },
+        {
+          title: 'Clearer backup import messages.',
+          text: 'Get specific guidance for incorrect backup types, oversized files, missing images or damaged backups. Importing a full backup into camera favorites points you to the correct entry. Also improved restore messages and download save buttons.'
+        },
+        {
+          title: 'Review before clearing your data.',
+          text: 'Improved the confirmation window to clearly list what will be deleted and kept, with a new shortcut to export a backup first.'
+        },
+        {
+          title: 'Lucky pull times updated for game version 2.11.',
+          text: 'Updated recommended dates, times, directions and rankings, with a new Zodiac to avoid column. For entertainment only.'
+        },
+        {
+          title: 'Clearer wardrobe details.',
+          text: 'Improved the layout of outfit overviews, collection progress, attributes, versions, descriptions and piece lists. Desktop now shows source labels, with more distinct colors for different information.'
+        },
+        {
+          title: 'More comfortable browsing on mobile.',
+          text: 'Improved wardrobe form switching, detail windows and action layouts. Outfit quick navigation on the Resonance page now uses two columns.'
+        },
+        {
+          title: 'Quicker menus and settings.',
+          text: 'Desktop top menus open on hover. Theme and language changes apply immediately, with improved switching animations and selection indicators.'
+        },
+        {
+          title: 'Refined light and dark themes and interface details.',
+          text: 'Improved colors, corners, shadows and interaction feedback for buttons, menus, tags, inputs, cards and dialogs. Updated camera favorite tags, home information, wardrobe notices, Resonance cards and import text areas for a more consistent appearance, with better display in some older browsers.'
+        },
+        {
+          title: 'Other fixes and improvements.',
+          text: 'Fixed decoding issues with some resource data and improved cache clearing and import cancellation.'
+        }
+      ]
+    },
     {
       version: 'v2.2',
       items: [

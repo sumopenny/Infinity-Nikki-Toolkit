@@ -2453,13 +2453,7 @@ function importAllDataFromMenu() {
           :class="{ 'is-outfit-header': activeView === 'outfits' }"
         >
           <div>
-            <p class="eyebrow">{{
-              activeView === 'trash'
-                ? 'TRASH'
-                : activeView === 'outfits'
-                  ? outfitLocale.eyebrow
-                  : 'ALBUM'
-            }}</p>
+
             <div v-if="activeView === 'outfits'" class="outfit-title-row">
               <h2>{{ viewTitle }}</h2>
               <button
@@ -2564,7 +2558,6 @@ function importAllDataFromMenu() {
           <p v-if="activeView === 'trash'">{{
             locale.trash.totalSummary(recentlyDeleted.length, trashTotalSizeText)
           }}</p>
-          <p v-else-if="activeView !== 'outfits'">{{ locale.viewNav.count(visibleCount) }}</p>
         </header>
 
         <CollectionFilterBar

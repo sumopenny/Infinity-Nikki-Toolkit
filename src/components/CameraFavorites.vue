@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { readPhotoFile, isAlbumPhoto } from '../utils/photoGrouping'
+import {
+  readPhotoFile,
+  isAlbumPhoto,
+  datePartsFromTimestamp,
+  type PhotoDisplayItem
+} from '../utils/photoGrouping'
+import { releasePhotoUrl } from '../utils/file-system/photoUrl'
+import Lightbox from './Lightbox.vue'
 
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
@@ -114,6 +121,7 @@ const coverReading = ref(false)
 const coverReadFailed = ref(false)
 let coverReadGeneration = 0
 const detail = shallowRef<CameraFavorite | null>(null)
+const previewId = ref<string | null>(null)
 const importPlan = shallowRef<ImportPlan | null>(null)
 const choices = ref<Record<string, 'local' | 'incoming'>>({})
 const coverInput = ref<HTMLInputElement | null>(null)
@@ -253,7 +261,9 @@ const parser = usePhotoParams({
   language: toRef(props, 'language'),
   messages: computed(() => props.messages)
 })
-const modal = computed(() => editor.value || !!detail.value || !!importPlan.value)
+const modal = computed(
+  () => editor.value || !!detail.value || !!importPlan.value || !!previewId.value
+)
 useBodyScrollLock(modal)
 let generation = 0
 let parseTimer: ReturnType<typeof setTimeout> | undefined
@@ -309,6 +319,63 @@ const visibleRecords = computed(() => {
       (!query || [r.name, r.code, r.tag].join(' ').toLocaleLowerCase().includes(query))
   )
 })
+// Preview navigation follows the current filter and skips records without a cover.
+const previewRecords = computed(() => visibleRecords.value.filter((item) => item.cover))
+const previewIndex = computed(() =>
+  previewRecords.value.findIndex((item) => item.id === previewId.value)
+)
+const previewRecord = computed(() => previewRecords.value[previewIndex.value] ?? null)
+const previewPhoto = computed<PhotoDisplayItem | null>(() => {
+  const item = previewRecord.value
+  if (!item?.cover) return null
+  const date = datePartsFromTimestamp(Date.parse(item.updatedAt))
+  if (!date) return null
+  return {
+    ...date,
+    id: item.id,
+    name: item.name,
+    url: null,
+    fileSizeText: '',
+    loadImageBlob: async () => {
+      const blob = await readCameraFavoriteCover(item.id)
+      if (!blob) throw new Error(t('封面图片不存在', 'Cover image is missing'))
+      return blob
+    }
+  }
+})
+watch(previewPhoto, (_next, previous) => {
+  if (previous) releasePhotoUrl(previous)
+})
+watch(previewRecord, (item) => {
+  if (!item) previewId.value = null
+})
+onBeforeUnmount(() => {
+  if (previewPhoto.value) releasePhotoUrl(previewPhoto.value)
+})
+function openPreview(item: CameraFavorite) {
+  if (!busy.value && item.cover) previewId.value = item.id
+}
+function stepPreview(direction: number) {
+  const index = previewIndex.value
+  if (busy.value || index < 0) return
+  const next = previewRecords.value[index + direction]
+  if (next) previewId.value = next.id
+}
+async function editPreview() {
+  const item = previewRecord.value
+  if (!item || busy.value) return
+  await openEditor(item)
+  if (editor.value) {
+    previewId.value = null
+    await nextTick()
+    form.value?.focus({ preventScroll: true })
+  }
+}
+function showPreviewDetails() {
+  if (!previewRecord.value || busy.value) return
+  detail.value = previewRecord.value
+  previewId.value = null
+}
 const resources = favoriteResources
 const compactResourceCover = computed(() => compact.value && props.thumbnailSize === 'small')
 
@@ -348,6 +415,7 @@ function toggleAll() {
 watch(
   () => props.active,
   () => {
+    previewId.value = null
     selectedIds.value = new Set()
     sidebar.value?.closeTagInput()
     closeTagInput()
@@ -946,6 +1014,7 @@ function handleImportChoices(value: typeof choices.value) {
         :aria-disabled="busy"
         tabindex="0"
         @click="toggleSelected(item.id)"
+        @dblclick.stop="openPreview(item)"
         @keydown="cardKeydown($event, item.id)"
       >
         <div class="camera-cover">
@@ -1262,6 +1331,53 @@ function handleImportChoices(value: typeof choices.value) {
     @confirm="handleImportChoices"
     @cancel="importPlan = null"
   />
+  <Lightbox
+    :photo="previewPhoto"
+    :has-previous="previewIndex > 0"
+    :has-next="previewIndex >= 0 && previewIndex < previewRecords.length - 1"
+    :is-deleting="busy"
+    :is-favorite="false"
+    :keyboard-enabled="active && !editor && !detail && !importPlan && !busy"
+    mode="camera"
+    :messages="localeMessages[language].lightbox"
+    :date-messages="localeMessages[language].date"
+    @close="previewId = null"
+    @previous="stepPreview(-1)"
+    @next="stepPreview(1)"
+  >
+    <template #metadata>
+      <div v-if="previewRecord" class="lightbox-outfit-meta">
+        <span>{{ previewRecord.name }}</span>
+        <span v-if="previewRecord.tag">{{ previewRecord.tag }}</span>
+      </div>
+    </template>
+    <template #actions="{ disabled }">
+      <button
+        type="button"
+        :title="t('复制参数', 'Copy parameters')"
+        :aria-label="t('复制参数', 'Copy parameters')"
+        :disabled="disabled"
+        @click="previewRecord && copy(previewRecord.result.rawCameraParams)"
+        ><Copy :size="18"
+      /></button>
+      <button
+        type="button"
+        :title="t('编辑', 'Edit')"
+        :aria-label="t('编辑', 'Edit')"
+        :disabled="disabled"
+        @click="editPreview"
+        ><Edit3 :size="18"
+      /></button>
+      <button
+        type="button"
+        :title="t('详情', 'Details')"
+        :aria-label="t('详情', 'Details')"
+        :disabled="disabled"
+        @click="showPreviewDetails"
+        ><ScanSearch :size="18"
+      /></button>
+    </template>
+  </Lightbox>
   <PhotoParamsDialog
     v-if="detail"
     :visible="!!detail"

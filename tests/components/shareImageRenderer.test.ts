@@ -133,6 +133,7 @@ describe('share image renderer', () => {
           } as HTMLImageElement,
           modules
         })
+        expect(ctx.drawImage.mock.calls.some((call) => Math.abs(call[3] - 60.8) < 0.0001 && Math.abs(call[4] - 60.8) < 0.0001)).toBe(true)
         const labels = text.mock.calls.map((call) => call[0])
         expect(labels.includes('图片参数')).toBe(modules.parameters)
         expect(labels.includes('穿搭部件')).toBe(modules.clothes)
@@ -148,7 +149,9 @@ describe('share image renderer', () => {
     expect(portraitPhotoWidths[0]).toBeCloseTo(portraitPhotoWidths[1]!, 6)
     text.mockClear()
     ctx.roundRect.mockClear()
+    ctx.drawImage.mockClear()
     await renderShareImage({ ...base, outfitCode: '13dub3nPiPu#' })
+    expect(ctx.drawImage.mock.calls.some((call) => Math.abs(call[3] - 106.4) < 0.0001 && Math.abs(call[4] - 106.4) < 0.0001)).toBe(true)
     expect(sizes.at(-1)).toEqual([1440, 2560])
     const badge = ctx.roundRect.mock.calls.at(-1)!
     const title = text.mock.calls.find((call) => call[0] === '搭配分享')!

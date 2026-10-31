@@ -55,6 +55,8 @@ export const topBarZh: LocaleMessages['topBar'] = {
   xiaohongshuAuthor: '访问作者的小红书主页',
   douyin: '抖音',
   douyinAuthor: '访问作者的抖音主页',
+  bilibili: 'B站',
+  bilibiliAuthor: '访问作者的B站主页',
   donate: '打赏我',
   donateTitle: '打赏支持',
   donateDescription: '作者为爱发电，网站制作不易，觉得好用的话可以来支持我~',
@@ -129,6 +131,8 @@ export const topBarEn: LocaleMessages['topBar'] = {
   xiaohongshuAuthor: "Open the author's Xiaohongshu profile",
   douyin: 'Douyin',
   douyinAuthor: "Open the author's Douyin profile",
+  bilibili: 'Bilibili',
+  bilibiliAuthor: "Open the author's Bilibili profile",
   donate: 'Tip me',
   donateTitle: 'Support the author',
   donateDescription:

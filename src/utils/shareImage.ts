@@ -154,7 +154,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     ctx.fillStyle = colors.line
     ctx.fillRect(x, y, vertical ? scale : w, vertical ? w : scale)
   }
-  const box = (x: number, y: number, w: number, h: number, fill = colors.surface, radius = 22) => {
+  const box = (x: number, y: number, w: number, h: number, fill = colors.surface, radius = 24) => {
     ctx.fillStyle = fill
     ctx.strokeStyle = colors.line
     ctx.lineWidth = scale
@@ -170,7 +170,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     w: number,
     h: number,
     rounded = false,
-    radius = 22
+    radius = 24
   ) => {
     const ratio = Math.min(w / img.naturalWidth, h / img.naturalHeight)
     if (rounded) {
@@ -212,17 +212,18 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     sectionWidth = inner,
     left = margin
   ) => {
-    box(left, top, sectionWidth, height, colors.surface, 16)
+    box(left, top, sectionWidth, height, colors.surface, 24)
     heading(value, top + 20 * scale, left + 24 * scale, sectionWidth - 48 * scale)
   }
   const finishSection = (top: number, height: number) => {
     if (!portrait) rule(margin, top + height + 32 * scale, inner)
   }
-  const watermark = (x: number, y: number, photoW: number, photoH: number) => {
-    const baseUnit = Math.min(photoW / 736, photoH / 240)
-    const unit = baseUnit * (outfit ? 1.6 : 1.35)
-    const inset = 22 * baseUnit,
-      size = 38 * unit
+  // Fixed output-pixel dimensions, independent of source photo size and orientation.
+  const watermark = (x: number, y: number) => {
+    const { unit, inset } = outfit
+      ? { unit: 2.8, inset: 40 }
+      : { unit: 1.6, inset: 28 }
+    const size = 38 * unit
     const left = x + inset,
       top = y + inset
     ctx.save()
@@ -266,7 +267,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     canvas.width = Math.max(1, Math.floor(width * ratio))
     canvas.height = Math.max(1, Math.floor(image.naturalHeight * ratio))
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-    watermark(0, 0, canvas.width, canvas.height)
+    watermark(0, 0)
   } else if (outfit) {
     canvas.width = width
     canvas.height = OUTFIT_HEIGHT
@@ -285,7 +286,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     const cropHeight = imageHeight / imageScale
     ctx.save()
     ctx.beginPath()
-    ctx.roundRect(m, m, contentWidth, imageHeight, 46 * scale)
+    ctx.roundRect(m, m, contentWidth, imageHeight, 48 * scale)
     ctx.clip()
     ctx.drawImage(
       image,
@@ -299,15 +300,15 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
       imageHeight
     )
     ctx.restore()
-    watermark(m, m, contentWidth, imageHeight)
+    watermark(m, m)
     const top = m + imageHeight + 20 * scale
-    box(m, top, contentWidth, footerHeight, colors.surface, 40)
+    box(m, top, contentWidth, footerHeight, colors.surface, 44)
     const left = m + 52 * scale,
       labelWidth = (english ? 350 : 376) * scale
     const centerY = top + footerHeight / 2
     ctx.fillStyle = colors.accent
     ctx.beginPath()
-    ctx.roundRect(left, centerY - 66 * scale, labelWidth, 132 * scale, 40 * scale)
+    ctx.roundRect(left, centerY - 66 * scale, labelWidth, 132 * scale, 44 * scale)
     ctx.fill()
     ctx.save()
     ctx.textAlign = 'left'
@@ -501,9 +502,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
         fittedH = image.naturalHeight * fit
       watermark(
         margin + (photoWidth - fittedW) / 2,
-        photoTop + (topHeight - fittedH) / 2,
-        fittedW,
-        fittedH
+        photoTop + (topHeight - fittedH) / 2
       )
     })
     let y = photoTop + topHeight + (portrait ? gap : 34 * scale)
@@ -533,7 +532,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
             if (field.isPose && poseBackground) {
               ctx.save()
               ctx.beginPath()
-              ctx.roundRect(imageX, imageY, size, size, 8 * scale * splitRowScale)
+              ctx.roundRect(imageX, imageY, size, size, 10 * scale * splitRowScale)
               ctx.clip()
               const ratio = Math.max(
                 size / poseBackground.naturalWidth,
@@ -548,7 +547,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
               )
               ctx.restore()
             }
-            contain(field.picture, imageX, imageY, size, size, true, 8 * splitRowScale)
+            contain(field.picture, imageX, imageY, size, size, true, 10 * splitRowScale)
           }
           if (split && !field.picture) {
             field.label.forEach((line, i) =>
@@ -710,7 +709,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
         let iy = top + offset
         itemRows.forEach(({ item, lines }, index) => {
           const x = sectionLeft + gridLeft + (index % columns) * (cw + columnGap)
-          box(x, iy, cw, cw, colors.soft, 16)
+          box(x, iy, cw, cw, colors.soft, 20)
           const picture = item.imageUrl ? pictures.get(item.imageUrl) : undefined
           if (picture)
             contain(picture, x + 8 * scale, iy + 8 * scale, cw - 16 * scale, cw - 16 * scale)
@@ -770,7 +769,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
             inner + sideWidth - padding * 2 * scale,
             codeHeight,
             colors.soft,
-            12
+            16
           )
         ctx.save()
         font(22, false, true)
