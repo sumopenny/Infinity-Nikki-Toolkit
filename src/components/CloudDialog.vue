@@ -99,30 +99,6 @@ function close() {
   width: min(680px, 100%);
   height: auto;
 }
-@supports not (color: color-mix(in srgb, black, white)) {
-  .resonance-cloud-panel {
-    --compat-dialog-border: rgba(223.7242, 194.6637, 191.8434, 0.8992);
-    --compat-dialog-shadow: rgba(201, 132, 134, 0.2);
-    --compat-dialog-icon-border: rgba(201, 132, 134, 0.28);
-    --compat-dialog-icon-bg-start: rgba(201, 132, 134, 0.18);
-    --compat-dialog-icon-bg-end: rgba(201, 132, 134, 0.06);
-    --compat-dialog-icon-shadow: rgba(201, 132, 134, 0.22);
-    --compat-dialog-button-bg-start: rgba(207.48, 146.76, 148.52, 1);
-    --compat-dialog-button-shadow: rgba(201, 132, 134, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(201, 132, 134, 0.42);
-  }
-  :where(:root[data-theme='dark']) .resonance-cloud-panel {
-    --compat-dialog-border: rgba(119.8701, 96.8096, 101.5641, 0.8992);
-    --compat-dialog-shadow: rgba(239, 176, 178, 0.2);
-    --compat-dialog-icon-border: rgba(239, 176, 178, 0.28);
-    --compat-dialog-icon-bg-start: rgba(239, 176, 178, 0.18);
-    --compat-dialog-icon-bg-end: rgba(239, 176, 178, 0.06);
-    --compat-dialog-icon-shadow: rgba(239, 176, 178, 0.22);
-    --compat-dialog-button-bg-start: rgba(240.92, 185.48, 187.24, 1);
-    --compat-dialog-button-shadow: rgba(239, 176, 178, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(239, 176, 178, 0.42);
-  }
-}
 .resonance-cloud-body {
   flex: 0 1 auto;
   gap: 16px;

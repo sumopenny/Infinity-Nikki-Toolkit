@@ -132,8 +132,16 @@
   --dialog-accent: var(--pink-deep);
   /* 外壳尺寸、间距和滚动结构全部继承抽卡吉时窗口。 */
 }
+/* 统一粉色弹窗的旧浏览器回退色；限定在这些面板，不影响使用其它强调色的确认窗口。 */
+/* :is() 保持一层 class 的优先级；:where() 避免深色主题额外提升选择器权重。 */
 @supports not (color: color-mix(in srgb, black, white)) {
-  .photo-params-dialog {
+  :is(
+    .photo-params-dialog,
+    .parse-tools-panel,
+    .photo-transfer-dialog,
+    .outfit-editor-panel,
+    .resonance-cloud-panel
+  ) {
     --compat-dialog-border: rgba(223.7242, 194.6637, 191.8434, 0.8992);
     --compat-dialog-shadow: rgba(201, 132, 134, 0.2);
     --compat-dialog-icon-border: rgba(201, 132, 134, 0.28);
@@ -144,7 +152,13 @@
     --compat-dialog-button-shadow: rgba(201, 132, 134, 0.32);
     --compat-dialog-button-hover-shadow: rgba(201, 132, 134, 0.42);
   }
-  :where(:root[data-theme='dark']) .photo-params-dialog {
+  :where(:root[data-theme='dark']) :is(
+    .photo-params-dialog,
+    .parse-tools-panel,
+    .photo-transfer-dialog,
+    .outfit-editor-panel,
+    .resonance-cloud-panel
+  ) {
     --compat-dialog-border: rgba(119.8701, 96.8096, 101.5641, 0.8992);
     --compat-dialog-shadow: rgba(239, 176, 178, 0.2);
     --compat-dialog-icon-border: rgba(239, 176, 178, 0.28);
@@ -167,31 +181,6 @@
   overflow: hidden;
   --dialog-accent: var(--pink-deep);
 }
-@supports not (color: color-mix(in srgb, black, white)) {
-  .parse-tools-panel {
-    --compat-dialog-border: rgba(223.7242, 194.6637, 191.8434, 0.8992);
-    --compat-dialog-shadow: rgba(201, 132, 134, 0.2);
-    --compat-dialog-icon-border: rgba(201, 132, 134, 0.28);
-    --compat-dialog-icon-bg-start: rgba(201, 132, 134, 0.18);
-    --compat-dialog-icon-bg-end: rgba(201, 132, 134, 0.06);
-    --compat-dialog-icon-shadow: rgba(201, 132, 134, 0.22);
-    --compat-dialog-button-bg-start: rgba(207.48, 146.76, 148.52, 1);
-    --compat-dialog-button-shadow: rgba(201, 132, 134, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(201, 132, 134, 0.42);
-  }
-  :where(:root[data-theme='dark']) .parse-tools-panel {
-    --compat-dialog-border: rgba(119.8701, 96.8096, 101.5641, 0.8992);
-    --compat-dialog-shadow: rgba(239, 176, 178, 0.2);
-    --compat-dialog-icon-border: rgba(239, 176, 178, 0.28);
-    --compat-dialog-icon-bg-start: rgba(239, 176, 178, 0.18);
-    --compat-dialog-icon-bg-end: rgba(239, 176, 178, 0.06);
-    --compat-dialog-icon-shadow: rgba(239, 176, 178, 0.22);
-    --compat-dialog-button-bg-start: rgba(240.92, 185.48, 187.24, 1);
-    --compat-dialog-button-shadow: rgba(239, 176, 178, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(239, 176, 178, 0.42);
-  }
-}
-
 .parse-tools-body {
   display: grid;
   gap: 18px;
@@ -1509,32 +1498,6 @@
   min-height: 258px;
   padding-bottom: 28px;
   overflow: hidden;
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .photo-transfer-dialog {
-    --compat-dialog-border: rgba(223.7242, 194.6637, 191.8434, 0.8992);
-    --compat-dialog-shadow: rgba(201, 132, 134, 0.2);
-    --compat-dialog-icon-border: rgba(201, 132, 134, 0.28);
-    --compat-dialog-icon-bg-start: rgba(201, 132, 134, 0.18);
-    --compat-dialog-icon-bg-end: rgba(201, 132, 134, 0.06);
-    --compat-dialog-icon-shadow: rgba(201, 132, 134, 0.22);
-    --compat-dialog-button-bg-start: rgba(207.48, 146.76, 148.52, 1);
-    --compat-dialog-button-shadow: rgba(201, 132, 134, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(201, 132, 134, 0.42);
-  }
-
-  :where(:root[data-theme='dark']) .photo-transfer-dialog {
-    --compat-dialog-border: rgba(119.8701, 96.8096, 101.5641, 0.8992);
-    --compat-dialog-shadow: rgba(239, 176, 178, 0.2);
-    --compat-dialog-icon-border: rgba(239, 176, 178, 0.28);
-    --compat-dialog-icon-bg-start: rgba(239, 176, 178, 0.18);
-    --compat-dialog-icon-bg-end: rgba(239, 176, 178, 0.06);
-    --compat-dialog-icon-shadow: rgba(239, 176, 178, 0.22);
-    --compat-dialog-button-bg-start: rgba(240.92, 185.48, 187.24, 1);
-    --compat-dialog-button-shadow: rgba(239, 176, 178, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(239, 176, 178, 0.42);
-  }
 }
 
 .photo-transfer-header {

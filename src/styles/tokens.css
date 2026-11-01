@@ -116,6 +116,17 @@
   --header-glow: linear-gradient(90deg, transparent, rgba(201, 132, 134, 0.42), transparent);
 }
 
+@supports not (color: color-mix(in srgb, black, white)) {
+  :root {
+    --capsule-variant-border: #dbc4a8;
+    --capsule-variant-bg: #fbf9f5;
+  }
+  :root[data-theme='dark'] {
+    --capsule-variant-border: #806c54;
+    --capsule-variant-bg: #2b2925;
+  }
+}
+
 :root[data-theme='dark'] {
   --capsule-source-border: #665275;
   --capsule-source-bg: #352c3e;
@@ -201,15 +212,4 @@
 
 * {
   box-sizing: border-box;
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  :root {
-    --capsule-variant-border: #dbc4a8;
-    --capsule-variant-bg: #fbf9f5;
-  }
-  :root[data-theme='dark'] {
-    --capsule-variant-border: #806c54;
-    --capsule-variant-bg: #2b2925;
-  }
 }

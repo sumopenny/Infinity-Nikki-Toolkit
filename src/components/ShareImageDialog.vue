@@ -543,6 +543,16 @@ button.share-image-save:hover:not(:disabled),
     0 4px 12px color-mix(in srgb, var(--pink-deep) 16%, transparent);
   transform: translateY(-1px);
 }
+@supports not (color: color-mix(in srgb, black, white)) {
+  button.share-image-save:hover:not(:disabled),
+  .share-image-zoom button:hover:not(:disabled) {
+    box-shadow: var(--accent-shadow-sm), 0 4px 12px rgba(201, 132, 134, 0.16);
+  }
+  :where(:root[data-theme='dark']) button.share-image-save:hover:not(:disabled),
+  :where(:root[data-theme='dark']) .share-image-zoom button:hover:not(:disabled) {
+    box-shadow: var(--accent-shadow-sm), 0 4px 12px rgba(239, 176, 178, 0.16);
+  }
+}
 button.share-image-save:active:not(:disabled),
 .share-image-zoom button:active:not(:disabled) {
   transform: translateY(0);

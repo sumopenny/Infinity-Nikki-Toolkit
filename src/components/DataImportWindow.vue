@@ -258,9 +258,9 @@ function report(cause: unknown) {
         )
       : diagnosticCode === 'PEARPAL_ROLE_MISSING' || diagnosticCode === 'PEARPAL_UID_MISSING'
         ? text(
-            '美鸭梨接口未返回角色资料，请确认已选中角色；若仍失败，请稍后重试。',
-            'Pear-Pal did not return role details. Select a role and try again later.'
-          )
+            '美鸭梨接口未返回角色资料，请确认已选中正确角色。若仍然失败，',
+            'Pear-Pal did not return role details. Make sure the correct role is selected. If the problem persists, '
+          ) + t.value.authFailed
         : diagnosticCode === 'PEARPAL_HTTP_ERROR' || diagnosticCode === 'PEARPAL_NETWORK_FAILED'
           ? text('美鸭梨连接失败，请稍后重试。', 'Could not connect to Pear-Pal. Try again later.')
           : message === PEARPAL_UID_MISMATCH

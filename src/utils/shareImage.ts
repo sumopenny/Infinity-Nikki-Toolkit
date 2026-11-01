@@ -240,6 +240,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     ctx.beginPath()
     ctx.roundRect(left, top, size, size, 10 * unit)
     ctx.clip()
+    ctx.globalAlpha = 0.6
     ctx.drawImage(brandMark, left, top, size, size)
     ctx.restore()
     ctx.fillStyle = '#ffffff'

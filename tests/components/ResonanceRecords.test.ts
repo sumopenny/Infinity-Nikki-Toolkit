@@ -728,6 +728,11 @@ it.each(['zh', 'en'] as const)(
     await vi.waitFor(() => expect(latestNotice(wrapper)?.tone).toBe('error'))
     expect(latestNotice(wrapper)?.message).toContain(
       language === 'zh'
+        ? '请确认已选中正确角色'
+        : 'Make sure the correct role is selected'
+    )
+    expect(latestNotice(wrapper)?.message).toContain(
+      language === 'zh'
         ? '请重新登录美鸭梨并获取新凭据'
         : 'Sign in to Pear-Pal again and get fresh credentials'
     )
