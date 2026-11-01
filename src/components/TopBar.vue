@@ -18,6 +18,7 @@ import {
   TvMinimal,
   Moon,
   MoreHorizontal,
+  Smartphone,
   Wrench,
   RotateCcw,
   ScanSearch,
@@ -31,6 +32,7 @@ import { useModalFocus } from '../composables/useModalFocus'
 import { useModalPresence } from '../composables/useModalPresence'
 import type { AlbumView } from './AlbumViewSwitcher.vue'
 import LikeCounter from './LikeCounter.vue'
+import DesktopInstallDialog from './DesktopInstallDialog.vue'
 // 收款码图片，通过 Vite 打包以保证构建后路径正确
 import wxQrCode from '../../img/wx.jpg'
 import zfbQrCode from '../../img/zfb.jpg'
@@ -122,6 +124,12 @@ watch(
   () => closeMenus()
 )
 defineExpose({ closeMenus })
+const desktopInstallDialog = ref<InstanceType<typeof DesktopInstallDialog> | null>(null)
+const desktopInstallStandalone = ref(false)
+function openDesktopInstall() {
+  closeMenus()
+  void desktopInstallDialog.value?.open()
+}
 const showDonate = ref(false)
 const showFeedback = ref(false)
 useBodyScrollLock(
@@ -324,6 +332,8 @@ function handleDocumentInteraction(event: MouseEvent | KeyboardEvent) {
 }
 
 onMounted(() => {
+  desktopInstallStandalone.value = window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
   document.addEventListener('click', handleDocumentInteraction)
   document.addEventListener('keydown', handleDocumentInteraction)
   window.addEventListener('resize', alignOpenMenu)
@@ -914,6 +924,11 @@ function openDonate() {
                   <span>{{ messages.clearData }}</span>
                 </button>
                 <div class="menu-separator"></div>
+                <button v-if="!desktopInstallStandalone" type="button" role="menuitem" @click="openDesktopInstall">
+                  <Smartphone :size="16" />
+                  <span>{{ language === 'zh' ? '添加到桌面' : 'Add to desktop' }}</span>
+                </button>
+                <div class="menu-separator"></div>
                 <button type="button" role="menuitem" @click="openDonate">
                   <Heart :size="16" />
                   <span>{{ messages.donate }}</span>
@@ -1021,6 +1036,8 @@ function openDonate() {
         ></div></Transition
     ></Teleport>
   </header>
+
+  <DesktopInstallDialog ref="desktopInstallDialog" :language="language" />
 
   <Teleport to="body">
     <Transition name="confirm-dialog">

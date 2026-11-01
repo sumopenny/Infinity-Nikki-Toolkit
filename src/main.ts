@@ -17,4 +17,11 @@ import './styles/scrollbars.css'
 const app = createApp(App)
 const disposeErrorReporting = installErrorReporting(app)
 app.mount('#app')
+// PWA standalone installability; network-only worker, never caches user data or API results.
+if (import.meta.env.PROD && 'serviceWorker' in navigator)
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Unsupported or blocked service workers must not affect the website.
+    })
+  })
 if (import.meta.hot) import.meta.hot.dispose(disposeErrorReporting)
