@@ -7,6 +7,7 @@ beforeEach(() => {
   vi.resetModules()
   localStorage.clear()
   vi.stubEnv('PROD', true)
+  vi.stubEnv('DEV', false)
   vi.stubEnv('VITE_ERROR_REPORTING_ENABLED', 'true')
 })
 afterEach(() => {
@@ -51,6 +52,22 @@ it('captures runtime, promise and Vue failures through the installed handlers', 
   expect(status().counters.accepted).toBe(3)
   expect(log).toHaveBeenCalledTimes(1)
 })
+it('logs local Vue failures to the console without sending error reports', async () => {
+  vi.stubEnv('PROD', false)
+  vi.stubEnv('DEV', true)
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { app, transport } = await install()
+  expect(status()).toMatchObject({ configured: false, enabled: false, listenersInstalled: false })
+  app.config.errorHandler!(new Error('local-vue-fixture'), null, 'render')
+  expect(log).toHaveBeenCalledWith(
+    '[Nikki dev][Vue]',
+    'render',
+    expect.objectContaining({ message: 'local-vue-fixture' })
+  )
+  expect(transport).not.toHaveBeenCalled()
+  dispose()
+  expect(app.config.errorHandler).toBeUndefined()
+})
 it('still exposes why collection is unavailable when the production flag is absent', async () => {
   vi.stubEnv('VITE_ERROR_REPORTING_ENABLED', '')
   const { app, transport } = await install()
@@ -82,4 +99,26 @@ it('removes listeners and the debug facade on disposal', async () => {
   expect(Object.getOwnPropertyDescriptor(window, '__NIKKI_DIAGNOSTICS__')).toBeUndefined()
   window.dispatchEvent(new Event('unhandledrejection'))
   expect(transport).not.toHaveBeenCalled()
+})
+
+it('ignores the known UC injected script while reporting the same error in application code', async () => {
+  const { reporter, events } = await install()
+  const message = "undefined is not an object (evaluating 'a.tagName.match')"
+  for (const filename of [
+    location.origin + '/u.c.b.r.o.w.s.e.r/ucbrowser_script.js',
+    location.origin + '/assets/index.js'
+  ]) {
+    window.dispatchEvent(
+      new ErrorEvent('error', {
+        message,
+        filename,
+        lineno: 94,
+        colno: 461,
+        error: new TypeError(message)
+      })
+    )
+  }
+  await reporter.flushDiagnostics()
+  expect(events).toHaveLength(1)
+  expect(events[0].context.script).toBe(location.origin + '/assets/index.js')
 })

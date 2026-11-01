@@ -126,6 +126,14 @@ export async function exportAllDataBackup(
 async function readBundle(file: File): Promise<Map<string, Blob>> {
   if (!file.size || file.size > MAX_BYTES)
     throw new Error('总备份为空或过大 / Backup is empty or too large')
+  // Inspect content rather than MIME or extension: browser ZIP labels vary.
+  const header = new Uint8Array(await file.slice(0, 4).arrayBuffer())
+  if (
+    header[0] !== 0x50 ||
+    header[1] !== 0x4b ||
+    !((header[2] === 3 && header[3] === 4) || (header[2] === 5 && header[3] === 6))
+  )
+    throw new Error('backup_file_not_zip')
   const names = new Set<string>()
   let expanded = 0,
     failure: Error | null = null

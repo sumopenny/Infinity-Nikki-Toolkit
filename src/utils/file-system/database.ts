@@ -17,6 +17,14 @@ export const CAMERA_FAVORITES_STORE = 'camera-favorites'
 export const CAMERA_TAGS_STORE = 'camera-favorite-tags'
 export const CAMERA_COVERS_STORE = 'camera-favorite-covers'
 
+/** Match the browser connection-loss failure, excluding validation and quota errors. */
+export function isDatabaseConnectionLost(error: unknown): boolean {
+  return (
+    (error instanceof Error || error instanceof DOMException) &&
+    /Connection to Indexed Database server lost/i.test(error.message)
+  )
+}
+
 export function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)

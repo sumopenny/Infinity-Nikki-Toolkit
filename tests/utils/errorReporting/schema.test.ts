@@ -69,6 +69,17 @@ describe('diagnostic protocol without a database', () => {
   ])('rejects malformed fields: %j', (change) => {
     expect(() => validateErrorPayload({ ...sampleEvent(), ...change })).toThrow('INVALID_REPORT')
   })
+  it('preserves only canonical page origins and remains compatible with older events', () => {
+    const event = sampleEvent()
+    expect(validateErrorPayload(event).pageOrigin).toBeUndefined()
+    expect(validateErrorPayload({ ...event, pageOrigin: 'http://localhost:5173' }).pageOrigin)
+      .toBe('http://localhost:5173')
+    expect(validateErrorPayload({ ...event, pageOrigin: 'https://infinity-nikki-album-manager.pages.dev' }).pageOrigin)
+      .toBe('https://infinity-nikki-album-manager.pages.dev')
+    for (const origin of ['https://example.com/private?token=secret', 'https://user:pass@example.com', 'file:///tmp', 'http://example.com:80/', '']) {
+      expect(() => validateErrorPayload({ ...event, pageOrigin: origin })).toThrow('INVALID_REPORT')
+    }
+  })
   it('drops unknown top-level fields rather than storing arbitrary user payloads', () => {
     const result = validateErrorPayload({ ...sampleEvent(), requestBody: { token: 'secret' } })
     expect('requestBody' in result).toBe(false)

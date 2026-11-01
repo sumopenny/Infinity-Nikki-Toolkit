@@ -138,3 +138,20 @@ it('keeps direct status-state writes in the notification stack', () => {
   expect(notice.notices.value).toHaveLength(0)
   notice.dispose()
 })
+
+it.each(['zh', 'en'] as const)('explains lost local database connections (%s)', (language) => {
+  const notice = useOperationNotice(computed(() => messages[language]))
+  const status = notice.createErrorStatus(
+    new DOMException(
+      'Connection to Indexed Database server lost. Refresh the page to try again',
+      'UnknownError'
+    ),
+    { type: 'readFailed' }
+  )
+  expect(status).toEqual({
+    type: 'custom',
+    message: messages[language].app.databaseDisconnected,
+    tone: 'error'
+  })
+  notice.dispose()
+})

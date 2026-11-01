@@ -413,6 +413,6 @@ it('reports a Pearpal credential failure at the UI boundary without changing its
       expect.objectContaining({ module: 'data-import', action: 'preview' })
     )
   )
-  expect(wrapper.emitted('notice')?.at(-1)?.[0]).toContain('请重新登录美鸭梨')
+  expect(wrapper.emitted('notice')?.at(-1)?.[0]).toContain('请前往美鸭梨网站重新登录并获取新凭据')
   expect(wrapper.emitted('imported')).toBeUndefined()
 })

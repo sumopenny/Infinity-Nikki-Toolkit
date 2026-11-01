@@ -49,6 +49,8 @@ export interface ErrorEventPayload {
   build: BuildInfo
   error: ErrorDetail
   pagePath: string
+  /** Only the page origin, never a path, query string or credentials. Absent in older reports. */
+  pageOrigin?: string
   device: Record<string, unknown>
   runtime: Record<string, unknown>
   network: Record<string, unknown>
@@ -223,6 +225,26 @@ export function isDiagnosticWarning(value: unknown): boolean {
     ].includes(message)
   )
 }
+/** Restrict client-supplied origin to a canonical HTTP(S) origin without credentials or URL paths. */
+export function validatedPageOrigin(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'string' || byteLength(value) > 256) throw new Error('INVALID_REPORT')
+  try {
+    const parsed = new URL(value)
+    if (
+      !['http:', 'https:'].includes(parsed.protocol) ||
+      parsed.origin !== value ||
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname !== '/' ||
+      parsed.search ||
+      parsed.hash
+    ) throw new Error('INVALID_REPORT')
+    return parsed.origin
+  } catch {
+    throw new Error('INVALID_REPORT')
+  }
+}
 export function fingerprintInput(event: ErrorEventPayload): string {
   const root = event.error.causes.at(-1) ?? event.error
   const frame = root.stack.split('\n').find((line) => /\.([cm]?js|ts|vue):\d+/.test(line)) ?? ''
@@ -326,6 +348,9 @@ export function validateErrorPayload(input: unknown): ErrorEventPayload {
       causes
     },
     pagePath: diagnosticText(p.pagePath.split(/[?#]/)[0], 256),
+    ...(validatedPageOrigin(p.pageOrigin) !== undefined
+      ? { pageOrigin: validatedPageOrigin(p.pageOrigin) }
+      : {}),
     device: diagnosticObject(p.device),
     runtime: diagnosticObject(p.runtime),
     network: diagnosticObject(p.network),

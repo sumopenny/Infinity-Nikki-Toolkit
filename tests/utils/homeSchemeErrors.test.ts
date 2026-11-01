@@ -48,3 +48,18 @@ it.each(['zh', 'en'] as const)(
     expect(JSON.stringify(warn.mock.calls)).not.toContain('secret')
   }
 )
+
+it.each(['zh', 'en'] as const)('explains network and local timeout failures (%s)', (language) => {
+  const messages = homeSchemeMessages[language]
+  for (const message of [
+    'Failed to fetch',
+    'NetworkError when attempting to fetch resource.',
+    'Load failed'
+  ])
+    expect(describeHomeSchemeParseError(new TypeError(message), messages)).toBe(
+      messages.parseUnavailable
+    )
+  expect(
+    describeHomeSchemeParseError(new DOMException('Timed out', 'TimeoutError'), messages)
+  ).toBe(messages.parseTimeout)
+})

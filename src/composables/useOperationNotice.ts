@@ -1,3 +1,4 @@
+import { isDatabaseConnectionLost } from '../utils/file-system/database'
 import { reportError } from '../utils/errorReporting/errorReporter'
 import { createOperationCoordinator, type OperationCoordinator } from './useOperationCoordinator'
 // 操作通知状态机：统一管理操作忙碌状态、提示文案、错误映射和通知生命周期。
@@ -245,6 +246,8 @@ export function useOperationNotice(
     if (isUserCancelledFilePicker(error))
       return { type: 'custom', message: locale.value.fileSystem.abortSelection, tone: 'info' }
     reportError(error, { action: activeOperation.value ?? fallback.type })
+    if (isDatabaseConnectionLost(error))
+      return { type: 'custom', message: locale.value.app.databaseDisconnected, tone: 'error' }
     if (!(error instanceof Error)) return fallback
     return { type: 'custom', message: error.message, tone: 'error' }
   }

@@ -68,6 +68,7 @@ export interface ReporterOptions {
   transport?: typeof fetch
   now?: () => number
   pagePath?: () => string
+  pageOrigin?: () => string
 }
 interface DiagnosticStep {
   at: number
@@ -277,6 +278,9 @@ export function createErrorReporter(options: ReporterOptions) {
           ).split(/[?#]/)[0],
           256
         ),
+        ...(typeof location !== 'undefined' || options.pageOrigin
+          ? { pageOrigin: options.pageOrigin?.() ?? location.origin }
+          : {}),
         ...environment,
         context: diagnosticObject({
           ...annotation?.context,

@@ -16,9 +16,13 @@ export function describeHomeSchemeParseError(error: unknown, messages: HomeSchem
   const code = error instanceof Error ? error.message : ''
   if (code === 'home_build_server_unsupported') return messages.parseUnsupportedServer
   if (code === 'home_build_not_found') return messages.parseNotFound
+  if (error instanceof Error && error.name === 'TimeoutError') return messages.parseTimeout
   if (code === 'upstream_timeout') return messages.parseTimeout
   if (
     [
+      'Failed to fetch',
+      'NetworkError when attempting to fetch resource.',
+      'Load failed',
       'upstream_unavailable',
       'upstream_response_invalid',
       'upstream_read_failed',

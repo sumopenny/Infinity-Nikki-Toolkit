@@ -199,7 +199,7 @@ export const resonanceZh: ResonanceMessages = {
   uidMismatch: '美鸭梨账号 UID 与输入的 UID 不一致。',
   regionMismatch: '无法确认角色属于所选服务器。请在美鸭梨切换到正确角色，再重新获取凭据。',
   authFailed:
-    '请重新登录美鸭梨并获取新凭据。若仍然报错，请在浏览器无痕窗口中登录美鸭梨，重新获取凭据后重试。',
+    '当前凭据已过期或失效，请前往美鸭梨网站重新登录并获取新凭据，返回本页粘贴后重试。若仍然报错，请在浏览器无痕窗口中登录美鸭梨，重新获取凭据后重试。',
   processBanner: (current, total) => `正在处理第 ${current} 个卡池，共 ${total} 个`,
   import: '获取预览',
   previewTitle: '导入预览',
@@ -329,7 +329,7 @@ export const resonanceEn: ResonanceMessages = {
   regionMismatch:
     'The role could not be verified for the selected server. Select the correct role on Pear-Pal and get fresh credentials.',
   authFailed:
-    'Sign in to Pear-Pal again and get fresh credentials. If the error persists, sign in to Pear-Pal in a private browser window, get new credentials, and try again.',
+    'Your credentials have expired or are no longer valid. Sign in to the Pear-Pal website again to obtain fresh credentials, then paste them here and retry. If the error persists, sign in to Pear-Pal in a private browser window, get new credentials, and try again.',
   processBanner: (current, total) => `Processing banner ${current} of ${total}`,
   import: 'Preview import',
   previewTitle: 'Import preview',

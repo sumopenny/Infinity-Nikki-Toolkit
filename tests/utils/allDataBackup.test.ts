@@ -512,3 +512,19 @@ it('accepts legacy full backups without wardrobe and rejects invalid wardrobe be
   await expect(prepareAllDataBackup(invalid)).rejects.toThrow('INVALID_WARDROBE')
   expect(await loadWardrobe()).toEqual(before)
 })
+
+it.each([
+  ['photo.jpg', 'image/jpeg', [255, 216, 255, 224]],
+  ['renamed.zip', 'application/zip', [77, 90, 0, 0]],
+  ['short.zip', '', [80, 75]]
+])('rejects non-ZIP content before inspecting modules (%s)', async (name, type, bytes) => {
+  const file = new File([new Uint8Array(bytes as number[])], name as string, {
+    type: type as string
+  })
+  await expect(prepareAllDataBackup(file)).rejects.toThrow('backup_file_not_zip')
+})
+it('recognizes backup content despite an incorrect extension and MIME type', async () => {
+  const zip = await exported()
+  const file = new File([zip], 'renamed.jpg', { type: 'image/jpeg' })
+  expect((await prepareAllDataBackup(file)).files.get('outfits')).toHaveLength(1)
+})

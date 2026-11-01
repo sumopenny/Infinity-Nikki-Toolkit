@@ -77,3 +77,37 @@ it('can cancel a pending dialog load without opening it when the download finish
     wrapper.unmount()
   }
 })
+
+it.each([
+  [false, false],
+  [true, false],
+  [false, true],
+  [true, true]
+])('only reloads failed resources after confirmation %s', async (confirmed, dialog) => {
+  vi.useFakeTimers()
+  const reload = vi.fn()
+  vi.stubGlobal('location', { ...window.location, reload })
+  vi.spyOn(window, 'confirm').mockReturnValue(confirmed)
+  const Feature = lazyFeature(
+    () =>
+      Promise.reject(new TypeError('Failed to fetch dynamically imported module: /assets/old.js')),
+    () => 'zh',
+    dialog ? { active: () => true, cancel: () => {} } : undefined
+  )
+  const wrapper = mount(defineComponent(() => () => h(Feature)))
+  try {
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(160)
+    const button = [
+      ...wrapper.findAll('button').map((button) => button.element),
+      ...document.body.querySelectorAll('button')
+    ].find((button) => button.textContent === '刷新页面') as HTMLButtonElement
+    expect(button).toBeDefined()
+    button.click()
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('尚未保存'))
+    expect(reload).toHaveBeenCalledTimes(confirmed ? 1 : 0)
+  } finally {
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  }
+})

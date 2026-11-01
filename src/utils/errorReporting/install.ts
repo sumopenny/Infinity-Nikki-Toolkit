@@ -22,6 +22,20 @@ export function installErrorReporting(app: App): () => void {
     if (Object.getOwnPropertyDescriptor(window, '__NIKKI_DIAGNOSTICS__')?.value === api)
       Reflect.deleteProperty(window, '__NIKKI_DIAGNOSTICS__')
   }
+  if (import.meta.env.DEV) {
+    // 本地开发只在控制台报告，不连接线上 /api/errors，也不写入 D1。
+    // Vue 的默认错误处理及浏览器自身的 Error/Promise 日志保持不变。
+    const previous = app.config.errorHandler
+    const devHandler: NonNullable<App['config']['errorHandler']> = (error, instance, info) => {
+      console.error('[Nikki dev][Vue]', info, error)
+      previous?.(error, instance, info)
+    }
+    app.config.errorHandler = devHandler
+    return () => {
+      removeDebugApi()
+      if (app.config.errorHandler === devHandler) app.config.errorHandler = previous
+    }
+  }
   if (!diagnosticsConfigured) return removeDebugApi
   initializeDiagnosticEnvironment()
   const previous = app.config.errorHandler
@@ -46,6 +60,17 @@ export function installErrorReporting(app: App): () => void {
   app.config.errorHandler = vueHandler
   const runtime = (event: ErrorEvent | Event) => {
     if (event instanceof ErrorEvent) {
+      // UC injects this same-origin-looking script; only exclude errors attributed to that file.
+      try {
+        if (
+          new URL(event.filename, location.href).pathname ===
+          '/u.c.b.r.o.w.s.e.r/ucbrowser_script.js'
+        )
+          return
+      } catch {
+        /* Preserve reporting for malformed or unavailable script locations. */
+      }
+
       const opaque = event.message === 'Script error.' && !event.filename && !event.error
       const resizeLoop =
         /^(?:ResizeObserver loop limit exceeded|ResizeObserver loop completed with undelivered notifications\.)$/.test(

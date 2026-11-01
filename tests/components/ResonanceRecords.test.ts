@@ -728,13 +728,13 @@ it.each(['zh', 'en'] as const)(
     await vi.waitFor(() => expect(latestNotice(wrapper)?.tone).toBe('error'))
     expect(latestNotice(wrapper)?.message).toContain(
       language === 'zh'
-        ? '请确认已选中正确角色'
-        : 'Make sure the correct role is selected'
+        ? '当前凭据已过期或失效'
+        : 'Your credentials have expired or are no longer valid'
     )
     expect(latestNotice(wrapper)?.message).toContain(
       language === 'zh'
-        ? '请重新登录美鸭梨并获取新凭据'
-        : 'Sign in to Pear-Pal again and get fresh credentials'
+        ? '请前往美鸭梨网站重新登录并获取新凭据'
+        : 'Sign in to the Pear-Pal website again to obtain fresh credentials'
     )
     expect(latestNotice(wrapper)?.message).toContain(
       language === 'zh' ? '无痕窗口' : 'private browser window'

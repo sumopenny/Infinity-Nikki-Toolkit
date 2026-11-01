@@ -87,8 +87,20 @@ function setBusy(value: boolean) {
   emit('busy', value)
 }
 function report(error: unknown, action: string, file?: File) {
+  if (error instanceof Error && error.message === 'backup_file_not_zip') {
+    emit(
+      'status',
+      t(
+        '所选文件不是 ZIP 备份，请选择通过“导出全部数据”生成的 ZIP 文件。',
+        'This file is not a ZIP backup. Choose the ZIP file created by Export all data.'
+      ),
+      'warning'
+    )
+    return
+  }
   captureDiagnosticError(error, {
-    module: 'backup', action,
+    module: 'backup',
+    action,
     context: file ? { fileSize: file.size, fileType: file.type } : {}
   })
   const message = error instanceof Error ? error.message : String(error)
@@ -96,13 +108,16 @@ function report(error: unknown, action: string, file?: File) {
     'status',
     t('全部数据备份操作失败：', 'Backup operation failed: ') +
       (message === '无法读取总 ZIP / Unable to read backup ZIP'
-        ? t('无法解压所选文件，请确认它是完整的 ZIP 备份。', 'The selected file could not be unzipped. Check that it is a complete ZIP backup.')
-        : message === 'WARDROBE_CHANGED'
         ? t(
-            '衣橱已在其他页面变更，请重新选择备份并确认区服。',
-            'The wardrobe changed in another tab. Select the backup again and confirm the region.'
+            '无法解压所选文件，请确认它是完整的 ZIP 备份。',
+            'The selected file could not be unzipped. Check that it is a complete ZIP backup.'
           )
-        : message),
+        : message === 'WARDROBE_CHANGED'
+          ? t(
+              '衣橱已在其他页面变更，请重新选择备份并确认区服。',
+              'The wardrobe changed in another tab. Select the backup again and confirm the region.'
+            )
+          : message),
     'error'
   )
 }

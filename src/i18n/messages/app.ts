@@ -12,6 +12,8 @@ export const appZh: LocaleMessages['app'] = {
   restoreFailedStatus: '恢复上次相册路径失败，请重新选择文件夹。',
   restorePathFailedStatus: '上次记住的路径无法恢复，请重新选择相册文件夹。',
   readFailedStatus: '读取相册失败，请重试。',
+  databaseDisconnected:
+    '浏览器本地数据库连接已中断，本次操作未能完成。请先保存其他未完成的编辑，再刷新页面重试。',
   clearedStatus: '已清除记住的相册路径。需要继续管理相册时，请重新选择文件夹。',
   operationNoticeTitle: '操作提示',
   copySucceeded: '复制成功。',
@@ -138,6 +140,8 @@ export const appEn: LocaleMessages['app'] = {
   restorePathFailedStatus:
     'The remembered folder cannot be restored. Please choose the album folder again.',
   readFailedStatus: 'Failed to read the album. Please try again.',
+  databaseDisconnected:
+    'The connection to local browser storage was lost and this operation could not finish. Save any other unsaved edits, then reload the page and retry.',
   clearedStatus:
     'The remembered album folder has been cleared. Choose a folder again to continue managing your album.',
   operationNoticeTitle: 'Operation update',

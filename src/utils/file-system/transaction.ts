@@ -1,5 +1,5 @@
 import { annotateDiagnosticError } from '../errorReporting/errorReporter'
-import { openDb } from './database'
+import { isDatabaseConnectionLost, openDb } from './database'
 
 export function databaseRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -10,6 +10,19 @@ export function databaseRequest<T>(request: IDBRequest<T>): Promise<T> {
 
 /** 仅在事务内等待 IndexedDB 请求；图片/文件处理须提前完成，提交后才返回成功。 */
 export async function runDatabaseTransaction<T>(
+  stores: string[],
+  mode: IDBTransactionMode,
+  action: (tx: IDBTransaction) => Promise<T>
+): Promise<T> {
+  try {
+    return await runTransactionAttempt(stores, mode, action)
+  } catch (error) {
+    if (mode !== 'readonly' || !isDatabaseConnectionLost(error)) throw error
+    return runTransactionAttempt(stores, mode, action)
+  }
+}
+
+async function runTransactionAttempt<T>(
   stores: string[],
   mode: IDBTransactionMode,
   action: (tx: IDBTransaction) => Promise<T>

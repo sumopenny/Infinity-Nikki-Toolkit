@@ -143,3 +143,46 @@ it('rejects invalid originals after a non-WebP encoding result', async () => {
   expect((failure as Error).message).toContain('signature')
   expect((await readOutfitSnapshot()).records).toHaveLength(0)
 })
+
+it('reconnects once for a lost read transaction and preserves stored outfits', async () => {
+  await saveOutfit(input('KEEP'))
+  let attempts = 0
+  const records = await outfitTransaction([OUTFITS_STORE], 'readonly', async (tx) => {
+    if (++attempts === 1)
+      throw new DOMException(
+        'Connection to Indexed Database server lost. Refresh the page to try again',
+        'UnknownError'
+      )
+    return await new Promise<unknown[]>((resolve, reject) => {
+      const request = tx.objectStore(OUTFITS_STORE).getAll()
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  })
+  expect(attempts).toBe(2)
+  expect(records).toHaveLength(1)
+  expect((await readOutfitSnapshot()).records[0].code).toBe('KEEP')
+})
+it.each(['readonly', 'readwrite'] as const)(
+  'bounds connection-loss retries for %s',
+  async (mode) => {
+    let attempts = 0
+    await expect(
+      outfitTransaction([OUTFITS_STORE], mode, async () => {
+        attempts++
+        throw new DOMException('Connection to Indexed Database server lost', 'UnknownError')
+      })
+    ).rejects.toThrow('Connection to Indexed Database server lost')
+    expect(attempts).toBe(mode === 'readonly' ? 2 : 1)
+  }
+)
+it('does not retry other database failures', async () => {
+  let attempts = 0
+  await expect(
+    outfitTransaction([OUTFITS_STORE], 'readonly', async () => {
+      attempts++
+      throw new DOMException('Storage full', 'QuotaExceededError')
+    })
+  ).rejects.toThrow('Storage full')
+  expect(attempts).toBe(1)
+})
