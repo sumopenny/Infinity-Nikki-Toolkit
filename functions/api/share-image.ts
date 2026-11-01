@@ -22,9 +22,12 @@ export async function onRequestGet({ request }: { request: Request }): Promise<R
       : !/^items\/(?:icons|makeups)\/\d{1,12}\.png$/.test(path)
   )
     return new Response('Invalid image', { status: 400 })
+  const unavailable = (message = 'Image unavailable') =>
+    new Response(message, { status: 502, headers: { 'cache-control': 'no-store' } })
   try {
     const upstream = await fetch(resourceUrl || `https://cdn.gongeo.us/images/${path}`, {
-      redirect: 'error',
+      // Workers supports manual/follow only; non-2xx responses below reject redirects.
+      redirect: 'manual',
       signal: AbortSignal.timeout(15000),
       headers: { Accept: 'image/png' }
     })
@@ -33,10 +36,10 @@ export async function onRequestGet({ request }: { request: Request }): Promise<R
       !/^image\/(png|webp|jpeg)/.test(upstream.headers.get('content-type') || '')
     ) {
       console.warn('[share-image]', { stage: 'upstream-response', status: upstream.status })
-      return new Response('Image unavailable', { status: 502 })
+      return unavailable()
     }
     const reader = upstream.body?.getReader()
-    if (!reader) return new Response('Image unavailable', { status: 502 })
+    if (!reader) return unavailable()
     const chunks: Uint8Array[] = []
     let size = 0
     try {
@@ -46,7 +49,7 @@ export async function onRequestGet({ request }: { request: Request }): Promise<R
         size += value.byteLength
         if (size > 5 * 1024 * 1024) {
           await reader.cancel()
-          return new Response('Image too large', { status: 502 })
+          return unavailable('Image too large')
         }
         chunks.push(value)
       }
@@ -71,6 +74,6 @@ export async function onRequestGet({ request }: { request: Request }): Promise<R
       stage: 'fetch-read',
       category: error instanceof Error ? error.name : 'UnknownError'
     })
-    return new Response('Image unavailable', { status: 502 })
+    return unavailable()
   }
 }

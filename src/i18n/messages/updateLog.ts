@@ -7,7 +7,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.10.31 更新',
+  currentDate: '2026.11.01 更新',
   currentItems: [
     {
       title: '新增照片与搭配码分享图功能。',
@@ -690,7 +690,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.10.31',
+  currentDate: 'Updated 2026.11.01',
   currentItems: [
     {
       title: 'New share images for photos and outfit codes.',
