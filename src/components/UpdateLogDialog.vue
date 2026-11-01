@@ -9,7 +9,7 @@ const props = defineProps<{
   dismissed: boolean
   messages: FullLocaleMessages['updateLog']
 }>()
-const emit = defineEmits<{ close: [dontShowAgain: boolean]; openHelp: [] }>()
+const emit = defineEmits<{ close: [dontShowAgain: boolean]; openHelp: []; afterClose: [] }>()
 const dontShowAgain = ref(false)
 const panelRef = ref<HTMLElement | null>(null)
 let previousActiveElement: HTMLElement | null = null
@@ -62,7 +62,7 @@ watch(
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear>
+    <Transition name="confirm-dialog" appear @after-leave="emit('afterClose')">
       <div
         v-if="visible"
         class="dialog-overlay update-log-dialog"

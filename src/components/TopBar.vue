@@ -87,6 +87,7 @@ const emit = defineEmits<{
   changeThumbnailSize: [size: ThumbnailSize]
   openUpdateLog: []
   openHelpAbout: []
+  openDataReminder: []
   updateSearch: [value: string]
 }>()
 
@@ -884,6 +885,15 @@ function openDonate() {
                   @click="runMenuAction(() => emit('importAllData'))"
                   ><Download :size="16" /><span>{{ messages.importAllData }}</span></button
                 >
+                <button
+                  type="button"
+                  role="menuitem"
+                  @click="runMenuAction(() => emit('openDataReminder'))"
+                >
+                  <BookOpen :size="16" /><span class="data-storage-reminder-label">{{
+                    messages.dataStorageReminder
+                  }}</span>
+                </button>
                 <div class="menu-separator"></div>
                 <button
                   type="button"
@@ -1098,3 +1108,12 @@ function openDonate() {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.data-storage-reminder-label {
+  color: #c62828;
+}
+:global(:root[data-theme='dark']) .data-storage-reminder-label {
+  color: #ff8a80;
+}
+</style>

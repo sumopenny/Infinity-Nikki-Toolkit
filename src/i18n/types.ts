@@ -147,6 +147,7 @@ export interface FullLocaleMessages {
     albumMenuAria: string
     viewMenuAria: string
     moreMenuAria: string
+    dataStorageReminder: string
     exportAllData: string
     importAllData: string
     clearCache: string

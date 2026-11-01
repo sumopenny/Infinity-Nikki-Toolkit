@@ -132,6 +132,96 @@ describe('App lifecycle coordination', () => {
     document.body.innerHTML = ''
   })
 
+  it.each([false, true])(
+    'queues the reminder after updates and persists dismissal=%s',
+    async (dismissed) => {
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+      const wrapper = mount(App, {
+        global: {
+          stubs: {
+            Teleport: true,
+            UpdateLogDialog: {
+              name: 'UpdateLogDialog',
+              props: ['visible', 'dismissed'],
+              template: '<div />'
+            }
+          }
+        }
+      })
+      await flushPromises()
+      const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
+      const reminder = wrapper.getComponent({ name: 'DataStorageReminder' })
+      expect(updates.props('visible')).toBe(true)
+      expect(reminder.props('visible')).toBe(false)
+      updates.vm.$emit('close', true)
+      await nextTick()
+      expect(reminder.props('visible')).toBe(false)
+      updates.vm.$emit('afterClose')
+      await nextTick()
+      expect(reminder.props('visible')).toBe(true)
+      reminder.vm.$emit('confirm', dismissed)
+      await nextTick()
+      expect(reminder.props('visible')).toBe(false)
+      expect(localStorage.getItem('infinity-nikki-data-reminder-dismissed')).toBe(
+        dismissed ? 'true' : null
+      )
+      wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openDataReminder')
+      await nextTick()
+      expect(reminder.props('visible')).toBe(true)
+      expect(reminder.props('dismissed')).toBe(dismissed)
+    }
+  )
+
+  it.each([false, true])(
+    'honors the saved reminder preference without pending updates (%s)',
+    async (dismissed) => {
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+      const { currentVersion } = await import('../src/i18n/version')
+      localStorage.setItem(
+        'infinity-nikki-about-state',
+        JSON.stringify({ version: currentVersion.replace(/^v/, ''), dismissed: true })
+      )
+      if (dismissed) localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
+      const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+      await flushPromises()
+      expect(wrapper.getComponent({ name: 'DataStorageReminder' }).props('visible')).toBe(
+        !dismissed
+      )
+    }
+  )
+
+  it('keeps the reminder queued during help opened from updates', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const wrapper = mount(App, {
+      global: {
+        stubs: {
+          Teleport: true,
+          UpdateLogDialog: { name: 'UpdateLogDialog', props: ['visible'], template: '<div />' },
+          HelpAboutDialog: { name: 'HelpAboutDialog', props: ['visible'], template: '<div />' }
+        }
+      }
+    })
+    await flushPromises()
+    const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
+    const reminder = wrapper.getComponent({ name: 'DataStorageReminder' })
+    updates.vm.$emit('openHelp')
+    await nextTick()
+    updates.vm.$emit('afterClose')
+    await nextTick()
+    expect(reminder.props('visible')).toBe(false)
+    const help = wrapper.getComponent({ name: 'HelpAboutDialog' })
+    expect(help.props('visible')).toBe(true)
+    help.vm.$emit('close')
+    await nextTick()
+    expect(updates.props('visible')).toBe(true)
+    expect(reminder.props('visible')).toBe(false)
+    updates.vm.$emit('close', true)
+    await nextTick()
+    updates.vm.$emit('afterClose')
+    await nextTick()
+    expect(reminder.props('visible')).toBe(true)
+  })
+
   it('keeps favorite counts without mounting the camera page and hands off saving after its first lazy mount', async () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const metadata = vi.spyOn(cameraStorage, 'readCameraFavorites').mockResolvedValue({

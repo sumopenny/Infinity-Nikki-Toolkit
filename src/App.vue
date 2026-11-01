@@ -40,6 +40,7 @@ import { clearAllBrowserData } from './utils/file-system/database'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { CircleHelp, Download, Plus, Trash2, Upload } from 'lucide-vue-next'
+import DataStorageReminder from './components/DataStorageReminder.vue'
 const UpdateLogDialog = lazyFeature(
   () => import('./components/UpdateLogDialogContent.vue'),
   () => language.value
@@ -190,6 +191,7 @@ import type { ResonanceBannerOrder, ResonanceRarityFilter } from './utils/resona
 
 const OUTFIT_GUIDE_DISMISSED_KEY = 'infinity-nikki-outfit-guide-dismissed'
 const X6GAME_AUTO_PROMPT_DISMISSED_KEY = 'infinity-nikki-x6game-auto-prompt-dismissed'
+const DATA_REMINDER_DISMISSED_KEY = 'infinity-nikki-data-reminder-dismissed'
 const ABOUT_STATE_STORAGE_KEY = 'infinity-nikki-about-state'
 const currentAboutVersion = currentVersion.replace(/^v/, '')
 
@@ -235,6 +237,9 @@ const reopenParseToolsAfterPhotoClose = ref(false)
 const isOutfitGuideVisible = ref(false)
 const isOutfitGuideDismissed = ref(readLocalStorage(OUTFIT_GUIDE_DISMISSED_KEY) === 'true')
 const isUpdateLogVisible = ref(false)
+const isDataReminderVisible = ref(false)
+const isDataReminderDismissed = ref(readLocalStorage(DATA_REMINDER_DISMISSED_KEY) === 'true')
+let pendingDataReminder = false
 const isHelpAboutVisible = ref(false)
 // 标记使用帮助是否从更新记录窗口跳来，关闭帮助后返回更新记录窗口
 const returnToUpdateLog = ref(false)
@@ -1529,6 +1534,30 @@ function closeUpdateLog(dontShowAgain: boolean) {
   isUpdateLogVisible.value = false
 }
 
+// Wait for the update dialog's exit animation before handing over focus.
+function showPendingDataReminder() {
+  if (
+    !pendingDataReminder ||
+    appDisposed ||
+    isUpdateLogVisible.value ||
+    isHelpAboutVisible.value ||
+    returnToUpdateLog.value
+  )
+    return
+  pendingDataReminder = false
+  isDataReminderVisible.value = true
+}
+function openDataReminder() {
+  isDataReminderVisible.value = true
+}
+function closeDataReminder(dontShowAgain: boolean) {
+  isDataReminderDismissed.value = dontShowAgain
+  if (!suppressLocalPersistence) {
+    if (dontShowAgain) writeLocalStorage(DATA_REMINDER_DISMISSED_KEY, 'true')
+    else removeLocalStorage(DATA_REMINDER_DISMISSED_KEY)
+  }
+  isDataReminderVisible.value = false
+}
 function openHelpAbout() {
   isHelpAboutVisible.value = true
 }
@@ -2015,6 +2044,7 @@ onMounted(() => {
   startupReady = Promise.allSettled([collectionReady, directoryReady])
   // 重型游戏目录扫描推迟到首次进入搭配码，避免打开其他模块时争用 I/O。
   void ensureInitialOutfitScan()
+  pendingDataReminder = !isDataReminderDismissed.value
   // 没有记录、版本号变化或未勾选“不再提示”时，打开网站自动显示更新记录
   if (
     !storedAboutState ||
@@ -2022,6 +2052,8 @@ onMounted(() => {
     !storedAboutState.dismissed
   ) {
     isUpdateLogVisible.value = true
+  } else {
+    showPendingDataReminder()
   }
   nextTick(() => {
     updateSidebarStickyOffset()
@@ -2110,6 +2142,7 @@ function importAllDataFromMenu() {
       @toggle-theme="toggleTheme"
       @open-update-log="openUpdateLog"
       @open-help-about="openHelpAbout"
+      @open-data-reminder="openDataReminder"
       @update-search="searchQuery = $event"
     />
 
@@ -2919,7 +2952,15 @@ function importAllDataFromMenu() {
       :dismissed="isAboutDialogDismissed"
       :language="language"
       @close="closeUpdateLog"
+      @after-close="showPendingDataReminder"
       @open-help="openHelpFromUpdateLog"
+    />
+
+    <DataStorageReminder
+      :visible="isDataReminderVisible"
+      :dismissed="isDataReminderDismissed"
+      :language="language"
+      @confirm="closeDataReminder"
     />
 
     <HelpAboutDialog
