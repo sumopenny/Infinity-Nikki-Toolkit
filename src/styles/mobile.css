@@ -1349,7 +1349,8 @@
     min-width: var(--mobile-control-size);
     min-height: var(--mobile-control-size);
   }
-  /* 仅收紧手机窗口的关闭入口，保留标题栏其他操作和原有小按钮尺寸。 */
+  /* 解析分享与相邻的关闭按钮共用紧凑尺寸。 */
+  .outfit-parse-panel > header > .outfit-share-button,
   :is(.dialog-panel, .outfit-editor-panel) > header button:has(> svg.lucide-x),
   .mobile-filter-panel > header button:has(> svg.lucide-x),
   .header-dropdown .mobile-menu-heading button:has(> svg.lucide-x),
@@ -1362,6 +1363,7 @@
     min-height: var(--mobile-compact-control-size);
     padding: 0;
   }
+  .outfit-parse-panel > header > .outfit-share-button > svg,
   :is(.dialog-panel, .outfit-editor-panel) > header button > svg.lucide-x,
   .mobile-filter-panel > header button > svg.lucide-x,
   .header-dropdown .mobile-menu-heading button > svg.lucide-x,

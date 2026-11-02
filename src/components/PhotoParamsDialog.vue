@@ -112,203 +112,205 @@ function markImageFailed(title: string, name: string) {
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="visible"
-      class="dialog-overlay fortune-time-dialog photo-params-overlay"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="messages.title"
-    >
-      <section
-        ref="panel"
-        tabindex="-1"
-        class="dialog-panel fortune-time-panel photo-params-dialog"
-        :class="{ 'is-split-layout': splitLayout }"
+    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
+      <div
+        v-if="visible"
+        class="dialog-overlay fortune-time-dialog photo-params-overlay"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="messages.title"
       >
-        <header class="fortune-time-header photo-params-header">
-          <div class="photo-params-header-content">
-            <div class="photo-params-title-row">
-              <h2>{{ messages.title }}</h2>
-              <p v-if="photo" class="photo-params-file-name">{{ photo.name }}</p>
-            </div>
-          </div>
-          <button
-            v-if="canShare"
-            type="button"
-            :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
-            :title="language === 'en' ? 'Export share image' : '导出分享图'"
-            @click="shareVisible = true"
-            ><Share2 :size="18"
-          /></button>
-          <button
-            v-if="result?.outfit && !compact"
-            type="button"
-            class="photo-params-layout-button"
-            :aria-label="layoutLabel"
-            :title="layoutLabel"
-            :aria-pressed="splitLayout"
-            @click="sideBySide = !sideBySide"
-          >
-            <Rows2 v-if="splitLayout" :size="18" aria-hidden="true" />
-            <Columns2 v-else :size="18" aria-hidden="true" />
-          </button>
-          <button
-            v-if="result?.rawCameraParams && favoriteLabel"
-            type="button"
-            class="photo-params-favorite-button"
-            :disabled="saved"
-            @click="emit('favorite')"
-            ><Bookmark :size="16" />{{ favoriteLabel }}</button
-          >
-          <button
-            type="button"
-            :aria-label="messages.close"
-            :title="messages.close"
-            @click="emit('close')"
-            ><X :size="19" aria-hidden="true"
-          /></button>
-        </header>
-
-        <div
-          class="fortune-time-body photo-params-body"
-          :class="{ 'is-loading': progress.stage !== 'ready' && !error && !uidAttempt }"
+        <section
+          ref="panel"
+          tabindex="-1"
+          class="dialog-panel fortune-time-panel photo-params-dialog"
+          :class="{ 'is-split-layout': splitLayout }"
         >
-          <div
-            v-if="progress.stage !== 'ready' && !error && !uidAttempt"
-            class="photo-params-loading"
-            role="status"
-            aria-live="polite"
-          >
-            <span class="photo-params-spinner" aria-hidden="true"></span>
-            <p>{{ progress.message }}</p>
-          </div>
+          <header class="fortune-time-header photo-params-header">
+            <div class="photo-params-header-content">
+              <div class="photo-params-title-row">
+                <h2>{{ messages.title }}</h2>
+                <p v-if="photo" class="photo-params-file-name">{{ photo.name }}</p>
+              </div>
+            </div>
+            <button
+              v-if="canShare"
+              type="button"
+              :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
+              :title="language === 'en' ? 'Export share image' : '导出分享图'"
+              @click="shareVisible = true"
+              ><Share2 :size="18"
+            /></button>
+            <button
+              v-if="result?.outfit && !compact"
+              type="button"
+              class="photo-params-layout-button"
+              :aria-label="layoutLabel"
+              :title="layoutLabel"
+              :aria-pressed="splitLayout"
+              @click="sideBySide = !sideBySide"
+            >
+              <Rows2 v-if="splitLayout" :size="18" aria-hidden="true" />
+              <Columns2 v-else :size="18" aria-hidden="true" />
+            </button>
+            <button
+              v-if="result?.rawCameraParams && favoriteLabel"
+              type="button"
+              class="photo-params-favorite-button"
+              :disabled="saved"
+              @click="emit('favorite')"
+              ><Bookmark :size="16" />{{ favoriteLabel }}</button
+            >
+            <button
+              type="button"
+              :aria-label="messages.close"
+              :title="messages.close"
+              @click="emit('close')"
+              ><X :size="19" aria-hidden="true"
+            /></button>
+          </header>
 
-          <PhotoParseFailure
-            :state="failureState"
-            :error="error"
-            :uid-required="uidRequired"
-            :result="result"
-            :messages="messages"
-          />
-          <div v-if="result" class="photo-params-content">
-            <div class="photo-params-columns">
-              <div class="photo-params-main">
-                <section v-if="result.environmentFields.length" class="photo-params-section">
-                  <h3>{{ messages.capture }}</h3>
-                  <div class="photo-params-grid">
-                    <div
-                      v-for="item in result.environmentFields"
-                      :key="item.label"
-                      class="photo-params-value photo-params-value--static"
-                    >
-                      <span>{{ item.label }}</span>
-                      <strong>{{ item.value }}</strong>
-                    </div>
-                  </div>
-                </section>
-                <section class="photo-params-section">
-                  <h3>{{ messages.camera }}</h3>
-                  <div class="photo-params-grid">
-                    <div
-                      v-for="item in result.cameraFields"
-                      :key="item.label"
-                      class="photo-params-value"
-                      :class="{ 'photo-params-value--static': item.static }"
-                    >
-                      <span>{{ item.label }}</span>
-                      <span
-                        v-if="!item.static"
-                        class="photo-params-slider"
-                        :style="{ '--photo-params-slider-ratio': (item.position ?? 50) / 100 }"
-                        aria-hidden="true"
-                        ><i></i
-                      ></span>
-                      <strong>{{ item.value }}</strong>
-                    </div>
-                  </div>
-                </section>
-                <section class="photo-params-section">
-                  <h3>{{ messages.image }}</h3>
-                  <div class="photo-params-grid">
-                    <div
-                      v-for="item in result.imageFields"
-                      :key="item.label"
-                      class="photo-params-value"
-                    >
-                      <span>{{ item.label }}</span>
-                      <span
-                        class="photo-params-slider"
-                        :style="{ '--photo-params-slider-ratio': (item.position ?? 50) / 100 }"
-                        aria-hidden="true"
-                        ><i></i
-                      ></span>
-                      <strong>{{ item.value }}</strong>
-                    </div>
-                  </div>
-                </section>
-                <div class="photo-params-resource-grid">
-                  <section
-                    v-for="group in result.resourceGroups"
-                    :key="group.title"
-                    class="photo-params-section"
-                  >
-                    <h3>{{ group.title }}</h3>
-                    <div
-                      class="photo-params-resource-row"
-                      :class="{ 'photo-params-resource-row--pose': group.kind === 'pose' }"
-                    >
-                      <img
-                        v-if="
-                          group.imageUrl && !failedImages.has(resourceKey(group.title, group.name))
-                        "
-                        :src="group.imageUrl"
-                        :alt="group.name"
-                        @error="markImageFailed(group.title, group.name)"
-                      />
-                      <span
-                        v-else
-                        class="photo-params-resource-image-placeholder"
-                        aria-hidden="true"
-                        ><ScanSearch :size="19"
-                      /></span>
-                      <span class="photo-params-resource-placeholder">{{ group.name }}</span>
-                      <strong v-if="group.value">{{ group.value }}</strong>
+          <div
+            class="fortune-time-body photo-params-body"
+            :class="{ 'is-loading': progress.stage !== 'ready' && !error && !uidAttempt }"
+          >
+            <div
+              v-if="progress.stage !== 'ready' && !error && !uidAttempt"
+              class="photo-params-loading"
+              role="status"
+              aria-live="polite"
+            >
+              <span class="photo-params-spinner" aria-hidden="true"></span>
+              <p>{{ progress.message }}</p>
+            </div>
+
+            <PhotoParseFailure
+              :state="failureState"
+              :error="error"
+              :uid-required="uidRequired"
+              :result="result"
+              :messages="messages"
+            />
+            <div v-if="result" class="photo-params-content">
+              <div class="photo-params-columns">
+                <div class="photo-params-main">
+                  <section v-if="result.environmentFields.length" class="photo-params-section">
+                    <h3>{{ messages.capture }}</h3>
+                    <div class="photo-params-grid">
+                      <div
+                        v-for="item in result.environmentFields"
+                        :key="item.label"
+                        class="photo-params-value photo-params-value--static"
+                      >
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.value }}</strong>
+                      </div>
                     </div>
                   </section>
+                  <section class="photo-params-section">
+                    <h3>{{ messages.camera }}</h3>
+                    <div class="photo-params-grid">
+                      <div
+                        v-for="item in result.cameraFields"
+                        :key="item.label"
+                        class="photo-params-value"
+                        :class="{ 'photo-params-value--static': item.static }"
+                      >
+                        <span>{{ item.label }}</span>
+                        <span
+                          v-if="!item.static"
+                          class="photo-params-slider"
+                          :style="{ '--photo-params-slider-ratio': (item.position ?? 50) / 100 }"
+                          aria-hidden="true"
+                          ><i></i
+                        ></span>
+                        <strong>{{ item.value }}</strong>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="photo-params-section">
+                    <h3>{{ messages.image }}</h3>
+                    <div class="photo-params-grid">
+                      <div
+                        v-for="item in result.imageFields"
+                        :key="item.label"
+                        class="photo-params-value"
+                      >
+                        <span>{{ item.label }}</span>
+                        <span
+                          class="photo-params-slider"
+                          :style="{ '--photo-params-slider-ratio': (item.position ?? 50) / 100 }"
+                          aria-hidden="true"
+                          ><i></i
+                        ></span>
+                        <strong>{{ item.value }}</strong>
+                      </div>
+                    </div>
+                  </section>
+                  <div class="photo-params-resource-grid">
+                    <section
+                      v-for="group in result.resourceGroups"
+                      :key="group.title"
+                      class="photo-params-section"
+                    >
+                      <h3>{{ group.title }}</h3>
+                      <div
+                        class="photo-params-resource-row"
+                        :class="{ 'photo-params-resource-row--pose': group.kind === 'pose' }"
+                      >
+                        <img
+                          v-if="
+                            group.imageUrl && !failedImages.has(resourceKey(group.title, group.name))
+                          "
+                          :src="group.imageUrl"
+                          :alt="group.name"
+                          @error="markImageFailed(group.title, group.name)"
+                        />
+                        <span
+                          v-else
+                          class="photo-params-resource-image-placeholder"
+                          aria-hidden="true"
+                          ><ScanSearch :size="19"
+                        /></span>
+                        <span class="photo-params-resource-placeholder">{{ group.name }}</span>
+                        <strong v-if="group.value">{{ group.value }}</strong>
+                      </div>
+                    </section>
+                  </div>
                 </div>
+                <section v-if="result.outfit" class="photo-params-section photo-params-outfit">
+                  <div class="photo-params-outfit-heading">
+                    <h3>{{ language === 'en' ? 'Outfit and dyes' : '穿搭与染色' }}</h3>
+                    <span class="photo-params-outfit-count">{{
+                      outfitMessages[language ?? 'zh'].parseItemCount(
+                        result.outfit.wearingClothes.length
+                      )
+                    }}</span>
+                  </div>
+                  <OutfitParseDialog
+                    :visible="visible"
+                    embedded
+                    code=""
+                    :supplied-result="result.outfit"
+                    :language="language ?? 'zh'"
+                    :messages="outfitMessages[language ?? 'zh']"
+                  />
+                </section>
               </div>
-              <section v-if="result.outfit" class="photo-params-section photo-params-outfit">
-                <div class="photo-params-outfit-heading">
-                  <h3>{{ language === 'en' ? 'Outfit and dyes' : '穿搭与染色' }}</h3>
-                  <span class="photo-params-outfit-count">{{
-                    outfitMessages[language ?? 'zh'].parseItemCount(
-                      result.outfit.wearingClothes.length
-                    )
-                  }}</span>
+              <section v-if="result.rawCameraParams" class="photo-params-section photo-params-raw">
+                <div class="photo-params-raw-heading">
+                  <h3>{{ messages.raw }}</h3>
+                  <button type="button" class="photo-params-copy-button" @click="emit('copy')"
+                    ><Copy :size="15" aria-hidden="true" />{{ messages.copy }}</button
+                  >
                 </div>
-                <OutfitParseDialog
-                  :visible="visible"
-                  embedded
-                  code=""
-                  :supplied-result="result.outfit"
-                  :language="language ?? 'zh'"
-                  :messages="outfitMessages[language ?? 'zh']"
-                />
+                <code>{{ result.rawCameraParams }}</code>
               </section>
             </div>
-            <section v-if="result.rawCameraParams" class="photo-params-section photo-params-raw">
-              <div class="photo-params-raw-heading">
-                <h3>{{ messages.raw }}</h3>
-                <button type="button" class="photo-params-copy-button" @click="emit('copy')"
-                  ><Copy :size="15" aria-hidden="true" />{{ messages.copy }}</button
-                >
-              </div>
-              <code>{{ result.rawCameraParams }}</code>
-            </section>
           </div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </Transition>
   </Teleport>
   <ShareImageDialog
     v-if="visible && shareVisible"

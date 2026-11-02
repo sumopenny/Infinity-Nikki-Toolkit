@@ -8,10 +8,10 @@
     },
     "pose": "2.11.0",
     "lightFilter": {
-      "database": "9d889426-a44b-4a45-a9c8-f126b839b3a9",
+      "database": "5db41b98-8a05-4ff8-a6fd-bed301c2a2d1",
       "language": {
-        "zh": "b82da435-c664-41ba-8921-ae1c593dd5ba",
-        "en": "b82da435-c664-41ba-8921-ae1c593dd5ba"
+        "zh": "20831175-11d7-4c1a-8e81-b11391317cbc",
+        "en": "20831175-11d7-4c1a-8e81-b11391317cbc"
       }
     }
   },
@@ -202,17 +202,18 @@
           "VibeLight_007",
           "VibeLight_008"
         ],
-        "zh": "",
-        "en": ""
+        "zh": "涟光浮影",
+        "en": "Ripple Cellar Lights"
       },
       {
         "key": "1090030021",
         "aliases": [
           "1090030021",
+          "VibeLight_008",
           "VibeLight_009"
         ],
-        "zh": "",
-        "en": ""
+        "zh": "溟曦",
+        "en": "Abyssal Dawn"
       }
     ],
     "filter": [
@@ -405,8 +406,8 @@
           "1090020022",
           "Vibe_013"
         ],
-        "zh": "",
-        "en": ""
+        "zh": "溯影",
+        "en": "Echo Blur"
       }
     ],
     "pose": [

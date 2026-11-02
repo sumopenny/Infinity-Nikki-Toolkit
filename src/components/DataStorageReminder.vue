@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { useModalFocus } from '../composables/useModalFocus'
 
-const props = defineProps<{ visible: boolean; dismissed: boolean; language: 'zh' | 'en' }>()
+const props = defineProps<{ visible: boolean; dismissed: boolean; language: 'zh' | 'en'; skipCountdown?: boolean }>()
 const emit = defineEmits<{ confirm: [dontShowAgain: boolean] }>()
 const panel = ref<HTMLElement | null>(null)
 const dontShowAgain = ref(false)
@@ -25,6 +25,11 @@ watch(
     stopTimer()
     if (!visible) return
     dontShowAgain.value = props.dismissed
+    if (props.skipCountdown) {
+      seconds.value = 0
+      deadline = 0
+      return
+    }
     seconds.value = 10
     deadline = Date.now() + 10000
     timer = setInterval(() => {

@@ -58,64 +58,66 @@ function keydown(event: KeyboardEvent) {
 </script>
 <template>
   <Teleport to="body">
-    <div v-if="visible && plan" class="dialog-overlay camera-conflict-overlay" @keydown="keydown">
-      <section
-        ref="panel"
-        class="dialog-panel camera-conflict-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="camera-import-title"
-      >
-        <header
-          ><h2 id="camera-import-title">{{
-            t('处理导入冲突', 'Resolve import conflicts')
-          }}</h2></header
+    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
+      <div v-if="visible && plan" class="dialog-overlay camera-conflict-overlay" @keydown="keydown">
+        <section
+          ref="panel"
+          class="dialog-panel camera-conflict-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="camera-import-title"
         >
-        <p>{{
-          t(
-            '以下相机参数记录 ID 相同但内容不同。请选择保留哪份；参数码重复的其他记录将跳过。',
-            'These camera records have matching IDs but different content. Choose a version; other duplicate codes are skipped.'
-          )
-        }}</p>
-        <div class="camera-conflict-tools"
-          ><button type="button" :disabled="disabled" @click="chooseAll('local')">{{
-            t('全部保留本地', 'Keep all local')
-          }}</button
-          ><button type="button" :disabled="disabled" @click="chooseAll('incoming')">{{
-            t('全部使用导入', 'Use all imported')
-          }}</button></div
-        >
-        <label v-for="item in plan.conflicts" :key="item.id" class="camera-conflict-row">
-          <span
-            >{{ item.name
-            }}<small
-              >{{ t('本地', 'Local') }}:
-              {{ plan.base.find((record) => record.id === item.id)?.name }} ·
-              {{ plan.base.find((record) => record.id === item.id)?.updatedAt }}<br />{{
-                t('导入', 'Imported')
-              }}: {{ item.updatedAt }}</small
-            ></span
+          <header
+            ><h2 id="camera-import-title">{{
+              t('处理导入冲突', 'Resolve import conflicts')
+            }}</h2></header
           >
-          <select v-model="choices[item.id]" :disabled="disabled"
-            ><option value="local">{{ t('保留本地', 'Keep local') }}</option
-            ><option value="incoming">{{ t('使用导入', 'Use imported') }}</option></select
+          <p>{{
+            t(
+              '以下相机参数记录 ID 相同但内容不同。请选择保留哪份；参数码重复的其他记录将跳过。',
+              'These camera records have matching IDs but different content. Choose a version; other duplicate codes are skipped.'
+            )
+          }}</p>
+          <div class="camera-conflict-tools"
+            ><button type="button" :disabled="disabled" @click="chooseAll('local')">{{
+              t('全部保留本地', 'Keep all local')
+            }}</button
+            ><button type="button" :disabled="disabled" @click="chooseAll('incoming')">{{
+              t('全部使用导入', 'Use all imported')
+            }}</button></div
           >
-        </label>
-        <p v-if="error" role="alert">{{ error }}</p>
-        <footer
-          ><button type="button" :disabled="disabled" @click="emit('cancel')">{{
-            t('取消', 'Cancel')
-          }}</button
-          ><button
-            type="button"
-            class="primary-button"
-            :disabled="disabled"
-            @click="emit('confirm', { ...choices })"
-            >{{ t('确认导入', 'Import') }}</button
-          ></footer
-        >
-      </section>
-    </div>
+          <label v-for="item in plan.conflicts" :key="item.id" class="camera-conflict-row">
+            <span
+              >{{ item.name
+              }}<small
+                >{{ t('本地', 'Local') }}:
+                {{ plan.base.find((record) => record.id === item.id)?.name }} ·
+                {{ plan.base.find((record) => record.id === item.id)?.updatedAt }}<br />{{
+                  t('导入', 'Imported')
+                }}: {{ item.updatedAt }}</small
+              ></span
+            >
+            <select v-model="choices[item.id]" :disabled="disabled"
+              ><option value="local">{{ t('保留本地', 'Keep local') }}</option
+              ><option value="incoming">{{ t('使用导入', 'Use imported') }}</option></select
+            >
+          </label>
+          <p v-if="error" role="alert">{{ error }}</p>
+          <footer
+            ><button type="button" :disabled="disabled" @click="emit('cancel')">{{
+              t('取消', 'Cancel')
+            }}</button
+            ><button
+              type="button"
+              class="primary-button"
+              :disabled="disabled"
+              @click="emit('confirm', { ...choices })"
+              >{{ t('确认导入', 'Import') }}</button
+            ></footer
+          >
+        </section>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 <style scoped>

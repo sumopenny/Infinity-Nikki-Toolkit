@@ -169,6 +169,8 @@ describe('App lifecycle coordination', () => {
       await nextTick()
       expect(reminder.props('visible')).toBe(true)
       expect(reminder.props('dismissed')).toBe(dismissed)
+      await reminder.get('button').trigger('click')
+      expect(reminder.props('visible')).toBe(false)
     }
   )
 

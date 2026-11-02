@@ -2,6 +2,7 @@
 import type { HelpAboutDeviceContent, FullLocaleMessages } from '../types'
 
 const sharedNotesZh = [
+  '把暖立方添加到手机或电脑桌面，点图标即可打开。在支持的浏览器中，这个轻量网页应用会像独立应用一样打开，隐藏浏览器地址栏和工具栏。具体步骤见暖立方的「更多 → 安装应用」。',
   '方案、相机参数收藏、共鸣记录和设置保存在当前浏览器中。共鸣与衣橱可在同一窗口勾选后手动上传云端，在其他设备登录同一账号后下载；登录和本地修改不会自动同步。其他模块跨设备迁移仍使用备份，清理浏览器站点数据前请先备份或上传最新共鸣与衣橱记录。',
   '“清除缓存”只清理解析缓存；“清除数据”永久删除当前浏览器中的全部方案、图片、标签、共鸣记录、收藏、UID、目录授权、迁移记录和设置，并重新加载回到初始状态。清除数据前请导出备份；云端账号和存档保留，该操作不会主动退出云端登录。两项操作都不会删除电脑中的原始照片、游戏文件和已导出的备份。',
   '共鸣与衣橱共用账号和同步窗口，可勾选后一起上传、下载或删除云端存档。上传以所选本机完整存档覆盖云端，下载反向覆盖；请核对账号、数量和衣橱区服。所选模块共同提交，冲突需重新预览。云端无存档不清空本机；有效的 0 件衣橱可覆盖目标。清空本机不删除云端，删除云端需明确勾选范围，账号和本机记录保留。',
@@ -10,6 +11,7 @@ const sharedNotesZh = [
   '美鸭梨导入凭据用于获取游戏记录，与本站云同步账号密码不同。凭据失效时按导入窗口提示重新获取；两类凭据都请妥善保管。云同步账号名为 4～32 位英文字母、数字或下划线，不区分大小写，密码为 6～128 个字符；不提供密码修改或找回。'
 ]
 const sharedNotesEn = [
+  'Add Nikki Toolkit to your home screen or desktop to open it from its icon. In supported browsers, the website opens like a separate app without the browser address bar or toolbars. See More → Install app in Nikki Toolkit for instructions.',
   'Schemes, camera favorites, resonance records and settings are stored in the current browser. Manually upload resonance and wardrobe together from the shared sync dialog, then sign in to the same account on another device and download them. Login and local edits do not sync automatically. Other collections use backup files for migration; back up or upload your latest resonance and wardrobe records before clearing browser site data.',
   'Clear cache only removes parse caches. Clear data permanently deletes all schemes, images, tags, resonance records, favorites, UIDs, directory authorizations, migration records and settings in this browser, then reloads to the initial state. Export a backup first. Cloud accounts and saves remain; this action does not sign you out of cloud sync. Neither action deletes original photos, game files or exported backups on your computer.',
   'Resonance and wardrobe share an account and one sync dialog. Select modules to upload, download or delete together. Complete selected saves replace their destinations; check the account, counts and wardrobe region. Selected modules commit together; conflicts require a new preview. Missing cloud saves never clear local data; a valid zero-piece wardrobe can replace its destination. Deletion requires explicit selection and preserves your account and local records.',

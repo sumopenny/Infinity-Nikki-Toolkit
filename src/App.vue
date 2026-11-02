@@ -238,6 +238,7 @@ const isOutfitGuideVisible = ref(false)
 const isOutfitGuideDismissed = ref(readLocalStorage(OUTFIT_GUIDE_DISMISSED_KEY) === 'true')
 const isUpdateLogVisible = ref(false)
 const isDataReminderVisible = ref(false)
+const dataReminderOpenedFromMenu = ref(false)
 const isDataReminderDismissed = ref(readLocalStorage(DATA_REMINDER_DISMISSED_KEY) === 'true')
 let pendingDataReminder = false
 const isHelpAboutVisible = ref(false)
@@ -1545,9 +1546,11 @@ function showPendingDataReminder() {
   )
     return
   pendingDataReminder = false
+  dataReminderOpenedFromMenu.value = false
   isDataReminderVisible.value = true
 }
 function openDataReminder() {
+  dataReminderOpenedFromMenu.value = true
   isDataReminderVisible.value = true
 }
 function closeDataReminder(dontShowAgain: boolean) {
@@ -1964,14 +1967,14 @@ async function permanentlyDeleteCurrentTrashPreview() {
 /** 跳转到指定日期。参数：dateKey 为日期键。 */
 function scrollToDate(dateKey: string) {
   mobileFiltersOpen.value = false
-  document.getElementById(`date-${dateKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById(`date-${dateKey}`)?.scrollIntoView({ block: 'start' })
 }
 
 function scrollToAction(actionKey: string) {
   mobileFiltersOpen.value = false
   document
     .getElementById(`action-${actionKey}`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    ?.scrollIntoView({ block: 'start' })
 }
 
 /** 将侧栏中选中的套装定位到对应共鸣记录卡片。 */
@@ -1979,7 +1982,7 @@ function scrollToResonanceRecord(recordId: string) {
   mobileFiltersOpen.value = false
   document
     .getElementById(`resonance-record-${recordId}`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    ?.scrollIntoView({ block: 'start' })
 }
 
 function togglePhotoGroup(photoIds: string[]) {
@@ -2958,6 +2961,7 @@ function importAllDataFromMenu() {
 
     <DataStorageReminder
       :visible="isDataReminderVisible"
+      :skip-countdown="dataReminderOpenedFromMenu"
       :dismissed="isDataReminderDismissed"
       :language="language"
       @confirm="closeDataReminder"

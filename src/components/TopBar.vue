@@ -125,7 +125,6 @@ watch(
 )
 defineExpose({ closeMenus })
 const desktopInstallDialog = ref<InstanceType<typeof DesktopInstallDialog> | null>(null)
-const desktopInstallStandalone = ref(false)
 function openDesktopInstall() {
   closeMenus()
   void desktopInstallDialog.value?.open()
@@ -332,8 +331,6 @@ function handleDocumentInteraction(event: MouseEvent | KeyboardEvent) {
 }
 
 onMounted(() => {
-  desktopInstallStandalone.value = window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
   document.addEventListener('click', handleDocumentInteraction)
   document.addEventListener('keydown', handleDocumentInteraction)
   window.addEventListener('resize', alignOpenMenu)
@@ -924,9 +921,9 @@ function openDonate() {
                   <span>{{ messages.clearData }}</span>
                 </button>
                 <div class="menu-separator"></div>
-                <button v-if="!desktopInstallStandalone" type="button" role="menuitem" @click="openDesktopInstall">
+                <button v-if="!desktopInstallDialog?.installed" type="button" role="menuitem" @click="openDesktopInstall">
                   <Smartphone :size="16" />
-                  <span>{{ language === 'zh' ? '添加到桌面' : 'Add to desktop' }}</span>
+                  <span>{{ language === 'zh' ? '安装应用' : 'Install app' }}</span>
                 </button>
                 <div class="menu-separator"></div>
                 <button type="button" role="menuitem" @click="openDonate">
