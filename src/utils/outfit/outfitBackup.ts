@@ -42,7 +42,7 @@ import {
 } from './outfitTypes'
 
 const BACKUP_FORMAT = 'infinity-nikki-outfit-backup'
-const BACKUP_VERSION = 3
+const BACKUP_VERSION = 4
 const MAX_BACKUP_BYTES = OUTFIT_BACKUP_LIMITS.bytes
 const MAX_BACKUP_ENTRIES = OUTFIT_BACKUP_LIMITS.entries
 const IMPORT_CONCURRENCY = 6
@@ -61,25 +61,31 @@ export async function exportOutfitBackup(
     exportedAt = new Date().toISOString(),
     items = []
   for (const record of snapshot.records) {
+    const { gameSourceId: _gameSourceId, codeKey: _codeKey, ...portable } = record
+    if (!record.image) {
+      items.push({ record: portable, files: [] })
+      continue
+    }
     const image = snapshot.images.get(record.id)!,
       checked = await prepareOutfitImage(image.blob, record.id)
     if (checked.sha256 !== image.sha256 || !matchesImageExtension(record.image, checked.extension))
       throw new Error('outfit_image_invalid')
     const path = `images/${record.image}`
-    // Directory identities are local authorization, never portable backup data.
-    const { gameSourceId: _gameSourceId, codeKey: _codeKey, ...portable } = record
     items.push({
       record: { ...portable, image: path },
       files: [{ name: path, blob: checked.blob }]
     })
   }
+  const version = snapshot.records.some((record) => !record.image)
+    ? BACKUP_VERSION
+    : snapshot.records.every((record) => imageExtension(record.image) === 'webp')
+      ? 2
+      : 3
   const parts = planBackupParts(
     items,
     (outfits) => ({
       format: BACKUP_FORMAT,
-      version: snapshot.records.every((record) => imageExtension(record.image) === 'webp')
-        ? 2
-        : BACKUP_VERSION,
+      version,
       exportedAt,
       tags: snapshot.tags,
       ignoredCodes: snapshot.ignoredCodes,
@@ -284,12 +290,14 @@ export async function inspectOutfitBackup(file: File): Promise<BackupManifest> {
   if (
     !manifest ||
     manifest.format !== BACKUP_FORMAT ||
-    ![1, 2, BACKUP_VERSION].includes(manifest.version) ||
+    ![1, 2, 3, BACKUP_VERSION].includes(manifest.version) ||
     !Array.isArray(manifest.outfits) ||
     !Array.isArray(manifest.tags)
   )
     throw new Error('Unsupported backup format')
   for (const raw of manifest.outfits) {
+    if (manifest.version === BACKUP_VERSION && raw?.image === '' && normalizeOutfitCode(raw.code))
+      continue
     if (
       !raw ||
       typeof raw !== 'object' ||
@@ -333,7 +341,7 @@ async function importBackup(backupFile: File): Promise<OutfitImportResult> {
         record: normalizeOutfitRecord({
           ...raw,
           version: 1,
-          image: `${raw.id}.${imageExtension(raw.image)}`,
+          image: raw.image ? `${raw.id}.${imageExtension(raw.image)}` : '',
           note: raw.note ?? '',
           createdAt,
           updatedAt: raw.updatedAt ?? createdAt,
@@ -372,69 +380,72 @@ async function importBackup(backupFile: File): Promise<OutfitImportResult> {
     }
   )
   const byImage = new Map<string, typeof prepared>()
-  for (const item of prepared) byImage.set(item.path, [...(byImage.get(item.path) ?? []), item])
+  async function restore(
+    record: OutfitRecord,
+    image?: Awaited<ReturnType<typeof prepareOutfitImage>>
+  ) {
+    try {
+      const result = await outfitTransaction(
+        [OUTFITS_STORE, OUTFIT_IMAGES_STORE, OUTFIT_TAGS_STORE, OUTFIT_IGNORED_CODES_STORE],
+        'readwrite',
+        async (tx) => {
+          const records = tx.objectStore(OUTFITS_STORE)
+          const duplicate = record.code
+            ? ((await outfitRequest(records.index('code').get(record.code))) as
+                OutfitRecord | undefined)
+            : undefined
+          if (duplicate) {
+            tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
+            return 'duplicate'
+          }
+          const existing = (await outfitRequest(records.get(record.id))) as OutfitRecord | undefined
+          if (image && !record.code && existing && !existing.code) {
+            const oldImage = (await outfitRequest(
+              tx.objectStore(OUTFIT_IMAGES_STORE).get(record.id)
+            )) as { sha256: string } | undefined
+            const { id: _id, image: _image, ...old } = normalizeOutfitRecord(existing)
+            const { id: _nextId, image: _nextImage, ...next } = { ...record, imageSize: image.size }
+            if (JSON.stringify(old) === JSON.stringify(next) && oldImage?.sha256 === image.sha256)
+              return 'duplicate'
+          }
+          const id = existing ? createOutfitId() : record.id
+          const tags = normalizeOutfitTagList(
+            await outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
+          )
+          const incoming = normalizeOutfitRecord({
+            ...record,
+            id,
+            image: image ? `${id}.${image.extension}` : '',
+            imageSize: image?.size,
+            tags: record.tags.filter((tag) => tags.includes(tag))
+          })
+          records.put(incoming)
+          if (image) tx.objectStore(OUTFIT_IMAGES_STORE).put({ ...image, id })
+          if (record.code) tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
+          return 'added'
+        }
+      )
+      if (result === 'added') addedCount++
+      else duplicateCount++
+    } catch {
+      failedCount++
+    }
+  }
+  for (const item of prepared) {
+    if (!item.path) await restore(item.record)
+    else {
+      const group = byImage.get(item.path) ?? []
+      group.push(item)
+      byImage.set(item.path, group)
+    }
+  }
   await streamBackupEntries(
     backupFile,
     (name) => byImage.has(name),
     async (path, bytes) => {
-      if (!bytes || !byImage.has(path)) return
+      if (!bytes) return
       const image = await prepareOutfitImage(new Blob([bytes]), 'prepared', false)
-      for (const { record } of byImage.get(path)!) {
-        try {
-          const result = await outfitTransaction(
-            [OUTFITS_STORE, OUTFIT_IMAGES_STORE, OUTFIT_TAGS_STORE, OUTFIT_IGNORED_CODES_STORE],
-            'readwrite',
-            async (tx) => {
-              const records = tx.objectStore(OUTFITS_STORE)
-              const duplicate = record.code
-                ? ((await outfitRequest(records.index('code').get(record.code))) as
-                    OutfitRecord | undefined)
-                : undefined
-              if (duplicate) {
-                tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
-                return 'duplicate'
-              }
-              const existing = (await outfitRequest(records.get(record.id))) as
-                OutfitRecord | undefined
-              if (!record.code && existing && !existing.code) {
-                const oldImage = (await outfitRequest(
-                  tx.objectStore(OUTFIT_IMAGES_STORE).get(record.id)
-                )) as { sha256: string } | undefined
-                const { id: _id, image: _image, ...old } = normalizeOutfitRecord(existing)
-                const {
-                  id: _nextId,
-                  image: _nextImage,
-                  ...next
-                } = { ...record, imageSize: image.size }
-                if (
-                  JSON.stringify(old) === JSON.stringify(next) &&
-                  oldImage?.sha256 === image.sha256
-                )
-                  return 'duplicate'
-              }
-              const id = existing ? createOutfitId() : record.id
-              const tags = normalizeOutfitTagList(
-                await outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
-              )
-              const incoming = normalizeOutfitRecord({
-                ...record,
-                id,
-                image: `${id}.${image.extension}`,
-                imageSize: image.size,
-                tags: record.tags.filter((tag) => tags.includes(tag))
-              })
-              records.put(incoming)
-              tx.objectStore(OUTFIT_IMAGES_STORE).put({ ...image, id })
-              if (record.code) tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
-              return 'added'
-            }
-          )
-          if (result === 'added') addedCount++
-          else duplicateCount++
-        } catch {
-          failedCount++
-        }
-      }
+      for (const { record } of byImage.get(path) ?? []) await restore(record, image)
     },
     IMPORT_CONCURRENCY
   )

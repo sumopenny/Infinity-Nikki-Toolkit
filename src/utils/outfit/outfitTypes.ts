@@ -130,7 +130,8 @@ export function normalizeOutfitRecord(value: unknown): OutfitRecord {
     raw.version !== 1 ||
     !isSafeOutfitId(raw.id) ||
     typeof raw.image !== 'string' ||
-    !STORED_IMAGE_EXTENSIONS.some((extension) => raw.image === `${raw.id}.${extension}`) ||
+    (raw.image !== '' &&
+      !STORED_IMAGE_EXTENSIONS.some((extension) => raw.image === `${raw.id}.${extension}`)) ||
     typeof raw.code !== 'string' ||
     raw.code.replace(/\s/g, '').length > MAX_OUTFIT_CODE_LENGTH ||
     !Array.isArray(raw.tags) ||
@@ -147,6 +148,7 @@ export function normalizeOutfitRecord(value: unknown): OutfitRecord {
   if (tags.some((tag) => !isValidOutfitTag(tag) || isReservedOutfitTag(tag)))
     throw new Error('outfit_tag_invalid')
   const code = normalizeOutfitCode(raw.code)
+  if (!raw.image && (!code || raw.imageSize !== undefined)) throw new Error('outfit_record_invalid')
   const record: OutfitRecord = {
     version: 1,
     id: raw.id,

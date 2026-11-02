@@ -1034,7 +1034,7 @@ function handleAddTag(value: string) {
                 :alt="item.name || item.code"
               />
               <img v-else-if="item.imageUrl" :src="item.imageUrl" alt="" loading="lazy" />
-              <div v-else class="home-scheme-card-no-image"
+              <div v-else class="scheme-card-no-image"
                 ><ImagePlus :size="22" aria-hidden="true"
               /></div>
               <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
@@ -1374,12 +1374,6 @@ function handleAddTag(value: string) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-.home-scheme-card-no-image {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
 }
 .home-scheme-card-delete {
   right: 8px;

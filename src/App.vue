@@ -39,7 +39,14 @@ import { invalidateCacheWrites } from './utils/cacheLifecycle'
 import { clearAllBrowserData } from './utils/file-system/database'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
-import { CircleHelp, Download, Plus, Trash2, Upload } from 'lucide-vue-next'
+import {
+  ChartNoAxesColumnIncreasing,
+  CircleHelp,
+  Download,
+  Plus,
+  Trash2,
+  Upload
+} from 'lucide-vue-next'
 import DataStorageReminder from './components/DataStorageReminder.vue'
 const UpdateLogDialog = lazyFeature(
   () => import('./components/UpdateLogDialogContent.vue'),
@@ -63,6 +70,10 @@ const OutfitEditor = lazyFeature(
   () => language.value
 )
 import OutfitGrid from './components/OutfitGrid.vue'
+const OutfitSummaryDialog = lazyFeature(
+  () => import('./components/OutfitSummaryDialog.vue'),
+  () => language.value
+)
 const OutfitGuideDialog = lazyFeature(
   () => import('./components/OutfitGuideDialog.vue'),
   () => language.value
@@ -235,6 +246,7 @@ const isOutfitParseVisible = ref(false)
 const reopenParseToolsAfterOutfitClose = ref(false)
 const reopenParseToolsAfterPhotoClose = ref(false)
 const isOutfitGuideVisible = ref(false)
+const isOutfitSummaryVisible = ref(false)
 const isOutfitGuideDismissed = ref(readLocalStorage(OUTFIT_GUIDE_DISMISSED_KEY) === 'true')
 const isUpdateLogVisible = ref(false)
 const isDataReminderVisible = ref(false)
@@ -1617,6 +1629,12 @@ function changeOutfitFilter(filter: OutfitFilter) {
   activeOutfitFilter.value = filter
 }
 
+function showSummaryTag(tag: string) {
+  searchQuery.value = ''
+  changeOutfitFilter(`tag:${tag}`)
+  isOutfitSummaryVisible.value = false
+}
+
 function openOutfitEditor(outfit: OutfitItem | null = null) {
   editingOutfit.value = outfit
   isOutfitEditorVisible.value = true
@@ -1633,7 +1651,7 @@ function openOutfitParse(target: OutfitItem | string) {
           (item) => normalizeOutfitCode(item.code).replace(/#$/, '') === code.replace(/#$/, '')
         )
       : target
-  parsingOutfitImage.value = source ? () => readPhotoBlob(source) : undefined
+  parsingOutfitImage.value = source?.image ? () => readPhotoBlob(source) : undefined
   isOutfitParseVisible.value = true
 }
 
@@ -2355,9 +2373,10 @@ function importAllDataFromMenu() {
         />
         <!-- 收藏夹：标签页与当前页操作按钮共用一行，移除重复标题。 -->
         <div v-if="activeView === 'favorites'" v-show="!compactLayout" class="favorites-toolbar">
-          <nav v-if="!compactLayout" class="favorites-tabs" :aria-label="locale.viewNav.favorites">
+          <nav v-if="!compactLayout" class="resonance-choice-row favorites-view-switch" :aria-label="locale.viewNav.favorites">
             <button
               type="button"
+              class="resonance-choice"
               :aria-pressed="favoriteTab === 'camera'"
               @click="changeFavoriteTab('camera')"
               >{{ language === 'zh' ? '相机参数' : 'Camera parameters' }}
@@ -2365,6 +2384,7 @@ function importAllDataFromMenu() {
             >
             <button
               type="button"
+              class="resonance-choice"
               :aria-pressed="favoriteTab === 'photos'"
               @click="changeFavoriteTab('photos')"
               >{{ language === 'zh' ? '照片收藏' : 'Photo favorites' }}
@@ -2535,6 +2555,15 @@ function importAllDataFromMenu() {
                 outfitLocale.addOutfit
               }}</span> </button
             ><template #secondary>
+              <button
+                type="button"
+                :disabled="isAnyFileOperationBusy"
+                @click="isOutfitSummaryVisible = true"
+              >
+                <ChartNoAxesColumnIncreasing :size="16" aria-hidden="true" />{{
+                  mobileText('搭配总结', 'Outfit summary')
+                }}
+              </button>
               <button type="button" :disabled="isAnyFileOperationBusy" @click="chooseOutfitBackup">
                 <Download :size="16" aria-hidden="true" />{{
                   isImportingOutfits ? outfitLocale.importing : outfitLocale.importData
@@ -2915,6 +2944,13 @@ function importAllDataFromMenu() {
       @add-tag="addOutfitTag($event, true)"
     />
 
+    <OutfitSummaryDialog
+      v-if="isOutfitSummaryVisible && activeView === 'outfits'"
+      :outfits="outfits"
+      :language="language"
+      @close="isOutfitSummaryVisible = false"
+      @tag="showSummaryTag"
+    />
     <OutfitParseDialog
       v-if="mountedDialogs.has('OutfitParseDialog')"
       :visible="isOutfitParseVisible"

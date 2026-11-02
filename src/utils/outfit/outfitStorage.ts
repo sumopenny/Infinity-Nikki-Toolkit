@@ -109,7 +109,7 @@ export async function readOutfitRecords(): Promise<{
         availableImages = new Set(imageKeys)
       for (const record of records) {
         if (record.tags.some((tag) => !tags.includes(tag))) throw new Error('outfit_tag_missing')
-        if (!availableImages.has(record.id)) throw new Error('outfit_image_missing')
+        if (record.image && !availableImages.has(record.id)) throw new Error('outfit_image_missing')
         sizes.set(record.id, record.imageSize ?? 0)
       }
       return { records, tags, sizes }
@@ -146,7 +146,7 @@ export async function readOutfitSnapshot(): Promise<OutfitSnapshot> {
       const normalizedTags = normalizeOutfitTagList(tags)
       for (const record of records) {
         const image = imageMap.get(record.id)
-        if (!image?.blob || !image.size || image.size !== image.blob.size)
+        if (record.image && (!image?.blob || !image.size || image.size !== image.blob.size))
           throw new Error('outfit_image_missing')
         if (record.tags.some((tag) => !normalizedTags.includes(tag)))
           throw new Error('outfit_tag_missing')
@@ -156,7 +156,8 @@ export async function readOutfitSnapshot(): Promise<OutfitSnapshot> {
   )
 }
 export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
-  if (!input.outfit && !input.imageFile) throw new Error('outfit_image_required')
+  const code = normalizeOutfitCode(input.code)
+  if (!input.outfit?.image && !input.imageFile && !code) throw new Error('outfit_image_required')
   const prepared = input.imageFile
     ? await prepareOutfitUpload(input.imageFile, input.outfit?.id ?? createOutfitId())
     : null
@@ -177,8 +178,7 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
             JSON.stringify(normalizeOutfitRecord(input.outfit)))
       )
         throw new Error('outfit_record_changed')
-      const id = previous?.id ?? prepared!.id
-      const code = normalizeOutfitCode(input.code)
+      const id = previous?.id ?? prepared?.id ?? createOutfitId()
       const duplicate = code
         ? ((await outfitRequest(records.index('code').get(code))) as OutfitRecord | undefined)
         : undefined
@@ -192,7 +192,7 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
         ...previous,
         version: 1,
         id,
-        image: prepared ? `${id}.${prepared.extension}` : previous!.image,
+        image: prepared ? `${id}.${prepared.extension}` : (previous?.image ?? ''),
         imageSize: prepared?.size ?? previous?.imageSize,
         code,
         tags: tag ? [tag] : [],
@@ -203,11 +203,12 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
       const image = prepared
         ? { ...prepared, id }
         : ((await outfitRequest(images.get(id))) as OutfitImage | undefined)
-      if (!image?.blob || image.size !== image.blob.size) throw new Error('outfit_image_missing')
+      if (record.image && (!image?.blob || image.size !== image.blob.size))
+        throw new Error('outfit_image_missing')
       records.put(record)
       if (prepared) images.put(image)
       if (code) tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(code)
-      return { record, size: image.size }
+      return { record, size: image?.size ?? 0 }
     }
   )
   return displayOutfit(saved.record, saved.size, () => readOutfitImage(saved.record.id))

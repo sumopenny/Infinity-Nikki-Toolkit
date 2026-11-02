@@ -1,4 +1,11 @@
 /* 搭配码工作区样式：搭配方案网格、侧栏、标签、图片导入、编辑器、引导窗口和相关响应式布局。 */
+.scheme-card-no-image {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
 /* Outfit code workspace */
 .visually-hidden {
   position: absolute !important;
@@ -241,7 +248,7 @@
 .outfit-card-actions button,
 .outfit-card-parse,
 .outfit-card-delete,
-.outfit-editor-panel > header button {
+.outfit-editor-panel > header button:where(:not(.confirm-dialog-button)) {
   display: grid;
   width: 28px;
   height: 28px;
@@ -291,7 +298,7 @@
 }
 
 /* 编辑窗口头部关闭按钮单独覆盖：与“关于网站”一致的悬浮圆形样式 */
-.outfit-editor-panel > header button {
+.outfit-editor-panel > header button:where(:not(.confirm-dialog-button)) {
   width: 34px;
   height: 34px;
   border: 0;
@@ -303,7 +310,7 @@
     transform 0.18s ease;
 }
 
-.outfit-editor-panel > header button:hover:not(:disabled) {
+.outfit-editor-panel > header button:where(:not(.confirm-dialog-button)):hover:not(:disabled) {
   background: var(--icon-button-hover-bg);
 }
 

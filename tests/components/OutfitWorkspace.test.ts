@@ -37,6 +37,23 @@ function outfit(id: string, code: string, tags: string[] = []): OutfitItem {
 }
 
 describe('outfit workspace components', () => {
+  it('offers share export only on outfits with both an image and a code', async () => {
+    const complete = outfit('both', 'ABC')
+    const wrapper = mount(OutfitGrid, {
+      props: {
+        outfits: [{ ...outfit('code', '222'), image: '' }, outfit('image', ''), complete],
+        selectedIds: new Set<string>(),
+        thumbnailMode: 'default',
+        messages: getOutfitMessages('zh'),
+        disabled: false
+      }
+    })
+    const buttons = wrapper.findAll('button[aria-label="导出分享图"]')
+    expect(buttons).toHaveLength(1)
+    await buttons[0].trigger('click')
+    expect(wrapper.emitted('share')).toEqual([[complete]])
+  })
+
   it('shows the screenshot only for an empty library, including after deleting all records', async () => {
     const wrapper = mount(OutfitGrid, {
       props: {

@@ -155,7 +155,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     },
     addOutfit: '添加方案',
     editTitle: '编辑方案',
-    imageLabel: '搭配图片',
+    imageLabel: '搭配图片（可选）',
     imageHint: '点击选择、拖拽或粘贴图片（需浏览器支持预览）',
     replaceImage: '更换图片',
     codeLabel: '搭配码',
@@ -197,7 +197,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     parseItemCount: (count) => `${count} 个部件`,
     emptyTitle: '还没有搭配方案',
     emptyDescription: '添加搭配方案，或在游戏中生成搭配码后返回页面自动导入。',
-    imageRequired: '请先选择一张搭配图片。',
+    imageRequired: '请填写搭配码或选择一张搭配图片。',
     imageReading: '正在读取图片…',
     imageLoadFailed: '图片读取或预览失败，可能是格式不支持或文件损坏，请重新选择',
     operations: {
@@ -296,7 +296,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     },
     addOutfit: 'Add outfit',
     editTitle: 'Edit Outfit',
-    imageLabel: 'Outfit image',
+    imageLabel: 'Outfit image (optional)',
     imageHint: 'Click, drop, or paste an image your browser can preview',
     replaceImage: 'Replace image',
     codeLabel: 'Outfit code',
@@ -341,7 +341,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     emptyTitle: 'No outfit plans yet',
     emptyDescription:
       'Add an outfit, or generate a code in the game and return to automatically import it.',
-    imageRequired: 'Choose an outfit image first.',
+    imageRequired: 'Enter an outfit code or choose an image.',
     imageReading: 'Reading image…',
     imageLoadFailed:
       'Unable to read or preview image. The format may be unsupported or the file damaged. Please select again',

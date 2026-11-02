@@ -84,7 +84,7 @@ export function useAlbumViewModel(options: {
   })
   const previewPhotos = computed<(PhotoItem | OutfitItem)[]>(() => {
     if (activeView.value === 'trash') return recentlyDeleted.value
-    if (activeView.value === 'outfits') return visibleOutfits.value
+    if (activeView.value === 'outfits') return visibleOutfits.value.filter((outfit) => outfit.image)
     return visiblePhotos.value
   })
   const currentPreviewOutfit = computed(() => {

@@ -15,7 +15,7 @@ it('shows manual steps immediately, respects dismissal, and disables reopening a
     await wrapper.vm.open()
     expect(contents.get('details[open]').text()).toContain('Windows · 其他浏览器')
     expect(contents.get('.desktop-install-guide').text()).toContain('安卓 · 其他浏览器')
-    expect(contents.find('.desktop-install-primary').exists()).toBe(false)
+    expect(contents.find('.confirm-dialog-actions .primary').exists()).toBe(false)
 
     const prompt = vi.fn().mockResolvedValue(undefined)
     const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
@@ -24,7 +24,7 @@ it('shows manual steps immediately, respects dismissal, and disables reopening a
     window.dispatchEvent(event)
     await flushPromises()
     expect(event.defaultPrevented).toBe(false)
-    await contents.get('.desktop-install-primary').trigger('click')
+    await contents.get('.confirm-dialog-actions .primary').trigger('click')
     await flushPromises()
     expect(prompt).toHaveBeenCalledOnce()
     expect(dialog.open).toBe(false)

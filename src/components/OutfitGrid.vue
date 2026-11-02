@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount } from 'vue'
-import { Check, Copy, Edit3, ScanSearch, Shirt, Trash2, Share2 } from 'lucide-vue-next'
+import { Check, Copy, Edit3, ImagePlus, ScanSearch, Shirt, Trash2, Share2 } from 'lucide-vue-next'
 import type { OutfitMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 import type { OutfitItem } from '../utils/outfit/outfitFileSystem'
@@ -71,15 +71,17 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
         role="checkbox"
         tabindex="0"
         @click="toggleOutfit(outfit.id)"
-        @dblclick.stop="$emit('openPreview', outfit)"
+        @dblclick.stop="outfit.image && $emit('openPreview', outfit)"
         @keydown="handleCardKeydown($event, outfit.id)"
       >
         <div class="photo-frame">
           <LazyPhotoImage
+            v-if="outfit.image"
             :photo="outfit"
             :load-photo="photoLoadQueue.load"
             :failure-text="messages.imageLoadFailed"
           />
+          <div v-else class="scheme-card-no-image"><ImagePlus :size="22" aria-hidden="true" /></div>
           <!-- 无标签时仅隐藏手机浮层，电脑端保留未分类提示。 -->
           <div
             class="photo-overlay outfit-overlay"
@@ -94,9 +96,10 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
           </div>
           <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
           <button
+            v-if="outfit.image && outfit.code"
             class="card-share-button"
             type="button"
-            :disabled="disabled || !outfit.code"
+            :disabled="disabled"
             :title="language === 'en' ? 'Export share image' : '导出分享图'"
             :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
             @click.stop="emit('share', outfit)"

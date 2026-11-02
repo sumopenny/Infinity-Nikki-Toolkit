@@ -122,18 +122,6 @@ function close() {
 /* 仅统一底部操作按钮，避免影响正文备份入口与标题栏关闭按钮。 */
 .resonance-cloud-panel footer :deep(.confirm-dialog-button) {
   min-width: 88px;
-  min-height: 44px;
-  padding: 10px 18px;
-  border-radius: var(--ui-radius);
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.4;
-  box-shadow: none;
-  transition:
-    transform var(--motion-base) ease,
-    background var(--motion-base) ease,
-    border-color var(--motion-base) ease,
-    color var(--motion-base) ease;
 }
 .resonance-cloud-panel footer :deep(.confirm-dialog-button.primary) {
   background: #f6ccca;
@@ -142,36 +130,12 @@ function close() {
 .resonance-cloud-panel footer :deep(.confirm-dialog-button.primary:hover:not(:disabled)) {
   background: #eab1b3;
 }
-.resonance-cloud-panel footer :deep(.confirm-dialog-button.ghost:hover:not(:disabled)) {
-  color: var(--heading);
-}
-.resonance-cloud-panel footer :deep(.confirm-dialog-button:hover:not(:disabled)) {
-  transform: translateY(-1px);
-  box-shadow: none;
-}
-.resonance-cloud-panel footer :deep(.confirm-dialog-button:focus-visible) {
-  outline: 2px solid var(--pink-deep);
-  outline-offset: 3px;
-}
-.resonance-cloud-panel footer :deep(.confirm-dialog-button:active:not(:disabled)) {
-  transform: translateY(0);
-  box-shadow: none;
-}
-.resonance-cloud-panel footer :deep(.confirm-dialog-button:disabled) {
-  transform: none;
-  box-shadow: none;
-}
 .resonance-cloud-panel footer :deep(.confirm-dialog-button.primary.is-danger) {
   background: #a13e48;
   color: #fff;
 }
 .resonance-cloud-panel footer :deep(.confirm-dialog-button.primary.is-danger:hover:not(:disabled)) {
   background: #872d38;
-}
-@media (prefers-reduced-motion: reduce) {
-  .resonance-cloud-panel footer :deep(.confirm-dialog-button:hover:not(:disabled)) {
-    transform: none;
-  }
 }
 .archive-cloud-panel {
   width: min(680px, 100%);

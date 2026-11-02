@@ -56,7 +56,7 @@ const editorOverlayRef = ref<HTMLElement | null>(null)
 let previousActiveElement: HTMLElement | null = null
 let previewRequestId = 0
 
-const hasImage = computed(() => Boolean(imageFile.value || props.outfit))
+const hasImage = computed(() => Boolean(imageFile.value || props.outfit?.image))
 useBodyScrollLock(toRef(props, 'visible'))
 
 function revokePreview() {
@@ -78,7 +78,7 @@ async function resetForm() {
   selectedTag.value = outfit?.tags[0] ?? null
   errorMessage.value = ''
   isDragging.value = false
-  if (outfit) {
+  if (outfit?.image) {
     try {
       const file = await readPhotoBlob(outfit)
       if (requestId !== previewRequestId || !props.visible || props.outfit !== outfit) return
@@ -243,7 +243,7 @@ defineExpose({ selectCreatedTag })
 
 function submit() {
   if (props.busy || imageReading.value || (imageReadFailed.value && !hasImage.value)) return
-  if (!hasImage.value) {
+  if (!hasImage.value && !normalizeOutfitCode(code.value)) {
     errorMessage.value = props.messages.imageRequired
     return
   }

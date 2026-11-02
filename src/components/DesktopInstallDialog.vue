@@ -108,9 +108,9 @@ defineExpose({ open, installed })
             ? '从桌面打开暖立方时请保持联网，离线时可能无法进入首页。安装版与浏览器版的本地数据可能不共享，已有数据请先备份或同步。'
             : 'Go online when opening the app from your home screen or desktop. The home page may be unavailable offline. Installed and browser storage can differ, so back up or sync your data first.' }}</p>
         </div>
-        <footer>
-          <button type="button" class="desktop-install-secondary" @click="close">{{ language === 'zh' ? '稍后再说' : 'Later' }}</button>
-          <button v-if="nativePrompt || pending" type="button" class="desktop-install-primary" :disabled="pending" @click="add"><Download :size="16" />{{ language === 'zh' ? '安装应用' : 'Install app' }}</button>
+        <footer class="confirm-dialog-actions">
+          <button type="button" class="confirm-dialog-button ghost dialog-action-control" @click="close">{{ language === 'zh' ? '稍后再说' : 'Later' }}</button>
+          <button v-if="nativePrompt || pending" type="button" class="confirm-dialog-button primary" :disabled="pending" @click="add"><Download :size="16" />{{ language === 'zh' ? '安装应用' : 'Install app' }}</button>
         </footer>
       </div>
     </dialog>
@@ -149,10 +149,12 @@ defineExpose({ open, installed })
 .desktop-install-guide details + details { margin-top: 8px; }
 .desktop-install-guide dt { margin-top: 10px; font-weight: 600; }
 .desktop-install-guide dd { margin: 2px 0 0; }
-.desktop-install-body footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 12px 22px; border-top: 1px solid var(--line-soft); }
-.desktop-install-body footer button { display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px; border-radius: var(--radius-sm); cursor: pointer; font: inherit; }
-.desktop-install-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--heading); }
-.desktop-install-primary { background: var(--primary-button-bg); border: 1px solid transparent; color: #fff; }
-.desktop-install-primary:disabled { opacity: .6; cursor: wait; }
-.desktop-install-body button:focus-visible { outline: 2px solid var(--pink-deep); outline-offset: 2px; }
+.desktop-install-body footer {
+  --dialog-accent: var(--primary-button-bg);
+  --dialog-primary-dark-text: #fff;
+  padding: 12px 22px;
+}
+.desktop-install-body .primary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.desktop-install-body .primary:disabled { opacity: .6; cursor: wait; }
+.desktop-install-close:focus-visible { outline: 2px solid var(--pink-deep); outline-offset: 2px; }
 </style>

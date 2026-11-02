@@ -90,6 +90,25 @@ it('explicit backup restoration lifts the restored code without clearing unrelat
   await importOutfitBackup(file)
   expect((await readOutfitSnapshot()).ignoredCodes).toEqual(['OTHER'])
 })
+it('restores code-only outfits without image files and allows adding the image later', async () => {
+  const empty = { code: '  ', tag: null, note: '备注' }
+  await expect(saveOutfit(empty)).rejects.toThrow()
+  const original = await saveOutfit({ ...empty, code: 'CODE1' })
+  await expect(saveOutfit({ ...empty, outfit: original })).rejects.toThrow()
+  let backup!: File
+  await exportOutfitBackup(async (name, blob) => {
+    backup = new File([blob], name)
+  })
+  await resetOutfitDatabase()
+  const result = await importOutfitBackup(backup)
+  expect(result).toMatchObject({ addedCount: 1, failedCount: 0 })
+  expect((await readOutfitSnapshot()).images.size).toBe(0)
+  const outfit = result.library.outfits[0]
+  expect(outfit).toMatchObject({ id: original.id, code: 'CODE1', image: '' })
+  await saveOutfit({ ...input('CODE1'), outfit })
+  expect((await readOutfitSnapshot()).images.get(original.id)?.size).toBeGreaterThan(0)
+})
+
 it('exports complete independently importable parts', async () => {
   for (let i = 0; i < 5; i++) await saveOutfit(input('CODE' + i))
   const old = OUTFIT_BACKUP_LIMITS.records,

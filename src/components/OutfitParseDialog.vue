@@ -53,6 +53,7 @@ const props = defineProps<{
   visible: boolean
   code: string
   embedded?: boolean
+  directItem?: Pick<ParseItemView, 'id' | 'name' | 'clothType'>
   suppliedResult?: LookbookDecodeResult
   loadPhoto?: () => Promise<Blob>
   language: Language
@@ -103,20 +104,18 @@ function selectDetailForm(entry: WardrobeEntry) {
     worn ?? {
       id: Number(entry.id),
       name: typeLabel ? `${name}(${typeLabel})` : name,
-      imageUrl: entry.image,
-      resolved: true,
       outfitId: null,
       clothType,
       dyes: [],
-      hasSpecialEffect: false,
-      dyeColors: []
+      hasSpecialEffect: false
     }
   )
 }
 const loadedItemImages = ref(new Set<number>())
 const failedItemImages = ref(new Set<number>())
 const detailImageState = ref<'idle' | 'loaded' | 'failed'>('idle')
-let detailItem: ParseItemView | null = null
+type DetailItem = Pick<ParseItemView, 'id' | 'name' | 'clothType' | 'outfitId' | 'dyes' | 'hasSpecialEffect'>
+let detailItem: DetailItem | null = null
 let detailTrigger: HTMLButtonElement | null = null
 let detailTriggerItemId: number | null = null
 let requestId = 0
@@ -130,8 +129,7 @@ const items = computed(() =>
   decoded.value ? buildParseItems(decoded.value, catalog.value, props.language) : []
 )
 
-async function openItemDetail(item: ParseItemView, event?: Event) {
-  if (!item.resolved || !item.imageUrl) return
+async function openItemDetail(item: DetailItem, event?: Event) {
   const request = detailRequest.begin()
   detailItem = item
   if (event) {
@@ -200,6 +198,22 @@ async function openItemDetail(item: ParseItemView, event?: Event) {
   } finally {
     if (request.isCurrent()) detailLoading.value = false
   }
+}
+
+function dismissItemDetail() {
+  closeItemDetail()
+  if (props.directItem) emit('close')
+}
+
+function openCurrentView() {
+  if (!props.directItem) {
+    void startParse()
+    if (!props.embedded) void nextTick(() => panelRef.value?.querySelector('button')?.focus())
+    return
+  }
+  const { id, name, clothType } = props.directItem
+  // 排行跨越多套搭配，详情展示该部件自身的形态，不带入某套搭配的染色。
+  void openItemDetail({ id, name, clothType, outfitId: null, dyes: [], hasSpecialEffect: false })
 }
 
 async function openAssociatedOutfit() {
@@ -300,7 +314,7 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     event.preventDefault()
     if (detailVisible.value) {
-      closeItemDetail()
+      dismissItemDetail()
       return
     }
     emit('close')
@@ -331,8 +345,7 @@ watch(
     if (visible) {
       previousActiveElement =
         document.activeElement instanceof HTMLElement ? document.activeElement : null
-      void startParse()
-      if (!props.embedded) void nextTick(() => panelRef.value?.querySelector('button')?.focus())
+      openCurrentView()
     } else {
       requestId += 1
       closeItemDetail()
@@ -345,12 +358,13 @@ watch(
 
 window.addEventListener('keydown', handleKeydown)
 watch(
-  () => [props.code, props.language, props.suppliedResult],
+  () => [props.code, props.language, props.suppliedResult, props.directItem],
   () => {
-    if (props.visible) void startParse()
+    if (props.visible) openCurrentView()
   }
 )
 onBeforeUnmount(() => {
+  detailRequest.invalidate()
   requestId++
   window.removeEventListener('keydown', handleKeydown)
 })
@@ -360,7 +374,7 @@ onBeforeUnmount(() => {
   <Teleport to="body" :disabled="embedded">
     <Transition name="confirm-dialog" appear>
       <div
-        v-if="visible"
+        v-if="visible && !directItem"
         :class="embedded ? 'photo-outfit-content' : 'outfit-editor'"
         :role="embedded ? undefined : 'dialog'"
         :aria-modal="embedded ? undefined : true"
@@ -500,7 +514,7 @@ onBeforeUnmount(() => {
         role="dialog"
         aria-modal="true"
         :aria-label="messages.detailTitle"
-        @click.self="closeItemDetail"
+        @click.self="dismissItemDetail"
       >
         <section
           ref="detailPanelRef"
@@ -516,7 +530,7 @@ onBeforeUnmount(() => {
               type="button"
               :title="messages.detailClose"
               :aria-label="messages.detailClose"
-              @click="closeItemDetail"
+              @click="dismissItemDetail"
             >
               <X :size="19" aria-hidden="true" />
             </button>

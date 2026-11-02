@@ -540,7 +540,7 @@ describe('App lifecycle coordination', () => {
       expect(localStorage.getItem('infinity-nikki-camera-thumbnail-size-desktop')).toBe('large')
       topBar.vm.$emit('changeThumbnailMode', 'portrait-standard')
       expect(localStorage.getItem('infinity-nikki-thumbnail-mode')).toBeNull()
-      await wrapper.findAll('.favorites-tabs button')[1]!.trigger('click')
+      await wrapper.findAll('.favorites-view-switch button')[1]!.trigger('click')
       expect(topBar.props('thumbnailSize')).toBe('medium')
       expect(wrapper.getComponent({ name: 'TopBar' }).props('thumbnailModeDisabled')).toBe(false)
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(false)
@@ -548,7 +548,7 @@ describe('App lifecycle coordination', () => {
       listeners.forEach((fn) => fn())
       await flushPromises()
       expect(wrapper.findAll('.mobile-navigation button')[2]!.text()).toBe('相机参数')
-      expect(wrapper.find('.favorites-tabs').exists()).toBe(false)
+      expect(wrapper.find('.favorites-view-switch').exists()).toBe(false)
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(true)
       expect(topBar.props('thumbnailSize')).toBe('medium')
       topBar.vm.$emit('changeThumbnailSize', 'small')
@@ -565,8 +565,8 @@ describe('App lifecycle coordination', () => {
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('thumbnailSize')).toBe(
         'large'
       )
-      expect(wrapper.findAll('.favorites-tabs button')).toHaveLength(2)
-      expect(wrapper.findAll('.favorites-tabs button')[1]!.attributes('aria-pressed')).toBe('true')
+      expect(wrapper.findAll('.favorites-view-switch button')).toHaveLength(2)
+      expect(wrapper.findAll('.favorites-view-switch button')[1]!.attributes('aria-pressed')).toBe('true')
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(false)
       await wrapper.getComponent({ name: 'TopBar' }).vm.$emit('toggleLanguage')
       await flushPromises()
@@ -756,8 +756,11 @@ describe('App lifecycle coordination', () => {
           wrapper
             .findAll('.outfit-header-actions button')
             .map((button) => (button.element as HTMLButtonElement).disabled)
-        ).toEqual([false, true, false])
-        await wrapper.findAll('.outfit-header-actions button')[1].trigger('click')
+        ).toEqual([false, false, true, false])
+        const exportButton = wrapper.findAll('.outfit-header-actions button').find(
+          (action) => action.text() === messages.zh.outfit.exportData
+        )!
+        await exportButton.trigger('click')
         await flushPromises()
         expect(wrapper.findComponent({ name: 'ConfirmDialog' }).props('visible')).toBe(false)
       }
@@ -922,7 +925,7 @@ describe('App lifecycle coordination', () => {
         wrapper
           .findAll('.outfit-header-actions button')
           .map((button) => (button.element as HTMLButtonElement).disabled)
-      ).toEqual([false, false, false])
+      ).toEqual([false, false, false, false])
     } finally {
       wrapper.unmount()
     }

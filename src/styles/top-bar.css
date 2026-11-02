@@ -231,17 +231,6 @@
 .note-dialog-panel .confirm-dialog-button.primary {
   background: var(--primary-bg);
   color: var(--primary-text);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--pink-deep) 22%, transparent);
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .note-dialog-panel .confirm-dialog-button.primary {
-    box-shadow: 0 8px 18px rgba(201, 132, 134, 0.22);
-  }
-
-  :where(:root[data-theme='dark']) .note-dialog-panel .confirm-dialog-button.primary {
-    box-shadow: 0 8px 18px rgba(239, 176, 178, 0.22);
-  }
 }
 
 .note-dialog-panel .confirm-dialog-button.primary:hover:not(:disabled) {

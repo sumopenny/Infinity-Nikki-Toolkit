@@ -291,6 +291,18 @@ async function requestLookbookSource(
   return normalizeLookbookResult(decoded.value)
 }
 
+/** 仅查询本机解析结果；浏览总结时缓存缺失不触发在线请求。 */
+export async function readCachedOutfitResult(code: string): Promise<LookbookDecodeResult | null> {
+  const cached = parsedResultCache.get(code)
+  if (cached) return cached
+  try {
+    const stored = await getSavedOutfitParseResult(code)
+    return isCachedParseResult(stored, code) ? normalizeLookbookResult(stored) : null
+  } catch {
+    return null
+  }
+}
+
 /** 解析搭配码；成功结果持久化到 IndexedDB，存储不可用时回退到在线请求。 */
 export async function parseOutfitCode(rawCode: string): Promise<LookbookDecodeResult> {
   const code = normalizeLookbookCode(rawCode)
@@ -310,16 +322,13 @@ export async function parseOutfitCode(rawCode: string): Promise<LookbookDecodeRe
   const isCurrent = () =>
     localGeneration === parseCacheGeneration && isCurrentCacheGeneration(generation)
   const request = (async () => {
-    try {
-      const stored = await measureLookbook('indexeddb_read', () => getSavedOutfitParseResult(code))
-      if (isCachedParseResult(stored, code)) {
-        const result = normalizeLookbookResult(stored)
-        if (isCurrent()) parsedResultCache.set(code, result)
-        lookbookTiming('indexeddb_cache_hit', performance.now())
-        return result
-      }
-    } catch {
-      // IndexedDB 不可用时继续请求上游解析服务。
+    const resultFromCache = await measureLookbook('indexeddb_read', () =>
+      readCachedOutfitResult(code)
+    )
+    if (resultFromCache) {
+      if (isCurrent()) parsedResultCache.set(code, resultFromCache)
+      lookbookTiming('indexeddb_cache_hit', performance.now())
+      return resultFromCache
     }
 
     const result = await requestLookbookParse(code)

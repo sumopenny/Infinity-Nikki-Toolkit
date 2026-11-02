@@ -79,7 +79,7 @@ const desktopZh: HelpAboutDeviceContent = {
     {
       title: '搭配码管理',
       items: [
-        '点击“添加方案”，选择、拖拽或粘贴图片，填写搭配码、备注及一个标签；搭配码可留空，方案会归入待填写。',
+        '点击“添加方案”，填写搭配码或添加图片即可保存，也可以两项都填。仅有图片的方案会归入待填写。',
         '卡片底部提供复制和编辑；悬停卡片可使用右上角删除及解析按钮，无搭配码时复制和解析不可用。双击卡片可看大图。',
         '在左侧选择标签，用添加按钮创建标签，拖动手柄调整顺序；顶部提供本模块 ZIP 导入导出，授权 X6Game 后可更新游戏搭配。'
       ]
@@ -204,7 +204,7 @@ const mobileZh: HelpAboutDeviceContent = {
     {
       title: '搭配码卡片',
       items: [
-        '点页面“+”，选择图片，填写搭配码、备注和一个标签后保存。搭配码可留空，稍后再编辑补充。',
+        '点页面“+”，填写搭配码或选择图片即可保存，以后可以编辑补充。',
         '卡片底部从左到右是复制、编辑、删除、解析图标；没有搭配码时复制和解析置灰，删除会先要求确认。',
         '点卡片可选中并显示批量操作栏；双击搭配卡片可打开大图。本模块 ZIP 导入导出位于页面“⋯”菜单。'
       ]
@@ -323,7 +323,7 @@ const desktopEn: HelpAboutDeviceContent = {
     {
       title: 'Manage outfit codes',
       items: [
-        'Choose Add outfit, select, drop or paste an image, then enter a code, note and one tag. A code can be left blank for a pending outfit.',
+        'Choose Add outfit and enter a code, add an image, or do both. Image-only outfits appear under Pending.',
         'Copy and Edit are at the bottom of each card. Hover to reveal Delete and Parse at the top right. Copy and Parse are disabled without a code; double-click for a preview.',
         'Choose tags in the sidebar, add them with the plus button and drag their handles to reorder. Import or export this collection as a ZIP; authorize X6Game for in-game outfit updates.'
       ]
@@ -448,7 +448,7 @@ const mobileEn: HelpAboutDeviceContent = {
     {
       title: 'Outfit cards',
       items: [
-        'Tap the page plus, choose an image and save a code, note and one tag. Leave the code blank to fill it in later.',
+        'Tap the plus button and enter a code or choose an image. You can add the other later.',
         'Bottom icons, from left to right, are Copy, Edit, Delete and Parse. Copy and Parse are disabled without a code; deletion requires confirmation.',
         'Tap a card to select it and reveal batch actions; double-tap an outfit card for a preview. The page ellipsis contains ZIP import and export.'
       ]
