@@ -69,6 +69,40 @@ describe('LikeCounter', () => {
     )
   })
 
+  it('1299→1300 仅滚动进位的三列，并保留千位和分隔符', async () => {
+    const calls: { element: Element; frames: Keyframe[] }[] = []
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'animate')
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value(this: Element, frames: Keyframe[]) {
+        calls.push({ element: this, frames })
+        return { playState: 'finished', cancel() {} }
+      }
+    })
+    vi.stubGlobal('matchMedia', () => ({ matches: false }))
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ count: 1299 }))
+      .mockResolvedValueOnce(jsonResponse({ count: 1300 })))
+    try {
+      const wrapper = mount(LikeCounter, { props: { messages } })
+      await flushPromises()
+      const strips = wrapper.findAll('.like-digit-strip').map(node => node.element)
+      expect(calls).toHaveLength(0)
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('.like-counter-number').text()).toBe('1,300')
+      expect(calls.map(call => call.element)).toEqual(strips.slice(1))
+      expect(calls.map(call => call.frames.map(frame => frame.transform))).toEqual([
+        ['translateY(-1200%)', 'translateY(-1300%)'],
+        ['translateY(-1900%)', 'translateY(-2000%)'],
+        ['translateY(-1900%)', 'translateY(-2000%)']
+      ])
+    } finally {
+      if (original) Object.defineProperty(Element.prototype, 'animate', original)
+      else Reflect.deleteProperty(Element.prototype, 'animate')
+    }
+  })
+
   it('POST 失败时回退乐观更新', async () => {
     const fetchMock = vi
       .fn()

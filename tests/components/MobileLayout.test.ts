@@ -95,7 +95,7 @@ describe('mobile navigation and collection controls', () => {
     ).toBe(true)
     expect(document.querySelector('.mobile-header-row .like-counter')).toBeNull()
     expect(document.querySelectorAll('.like-counter')).toHaveLength(1)
-    expect(button.querySelector('.like-counter-number')!.textContent).toBe('1.2万')
+    expect(button.querySelector('.like-counter-number')!.textContent).toBe('12,000')
     expect(button.getAttribute('aria-label')).toContain('12,000')
     button.click()
     await flushPromises()
@@ -127,7 +127,7 @@ describe('mobile navigation and collection controls', () => {
     language.value = 'en'
     await flushPromises()
     expect(document.querySelector('.retained-camera .like-counter')).toBe(button)
-    expect(button.querySelector('.like-counter-number')!.textContent).toBe('12K')
+    expect(button.querySelector('.like-counter-number')!.textContent).toBe('12,005')
     expect(button.getAttribute('aria-label')).toContain('12,005')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })

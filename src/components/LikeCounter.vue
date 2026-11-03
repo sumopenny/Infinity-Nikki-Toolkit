@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import LikeDigit from './LikeDigit.vue'
 import { Heart } from 'lucide-vue-next'
 
 const props = defineProps<{
   messages: { like: string; likeTooltip: string }
-  compact?: boolean
   language?: 'zh' | 'en'
 }>()
 
@@ -15,14 +15,8 @@ const colors = ['#ff648a', '#ff9855', '#e8bd38', '#70c764', '#37bbb3', '#609cf3'
 let likeQueue: Promise<void> = Promise.resolve()
 let pendingLikes = 0
 
-const formattedCount = computed(() => (count.value === null ? '…' : count.value.toLocaleString()))
-const displayCount = computed(() => {
-  if (count.value === null || !props.compact) return formattedCount.value
-  return new Intl.NumberFormat(props.language === 'en' ? 'en' : 'zh-CN', {
-    notation: 'compact',
-    maximumFractionDigits: 1
-  }).format(count.value)
-})
+const formattedCount = computed(() => count.value?.toLocaleString(props.language === 'en' ? 'en' : 'zh-CN') ?? '…')
+const characters = computed(() => Array.from(formattedCount.value))
 
 /** 拉取当前点赞总数；接口不可用时（如纯静态环境）隐藏计数器。参数：无。 */
 async function loadCount() {
@@ -85,6 +79,11 @@ onMounted(loadCount)
       <i v-for="(color, index) in clickId ? colors : []" :key="color" class="like-dot"
         :style="{ background: color, rotate: `${index * 45}deg` }" />
     </span>
-    <span class="like-counter-number" aria-hidden="true">{{ displayCount }}</span>
+    <span class="like-counter-number" aria-hidden="true">
+      <template v-for="(char, index) in characters" :key="characters.length - index">
+        <LikeDigit v-if="/[0-9]/.test(char)" :digit="Number(char)" :animate-leading="clickId > 0" />
+        <span v-else>{{ char }}</span>
+      </template>
+    </span>
   </button>
 </template>

@@ -888,6 +888,10 @@
 }
 
 .like-counter-number {
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1.25;
+  white-space: nowrap;
   min-width: 2ch;
   text-align: center;
 }

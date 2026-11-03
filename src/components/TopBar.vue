@@ -457,7 +457,6 @@ function openDonate() {
       <!-- 移动同一个点赞实例，切换布局时保留计数和未完成请求。 -->
       <Teleport :to="mobileLikeTarget || 'body'" :disabled="!compact || !mobileLikeTarget">
         <LikeCounter
-          :compact="compact"
           :language="language"
           :messages="{ like: messages.like, likeTooltip: messages.likeTooltip }"
         />
