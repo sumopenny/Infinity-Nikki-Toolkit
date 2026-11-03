@@ -1,3 +1,4 @@
+import { reportPartialFailure } from '../errorReporting/errorReporter'
 import {
   databaseRequest as outfitRequest,
   runDatabaseTransaction as outfitTransaction
@@ -93,7 +94,8 @@ export async function readOutfitRecords(): Promise<{
   unreadableCount: number
 }> {
   await initializeOutfitTags()
-  return outfitTransaction(
+  const skipped = { invalidRecord: 0, missingTag: 0, missingImage: 0 }
+  const result = await outfitTransaction(
     [OUTFITS_STORE, OUTFIT_IMAGES_STORE, OUTFIT_TAGS_STORE],
     'readonly',
     async (tx) => {
@@ -111,11 +113,20 @@ export async function readOutfitRecords(): Promise<{
         try {
           record = normalizeOutfitRecord(raw)
         } catch (error) {
-          if (error instanceof Error && error.message.startsWith('outfit_')) continue
+          if (error instanceof Error && error.message.startsWith('outfit_')) {
+            skipped.invalidRecord++
+            continue
+          }
           throw error
         }
-        if (record.tags.some((tag) => !tags.includes(tag))) continue
-        if (record.image && !availableImages.has(record.id)) continue
+        if (record.tags.some((tag) => !tags.includes(tag))) {
+          skipped.missingTag++
+          continue
+        }
+        if (record.image && !availableImages.has(record.id)) {
+          skipped.missingImage++
+          continue
+        }
         records.push(record)
         sizes.set(record.id, record.imageSize ?? 0)
       }
@@ -123,6 +134,10 @@ export async function readOutfitRecords(): Promise<{
       return { records, tags, sizes, unreadableCount: rawRecords.length - records.length }
     }
   )
+  if (result.unreadableCount) {
+    reportPartialFailure('outfits', 'read-collection', result.unreadableCount, skipped)
+  }
+  return result
 }
 export async function readOutfitCollection(): Promise<{ outfits: OutfitItem[]; tags: string[]; unreadableCount: number }> {
   const { records, tags, sizes, unreadableCount } = await readOutfitRecords()

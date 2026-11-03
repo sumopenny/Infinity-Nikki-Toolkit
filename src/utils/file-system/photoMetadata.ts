@@ -1,4 +1,6 @@
 // 相片元数据：负责 album-metadata.json 的读取、校验和备注保存。
+import { reportError } from '../errorReporting/errorReporter'
+
 export const PHOTO_NOTE_LIMIT = 15
 const ALBUM_METADATA_FILE_NAME = 'album-metadata.json'
 const METADATA_WRITE_LOCK = 'infinity-nikki-album-metadata-write'
@@ -107,7 +109,8 @@ function filesIn(directory: FileSystemDirectoryHandle): GetFile {
   }
 }
 export async function inspectAlbumNotes(
-  source: FileSystemDirectoryHandle | GetFile
+  source: FileSystemDirectoryHandle | GetFile,
+  scan?: 'open' | 'refresh' | 'compatible'
 ): Promise<AlbumNoteSnapshot> {
   const get = typeof source === 'function' ? source : filesIn(source)
   const [main, pending] = await Promise.all([
@@ -124,12 +127,31 @@ export async function inspectAlbumNotes(
     !['valid', 'partial', 'unsupported'].includes(main.state) && valid.length === 1
       ? valid[0]
       : undefined
+  const blocked = !['valid', 'missing'].includes(main.state) || candidates.length > 0
+  if (scan && blocked) {
+    reportError(new Error('Album notes need attention'), {
+      module: 'album',
+      action: 'read-notes',
+      stage: scan,
+      code: 'ALBUM_NOTES_BLOCKED',
+      severity: 'warning',
+      context: {
+        mainState: main.text === '' ? 'empty' : main.state,
+        invalidEntryCount: main.badEntries,
+        pendingState: pending.state,
+        swapState:
+          main.state === 'valid'
+            ? 'unchecked'
+            : (candidates.find((f) => f.name === SWAP)?.state ?? 'missing')
+      }
+    })
+  }
   return {
     main,
     candidates,
     metadata: preview?.metadata ?? main.metadata,
     previewName: preview?.name,
-    blocked: !['valid', 'missing'].includes(main.state) || candidates.length > 0
+    blocked
   }
 }
 async function writableSnapshot(directory: FileSystemDirectoryHandle) {
@@ -171,6 +193,23 @@ async function assertText(
   const file = await filesIn(directory)(name)
   if ((file ? await file.text() : null) !== expected) throw new PhotoMetadataError('changed')
 }
+function reportNoteFailure(error: unknown, action: 'save-notes' | 'recover-notes', stage: string) {
+  const reason =
+    error instanceof PhotoMetadataError
+      ? error.code
+      : error instanceof DOMException
+        ? error.name
+        : 'unknown'
+  reportError(new Error('Album note file operation failed'), {
+    module: 'album',
+    action,
+    stage,
+    code: 'ALBUM_NOTE_FILE_FAILED',
+    severity: stage === 'cleanup' ? 'warning' : 'error',
+    context: { reason }
+  })
+}
+
 async function writeMetadata(
   directory: FileSystemDirectoryHandle,
   metadata: AlbumMetadata,
@@ -188,8 +227,8 @@ async function writeMetadata(
   try {
     await assertText(directory, PENDING, text)
     await directory.removeEntry(PENDING)
-  } catch {
-    /* keep for recovery */
+  } catch (error) {
+    reportNoteFailure(error, 'save-notes', 'cleanup')
   }
   return text
 }
@@ -218,37 +257,49 @@ export async function recoverAlbumNotes(
   shown: AlbumNoteSnapshot,
   choice: string | null
 ) {
-  if (!navigator.locks?.request) throw new PhotoMetadataError('lockUnavailable')
-  return navigator.locks.request(METADATA_WRITE_LOCK, async () => {
-    const current = await inspectAlbumNotes(directory)
-    const version = (s: AlbumNoteSnapshot) =>
-      JSON.stringify([s.main, ...s.candidates].map((f) => [f.name, f.state, f.text]))
-    if (version(current) !== version(shown)) throw new PhotoMetadataError('changed')
-    if (current.main.state === 'unreadable') throw new PhotoMetadataError('invalid')
-    const source = current.candidates.find((f) => f.name === choice && f.state === 'valid')
-    if ((choice !== null && !source) || (choice === null && current.main.state !== 'valid'))
-      throw new PhotoMetadataError('invalid')
-    const pending = current.candidates.find((f) => f.name === PENDING)
-    if (pending && pending.state === 'unreadable') throw new PhotoMetadataError('invalid')
-    if (pending && pending.text !== (source?.text ?? current.main.text))
-      await backupOriginal(directory, PENDING)
-    if (source) {
-      await backupOriginal(directory, ALBUM_METADATA_FILE_NAME)
-      await assertText(directory, source.name, source.text)
-      await assertText(directory, ALBUM_METADATA_FILE_NAME, current.main.text)
-      await writeVerified(directory, ALBUM_METADATA_FILE_NAME, source.text!)
-    }
-    if (pending) {
-      await assertText(directory, PENDING, pending.text)
-      await assertText(directory, ALBUM_METADATA_FILE_NAME, source?.text ?? current.main.text)
-      try {
-        await directory.removeEntry(PENDING)
-      } catch {
-        return { cleanupPending: true }
+  let stage = 'lock'
+  try {
+    if (!navigator.locks?.request) throw new PhotoMetadataError('lockUnavailable')
+    return await navigator.locks.request(METADATA_WRITE_LOCK, async () => {
+      stage = 'check-files'
+      const current = await inspectAlbumNotes(directory)
+      const version = (s: AlbumNoteSnapshot) =>
+        JSON.stringify([s.main, ...s.candidates].map((f) => [f.name, f.state, f.text]))
+      if (version(current) !== version(shown)) throw new PhotoMetadataError('changed')
+      if (current.main.state === 'unreadable') throw new PhotoMetadataError('invalid')
+      const source = current.candidates.find((f) => f.name === choice && f.state === 'valid')
+      if ((choice !== null && !source) || (choice === null && current.main.state !== 'valid'))
+        throw new PhotoMetadataError('invalid')
+      const pending = current.candidates.find((f) => f.name === PENDING)
+      if (pending && pending.state === 'unreadable') throw new PhotoMetadataError('invalid')
+      stage = 'backup'
+      if (pending && pending.text !== (source?.text ?? current.main.text))
+        await backupOriginal(directory, PENDING)
+      if (source) {
+        await backupOriginal(directory, ALBUM_METADATA_FILE_NAME)
+        stage = 'verify-source'
+        await assertText(directory, source.name, source.text)
+        await assertText(directory, ALBUM_METADATA_FILE_NAME, current.main.text)
+        stage = 'replace-and-verify'
+        await writeVerified(directory, ALBUM_METADATA_FILE_NAME, source.text!)
       }
-    }
-    return { cleanupPending: false }
-  })
+      if (pending) {
+        stage = 'verify-before-cleanup'
+        await assertText(directory, PENDING, pending.text)
+        await assertText(directory, ALBUM_METADATA_FILE_NAME, source?.text ?? current.main.text)
+        try {
+          await directory.removeEntry(PENDING)
+        } catch (error) {
+          reportNoteFailure(error, 'recover-notes', 'cleanup')
+          return { cleanupPending: true }
+        }
+      }
+      return { cleanupPending: false }
+    })
+  } catch (error) {
+    reportNoteFailure(error, 'recover-notes', stage)
+    throw error
+  }
 }
 /** 在共享写锁内迁移备注，再删除源文件；失败恢复元数据，恢复失败则要求调用方保留目标副本。 */
 export async function transferPhotoNote(

@@ -7,6 +7,9 @@ import {
   savePhotoNote
 } from '../../src/utils/file-system/photoMetadata'
 
+import { reportError } from '../../src/utils/errorReporting/errorReporter'
+vi.mock('../../src/utils/errorReporting/errorReporter', () => ({ reportError: vi.fn() }))
+
 class FileHandle {
   constructor(
     public name: string,
@@ -194,7 +197,14 @@ it('backs up the empty original and restores the incident swap, including its em
   const d = new Dir()
   d.files.set(MAIN, new FileHandle(MAIN))
   d.files.set(SWAP, new FileHandle(SWAP, trashText))
-  const state = await inspectAlbumNotes(asDir(d))
+  vi.mocked(reportError).mockClear()
+  await inspectAlbumNotes(asDir(new Dir()), 'open')
+  expect(reportError).not.toHaveBeenCalled()
+  const state = await inspectAlbumNotes(asDir(d), 'compatible')
+  expect(reportError).toHaveBeenCalledWith(expect.any(Error), {
+    module: 'album', action: 'read-notes', stage: 'compatible', code: 'ALBUM_NOTES_BLOCKED',
+    severity: 'warning', context: { mainState: 'empty', invalidEntryCount: 0, pendingState: 'missing', swapState: 'valid' }
+  })
   expect(state).toMatchObject({ blocked: true, previewName: SWAP, metadata: JSON.parse(trashText) })
   await expect(savePhotoNote(asDir(d), 'x', 'edit')).rejects.toMatchObject({ code: 'invalid' })
   await recoverAlbumNotes(asDir(d), state, SWAP)
@@ -239,6 +249,9 @@ it('stops before replacing an original if backup fails or the selected candidate
     return get(name, options)
   })
   await expect(recoverAlbumNotes(asDir(d), state, SWAP)).rejects.toThrow('backup denied')
+  expect(reportError).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({
+    module: 'album', action: 'recover-notes', stage: 'backup', code: 'ALBUM_NOTE_FILE_FAILED'
+  }))
   spy.mockRestore()
   swap.contents = '{"photos":{}}'
   await expect(recoverAlbumNotes(asDir(d), state, SWAP)).rejects.toMatchObject({ code: 'changed' })

@@ -14,8 +14,9 @@ export async function readCompatibleAlbum(files: File[]): Promise<CompatibleAlbu
   if (!root || files.some((file) => file.webkitRelativePath.split('/')[0] !== root))
     throw new Error('Invalid folder selection')
   const directFiles = files.filter((file) => file.webkitRelativePath.split('/').length === 2)
-  const notes = await inspectAlbumNotes(async (name) =>
-    directFiles.find((file) => file.name === name)
+  const notes = await inspectAlbumNotes(
+    async (name) => directFiles.find((file) => file.name === name),
+    'compatible'
   )
   const metadata = notes.metadata
   const photos: FilePhotoItem[] = []

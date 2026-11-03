@@ -112,12 +112,15 @@ defineExpose({ open, installed })
                 :class="{ expanded: expandedMobile === mobile }"
                 :inert="expandedMobile !== mobile"
               >
-                <dl>
+                <div>
+                  <p v-if="mobile" class="install-file-warning">{{ language === 'zh' ? '部分手机浏览器安装后可能无法选择、读取或保存文件。如果遇到这种情况，请返回网页版使用' : 'Some mobile browsers may be unable to select, read, or save files after installation. If this happens, return to the web version.' }}</p>
+                  <dl>
                   <template v-for="guide in guides.filter(item => item.mobile === mobile)" :key="guide.en">
                     <dt>{{ language === 'zh' ? guide.zh : guide.en }}</dt>
                     <dd>{{ language === 'zh' ? guide.steps : guide.english }}</dd>
                   </template>
                 </dl>
+                </div>
               </div>
             </div>
           </section>
@@ -135,6 +138,7 @@ defineExpose({ open, installed })
 </template>
 
 <style scoped>
+.desktop-install-content .install-file-warning { color: #bc2531; color: light-dark(#a51d27, #ff929a); font-weight: 700; }
 .desktop-install-dialog { position: fixed; inset: 0; width: min(720px, calc(100vw - 28px)); max-height: 85vh; max-height: 85dvh; overflow: hidden; margin: auto; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-strong); color: var(--text); box-shadow: var(--dialog-shadow); }
 .desktop-install-dialog::backdrop { background: var(--overlay-bg); }
 @media (prefers-reduced-motion: no-preference) {
@@ -182,6 +186,7 @@ defineExpose({ open, installed })
 .install-guide-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
 .install-guide-answer { display: grid; grid-template-rows: 0fr; }
 .install-guide-answer.expanded { grid-template-rows: 1fr; }
+.install-guide-answer > div { min-height: 0; overflow: hidden; }
 .install-guide-answer dl { min-height: 0; overflow: hidden; margin: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .install-guide-answer { transition: grid-template-rows 240ms ease-in-out; }

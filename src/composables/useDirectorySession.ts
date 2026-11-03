@@ -1,3 +1,5 @@
+import { reportError } from '../utils/errorReporting/errorReporter'
+import { DirectoryAccessError } from '../utils/file-system/directoryErrors'
 import { readLocalStorage } from '../utils/localStorage'
 import { ALBUM_ACCESS_MODE_KEY, compatibleAlbumMessages } from '../i18n/messages/compatibleAlbum'
 import type { Ref, ComputedRef } from 'vue'
@@ -98,7 +100,10 @@ export function useDirectorySession(options: DirectorySessionOptions) {
           })
           await replaceAlbum(restored, { type: 'initial' })
           return
-        } catch {
+        } catch (error) {
+          if (!(error instanceof DirectoryAccessError) || error.code === 'read-failed') {
+            reportError(error, { module: 'album', action: 'restore-directory', stage: 'before-picker' })
+          }
           statusState.value = { type: 'restorePathFailed' }
         }
       }

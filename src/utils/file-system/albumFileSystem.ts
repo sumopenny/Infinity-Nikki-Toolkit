@@ -104,7 +104,7 @@ export async function readAlbumDirectory(
   }
 
   try {
-    const notes = await inspectAlbumNotes(directoryHandle)
+    const notes = await inspectAlbumNotes(directoryHandle, 'open')
     const metadata = notes.metadata
     const photos = await scanAlbumPhotos(directoryHandle, metadata)
     return {
@@ -135,7 +135,7 @@ export async function refreshAlbumPhotos(
   if (!hasPermission) throw createDirectoryError('permission-denied', options.messages)
 
   try {
-    const notes = await inspectAlbumNotes(directoryHandle)
+    const notes = await inspectAlbumNotes(directoryHandle, 'refresh')
     const metadata = notes.metadata
     const scannedPhotos = await scanAlbumPhotos(directoryHandle, metadata)
     const currentByName = new Map(currentPhotos.map((photo) => [photo.name, photo]))

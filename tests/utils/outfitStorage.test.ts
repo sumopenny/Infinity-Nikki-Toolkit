@@ -19,6 +19,11 @@ import {
   outfitTransaction
 } from '../../src/utils/outfit/outfitStorage'
 import { DuplicateOutfitCodeError } from '../../src/utils/outfit/outfitTypes'
+import { reportPartialFailure } from '../../src/utils/errorReporting/errorReporter'
+vi.mock('../../src/utils/errorReporting/errorReporter', async (original) => ({
+  ...await original<typeof import('../../src/utils/errorReporting/errorReporter')>(),
+  reportPartialFailure: vi.fn()
+}))
 setupOutfitDatabaseTests()
 const input = (code = 'CODE1') => ({ imageFile: webp(), code, tag: null, note: '备注' })
 
@@ -35,6 +40,9 @@ it('lists healthy outfits without changing unreadable records or silently export
   const result = await readOutfitCollection()
   expect(result.outfits.map((item) => item.id)).toEqual([healthy.id])
   expect(result.unreadableCount).toBe(3)
+  expect(reportPartialFailure).toHaveBeenCalledWith('outfits', 'read-collection', 3, {
+    invalidRecord: 1, missingTag: 1, missingImage: 1
+  })
   expect(await runStoreRequest(OUTFITS_STORE, 'readonly', (store) => store.count())).toBe(4)
   await expect(readOutfitSnapshot()).rejects.toThrow('outfit_record_invalid')
 })
