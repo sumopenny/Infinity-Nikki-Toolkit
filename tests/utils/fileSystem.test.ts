@@ -944,3 +944,18 @@ it('preserves a destination created after restore-name allocation', async () => 
   expect(await (await directory.files.get(source.name)!.getFile()).text()).toBe('external')
   expect(await listRecentlyDeleted(handle)).toHaveLength(1)
 })
+it('opens and refreshes a writable album with an empty original and a valid trash-note swap', async () => {
+  const album = new MemoryDirectoryHandle('NikkiPhotos_HighQuality')
+  const photo = createPhoto(album, '2026_11_03_13_25_08.jpg')
+  album.files.set('album-metadata.json',new MemoryFileHandle('album-metadata.json', new Blob([])))
+  const swap = 'album-metadata.json.crswap'
+  album.files.set(swap,new MemoryFileHandle(swap,new Blob(['{"version":1,"photos":{"trash/example.jpg":{"note":""}}}'])))
+  album.directories.set('trash',new MemoryDirectoryHandle('trash'))
+  const dir=album as unknown as FileSystemDirectoryHandle
+  const opts={messages:messages.zh.fileSystem}
+  const opened=await readAlbumDirectory(dir,opts)
+  expect(opened).toMatchObject({photos:[{name:photo.name}],notes:{blocked:true,previewName:swap}})
+  expect(await refreshAlbumDirectory(dir,opened.photos,opts)).toMatchObject({photos:[{name:photo.name}],recentlyDeleted:[],notes:{blocked:true}})
+  expect((await readAlbumDirectory(dir,opts)).photos[0].source).not.toBe('file')
+  expect(await (await album.files.get('album-metadata.json')!.getFile()).text()).toBe('')
+})

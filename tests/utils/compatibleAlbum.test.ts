@@ -46,10 +46,13 @@ describe('compatible album snapshots', () => {
     expect(await id(file('a/photo.jpg', 'image', 2000))).not.toBe(original)
   })
 
-  it('rejects malformed metadata and unrelated roots rather than replacing valid state', async () => {
+  it('opens photos with malformed metadata but rejects unrelated roots', async () => {
     await expect(
       readCompatibleAlbum([file('a/photo.jpg'), file('a/album-metadata.json', '{')])
-    ).rejects.toThrow()
+    ).resolves.toMatchObject({
+      notes: { blocked: true, main: { state: 'invalid' } },
+      photos: [{ name: 'photo.jpg' }]
+    })
     await expect(readCompatibleAlbum([file('a/photo.jpg'), file('b/photo.jpg')])).rejects.toThrow()
     expect((await readCompatibleAlbum([file('a/trash/photo.jpg')])).photos).toEqual([])
   })
@@ -108,4 +111,30 @@ describe('compatible album snapshots', () => {
     ).rejects.toMatchObject({ name: 'AbortError' })
     expect(onPart).not.toHaveBeenCalled()
   })
+})
+it('previews a verified legacy swap and preserves good entries in a partial original', async () => {
+  const photo = file('album/a.jpg')
+  const swap = file(
+    'album/album-metadata.json.crswap',
+    '{"version":1,"photos":{"a.jpg":{"note":"copy"},"trash/example.jpg":{"note":""}}}'
+  )
+  const incident = await readCompatibleAlbum([photo, file('album/album-metadata.json', ''), swap])
+  expect(incident).toMatchObject({
+    photos: [{ note: 'copy' }],
+    notes: { blocked: true, previewName: swap.name }
+  })
+  const partial = await readCompatibleAlbum([
+    photo,
+    file('album/album-metadata.json', '{"photos":{"a.jpg":{"note":"mine"},"bad":42}}'),
+    swap
+  ])
+  expect(partial).toMatchObject({
+    photos: [{ note: 'mine' }],
+    notes: { main: { state: 'partial', badEntries: 1 } }
+  })
+  const unknown = await readCompatibleAlbum([
+    photo,
+    file('album/album-metadata.json', '{"version":2,"photos":{}}')
+  ])
+  expect(unknown.notes.main.state).toBe('unsupported')
 })

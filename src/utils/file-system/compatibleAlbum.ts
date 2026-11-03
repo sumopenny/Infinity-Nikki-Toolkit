@@ -1,10 +1,11 @@
 // 传统文件夹选择只提供 File 快照，不具备可写目录句柄。
 import { datePartsFromTimestamp, parsePhotoDate, type FilePhotoItem } from '../photoGrouping'
 import { formatFileSize } from './photoUrl'
-import { normalizePhotoNote, parseAlbumMetadata, type AlbumMetadata } from './photoMetadata'
+import { normalizePhotoNote, inspectAlbumNotes, type AlbumNoteSnapshot } from './photoMetadata'
 
 export interface CompatibleAlbumResult {
   directoryName: string
+  notes: AlbumNoteSnapshot
   photos: FilePhotoItem[]
 }
 
@@ -13,10 +14,10 @@ export async function readCompatibleAlbum(files: File[]): Promise<CompatibleAlbu
   if (!root || files.some((file) => file.webkitRelativePath.split('/')[0] !== root))
     throw new Error('Invalid folder selection')
   const directFiles = files.filter((file) => file.webkitRelativePath.split('/').length === 2)
-  const metadataFile = directFiles.find((file) => file.name === 'album-metadata.json')
-  const metadata: AlbumMetadata = metadataFile
-    ? parseAlbumMetadata(await metadataFile.text())
-    : { version: 1, photos: {} }
+  const notes = await inspectAlbumNotes(async (name) =>
+    directFiles.find((file) => file.name === name)
+  )
+  const metadata = notes.metadata
   const photos: FilePhotoItem[] = []
   for (const file of directFiles) {
     if (!/\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(file.name)) continue
@@ -36,5 +37,5 @@ export async function readCompatibleAlbum(files: File[]): Promise<CompatibleAlbu
       ...parsed
     })
   }
-  return { directoryName: root, photos: photos.sort((a, b) => b.timestamp - a.timestamp) }
+  return { directoryName: root, notes, photos: photos.sort((a, b) => b.timestamp - a.timestamp) }
 }

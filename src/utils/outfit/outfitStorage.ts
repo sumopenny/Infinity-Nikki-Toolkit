@@ -90,6 +90,7 @@ export async function readOutfitRecords(): Promise<{
   records: OutfitRecord[]
   tags: string[]
   sizes: Map<string, number>
+  unreadableCount: number
 }> {
   await initializeOutfitTags()
   return outfitTransaction(
@@ -101,28 +102,36 @@ export async function readOutfitRecords(): Promise<{
         outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default')),
         outfitRequest(tx.objectStore(OUTFIT_IMAGES_STORE).getAllKeys())
       ])
-      const records = rawRecords
-        .map(normalizeOutfitRecord)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      const tags = normalizeOutfitTagList(rawTags),
-        sizes = new Map<string, number>(),
-        availableImages = new Set(imageKeys)
-      for (const record of records) {
-        if (record.tags.some((tag) => !tags.includes(tag))) throw new Error('outfit_tag_missing')
-        if (record.image && !availableImages.has(record.id)) throw new Error('outfit_image_missing')
+      const records: OutfitRecord[] = []
+      const tags = normalizeOutfitTagList(rawTags)
+      const sizes = new Map<string, number>()
+      const availableImages = new Set(imageKeys)
+      for (const raw of rawRecords) {
+        let record: OutfitRecord
+        try {
+          record = normalizeOutfitRecord(raw)
+        } catch (error) {
+          if (error instanceof Error && error.message.startsWith('outfit_')) continue
+          throw error
+        }
+        if (record.tags.some((tag) => !tags.includes(tag))) continue
+        if (record.image && !availableImages.has(record.id)) continue
+        records.push(record)
         sizes.set(record.id, record.imageSize ?? 0)
       }
-      return { records, tags, sizes }
+      records.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      return { records, tags, sizes, unreadableCount: rawRecords.length - records.length }
     }
   )
 }
-export async function readOutfitCollection(): Promise<{ outfits: OutfitItem[]; tags: string[] }> {
-  const { records, tags, sizes } = await readOutfitRecords()
+export async function readOutfitCollection(): Promise<{ outfits: OutfitItem[]; tags: string[]; unreadableCount: number }> {
+  const { records, tags, sizes, unreadableCount } = await readOutfitRecords()
   return {
     outfits: records.map((record) =>
       displayOutfit(record, sizes.get(record.id)!, () => readOutfitImage(record.id))
     ),
-    tags
+    tags,
+    unreadableCount
   }
 }
 export async function readOutfitSnapshot(): Promise<OutfitSnapshot> {

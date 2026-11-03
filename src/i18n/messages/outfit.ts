@@ -17,6 +17,7 @@ export interface OutfitMessages {
   exportData: string
   exporting: string
   duplicateCode: string
+  unreadableRecords: (count: number) => string
   storageFull: string
   recordChanged: string
   operationFailed: string
@@ -132,6 +133,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     exportData: '导出数据',
     exporting: '正在生成备份',
     duplicateCode: '该搭配码已存在，请编辑已有方案。',
+    unreadableRecords: (count) => `有 ${count} 条搭配记录未能显示，原始记录已保留。`,
     storageFull: '浏览器存储空间不足，请释放空间后重试。源文件已保留。',
     recordChanged: '方案已被其他页面修改或删除，请刷新后重试。',
     operationFailed: '搭配数据读取或保存失败，请重试。',
@@ -269,6 +271,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     exportData: 'Export',
     exporting: 'Creating backup',
     duplicateCode: 'This outfit code already exists. Edit the existing outfit.',
+    unreadableRecords: (count) => `Unable to display ${count} outfit record(s). The original records are preserved.`,
     storageFull: 'Browser storage is full. Free some space and retry. Source files were retained.',
     recordChanged: 'This outfit was changed or deleted in another page. Refresh and retry.',
     operationFailed: 'Unable to read or save outfit data. Please retry.',

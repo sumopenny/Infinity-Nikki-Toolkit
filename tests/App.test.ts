@@ -115,7 +115,7 @@ describe('App lifecycle coordination', () => {
     localStorage.clear()
     vi.clearAllMocks()
     getSavedX6GameDirectoryHandleMock.mockResolvedValue(null)
-    readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [] })
+    readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [], unreadableCount: 0 })
     listRecentlyDeletedMock.mockResolvedValue([])
     saveAlbumDirectoryHandleMock.mockResolvedValue(undefined)
     readOutfitLibraryMock.mockResolvedValue({
@@ -331,6 +331,7 @@ describe('App lifecycle coordination', () => {
       })
       await input.trigger('change')
       await flushPromises()
+      expect(wrapper.find('.album-note-warning').text()).toContain('相册备注未能读取')
       expect(wrapper.getComponent({ name: 'PhotoGrid' }).props('dateGroups')).toEqual(
         originalGroups
       )
@@ -888,7 +889,7 @@ describe('App lifecycle coordination', () => {
       timeText: '08:00',
       timestamp: 1
     }
-    readOutfitCollectionMock.mockResolvedValue({ outfits: [outfit], tags: [] })
+    readOutfitCollectionMock.mockResolvedValue({ outfits: [outfit], tags: [], unreadableCount: 0 })
     readOutfitLibraryMock.mockResolvedValue({
       outfits: [outfit],
       tags: [],
@@ -1173,7 +1174,7 @@ describe('App lifecycle coordination', () => {
 
 it('blocks desktop and mobile navigation until a child operation settles', async () => {
   getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
-  readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [] })
+  readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [], unreadableCount: 0 })
   let finish!: () => void
   const wrapper = mount(App, {
     global: {
@@ -1275,7 +1276,7 @@ it('warns after cloud restore if wardrobe refresh reports a failure', async () =
     failedCount: 0
   })
   getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
-  readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [] })
+  readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [], unreadableCount: 0 })
   const reload = vi.fn().mockResolvedValue(false)
   const wrapper = mount(App, {
     global: {

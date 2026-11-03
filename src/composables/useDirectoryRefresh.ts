@@ -45,13 +45,10 @@ export function useDirectoryRefresh(options: DirectoryRefreshOptions) {
       }
     }
     try {
-      const [albumResult, trashResult] = await Promise.all([
-        refreshAlbumPhotos(directoryHandle, options.photos(), {
-          requestPermission: manual,
-          messages: locale.value.fileSystem
-        }),
-        listRecentlyDeleted(directoryHandle)
-      ])
+      const albumResult = await refreshAlbumPhotos(directoryHandle, options.photos(), {
+        requestPermission: manual, messages: locale.value.fileSystem
+      })
+      const trashResult = await listRecentlyDeleted(directoryHandle, albumResult.notes?.metadata.photos)
       if (refreshToken !== latestRefreshToken || directoryHandle !== options.directory()) return
       const result: RefreshAlbumResult = { ...albumResult, recentlyDeleted: trashResult }
       options.apply(result)

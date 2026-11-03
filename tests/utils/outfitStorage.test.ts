@@ -22,6 +22,23 @@ import { DuplicateOutfitCodeError } from '../../src/utils/outfit/outfitTypes'
 setupOutfitDatabaseTests()
 const input = (code = 'CODE1') => ({ imageFile: webp(), code, tag: null, note: '备注' })
 
+it('lists healthy outfits without changing unreadable records or silently exporting them', async () => {
+  const healthy = await saveOutfit(input('GOOD'))
+  const missingImage = await saveOutfit(input('NOIMAGE'))
+  const badTag = await saveOutfit(input('BADTAG'))
+  await runStoreRequest(OUTFIT_IMAGES_STORE, 'readwrite', (store) => store.delete(missingImage.id))
+  await runStoreRequest(OUTFITS_STORE, 'readwrite', (store) => {
+    const read = store.get(badTag.id)
+    read.onsuccess = () => store.put({ ...read.result, tags: ['旧标签'] })
+    return store.put({ id: 'broken', version: 0 })
+  })
+  const result = await readOutfitCollection()
+  expect(result.outfits.map((item) => item.id)).toEqual([healthy.id])
+  expect(result.unreadableCount).toBe(3)
+  expect(await runStoreRequest(OUTFITS_STORE, 'readonly', (store) => store.count())).toBe(4)
+  await expect(readOutfitSnapshot()).rejects.toThrow('outfit_record_invalid')
+})
+
 it('upgrades version 7 without losing existing camera, home or resonance data', async () => {
   await new Promise<void>((resolve, reject) => {
     const r = indexedDB.open(DB_NAME, 7)

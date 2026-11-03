@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import AlbumNoteNotice from './components/AlbumNoteNotice.vue'
+import {
+  inspectAlbumNotes,
+  recoverAlbumNotes,
+  type AlbumNoteSnapshot
+} from './utils/file-system/photoMetadata'
 import { currentVersion } from './i18n/version'
 import { lazyFeature } from './utils/lazyFeature'
 import { isAlbumPhoto } from './utils/photoGrouping'
@@ -38,7 +44,16 @@ provide(archiveCloudKey, archiveCloud)
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
 import { clearAllBrowserData } from './utils/file-system/database'
 
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  ref,
+  shallowRef,
+  watch
+} from 'vue'
 import {
   ChartNoAxesColumnIncreasing,
   CircleHelp,
@@ -117,7 +132,10 @@ import MobileNavigation from './components/MobileNavigation.vue'
 import { useCompactLayout, useVisualViewport } from './composables/useCompactLayout'
 import TopBar from './components/TopBar.vue'
 import PhotoTransferProgressDialog from './components/PhotoTransferProgressDialog.vue'
-const CardShareDialog = lazyFeature(() => import('./components/ShareImageDialog.vue'), () => language.value)
+const CardShareDialog = lazyFeature(
+  () => import('./components/ShareImageDialog.vue'),
+  () => language.value
+)
 const sharingOutfit = ref<OutfitItem | null>(null)
 const autoSharePhoto = ref(false)
 const loadCardSharePhoto = () => readPhotoBlob(sharingOutfit.value!)
@@ -225,6 +243,7 @@ const storedAboutState = readStoredAboutState()
 
 const photos = ref<PhotoItem[]>([])
 const outfits = ref<OutfitItem[]>([])
+const unreadableOutfitCount = ref(0)
 const homeSchemesCount = ref(0)
 const homeLibraryRevision = ref(0)
 let homeCountGeneration = 0
@@ -353,6 +372,13 @@ const {
 const { confirmDialog, openConfirmDialog, closeConfirmDialog, runSecondaryAction } =
   useConfirmDialog()
 const albumDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null)
+const albumNotes = shallowRef<AlbumNoteSnapshot>()
+const notesBlocked = computed(() => Boolean(albumNotes.value?.blocked))
+const noteLockedHint = computed(() =>
+  language.value === 'zh'
+    ? '请先处理相册备注文件，再修改照片或备注。'
+    : 'Resolve the album notes file before changing photos or notes.'
+)
 const isCompatibleAlbum = ref(false)
 const hasAlbum = computed(() => Boolean(albumDirectoryHandle.value) || isCompatibleAlbum.value)
 const compatibleMessages = computed(() => compatibleAlbumMessages[language.value])
@@ -750,7 +776,7 @@ const {
   visiblePhotos,
   locale,
   activeOperation,
-  isAnyFileOperationBusy,
+  isAnyFileOperationBusy: computed(() => isAnyFileOperationBusy.value || notesBlocked.value),
   statusState,
   createErrorStatus,
   openConfirmDialog
@@ -915,7 +941,7 @@ async function replaceAlbum(
     invalidatePendingRefreshes()
     const [outfitResult, nextRecentlyDeleted] = await Promise.all([
       readOutfitLibrary(result.directoryHandle),
-      listRecentlyDeleted(result.directoryHandle)
+      listRecentlyDeleted(result.directoryHandle, result.notes?.metadata.photos)
     ])
     if (appDisposed) {
       releasePhotoUrls(result.photos)
@@ -939,11 +965,13 @@ async function replaceAlbum(
     isOutfitEditorVisible.value = false
     isOutfitGuideVisible.value = false
     photos.value = result.photos
+    unreadableOutfitCount.value = outfitResult.unreadableCount ?? 0
     outfits.value = outfitResult.outfits
     outfitTags.value = outfitResult.tags
     recentlyDeleted.value = nextRecentlyDeleted
     // 收藏记录跨相册保留，切换相册时不再按当前照片裁剪，避免切回后丢失
     if (!options.preserveView) activeView.value = 'all'
+    albumNotes.value = result.notes
     albumDirectoryHandle.value = result.directoryHandle
     directoryState.value = { type: 'selected', name: result.directoryName }
     statusState.value = outfitResult.failedCount
@@ -1013,6 +1041,54 @@ function chooseCompatibleAlbum() {
     compatibleAlbumInput.value.click()
   }
 }
+async function recoverNotes(choice: string | null) {
+  const directory = albumDirectoryHandle.value,
+    snapshot = albumNotes.value
+  if (!directory || !snapshot || isCompatibleAlbum.value || isAnyFileOperationBusy.value) return
+  const zh = language.value === 'zh'
+  if (
+    !(await openConfirmDialog({
+      title: zh ? '确认处理相册备注' : 'Confirm album notes recovery',
+      message: choice
+        ? zh
+          ? '将先备份现有正式文件，再从所选副本恢复备注。'
+          : 'Back up the current file and restore notes from the selected copy.'
+        : zh
+          ? '保留当前正式版本，备份有差异的待提交文件。'
+          : 'Keep the current version and back up the differing pending copy.',
+      confirmLabel: zh ? '确认' : 'Confirm',
+      tone: 'warning'
+    }))
+  )
+    return
+  if (directory !== albumDirectoryHandle.value || isAnyFileOperationBusy.value) return
+  activeOperation.value = 'loading'
+  let failed = false,
+    cleanupPending = false
+  try {
+    ;({ cleanupPending } = await recoverAlbumNotes(directory, snapshot, choice))
+  } catch {
+    failed = true
+  } finally {
+    activeOperation.value = null
+  }
+  await refreshAlbum(false)
+  if (cleanupPending)
+    showStatus({
+      message: zh
+        ? '正式备注文件已验证，待提交副本暂未清理。'
+        : 'Notes verified. The pending copy could not be removed.',
+      tone: 'warning'
+    })
+  if (failed)
+    showStatus({
+      message: zh
+        ? '备注处理未完成。请检查文件和权限，再重新读取相册。'
+        : 'Notes recovery did not finish. Check the files and permissions and reopen the album.',
+      tone: 'warning'
+    })
+}
+
 function cancelCompatibleAlbum() {
   suppressNextFocusRefresh.value = false
 }
@@ -1036,6 +1112,7 @@ async function loadCompatibleAlbum(event: Event) {
     isCompatibleAlbum.value = true
     directoryState.value = { type: 'selected', name: result.directoryName }
     photos.value = result.photos
+    albumNotes.value = result.notes
     activeView.value = 'all'
     isNoteDialogVisible.value = false
     noteDialogPhoto.value = null
@@ -1105,6 +1182,7 @@ async function downloadCompatiblePhotos(source: PhotoItem[]) {
 
 /** 清除页面内已加载的相册和选择状态。参数：无。 */
 function resetLoadedAlbumState(options: { clearSharedOutfit?: boolean } = {}) {
+  albumNotes.value = undefined
   invalidatePendingRefreshes()
   photoActionParsing.cancel()
   actionInfo.value = new Map()
@@ -1230,6 +1308,7 @@ async function clearData() {
  * 参数：result 为文件系统扫描结果。
  */
 function applyRefreshResult(result: RefreshAlbumResult) {
+  albumNotes.value = result.notes
   for (const photo of result.removedPhotos) releasePhotoUrl(photo)
   for (const photo of result.replacedPhotos) releasePhotoUrl(photo)
   photos.value = result.photos
@@ -1341,6 +1420,7 @@ async function authorizeX6GameDirectory() {
 function applyOutfitLibraryResult(result: OutfitLibraryResult) {
   const previousPreviewId = activeView.value === 'outfits' ? currentPreview.value?.id : null
   releasePhotoUrls(outfits.value)
+  unreadableOutfitCount.value = result.unreadableCount ?? 0
   outfits.value = result.outfits
   outfitTags.value = result.tags
   const validOutfitIds = new Set(result.outfits.map((outfit) => outfit.id))
@@ -1683,7 +1763,14 @@ function parseToolsOutfitCode(code: string) {
 
 async function editPhotoNote(photo: PhotoDisplayItem | null) {
   const directory = albumDirectoryHandle.value
-  if (!directory || !photo || !('fileHandle' in photo) || isAnyFileOperationBusy.value) return
+  if (
+    notesBlocked.value ||
+    !directory ||
+    !photo ||
+    !('fileHandle' in photo) ||
+    isAnyFileOperationBusy.value
+  )
+    return
   try {
     // 每次打开都读取最新备注作为编辑基线；冲突后重开即可看到其他窗口的保存结果。
     const metadata = await readAlbumMetadata(directory)
@@ -1754,6 +1841,9 @@ async function saveNoteDialog(value: string) {
     if (error instanceof PhotoMetadataError)
       showStatus({ message: locale.value.grid.noteSaveErrors[error.code], tone: 'error' })
     else statusState.value = createErrorStatus(error, { type: 'readFailed' })
+  } finally {
+    const state = await inspectAlbumNotes(directory)
+    if (directory === albumDirectoryHandle.value) albumNotes.value = state
   }
 }
 
@@ -1990,17 +2080,13 @@ function scrollToDate(dateKey: string) {
 
 function scrollToAction(actionKey: string) {
   mobileFiltersOpen.value = false
-  document
-    .getElementById(`action-${actionKey}`)
-    ?.scrollIntoView({ block: 'start' })
+  document.getElementById(`action-${actionKey}`)?.scrollIntoView({ block: 'start' })
 }
 
 /** 将侧栏中选中的套装定位到对应共鸣记录卡片。 */
 function scrollToResonanceRecord(recordId: string) {
   mobileFiltersOpen.value = false
-  document
-    .getElementById(`resonance-record-${recordId}`)
-    ?.scrollIntoView({ block: 'start' })
+  document.getElementById(`resonance-record-${recordId}`)?.scrollIntoView({ block: 'start' })
 }
 
 function togglePhotoGroup(photoIds: string[]) {
@@ -2311,6 +2397,14 @@ function importAllDataFromMenu() {
       </div>
 
       <section class="album-content" :aria-label="locale.app.albumContentAria">
+        <AlbumNoteNotice
+          v-if="albumNotes?.blocked && ['all', 'favorites', 'trash'].includes(activeView)"
+          :snapshot="albumNotes"
+          :language="language"
+          :compatible="isCompatibleAlbum"
+          :busy="isAnyFileOperationBusy"
+          @recover="recoverNotes"
+        />
         <div
           v-if="isCompatibleAlbum && activeView === 'all'"
           class="compatible-album-notice"
@@ -2373,7 +2467,11 @@ function importAllDataFromMenu() {
         />
         <!-- 收藏夹：标签页与当前页操作按钮共用一行，移除重复标题。 -->
         <div v-if="activeView === 'favorites'" v-show="!compactLayout" class="favorites-toolbar">
-          <nav v-if="!compactLayout" class="resonance-choice-row favorites-view-switch" :aria-label="locale.viewNav.favorites">
+          <nav
+            v-if="!compactLayout"
+            class="resonance-choice-row favorites-view-switch"
+            :aria-label="locale.viewNav.favorites"
+          >
             <button
               type="button"
               class="resonance-choice"
@@ -2509,7 +2607,6 @@ function importAllDataFromMenu() {
           :class="{ 'is-outfit-header': activeView === 'outfits' }"
         >
           <div>
-
             <div v-if="activeView === 'outfits'" class="outfit-title-row">
               <h2>{{ viewTitle }}</h2>
               <button
@@ -2531,7 +2628,7 @@ function importAllDataFromMenu() {
                 class="trash-clear-all-btn"
                 :title="locale.trash.deleteAllTitle"
                 :aria-label="locale.trash.deleteAllTitle"
-                :disabled="isAnyFileOperationBusy"
+                :disabled="isAnyFileOperationBusy || notesBlocked"
                 @click="deleteAllTrash"
               >
                 <Trash2 :size="18" aria-hidden="true" />
@@ -2704,6 +2801,7 @@ function importAllDataFromMenu() {
           :language="language"
           v-else-if="activeView === 'outfits'"
           :outfits="visibleOutfits"
+          :unreadable-count="unreadableOutfitCount"
           :total-count="outfits.length"
           :selected-ids="selectedOutfitIds"
           :thumbnail-mode="outfitThumbnailMode"
@@ -2721,8 +2819,8 @@ function importAllDataFromMenu() {
         <PhotoGrid
           :language="language"
           v-else-if="hasAlbum && !isCameraFavoritesView"
-          :read-only="isCompatibleAlbum"
-          :read-only-hint="compatibleMessages.writeDisabled"
+          :read-only="isCompatibleAlbum || notesBlocked"
+          :read-only-hint="notesBlocked ? noteLockedHint : compatibleMessages.writeDisabled"
           :date-groups="formattedDateGroups"
           :action-groups="actionGroups"
           :grouping-mode="sidebarMode"
@@ -2753,8 +2851,8 @@ function importAllDataFromMenu() {
     />
 
     <SelectionBar
-      :read-only="isCompatibleAlbum && activeView !== 'outfits'"
-      :read-only-hint="compatibleMessages.writeDisabled"
+      :read-only="(isCompatibleAlbum || notesBlocked) && activeView !== 'outfits'"
+      :read-only-hint="notesBlocked ? noteLockedHint : compatibleMessages.writeDisabled"
       v-if="
         activeView !== 'home' &&
         activeView !== 'resonance' &&
@@ -2817,8 +2915,8 @@ function importAllDataFromMenu() {
     />
 
     <Lightbox
-      :read-only="isCompatibleAlbum && activeView !== 'outfits'"
-      :read-only-hint="compatibleMessages.writeDisabled"
+      :read-only="(isCompatibleAlbum || notesBlocked) && activeView !== 'outfits'"
+      :read-only-hint="notesBlocked ? noteLockedHint : compatibleMessages.writeDisabled"
       :photo="currentPreview"
       :has-previous="hasPreviousPreview"
       :has-next="hasNextPreview"
@@ -2850,7 +2948,13 @@ function importAllDataFromMenu() {
       @parse-photo="currentPreview && openPhotoParams(currentPreview)"
     />
 
-    <CardShareDialog v-if="sharingOutfit" :language="language" :code="sharingOutfit.code" :load-photo="loadCardSharePhoto" @close="sharingOutfit = null" />
+    <CardShareDialog
+      v-if="sharingOutfit"
+      :language="language"
+      :code="sharingOutfit.code"
+      :load-photo="loadCardSharePhoto"
+      @close="sharingOutfit = null"
+    />
     <CardShareDialog
       v-if="autoSharePhoto && isPhotoParamsVisible"
       :language="language"

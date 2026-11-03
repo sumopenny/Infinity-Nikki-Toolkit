@@ -13,6 +13,7 @@ const props = defineProps<{
   language?: 'zh' | 'en'
   outfits: OutfitItem[]
   /** 未筛选的总数，用于区分空库与搜索、标签筛选无结果。 */
+  unreadableCount?: number
   totalCount?: number
   selectedIds: Set<string>
   thumbnailMode: ThumbnailMode
@@ -50,7 +51,8 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
     class="photo-grid-wrap outfit-grid-wrap"
     :class="[`mode-${thumbnailMode}`, `thumbnail-size-${thumbnailSize ?? 'medium'}`]"
   >
-    <div v-if="!outfits.length" class="empty-album inline-empty">
+    <p v-if="unreadableCount" role="status">{{ messages.unreadableRecords(unreadableCount) }}</p>
+    <div v-if="!outfits.length && (!unreadableCount || totalCount)" class="empty-album inline-empty">
       <Shirt :size="30" aria-hidden="true" />
       <h2>{{ messages.emptyTitle }}</h2>
       <p>{{ messages.emptyDescription }}</p>
@@ -61,7 +63,7 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
       />
     </div>
 
-    <div v-else class="photo-grid outfit-grid">
+    <div v-else-if="outfits.length" class="photo-grid outfit-grid">
       <article
         v-for="outfit in outfits"
         :key="outfit.id"

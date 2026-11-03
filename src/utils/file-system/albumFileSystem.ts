@@ -7,7 +7,7 @@ import {
   type RecentlyDeletedPhoto
 } from '../photoGrouping'
 import type { LocaleMessages } from '../../i18n'
-import { readAlbumMetadata, savePhotoNote, type AlbumMetadata } from './photoMetadata'
+import { readAlbumMetadata, savePhotoNote, inspectAlbumNotes, type AlbumNoteSnapshot, type AlbumMetadata } from './photoMetadata'
 import { PHOTO_NOTE_LIMIT, normalizePhotoNote } from './photoMetadata'
 import { ensurePhotoUrl, resetPhotoUrl, releasePhotoUrl, releasePhotoUrls } from './photoUrl'
 import {
@@ -23,6 +23,7 @@ import { createDirectoryError, normalizeDirectoryError } from './directoryErrors
 const SCAN_CONCURRENCY = 6
 
 export interface AlbumDirectoryResult {
+  notes?: AlbumNoteSnapshot
   directoryName: string
   directoryHandle: FileSystemDirectoryHandle
   photos: PhotoItem[]
@@ -103,9 +104,11 @@ export async function readAlbumDirectory(
   }
 
   try {
-    const metadata = await readAlbumMetadata(directoryHandle)
+    const notes = await inspectAlbumNotes(directoryHandle)
+    const metadata = notes.metadata
     const photos = await scanAlbumPhotos(directoryHandle, metadata)
     return {
+      notes,
       directoryName: directoryHandle.name,
       directoryHandle,
       photos
@@ -132,7 +135,8 @@ export async function refreshAlbumPhotos(
   if (!hasPermission) throw createDirectoryError('permission-denied', options.messages)
 
   try {
-    const metadata = await readAlbumMetadata(directoryHandle)
+    const notes = await inspectAlbumNotes(directoryHandle)
+    const metadata = notes.metadata
     const scannedPhotos = await scanAlbumPhotos(directoryHandle, metadata)
     const currentByName = new Map(currentPhotos.map((photo) => [photo.name, photo]))
     const scannedNames = new Set(scannedPhotos.map((photo) => photo.name))
@@ -161,6 +165,7 @@ export async function refreshAlbumPhotos(
     const removedPhotos = currentPhotos.filter((photo) => !scannedNames.has(photo.name))
 
     return {
+      notes,
       directoryName: directoryHandle.name,
       directoryHandle,
       photos,
@@ -180,10 +185,8 @@ export async function refreshAlbumDirectory(
   currentPhotos: PhotoItem[],
   options: { requestPermission?: boolean; messages: FileSystemMessages }
 ): Promise<RefreshAlbumResult> {
-  const [album, recentlyDeleted] = await Promise.all([
-    refreshAlbumPhotos(directoryHandle, currentPhotos, options),
-    listRecentlyDeleted(directoryHandle)
-  ])
+  const album = await refreshAlbumPhotos(directoryHandle, currentPhotos, options)
+  const recentlyDeleted = await listRecentlyDeleted(directoryHandle, album.notes?.metadata.photos)
   return { ...album, recentlyDeleted }
 }
 
@@ -239,7 +242,7 @@ async function createPhotoItem(
     lastModified,
     fileHandle,
     directoryHandle,
-    note: metadata.photos[name]?.note ?? '',
+    note: normalizePhotoNote(metadata.photos[name]?.note),
     ...parsed
   }
 }

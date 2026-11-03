@@ -10,7 +10,7 @@ import {
 } from '../photoGrouping'
 import { formatFileSize, releasePhotoUrl } from './photoUrl'
 import { runWithConcurrency } from '../concurrency'
-import { readTrashNotes, normalizePhotoNote, transferPhotoNote } from './photoMetadata'
+import { readAlbumMetadata, readTrashNotes, normalizePhotoNote, transferPhotoNote } from './photoMetadata'
 
 
 const TRASH_DIRECTORY_NAME = 'trash'
@@ -43,7 +43,8 @@ function isMissingDirectoryError(error: unknown): boolean {
  * 返回：按删除时间倒序排列的最近删除照片；目录不存在时返回空数组。
  */
 export async function listRecentlyDeleted(
-  albumDirectoryHandle: FileSystemDirectoryHandle
+  albumDirectoryHandle: FileSystemDirectoryHandle,
+  albumNotes?: Record<string, { note: string }>
 ): Promise<RecentlyDeletedPhoto[]> {
   let trashDirectoryHandle: FileSystemDirectoryHandle
   try {
@@ -58,7 +59,7 @@ export async function listRecentlyDeleted(
     fileHandle: FileSystemFileHandle
     metadata: NonNullable<ReturnType<typeof parseTrashFileName>>
   }> = []
-  const notes = await readTrashNotes(albumDirectoryHandle)
+  const notes = albumNotes ?? await readTrashNotes(albumDirectoryHandle)
   for await (const [trashName, handle] of trashDirectoryHandle.entries()) {
     if (handle.kind !== 'file' || !isImageFile(trashName)) continue
     const metadata = parseTrashFileName(trashName)
@@ -139,6 +140,7 @@ export async function movePhotosToRecentlyDeleted(
   if (writablePhotos.length !== photos.length)
     throw new DOMException('Read-only album', 'NotAllowedError')
   const albumDirectoryHandle = writablePhotos[0].directoryHandle
+  await readAlbumMetadata(albumDirectoryHandle)
   const trashDirectoryHandle = await albumDirectoryHandle.getDirectoryHandle(TRASH_DIRECTORY_NAME, {
     create: true
   })
@@ -263,6 +265,7 @@ async function restorePhotos(
   const restoredPhotos: PhotoItem[] = []
   const failedNames: string[] = []
   const reservedNames = new Set<string>()
+  await readAlbumMetadata(albumDirectoryHandle)
 
   const results = await runWithConcurrency(
     photos,
@@ -356,6 +359,9 @@ export async function permanentlyDeleteRecentlyDeleted(
 ): Promise<TrashOperationResult<RecentlyDeletedPhoto>> {
   const succeeded: RecentlyDeletedPhoto[] = []
   const failedNames: string[] = []
+  for (const album of new Set(photos.map(photo => photo.albumDirectoryHandle))) {
+    if (album) await readAlbumMetadata(album)
+  }
 
   const results = await runWithConcurrency(
     photos,
@@ -404,6 +410,7 @@ export async function clearRecentlyDeleted(
 ): Promise<TrashOperationResult<RecentlyDeletedPhoto>> {
   if (!photos.length) return { succeeded: [], failedNames: [] }
 
+  await readAlbumMetadata(albumDirectoryHandle)
   try {
     const trashDirectoryHandle = await albumDirectoryHandle.getDirectoryHandle(TRASH_DIRECTORY_NAME)
     const expectedNames = new Set(photos.map((photo) => photo.trashName))

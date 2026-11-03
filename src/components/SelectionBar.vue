@@ -82,7 +82,7 @@ defineEmits<{
         </button>
       </template>
       <template v-else-if="mode === 'trash'">
-        <button type="button" :disabled="isBusy" @click="$emit('restore')">
+        <button type="button" :disabled="isBusy || readOnly" :title="readOnly ? readOnlyHint : undefined" @click="!readOnly && $emit('restore')">
           <RotateCcw :size="16" aria-hidden="true" />
           <span>{{ messages.restore }}</span>
         </button>

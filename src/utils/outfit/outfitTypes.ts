@@ -42,6 +42,7 @@ export interface OutfitMigrationResult {
   failures: { fileName: string; message: string; errorName: string }[]
 }
 export interface OutfitLibraryResult {
+  unreadableCount?: number
   outfits: OutfitItem[]
   tags: string[]
   importedSharedCount: number
