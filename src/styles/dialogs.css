@@ -1755,48 +1755,44 @@
   }
 }
 
-.confirm-dialog-enter-active,
-.confirm-dialog-leave-active {
-  transition: opacity 0.24s ease;
+/* 根层的过渡也持续到面板回弹结束，Vue 才会清理过渡类。 */
+:is(.dialog-overlay, .confirm-dialog, .outfit-editor, .outfit-detail-overlay, .note-dialog, .outfit-guide):not(.photo-outfit-content) {
+  background-color: rgb(0 0 0 / 48%);
+  backdrop-filter: blur(8px);
 }
 
-.transfer-progress-enter-active,
-.transfer-progress-leave-active {
-  transition: opacity var(--motion-fast) ease;
-}
-.transfer-progress-enter-from,
-.transfer-progress-leave-to {
-  opacity: 0;
-}
+@media (prefers-reduced-motion: no-preference) {
+  .confirm-dialog-enter-active {
+    transition: background-color 200ms ease, backdrop-filter 260ms ease;
+  }
 
-.confirm-dialog-enter-active .dialog-panel,
-.confirm-dialog-leave-active .dialog-panel,
-.confirm-dialog-enter-active .share-image-panel,
-.confirm-dialog-enter-active .confirm-dialog-panel,
-.confirm-dialog-enter-active .outfit-editor-panel,
-.confirm-dialog-leave-active .share-image-panel,
-.confirm-dialog-leave-active .confirm-dialog-panel,
-.confirm-dialog-leave-active .outfit-editor-panel {
-  transition:
-    opacity 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
-    transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
+  .confirm-dialog-leave-active {
+    transition: background-color 200ms ease, backdrop-filter 200ms ease;
+  }
 
-.confirm-dialog-enter-from,
-.confirm-dialog-leave-to {
-  opacity: 0;
-}
+  .confirm-dialog-enter-from:not(.photo-outfit-content),
+  .confirm-dialog-leave-to:not(.photo-outfit-content) {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+  }
 
-.confirm-dialog-enter-from .dialog-panel,
-.confirm-dialog-leave-to .dialog-panel,
-.confirm-dialog-enter-from .share-image-panel,
-.confirm-dialog-enter-from .confirm-dialog-panel,
-.confirm-dialog-enter-from .outfit-editor-panel,
-.confirm-dialog-leave-to .share-image-panel,
-.confirm-dialog-leave-to .confirm-dialog-panel,
-.confirm-dialog-leave-to .outfit-editor-panel {
-  opacity: 0;
-  transform: translateY(18px) scale(0.96);
+  .confirm-dialog-enter-active:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
+    transition: transform 260ms cubic-bezier(.34, 1.56, .64, 1), opacity 200ms ease-out;
+  }
+
+  .confirm-dialog-leave-active:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
+    transition: transform 200ms ease-in, opacity 200ms ease-in;
+  }
+
+  .confirm-dialog-enter-from:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
+    transform: scale(.8);
+    opacity: 0;
+  }
+
+  .confirm-dialog-leave-to:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
+    transform: scale(.9);
+    opacity: 0;
+  }
 }
 
 @keyframes operation-notice-spin {

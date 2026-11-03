@@ -1406,13 +1406,11 @@
 
   /* 遮罩和面板同周期结束，避免父层先卸载而截断子层退场。 */
   .mobile-modal-enter-active,
-  .mobile-backdrop-enter-active,
-  .confirm-dialog-enter-active {
+  .mobile-backdrop-enter-active {
     transition: opacity var(--mobile-motion-enter) ease;
   }
   .mobile-modal-leave-active,
-  .mobile-backdrop-leave-active,
-  .confirm-dialog-leave-active {
+  .mobile-backdrop-leave-active {
     transition: opacity var(--mobile-motion-leave) ease;
   }
   .mobile-modal-enter-from,
@@ -1435,62 +1433,6 @@
   .mobile-modal-leave-to .mobile-filter-panel {
     opacity: 0;
     transform: translateY(8px) scale(0.99);
-  }
-  .confirm-dialog-enter-active
-    :is(
-      .share-image-panel,
-      .dialog-panel,
-      .confirm-dialog-panel,
-      .outfit-editor-panel,
-      .outfit-detail-panel,
-      .note-dialog-panel,
-      .outfit-guide-panel
-    ) {
-    transition:
-      opacity var(--mobile-motion-enter) ease,
-      transform var(--mobile-motion-enter) var(--ease-spring);
-  }
-  .confirm-dialog-leave-active
-    :is(
-      .share-image-panel,
-      .dialog-panel,
-      .confirm-dialog-panel,
-      .outfit-editor-panel,
-      .outfit-detail-panel,
-      .note-dialog-panel,
-      .outfit-guide-panel
-    ) {
-    transition:
-      opacity var(--mobile-motion-leave) ease,
-      transform var(--mobile-motion-leave) ease-in;
-  }
-  .confirm-dialog-enter-from
-    :is(
-      .share-image-panel,
-      .dialog-panel,
-      .confirm-dialog-panel,
-      .outfit-editor-panel,
-      .outfit-detail-panel,
-      .note-dialog-panel,
-      .outfit-guide-panel
-    ),
-  .confirm-dialog-leave-to
-    :is(
-      .share-image-panel,
-      .dialog-panel,
-      .confirm-dialog-panel,
-      .outfit-editor-panel,
-      .outfit-detail-panel,
-      .note-dialog-panel,
-      .outfit-guide-panel
-    ) {
-    opacity: 0;
-    transform: translateY(8px) scale(0.99);
-  }
-  /* 全高编辑器仅轻移；居中菜单显式保留定位用的 -50%，避免入场跳位。 */
-  .confirm-dialog-enter-from .outfit-editor-panel,
-  .confirm-dialog-leave-to .outfit-editor-panel {
-    transform: translateY(8px);
   }
   .mobile-menu-sheet.mobile-menu-enter-active {
     transition:

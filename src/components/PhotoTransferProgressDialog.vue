@@ -31,7 +31,7 @@ const percent = computed(() => {
 
 <template>
   <Teleport to="body">
-    <Transition name="transfer-progress" appear @before-leave="el => el.setAttribute('inert', '')">
+    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
       <div
         v-if="visible"
         class="dialog-overlay photo-transfer-overlay"
