@@ -7,35 +7,57 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.01 更新',
+  currentDate: '2026.11.03 更新',
   currentItems: [
     {
-      title: '新增照片与搭配码分享图功能。',
-      text: '照片支持从卡片或参数窗口进入分享，自由选择附带“图片参数”“穿搭部件”和“相机参数码”；搭配码支持从卡片或解析窗口生成包含搭配图片与搭配码的 9:16 竖版分享卡。'
+      title: '从桌面打开暖立方轻量应用。',
+      text: '打开「更多 → 安装应用」，按提示将暖立方添加到手机主屏幕或电脑桌面。安装后，点击图标即可打开；支持的浏览器还可在独立窗口中运行。'
     },
     {
-      title: '参数解析信息补充。',
-      text: '新增独立的“缩放”倍数，支持显示动态动作的播放进度（仅 2.11 版本之后的照片）。天气信息补充风力和风向，例如“晴天 小风 南风”。'
+      title: '新增「搭配总结」。',
+      text: '查看常用标签、常穿部件和常用妆容排行。可按部位筛选，点击标签即可查看对应搭配。优先读取本机已有的解析记录，剩余搭配码可一键批量解析。'
     },
     {
-      title: '大图预览布局与交互优化。',
-      text: '图片充分利用屏幕空间，风格样式全面优化。'
+      title: '优化分享图预览界面。',
+      text: '分享图预览采用与大图预览一致的样式，图片展示更清晰。'
     },
     {
-      title: '相机参数收藏接入大图预览。',
-      text: '双击有封面的卡片即可查看大图。支持缩放、拖动及前后切换，也可直接复制参数、编辑收藏和查看详情。'
-    },
-    {
-      title: '批量操作工具栏样式优化。',
-      text: '调整为紧凑分组样式，通过文字颜色区分不同操作。'
-    },
-    {
-      title: '作者主页入口补充。',
-      text: '“更多”菜单新增 B 站主页入口，并更新抖音主页链接。'
+      title: '只填搭配码也能保存。',
+      text: '新建搭配时，填写搭配码或添加图片，任选其一即可保存。只有图片的搭配会归入「待填写」，方便之后补上搭配码。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.4',
+      date: '2026.11.01',
+      items: [
+        {
+          title: '新增照片与搭配码分享图功能。',
+          text: '照片支持从卡片或参数窗口进入分享，自由选择附带“图片参数”“穿搭部件”和“相机参数码”；搭配码支持从卡片或解析窗口生成包含搭配图片与搭配码的 9:16 竖版分享卡。'
+        },
+        {
+          title: '参数解析信息补充。',
+          text: '新增独立的“缩放”倍数，支持显示动态动作的播放进度（仅 2.11 版本之后的照片）。天气信息补充风力和风向，例如“晴天 小风 南风”。'
+        },
+        {
+          title: '大图预览布局与交互优化。',
+          text: '图片充分利用屏幕空间，风格样式全面优化。'
+        },
+        {
+          title: '相机参数收藏接入大图预览。',
+          text: '双击有封面的卡片即可查看大图。支持缩放、拖动及前后切换，也可直接复制参数、编辑收藏和查看详情。'
+        },
+        {
+          title: '批量操作工具栏样式优化。',
+          text: '调整为紧凑分组样式，通过文字颜色区分不同操作。'
+        },
+        {
+          title: '作者主页入口补充。',
+          text: '“更多”菜单新增 B 站主页入口，并更新抖音主页链接。'
+        }
+      ]
+    },
     {
       version: 'v2.3',
       date: '2026.10.30',
@@ -690,35 +712,57 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.01',
+  currentDate: 'Updated 2026.11.03',
   currentItems: [
     {
-      title: 'New share images for photos and outfit codes.',
-      text: 'Open Share from a photo card or the parameter window and choose whether to include photo parameters, outfit parts, and the camera parameter code. Outfit cards and parsing windows can also generate a 9:16 portrait share card with the outfit image and code.'
+      title: 'Open Nikki Toolkit from your home screen or desktop. ',
+      text: 'Choose More → Install app and follow the prompts to add Nikki Toolkit to your home screen or desktop. Select its icon to open it. Supported browsers can run it in a separate window.'
     },
     {
-      title: 'Additional photo parameter details.',
-      text: 'Added a separate zoom value and animation playback progress for photos taken after game version 2.11. Weather details now include wind strength and direction, such as Sunny, Light wind, South.'
+      title: 'New outfit summary. ',
+      text: 'See your most-used tags, clothing and makeup. Filter by part or select a tag to see matching outfits. The summary loads results saved on your device first. You can decode the remaining outfit codes in one go.'
     },
     {
-      title: 'Improved large-image preview layout and interactions.',
-      text: 'Images make fuller use of screen space, with refreshed visual styling.'
+      title: 'Clearer share image previews. ',
+      text: 'Share image previews now use the same styling as the large-image viewer, making images easier to see.'
     },
     {
-      title: 'Large-image previews for camera parameter favorites.',
-      text: 'Double-click a card with a cover to preview the image. Zoom, pan, and switch between images, or copy parameters, edit the favorite, and view details directly.'
-    },
-    {
-      title: 'Refined batch action toolbar styling.',
-      text: 'A compact grouped layout uses text colors to distinguish different actions.'
-    },
-    {
-      title: 'Additional creator profile links.',
-      text: 'Added a Bilibili profile link to the More menu and updated the Douyin profile link.'
+      title: 'Save an outfit with just a code. ',
+      text: 'Enter an outfit code or add a photo to save a new outfit. Photo-only outfits appear under Pending so you can add a code later.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.4',
+      date: '2026.11.01',
+      items: [
+        {
+          title: 'New share images for photos and outfit codes.',
+          text: 'Open Share from a photo card or the parameter window and choose whether to include photo parameters, outfit parts, and the camera parameter code. Outfit cards and parsing windows can also generate a 9:16 portrait share card with the outfit image and code.'
+        },
+        {
+          title: 'Additional photo parameter details.',
+          text: 'Added a separate zoom value and animation playback progress for photos taken after game version 2.11. Weather details now include wind strength and direction, such as Sunny, Light wind, South.'
+        },
+        {
+          title: 'Improved large-image preview layout and interactions.',
+          text: 'Images make fuller use of screen space, with refreshed visual styling.'
+        },
+        {
+          title: 'Large-image previews for camera parameter favorites.',
+          text: 'Double-click a card with a cover to preview the image. Zoom, pan, and switch between images, or copy parameters, edit the favorite, and view details directly.'
+        },
+        {
+          title: 'Refined batch action toolbar styling.',
+          text: 'A compact grouped layout uses text colors to distinguish different actions.'
+        },
+        {
+          title: 'Additional creator profile links.',
+          text: 'Added a Bilibili profile link to the More menu and updated the Douyin profile link.'
+        }
+      ]
+    },
     {
       version: 'v2.3',
       date: '2026.10.30',

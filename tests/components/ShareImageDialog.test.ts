@@ -64,6 +64,31 @@ describe('ShareImageDialog', () => {
     expect(wrapper.find('.share-image-stage img').exists()).toBe(true)
     wrapper.unmount()
   })
+  it('keeps the previous image visible while the top update notice is shown', async () => {
+    setup()
+    let urlId = 0
+    URL.createObjectURL = vi.fn(() => `blob:preview-${++urlId}`)
+    const wrapper = mount(ShareImageDialog, {
+      props: { language: 'zh', loadPhoto: async () => new Blob() },
+      global: { stubs: { Teleport: true } }
+    })
+    expect(wrapper.get('[role="status"]').text()).toBe('正在生成预览…')
+    await flushPromises()
+    const previous = wrapper.get('.share-image-stage img').attributes('src')
+    let finish!: (value: Blob) => void
+    vi.mocked(renderShareImage).mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    await wrapper.get('input[type="checkbox"]').setValue(false)
+    expect(wrapper.get('header [role="status"]').text()).toBe('正在更新预览…')
+    expect(wrapper.get('.share-image-stage img').attributes('src')).toBe(previous)
+    expect(wrapper.find('.share-image-loading').exists()).toBe(false)
+    expect(wrapper.get('.share-image-save').attributes('disabled')).toBeDefined()
+    finish(new Blob())
+    await flushPromises()
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.get('.share-image-stage img').attributes('src')).not.toBe(previous)
+    expect(wrapper.get('.share-image-save').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
   it('reflows each independent module and supports photo-only export', async () => {
     setup()
     const wrapper = mount(ShareImageDialog, {

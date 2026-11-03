@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 export const MIN_ZOOM = 50
 export const MAX_ZOOM = 300
+export const LIGHTBOX_MAX_ZOOM = 400
 export const ZOOM_STEP = 25
 
 export function useImageZoom(

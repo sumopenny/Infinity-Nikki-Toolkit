@@ -8,7 +8,7 @@ import type { PhotoParamsProgress, PhotoParamsResult } from '../utils/photo-para
 import { loadItemCatalog } from '../utils/outfit/itemCatalog'
 import { buildParseItems } from '../utils/outfit/parseItemView'
 import { loadShareImage, renderShareImage } from '../utils/shareImage'
-import { useImageZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '../composables/useImageZoom'
+import { useImageZoom, MIN_ZOOM, LIGHTBOX_MAX_ZOOM, ZOOM_STEP } from '../composables/useImageZoom'
 import { useModalFocus } from '../composables/useModalFocus'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { reportError } from '../utils/errorReporting/errorReporter'
@@ -29,6 +29,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: []; submitUid: [uid: string] }>()
 const en = computed(() => props.language === 'en')
 const panel = ref<HTMLElement | null>(null)
+const previewRatio = ref<number>()
 const active = ref(true)
 const shown = ref(true)
 const close = () => {
@@ -88,7 +89,7 @@ const zoomDisabled = computed(
   () => props.preparing || busy.value || !!error.value || !preview.value
 )
 const { zoom, imageTransform, resetTransform, setZoom, handleWheel, startDrag, moveDrag, endDrag } =
-  useImageZoom(() => !zoomDisabled.value)
+  useImageZoom(() => !zoomDisabled.value, undefined, LIGHTBOX_MAX_ZOOM)
 watch(preview, resetTransform)
 let sourceUrl = '',
   generation = 0,
@@ -174,8 +175,16 @@ async function generate() {
       english: en.value
     })
     if (!alive || run !== generation) return
-    if (preview.value) URL.revokeObjectURL(preview.value)
-    preview.value = URL.createObjectURL(blob)
+    const nextUrl = URL.createObjectURL(blob)
+    try {
+      const image = await loadShareImage(nextUrl, controller.signal)
+      if (!alive || run !== generation) return
+      if (image.naturalHeight) previewRatio.value = image.naturalWidth / image.naturalHeight
+      if (preview.value) URL.revokeObjectURL(preview.value)
+      preview.value = nextUrl
+    } finally {
+      if (preview.value !== nextUrl) URL.revokeObjectURL(nextUrl)
+    }
     renderedBlob = blob
   } catch (cause) {
     if (controller.signal.aborted) return
@@ -242,132 +251,138 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear @after-leave="emit('close')">
+    <Transition name="lightbox" appear @after-leave="emit('close')">
       <div
         v-if="shown"
-        class="share-image-overlay"
+        ref="panel"
+        tabindex="-1"
+        class="lightbox share-image-overlay"
         role="dialog"
         aria-modal="true"
         :aria-label="label('导出分享图', 'Export share image')"
         @click.self="close"
       >
-        <section ref="panel" class="share-image-panel" tabindex="-1">
-          <header>
-            <h2>{{ label('导出分享图', 'Export share image') }}</h2>
-            <div v-if="!code && !preparing" class="share-image-controls">
-              <label class="app-checkbox-label"
-                ><input v-model="parameters" class="app-checkbox" type="checkbox" />{{
-                  label('图片参数', 'Photo parameters')
-                }}</label
-              >
-              <label class="app-checkbox-label"
-                ><input
-                  v-model="clothes"
-                  class="app-checkbox"
-                  type="checkbox"
-                  :disabled="!result?.outfit?.wearingClothes.length"
-                />{{ label('穿搭部件', 'Outfit and dyes') }}</label
-              >
-              <label class="app-checkbox-label"
-                ><input
-                  v-model="cameraCode"
-                  class="app-checkbox"
-                  type="checkbox"
-                  :disabled="!result?.rawCameraParams"
-                />{{ label('相机参数码', 'Camera code') }}</label
-              >
-            </div>
-            <button
-              class="update-log-close-button"
-              type="button"
-              :aria-label="label('关闭', 'Close')"
-              :title="label('关闭', 'Close')"
-              @click="close"
-              ><X :size="19" aria-hidden="true"
-            /></button>
-          </header>
-          <div class="share-image-preview" :aria-busy="loading">
-            <div
-              v-if="loading"
-              class="photo-params-loading share-image-loading"
-              role="status"
-              aria-live="polite"
+        <header class="lightbox-header">
+          <div v-if="!code && !preparing" class="share-image-controls">
+            <label class="app-checkbox-label"
+              ><input v-model="parameters" class="app-checkbox" type="checkbox" />{{
+                label('图片参数', 'Photo parameters')
+              }}</label
             >
-              <span class="photo-params-spinner" aria-hidden="true"></span>
-              <p>{{
-                preparing
-                  ? preparationMessage || label('正在解析照片…', 'Parsing photo…')
-                  : label('正在生成预览…', 'Generating preview…')
-              }}</p>
-            </div>
-            <PhotoParseFailure
-              :state="failureState"
-              class="share-image-preparation"
-              v-if="preparing"
-              :error="preparationError ?? null"
-              :uid-required="!!uidRequired"
-              :result="result"
-              :messages="parseMessages"
+            <label class="app-checkbox-label"
+              ><input
+                v-model="clothes"
+                class="app-checkbox"
+                type="checkbox"
+                :disabled="!result?.outfit?.wearingClothes.length"
+              />{{ label('穿搭部件', 'Outfit and dyes') }}</label
+            >
+            <label class="app-checkbox-label"
+              ><input
+                v-model="cameraCode"
+                class="app-checkbox"
+                type="checkbox"
+                :disabled="!result?.rawCameraParams"
+              />{{ label('相机参数码', 'Camera code') }}</label
+            >
+          </div>
+          <button
+            class="lightbox-close"
+            type="button"
+            :aria-label="label('关闭', 'Close')"
+            :title="label('关闭', 'Close')"
+            @click="close"
+            ><X :size="19" aria-hidden="true"
+          /></button>
+          <div v-if="loading && preview" class="share-image-update" role="status">
+            {{ label('正在更新预览…', 'Updating preview…') }}
+          </div>
+        </header>
+        <section
+          class="lightbox-panel share-image-preview"
+          :style="previewRatio ? { '--preview-ratio': previewRatio } : undefined"
+          :aria-busy="loading"
+        >
+          <div
+            v-if="loading && !preview"
+            class="photo-params-loading share-image-loading"
+            role="status"
+            aria-live="polite"
+          >
+            <span class="photo-params-spinner" aria-hidden="true"></span>
+            <p>{{
+              preparing
+                ? preparationMessage || label('正在解析照片…', 'Parsing photo…')
+                : label('正在生成预览…', 'Generating preview…')
+            }}</p>
+          </div>
+          <PhotoParseFailure
+            :state="failureState"
+            class="share-image-preparation"
+            v-if="preparing"
+            :error="preparationError ?? null"
+            :uid-required="!!uidRequired"
+            :result="result"
+            :messages="parseMessages"
+          />
+          <div v-if="error" role="alert"
+            ><p>{{ error }}</p
+            ><button type="button" @click="source ? generate() : loadOriginal()"
+              ><RefreshCw :size="16" />{{ label('重试', 'Retry') }}</button
+            ></div
+          >
+          <div
+            class="lightbox-stage share-image-stage"
+            @wheel="handleWheel"
+            @pointerdown="startDrag"
+            @pointermove="moveDrag"
+            @pointerup="endDrag"
+            @pointercancel="endDrag"
+          >
+            <img
+              v-if="preview"
+              :style="imageTransform"
+              draggable="false"
+              :src="preview"
+              :alt="label('分享图预览', 'Share image preview')"
+              :class="{ stale: !!error }"
             />
-            <div v-if="error" role="alert"
-              ><p>{{ error }}</p
-              ><button type="button" @click="source ? generate() : loadOriginal()"
-                ><RefreshCw :size="16" />{{ label('重试', 'Retry') }}</button
-              ></div
-            >
-            <div
-              class="share-image-stage"
-              @wheel="handleWheel"
-              @pointerdown="startDrag"
-              @pointermove="moveDrag"
-              @pointerup="endDrag"
-              @pointercancel="endDrag"
-            >
-              <img
-                v-if="preview"
-                :style="imageTransform"
-                draggable="false"
-                :src="preview"
-                :alt="label('分享图预览', 'Share image preview')"
-                :class="{ stale: busy || !!error }"
-              />
-            </div>
-            <div class="share-image-zoom" @wheel.stop>
-              <button
-                type="button"
-                :disabled="zoomDisabled || zoom >= MAX_ZOOM"
-                :aria-label="label('放大', 'Zoom in')"
-                :title="label('放大', 'Zoom in')"
-                @click="setZoom(zoom + ZOOM_STEP)"
-                ><ZoomIn :size="17"
-              /></button>
-              <button
-                type="button"
-                :disabled="zoomDisabled"
-                :aria-label="label('重置缩放', 'Reset zoom')"
-                :title="label('重置缩放', 'Reset zoom')"
-                @click="resetTransform"
-                >{{ zoom }}%</button
-              >
-              <button
-                type="button"
-                :disabled="zoomDisabled || zoom <= MIN_ZOOM"
-                :aria-label="label('缩小', 'Zoom out')"
-                :title="label('缩小', 'Zoom out')"
-                @click="setZoom(zoom - ZOOM_STEP)"
-                ><ZoomOut :size="17"
-              /></button>
-            </div>
+          </div>
+          <div class="share-image-zoom" @wheel.stop>
             <button
               type="button"
-              class="share-image-save"
-              :title="label('保存 JPEG', 'Save JPEG')"
-              :aria-label="label('保存 JPEG', 'Save JPEG')"
-              :disabled="zoomDisabled || !source"
-              @click="download"
-              ><Download :size="16" aria-hidden="true"
+              :disabled="zoomDisabled || zoom >= LIGHTBOX_MAX_ZOOM"
+              :aria-label="label('放大', 'Zoom in')"
+              :title="label('放大', 'Zoom in')"
+              @click="setZoom(zoom + ZOOM_STEP)"
+              ><ZoomIn :size="17"
+            /></button>
+            <button
+              type="button"
+              :disabled="zoomDisabled"
+              :aria-label="label('重置缩放', 'Reset zoom')"
+              :title="label('重置缩放', 'Reset zoom')"
+              @click="resetTransform"
+              >{{ zoom }}%</button
+            >
+            <button
+              type="button"
+              :disabled="zoomDisabled || zoom <= MIN_ZOOM"
+              :aria-label="label('缩小', 'Zoom out')"
+              :title="label('缩小', 'Zoom out')"
+              @click="setZoom(zoom - ZOOM_STEP)"
+              ><ZoomOut :size="17"
             /></button>
           </div>
+          <button
+            type="button"
+            class="share-image-save"
+            :title="label('保存 JPEG', 'Save JPEG')"
+            :aria-label="label('保存 JPEG', 'Save JPEG')"
+            :disabled="zoomDisabled || !source"
+            @click="download"
+            ><Download :size="16" aria-hidden="true"
+          /></button>
         </section>
       </div>
     </Transition>
@@ -376,52 +391,23 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .share-image-overlay {
-  position: fixed;
-  inset: 0;
   z-index: 10000;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: var(--overlay-bg);
 }
-.share-image-panel {
-  width: min(1060px, 100%);
-  height: 94dvh;
-  max-height: 94dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface-strong);
-  color: var(--text);
-  box-shadow: var(--dialog-shadow);
-}
-header,
 .share-image-controls {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 24px;
   flex-wrap: wrap;
-  flex-shrink: 0;
+  gap: 6px 14px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(30, 27, 28, 0.72);
+  color: white;
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
 }
-.share-image-controls {
-  padding: 0;
-  margin-left: 0;
-}
-header {
-  justify-content: flex-start;
-  border-bottom: 1px solid var(--line);
-}
-header .update-log-close-button {
+.lightbox-close {
   margin-left: auto;
 }
-h2 {
-  margin: 0;
-  font-size: 20px;
-}
-button:not(.update-log-close-button) {
+button:not(.lightbox-close) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -445,16 +431,18 @@ label {
 }
 .share-image-preview {
   position: relative;
-  overflow: hidden;
   min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 1;
+  width: min(100%, calc((100dvh - 16px) * var(--preview-ratio, 1)));
+  height: auto;
+  aspect-ratio: var(--preview-ratio, 1);
   background: transparent;
   text-align: center;
 }
-.share-image-preparation {
+.share-image-preparation,
+.share-image-preview [role='alert'] {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -471,13 +459,12 @@ label {
   width: 100%;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
   touch-action: none;
   user-select: none;
 }
 .share-image-zoom {
   display: flex;
-  position: absolute;
+  position: fixed;
   right: 24px;
   bottom: 68px;
   z-index: 2;
@@ -507,13 +494,40 @@ label {
   inset: 0;
   z-index: 1;
   min-height: 0;
-  background: var(--surface-strong);
+  color: white;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+}
+.share-image-update {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(30, 27, 28, 0.82);
+  color: white;
+  font-size: 14px;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .share-image-stage img {
+    animation: share-image-appear 0.2s ease-out;
+  }
+}
+@keyframes share-image-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .share-image-preview .stale {
   opacity: 0.35;
 }
 button.share-image-save {
-  position: absolute;
+  position: fixed;
   right: 24px;
   bottom: 24px;
   z-index: 1;
@@ -546,11 +560,15 @@ button.share-image-save:hover:not(:disabled),
 @supports not (color: color-mix(in srgb, black, white)) {
   button.share-image-save:hover:not(:disabled),
   .share-image-zoom button:hover:not(:disabled) {
-    box-shadow: var(--accent-shadow-sm), 0 4px 12px rgba(201, 132, 134, 0.16);
+    box-shadow:
+      var(--accent-shadow-sm),
+      0 4px 12px rgba(201, 132, 134, 0.16);
   }
   :where(:root[data-theme='dark']) button.share-image-save:hover:not(:disabled),
   :where(:root[data-theme='dark']) .share-image-zoom button:hover:not(:disabled) {
-    box-shadow: var(--accent-shadow-sm), 0 4px 12px rgba(239, 176, 178, 0.16);
+    box-shadow:
+      var(--accent-shadow-sm),
+      0 4px 12px rgba(239, 176, 178, 0.16);
   }
 }
 button.share-image-save:active:not(:disabled),
@@ -577,13 +595,6 @@ button.share-image-save:focus-visible,
   .share-image-zoom {
     right: 12px;
     bottom: 56px;
-  }
-  .share-image-overlay {
-    padding: 8px;
-  }
-  header {
-    padding: 12px;
-    gap: 12px;
   }
   button.share-image-save {
     right: 12px;

@@ -25,7 +25,7 @@ import { useBodyScrollLock } from '../utils/bodyScrollLock'
 
 type PreviewPhoto = PhotoDisplayItem
 
-import { useImageZoom, MIN_ZOOM, ZOOM_STEP } from '../composables/useImageZoom'
+import { useImageZoom, MIN_ZOOM, LIGHTBOX_MAX_ZOOM, ZOOM_STEP } from '../composables/useImageZoom'
 
 const props = defineProps<{
   photo: PhotoItem | PreviewPhoto | null
@@ -96,7 +96,6 @@ function leaveToolbar() {
   toolbarHovered = false
   showControls()
 }
-const LIGHTBOX_MAX_ZOOM = 400
 const { zoom, imageTransform, resetTransform, setZoom, handleWheel, startDrag, moveDrag, endDrag } =
   useImageZoom(
     () => true,
