@@ -871,9 +871,20 @@
   border-color: var(--pink-deep);
 }
 
-.like-counter.liked svg {
-  animation: like-pop 0.4s var(--ease-spring);
-  fill: var(--pink-deep);
+.like-heart {
+  position: relative;
+  display: inline-flex;
+}
+
+.like-dot {
+  position: absolute;
+  top: calc(50% - 2px);
+  left: calc(50% - 2px);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .like-counter-number {
@@ -881,14 +892,25 @@
   text-align: center;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .liked .like-heart svg {
+    animation: like-pop 400ms cubic-bezier(.32, 1.55, .55, 1);
+  }
+
+  .liked .like-dot {
+    animation: like-burst 400ms ease-out;
+  }
+}
+
 @keyframes like-pop {
-  0% {
-    transform: scale(1);
-  }
-  45% {
-    transform: scale(1.45);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  22% { transform: translateY(1px) scale(1.16, .68); fill: var(--pink-deep); }
+  58% { transform: translateY(-2px) scale(.98, 1.22); fill: var(--pink-deep); }
+  100% { transform: scale(1); }
+}
+
+@keyframes like-burst {
+  0%, 22% { opacity: 0; transform: translateY(-4px) scale(.5); }
+  32% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-20px) scale(.65); }
 }

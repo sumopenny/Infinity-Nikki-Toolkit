@@ -10,7 +10,8 @@ const props = defineProps<{
 
 const count = ref<number | null>(null)
 const available = ref(true)
-const justLiked = ref(false)
+const clickId = ref(0)
+const colors = ['#ff648a', '#ff9855', '#e8bd38', '#70c764', '#37bbb3', '#609cf3', '#9e79ef', '#e770cb']
 let likeQueue: Promise<void> = Promise.resolve()
 let pendingLikes = 0
 
@@ -41,11 +42,8 @@ async function like() {
   if (count.value === null) return
   const currentCount = count.value
   pendingLikes += 1
+  clickId.value += 1
   count.value = currentCount + 1
-  justLiked.value = true
-  window.setTimeout(() => {
-    justLiked.value = false
-  }, 400)
 
   likeQueue = likeQueue
     .catch(() => undefined)
@@ -76,13 +74,17 @@ onMounted(loadCount)
   <button
     v-if="available"
     class="like-counter"
-    :class="{ liked: justLiked }"
+    :class="{ liked: clickId > 0 }"
     type="button"
     :title="props.messages.likeTooltip"
     :aria-label="`${props.messages.like} ${formattedCount}`"
     @click="like"
   >
-    <Heart :size="16" aria-hidden="true" />
-    <span class="like-counter-number">{{ displayCount }}</span>
+    <span :key="`heart-${clickId}`" class="like-heart" aria-hidden="true">
+      <Heart :size="16" />
+      <i v-for="(color, index) in clickId ? colors : []" :key="color" class="like-dot"
+        :style="{ background: color, rotate: `${index * 45}deg` }" />
+    </span>
+    <span class="like-counter-number" aria-hidden="true">{{ displayCount }}</span>
   </button>
 </template>
