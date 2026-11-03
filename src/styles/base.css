@@ -247,3 +247,10 @@ h1 {
     transition: none;
   }
 }
+
+/* 仅隐藏等待观察器触发的卡片，键盘导航和减少动态效果时直接显示。 */
+@media (prefers-reduced-motion: no-preference) {
+  .card-reveal-pending:not(:focus-within) {
+    opacity: 0;
+  }
+}

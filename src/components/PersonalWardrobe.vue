@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
@@ -768,6 +769,7 @@ async function clearRecords() {
         <article
           v-for="(entry, imageIndex) in displayEntries.slice(0, limit)"
           :key="merged ? wardrobeFamilyKey(entry) : entry.id"
+          v-card-reveal="`wardrobe:${merged ? wardrobeFamilyKey(entry) : entry.id}`"
           class="wardrobe-card"
           :class="{ 'has-forms': merged && hasMultipleForms(entry) }"
         >

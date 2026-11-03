@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vCardReveal } from '../utils/cardReveal'
 import { onBeforeUnmount } from 'vue'
 import { Check, Copy, Edit3, ImagePlus, ScanSearch, Shirt, Trash2, Share2 } from 'lucide-vue-next'
 import type { OutfitMessages } from '../i18n'
@@ -64,6 +65,7 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
       <article
         v-for="outfit in outfits"
         :key="outfit.id"
+        v-card-reveal="`outfit:${outfit.id}`"
         class="photo-card outfit-card"
         :class="{ selected: selectedIds.has(outfit.id) }"
         :aria-label="outfit.code || messages.pending"

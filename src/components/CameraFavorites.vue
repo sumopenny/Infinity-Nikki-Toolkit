@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vCardReveal } from '../utils/cardReveal'
 import {
   readPhotoFile,
   isAlbumPhoto,
@@ -1006,6 +1007,7 @@ function handleImportChoices(value: typeof choices.value) {
       <article
         v-for="item in visibleRecords"
         :key="item.id"
+        v-card-reveal="`camera:${item.id}`"
         class="photo-card camera-favorite-card"
         :class="{ selected: selectedIds.has(item.id) }"
         role="checkbox"

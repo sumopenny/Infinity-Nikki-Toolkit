@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vCardReveal } from '../utils/cardReveal'
 import { computed, onBeforeUnmount } from 'vue'
 import { Check, Edit3, Heart, ScanSearch, Share2 } from 'lucide-vue-next'
 import type { LocaleMessages } from '../i18n'
@@ -135,6 +136,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
         <article
           v-for="photo in batch"
           :key="photo.id"
+          v-card-reveal="`album:${photo.id}`"
           class="photo-card"
           :class="{ selected: selectedIds.has(photo.id), favorited: favoriteIds.has(photo.id) }"
           tabindex="0"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vCardReveal } from '../utils/cardReveal'
 import { computed, onBeforeUnmount } from 'vue'
 import { Check, Trash2 } from 'lucide-vue-next'
 import type { Language, LocaleMessages } from '../i18n'
@@ -54,6 +55,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
       <article
         v-for="photo in batch"
         :key="photo.id"
+        v-card-reveal="`trash:${photo.id}`"
         class="photo-card trash-photo-card"
         :class="{ selected: selectedIds.has(photo.id) }"
         tabindex="0"

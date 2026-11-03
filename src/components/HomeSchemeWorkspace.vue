@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import {
   reportError as captureDiagnosticError,
@@ -1016,6 +1017,7 @@ function handleAddTag(value: string) {
           <article
             v-for="item in visibleSchemes"
             :key="item.id"
+            v-card-reveal="`home:${item.id}`"
             class="photo-card outfit-card home-scheme-card"
             :class="{ selected: selectedSchemeIds.has(item.id) }"
             :aria-label="item.name || item.code"

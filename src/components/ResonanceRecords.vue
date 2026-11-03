@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
@@ -420,6 +421,7 @@ defineExpose({ reload })
                   @click="openPreview(part.id, 'item')"
                   v-for="(part, partIndex) in sortResonanceParts(set.parts)"
                   :key="part.id"
+                  v-card-reveal="`resonance:${record.id}:${set.setNumber}:${part.id}`"
                   class="resonance-part"
                   :class="{
                     'is-even-banner': Number(record.bannerId) % 2 === 0,
