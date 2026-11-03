@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import { Download, X } from 'lucide-vue-next'
+import { ChevronDown, Download, X } from 'lucide-vue-next'
 import type { Language } from '../i18n/types'
 
 interface InstallEvent extends Event {
@@ -16,6 +16,7 @@ const installed = ref(window.matchMedia?.('(display-mode: standalone)').matches 
   (navigator as Navigator & { standalone?: boolean }).standalone === true)
 const mobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const expandedMobile = ref<boolean | null>(mobileDevice)
 const guides = [
   { mobile: true, zh: 'iPhone / iPad · Safari', en: 'iPhone / iPad · Safari',
     steps: '在 Safari 工具栏找到「分享」，选择「添加到主屏幕」。如果看到「作为网页 App 打开」，保持开启，再点「添加」。',
@@ -94,15 +95,31 @@ defineExpose({ open, installed })
           <p v-if="language === 'zh'">把暖立方作为轻量网页应用添加到手机或电脑桌面，点图标就能进入。在支持的浏览器中，它会<strong>像独立应用一样打开，隐藏浏览器的地址栏和工具栏</strong>。你使用的仍然是暖立方网页。</p>
           <p v-else>Add Nikki Toolkit to your home screen or desktop as a lightweight web app. Tap its icon to open the same website <strong>in its own window, without the browser address bar or toolbars</strong>, in supported browsers.</p>
           <section class="desktop-install-guide">
-            <details v-for="mobile in [true, false]" :key="String(mobile)" :open="mobile === mobileDevice">
-              <summary>{{ mobile ? (language === 'zh' ? '手机和平板安装步骤' : 'Phone and tablet instructions') : (language === 'zh' ? '电脑安装步骤' : 'Computer instructions') }}</summary>
-              <dl>
-                <template v-for="guide in guides.filter(item => item.mobile === mobile)" :key="guide.en">
-                  <dt>{{ language === 'zh' ? guide.zh : guide.en }}</dt>
-                  <dd>{{ language === 'zh' ? guide.steps : guide.english }}</dd>
-                </template>
-              </dl>
-            </details>
+            <div v-for="mobile in [true, false]" :key="String(mobile)" class="install-group">
+              <button
+                type="button"
+                class="install-guide-toggle"
+                :aria-expanded="expandedMobile === mobile"
+                :aria-controls="mobile ? 'install-mobile-steps' : 'install-desktop-steps'"
+                @click="expandedMobile = expandedMobile === mobile ? null : mobile"
+              >
+                {{ mobile ? (language === 'zh' ? '手机和平板安装步骤' : 'Phone and tablet instructions') : (language === 'zh' ? '电脑安装步骤' : 'Computer instructions') }}
+                <ChevronDown :size="18" aria-hidden="true" />
+              </button>
+              <div
+                :id="mobile ? 'install-mobile-steps' : 'install-desktop-steps'"
+                class="install-guide-answer"
+                :class="{ expanded: expandedMobile === mobile }"
+                :inert="expandedMobile !== mobile"
+              >
+                <dl>
+                  <template v-for="guide in guides.filter(item => item.mobile === mobile)" :key="guide.en">
+                    <dt>{{ language === 'zh' ? guide.zh : guide.en }}</dt>
+                    <dd>{{ language === 'zh' ? guide.steps : guide.english }}</dd>
+                  </template>
+                </dl>
+              </div>
+            </div>
           </section>
           <p class="desktop-install-note">{{ language === 'zh'
             ? '从桌面打开暖立方时请保持联网，离线时可能无法进入首页。安装版与浏览器版的本地数据可能不共享，已有数据请先备份或同步。'
@@ -145,8 +162,31 @@ defineExpose({ open, installed })
 .desktop-install-guide { margin: 16px 0; }
 .desktop-install-note { border-top: 1px solid var(--line-soft); padding-top: 12px; color: var(--muted); }
 .desktop-install-guide { padding: 10px; border-radius: var(--radius-sm); background: var(--surface-soft); }
-.desktop-install-guide summary { cursor: pointer; font-weight: 600; }
-.desktop-install-guide details + details { margin-top: 8px; }
+.install-group + .install-group { margin-top: 8px; }
+.install-guide-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+.install-guide-toggle svg { flex: none; }
+.install-guide-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+.install-guide-answer { display: grid; grid-template-rows: 0fr; }
+.install-guide-answer.expanded { grid-template-rows: 1fr; }
+.install-guide-answer dl { min-height: 0; overflow: hidden; margin: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .install-guide-answer { transition: grid-template-rows 240ms ease-in-out; }
+  .install-guide-toggle svg { transition: transform 240ms ease-in-out; }
+}
 .desktop-install-guide dt { margin-top: 10px; font-weight: 600; }
 .desktop-install-guide dd { margin: 2px 0 0; }
 .desktop-install-body footer {

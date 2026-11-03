@@ -13,7 +13,15 @@ it('shows manual steps immediately, respects dismissal, and disables reopening a
     dialog.showModal = () => { dialog.open = true }
     dialog.close = () => { dialog.open = false }
     await wrapper.vm.open()
-    expect(contents.get('details[open]').text()).toContain('Windows · 其他浏览器')
+    const [mobile, desktop] = contents.findAll('.install-guide-toggle')
+    expect(desktop.attributes('aria-expanded')).toBe('true')
+    expect(contents.get('.install-guide-answer.expanded').text()).toContain('Windows · 其他浏览器')
+    await mobile.trigger('click')
+    expect(desktop.attributes('aria-expanded')).toBe('false')
+    expect(mobile.attributes('aria-expanded')).toBe('true')
+    expect(contents.findAll('.install-guide-answer.expanded')).toHaveLength(1)
+    await mobile.trigger('click')
+    expect(contents.findAll('.install-guide-answer.expanded')).toHaveLength(0)
     expect(contents.get('.desktop-install-guide').text()).toContain('安卓 · 其他浏览器')
     expect(contents.find('.confirm-dialog-actions .primary').exists()).toBe(false)
 
