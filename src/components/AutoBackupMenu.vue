@@ -227,14 +227,14 @@ async function runManualBackup() {
   notifyBackup(BACKUP_RUN_SOURCE, t('正在检查电脑备份…', 'Checking computer backup…'), true)
   try {
     await runDirectoryBackup(false)
-    const failed = Boolean(backupErrorFingerprint())
+    const state = buttonStatus.value.state
     notifyBackup(
       BACKUP_RUN_SOURCE,
-      failed
-        ? t('备份存在错误，请查看模块状态。', 'Backup encountered an error. Check module status.')
-        : t('备份检查完成，状态已更新。', 'Backup check completed. Status updated.'),
+      state === 'success'
+        ? t('备份检查完成，状态已更新。', 'Backup check completed. Status updated.')
+        : buttonStatusLabel.value,
       false,
-      failed ? 'error' : 'success'
+      state === 'warning' ? 'error' : state === 'success' ? 'success' : 'info'
     )
   } catch (error) {
     notifyBackup(

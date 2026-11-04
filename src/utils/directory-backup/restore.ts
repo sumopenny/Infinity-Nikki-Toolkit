@@ -548,11 +548,13 @@ export async function restoreSelected(
               throw new Error('来源在恢复期间发生变化，请重新预览')
             progress(`正在提交${MODULE_LABELS[module]}……`)
             await commitRestore(module, token, baseline)
-            restored.push(MODULE_LABELS[module])
-            onCommitted?.(module)
-          } finally {
-            await deleteTemp(module)
+          } catch (error) {
+            // 正式事务已回滚，下次恢复开始时也会清理遗留暂存。
+            await deleteTemp(module).catch(() => undefined)
+            throw error
           }
+          restored.push(MODULE_LABELS[module])
+          onCommitted?.(module)
         })
       )
     } catch (error) {

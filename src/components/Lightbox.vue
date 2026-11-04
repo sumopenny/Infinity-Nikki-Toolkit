@@ -243,6 +243,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  previewLoadToken++
   clearControlsTimer()
   previewAbortController?.abort()
   window.removeEventListener('keydown', handleKeydown)

@@ -1,7 +1,9 @@
 import type { ObjectDirective } from 'vue'
 
-const seen = new Set<string>()
-const pending = new Map<HTMLElement, string>()
+// 网格卸载后释放历史；长期浏览同一网格只保留最近展示的卡片。
+const histories = new WeakMap<Element, Set<string>>()
+const historyLimit = 2048
+const pending = new Map<HTMLElement, { key: string; seen: Set<string> }>()
 let observer: IntersectionObserver | undefined
 
 function stopObserving(card: HTMLElement) {
@@ -29,10 +31,12 @@ function columnIndex(card: HTMLElement) {
 function onIntersection(entries: IntersectionObserverEntry[]) {
   for (const entry of entries) {
     const card = entry.target as HTMLElement
-    const key = pending.get(card)
-    if (key === undefined || !entry.isIntersecting || entry.intersectionRatio < 0.15) continue
+    const item = pending.get(card)
+    if (!item || !entry.isIntersecting || entry.intersectionRatio < 0.15) continue
+    const { key, seen } = item
     const replay = seen.has(key)
     seen.add(key)
+    if (seen.size > historyLimit) seen.delete(seen.values().next().value!)
     stopObserving(card)
     if (replay || window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
         card.contains(document.activeElement)) continue
@@ -57,9 +61,16 @@ function onIntersection(entries: IntersectionObserverEntry[]) {
 export const vCardReveal: ObjectDirective<HTMLElement, string> = {
   mounted(card, { value }) {
     card.setAttribute('data-reveal-card', '')
-    if (seen.has(value) || !window.IntersectionObserver || !card.animate ||
+    const grid = card.parentElement
+    if (!grid || !window.IntersectionObserver || !card.animate ||
         window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    pending.set(card, value)
+    let seen = histories.get(grid)
+    if (!seen) {
+      seen = new Set()
+      histories.set(grid, seen)
+    }
+    if (seen.has(value)) return
+    pending.set(card, { key: value, seen })
     card.classList.add('card-reveal-pending')
     observer ??= new IntersectionObserver(onIntersection, { threshold: 0.15 })
     observer.observe(card)

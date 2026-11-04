@@ -84,6 +84,28 @@ describe('Lightbox preview navigation', () => {
     }
   })
 
+  it('does not restart the controls timer if decoding completes after unmount', async () => {
+    let finish!: (url: string) => void
+    loadPhotoMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+    const wrapper = mount(Lightbox, {
+      props: {
+        photo: createPhoto('late.jpeg'), hasPrevious: false, hasNext: false,
+        isDeleting: false, isFavorite: false, keyboardEnabled: true, mode: 'album',
+        messages: messages.zh.lightbox, dateMessages: messages.zh.date
+      },
+      global: { stubs: { Teleport: true } }
+    })
+    wrapper.unmount()
+    const timer = vi.spyOn(globalThis, 'setTimeout')
+    try {
+      finish('blob:late')
+      await flushPromises()
+      expect(timer.mock.calls.some(([, delay]) => delay === 680)).toBe(false)
+    } finally {
+      timer.mockRestore()
+    }
+  })
+
   it('keeps the delete button visually enabled while the next image is loading', async () => {
     const firstPhoto = createPhoto('2026_07_21_11_20_00.jpeg')
     const nextPhoto = createPhoto('2026_07_21_11_21_00.jpeg')

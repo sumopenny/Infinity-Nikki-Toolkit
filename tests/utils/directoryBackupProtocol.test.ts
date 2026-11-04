@@ -450,3 +450,34 @@ describe('完整性与恢复保护', () => {
     expect(preview.modules[0].browserCount).toBe(0)
   })
 })
+
+it('completes restore without opening another staging cleanup after commit', async () => {
+  const { config, directory } = await setup()
+  await putOutfit('REC01')
+  await sync(config)
+  const preview = await previewRestore(asHandle(directory))
+  let committed = false
+  const original = IDBObjectStore.prototype.delete
+  const spy = vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
+    this: IDBObjectStore,
+    key: IDBValidKey | IDBKeyRange
+  ) {
+    if (committed && this.name === BACKUP_RESTORE_STORE) throw new Error('cleanup after commit')
+    return original.call(this, key)
+  })
+  try {
+    await restoreSelected(
+      asHandle(directory),
+      preview,
+      ['outfits'],
+      () => {},
+      () => {
+        committed = true
+      }
+    )
+    expect(committed).toBe(true)
+    expect(await runStoreRequest(BACKUP_RESTORE_STORE, 'readonly', (s) => s.count())).toBe(0)
+  } finally {
+    spy.mockRestore()
+  }
+})

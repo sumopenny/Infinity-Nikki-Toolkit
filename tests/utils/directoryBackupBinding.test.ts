@@ -1,12 +1,20 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bindDirectory,
   inspectRoot,
   setModuleEnabled
 } from '../../src/utils/directory-backup/engine'
 import { loadConfig } from '../../src/utils/directory-backup/repository'
-import { estimateBackupDiff } from '../../src/utils/directory-backup/diff'
+import * as repository from '../../src/utils/directory-backup/repository'
+import {
+  defaultManifest,
+  moduleDirectory,
+  jsonBytes,
+  putBytes
+} from '../../src/utils/directory-backup/disk'
+import { locateRoot } from '../../src/utils/directory-backup/engine'
+import { confirmEnable, estimateBackupDiff } from '../../src/utils/directory-backup/diff'
 import {
   resetDatabase,
   setup,
@@ -56,4 +64,24 @@ describe('重新绑定已有目录的预览防冲突', () => {
     expect([...directory.disk.files.keys()]).toEqual(['暖立方备份/存档信息.json'])
     expect((await inspectRoot(asHandle(directory)))?.backupId).toBe(config.backupId)
   })
+})
+
+it('rejects enabling when a previously absent module appears after preview', async () => {
+  const directory = new MemoryDirectory()
+  const config = await bindDirectory(asHandle(directory))
+  const diff = await estimateBackupDiff(config, 'outfits')
+  expect(diff.fingerprint).toBe('')
+  const root = (await locateRoot(asHandle(directory)))!
+  const dir = await moduleDirectory(root, 'outfits', true)
+  await putBytes(dir, '模块信息.json', jsonBytes(defaultManifest('outfits')))
+  // fake-indexeddb cannot persist the methods of an in-memory directory handle.
+  const readConfig = vi.spyOn(repository, 'loadConfig').mockResolvedValueOnce(config)
+  try {
+    directory.disk.events = []
+    await expect(confirmEnable('outfits', diff)).rejects.toThrow('重新预览')
+    expect((await loadConfig()).enabled.outfits).toBe(false)
+    expect(directory.disk.events.filter((event) => event.kind === 'write')).toEqual([])
+  } finally {
+    readConfig.mockRestore()
+  }
 })

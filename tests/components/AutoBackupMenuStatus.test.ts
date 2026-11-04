@@ -136,6 +136,28 @@ describe('automatic backup button status badge', () => {
     expect(view.get('.auto-backup-button').attributes('title')).toBe('备份目录需要重新授权')
   })
 
+  it('reports a permission warning after a manual backup check', async () => {
+    enableOutfits()
+    directoryBackup.statuses.outfits.state = 'permission'
+    const view = mountMenu()
+    await view.setProps({ open: true })
+    const notices: CustomEvent[] = []
+    const listen = (event: Event) => notices.push(event as CustomEvent)
+    window.addEventListener('nuan-backup-notice', listen)
+    try {
+      await view.get('.auto-backup-bottom button').trigger('click')
+      await flushPromises()
+      expect(
+        notices.filter((event) => event.detail.source === 'directory-backup-run').at(-1)?.detail
+      ).toMatchObject({
+        tone: 'error',
+        message: view.get('.auto-backup-button').attributes('title')
+      })
+    } finally {
+      window.removeEventListener('nuan-backup-notice', listen)
+    }
+  })
+
   it('shows pause and service failures instead of an old check mark', async () => {
     enableOutfits()
     const view = mountMenu()
