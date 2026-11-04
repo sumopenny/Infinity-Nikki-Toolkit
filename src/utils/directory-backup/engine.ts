@@ -1,3 +1,4 @@
+import { BackupStateError, backupErrorState } from './errors'
 import {
   BACKUP_SETTINGS_STORE,
   OUTFIT_IGNORED_CODES_STORE,
@@ -9,6 +10,9 @@ import { ADAPTERS, checkedImage, presentImage } from './adapters'
 import { locked, withAllBackupLocks, withExclusiveBusiness } from './coordination'
 import {
   BATCH_RECORDS,
+  browserBaseline,
+  assertBrowserBaseline,
+  type BrowserBaseline,
   active,
   acknowledgeStage,
   acknowledgeUnchanged,
@@ -23,7 +27,6 @@ import {
   loadConfig,
   readRevision,
   recordSuccess,
-  saveConfig,
   saveScan,
   scanProgress,
   setting,
@@ -56,7 +59,7 @@ import {
   defaultManifest,
   readModuleManifest,
   readIndex,
-  stageAndApply,
+  stageAndApplyVerified,
   discoverStages,
   validateStage,
   applyStage,
@@ -72,7 +75,6 @@ export {
   moduleDirectory,
   defaultStates,
   loadConfig,
-  saveConfig,
   updateConfig,
   countBrowserRecords
 }
@@ -129,7 +131,8 @@ export async function inspectRoot(handle: FileSystemDirectoryHandle): Promise<Ro
 }
 export async function backupRoot(config: BackupConfig): Promise<FileSystemDirectoryHandle> {
   if (!config.handle) throw new Error('请先选择备份目录')
-  if (!(await permission(config.handle))) throw new Error('目录授权失效，请点击重新授权')
+  if (!(await permission(config.handle)))
+    throw new BackupStateError('permission', '目录授权失效，请点击重新授权')
   const root = await locateRoot(config.handle)
   if (root) {
     const marker = validateRoot(await readJson(root, '存档信息.json'))
@@ -273,7 +276,8 @@ async function guardUnexpectedEmpty(
     authorized = authorized && covered === manifest.count
   }
   if (!authorized)
-    throw new Error(
+    throw new BackupStateError(
+      'protected',
       `检测到${MODULE_LABELS[module]}数据异常归零，已停止该模块自动备份以保留电脑副本。请检查浏览器数据，或从目录恢复；只有确认删除或明确重建才能清空副本。`
     )
 }
@@ -307,7 +311,7 @@ async function commitDisk(
   changes: DirtyChange[] = []
 ) {
   await ensureActive(config, module)
-  const id = await stageAndApply(
+  const stage = await stageAndApplyVerified(
     dir,
     module,
     operations,
@@ -317,8 +321,7 @@ async function commitDisk(
   )
   const bytes = await readBytes(dir, '模块信息.json', MAX_JSON_BYTES)
   if (!bytes) throw new Error('批次提交后模块信息丢失')
-  const stage = await validateStage(dir, id, module)
-  if (!stage) throw new Error('批次确认信息丢失')
+  const id = stage.id
   await acknowledgeStage(config, module, stage, await digest(bytes))
   try {
     await finishStage(dir, id)
@@ -354,7 +357,6 @@ interface Task {
   ids: string[]
   images: Set<string>
   ignored: string[]
-  changes: DirtyChange[]
   forceImages?: boolean
 }
 const taskFor = (changes: DirtyChange[]): Task => ({
@@ -364,8 +366,7 @@ const taskFor = (changes: DirtyChange[]): Task => ({
     )
   ],
   images: new Set(changes.filter((x) => x.key[1] === 'image').map((x) => x.key[2])),
-  ignored: changes.filter((x) => x.key[1] === 'ignored').map((x) => x.key[2]),
-  changes
+  ignored: changes.filter((x) => x.key[1] === 'ignored').map((x) => x.key[2])
 })
 /** 正常批次不读整库、不遍历业务目录、不碰未改变图片；只更新受影响的桶。 */
 async function applyChanges(
@@ -546,7 +547,6 @@ async function reconcile(
         ids: records ? keys : [],
         images: new Set(),
         ignored: records ? [] : keys,
-        changes: [],
         forceImages: true
       })
       scan.after = records ? result.ids.at(-1) : keys.at(-1)
@@ -583,8 +583,7 @@ async function reconcile(
           await applyChanges(config, dir, module, {
             ids: kind === 'record' ? ids : [],
             images: new Set(),
-            ignored: kind === 'ignored' ? ids : [],
-            changes: []
+            ignored: kind === 'ignored' ? ids : []
           })
         }
       }
@@ -593,8 +592,7 @@ async function reconcile(
     await applyChanges(config, dir, module, {
       ids: [],
       images: new Set(),
-      ignored: [],
-      changes: []
+      ignored: []
     })
     scan.phase = 'done'
     await saveScan(config, module, scan)
@@ -651,8 +649,8 @@ export async function syncModule(
       const root = await backupRoot(config)
       const exists = await checkpoint(config, module)
       const dir = await moduleDirectory(root, module, !exists && !config.initialized[module])
-      await guardUnexpectedEmpty(config, dir, module)
       await resumePending(config, dir, module)
+      await guardUnexpectedEmpty(config, dir, module)
       if (!config.initialized[module])
         await reconcile(config, dir, module, (scan) => {
           progress.processed = scan.processed
@@ -715,11 +713,7 @@ export async function syncModule(
         progress.error = undefined
       } else {
         progress.error = messageFor(error)
-        progress.state = progress.error.includes('数据异常归零')
-          ? 'protected'
-          : /权限|授权/.test(progress.error)
-            ? 'permission'
-            : 'error'
+        progress.state = backupErrorState(error)
         await runStoreRequest(BACKUP_SETTINGS_STORE, 'readwrite', (store) =>
           store.put({
             key: `error:${module}`,
@@ -785,7 +779,7 @@ export async function readModuleStatus(
       await guardUnexpectedEmpty(config, dir, module)
     } catch (cause) {
       status.error = messageFor(cause)
-      status.state = status.error.includes('数据异常归零') ? 'protected' : 'error'
+      status.state = backupErrorState(cause)
       return status
     }
   }
@@ -840,13 +834,22 @@ export async function flushBackupsBeforeReset(): Promise<boolean> {
     }
   return !(await pendingEnabledBackups())
 }
-export async function pauseBackupsForBrowserReset(action: () => Promise<void>): Promise<void> {
+export async function pauseBackupsForBrowserReset(
+  action: () => Promise<void>,
+  expected?: BrowserBaseline
+): Promise<void> {
+  const baseline = expected ?? (await browserBaseline())
   const previous = await loadConfig()
   await updateConfig((current) => {
     current.paused = true
   })
   try {
-    await withAllBackupLocks(() => withExclusiveBusiness(MODULES, action))
+    await withAllBackupLocks(() =>
+      withExclusiveBusiness(MODULES, async () => {
+        await assertBrowserBaseline(baseline)
+        await action()
+      })
+    )
   } finally {
     const remaining = await setting<BackupConfig>('config')
     if (remaining?.sourceId === previous.sourceId)
@@ -917,7 +920,6 @@ export async function buildModuleCopy(
         ids: keys,
         images: new Set(),
         ignored: [],
-        changes: [],
         forceImages: true
       })
       after = result.ids.at(-1)
@@ -933,8 +935,7 @@ export async function buildModuleCopy(
         await applyChanges(config, dir, module, {
           ids: [],
           images: new Set(),
-          ignored: codes,
-          changes: []
+          ignored: codes
         })
         after = codes.at(-1)
       }
@@ -942,8 +943,7 @@ export async function buildModuleCopy(
     await applyChanges(config, dir, module, {
       ids: [],
       images: new Set(),
-      ignored: [],
-      changes: []
+      ignored: []
     })
     const manifest = await readModuleManifest(dir, module)
     manifest.initialized = true

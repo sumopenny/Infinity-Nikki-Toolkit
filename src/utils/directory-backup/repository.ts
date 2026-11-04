@@ -154,11 +154,6 @@ export async function updateConfig(
   announceBackupChange()
   return result
 }
-/** 供首次绑定和测试夹具使用；交互更新使用 updateConfig。 */
-export async function saveConfig(config: BackupConfig): Promise<void> {
-  await runStoreRequest(BACKUP_SETTINGS_STORE, 'readwrite', (store) => store.put(config))
-  announceBackupChange()
-}
 export async function readRevision(module: BackupModule): Promise<string> {
   return (await setting<Revision>(revisionKey(module)))?.revision ?? ''
 }
@@ -353,7 +348,6 @@ export interface Snapshot {
   records: CapturedRecord[]
   ignored: Map<string, unknown>
   tags: string[]
-  revision: string
   imageBytes: number
   changes: DirtyChange[]
 }
@@ -372,19 +366,12 @@ export async function captureBatch(
       a.records,
       a.images,
       a.tags,
-      BACKUP_SETTINGS_STORE,
       BACKUP_DIRTY_STORE,
       ...(module === 'outfits' ? [OUTFIT_IGNORED_CODES_STORE] : [])
     ],
     'readonly',
     async (tx) => {
       const tags = normalTags(module, await databaseRequest(tx.objectStore(a.tags).get(a.tagKey)))
-      const revision =
-        (
-          await databaseRequest<Revision | undefined>(
-            tx.objectStore(BACKUP_SETTINGS_STORE).get(revisionKey(module))
-          )
-        )?.revision ?? ''
       const captured: CapturedRecord[] = []
       const changes: DirtyChange[] = []
       const dirty = tx.objectStore(BACKUP_DIRTY_STORE)
@@ -441,7 +428,7 @@ export async function captureBatch(
           )
           if (change) changes.push(change)
         }
-      return { records: captured, ignored: values, tags, revision, imageBytes, changes }
+      return { records: captured, ignored: values, tags, imageBytes, changes }
     }
   )
 }
@@ -461,4 +448,33 @@ export async function idleRevision(module: BackupModule): Promise<string | null>
       return pending ? null : (revision?.revision ?? '')
     }
   )
+}
+
+export interface BrowserBaseline {
+  revisions: Record<BackupModule, string>
+  counts: Record<BackupModule, number>
+}
+export async function browserBaseline(): Promise<BrowserBaseline> {
+  return runDatabaseTransaction(
+    [BACKUP_SETTINGS_STORE, ...MODULES.map((module) => ADAPTERS[module].records)],
+    'readonly',
+    async (tx) => {
+      const revisions = {} as BrowserBaseline['revisions']
+      const counts = {} as BrowserBaseline['counts']
+      for (const module of MODULES) {
+        revisions[module] =
+          (
+            await databaseRequest<Revision | undefined>(
+              tx.objectStore(BACKUP_SETTINGS_STORE).get(revisionKey(module))
+            )
+          )?.revision ?? ''
+        counts[module] = await databaseRequest(tx.objectStore(ADAPTERS[module].records).count())
+      }
+      return { revisions, counts }
+    }
+  )
+}
+export async function assertBrowserBaseline(expected: BrowserBaseline): Promise<void> {
+  if (JSON.stringify(await browserBaseline()) !== JSON.stringify(expected))
+    throw new Error('浏览器数据在确认后已变化，请重新确认')
 }

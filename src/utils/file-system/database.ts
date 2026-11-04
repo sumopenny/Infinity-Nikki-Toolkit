@@ -1,3 +1,4 @@
+import { monitored } from '../directory-backup/monitoredStores'
 // 所有本地数据共用升级入口，避免先打开不同模块时漏建存储。
 export const DB_NAME = 'infinity-nikki-album-manager'
 export const DB_VERSION = 10
@@ -106,21 +107,7 @@ export async function runStoreRequest<T>(
   action: (store: IDBObjectStore) => IDBRequest<T>
 ): Promise<T> {
   // 业务单请求写入也接入事务日志；内部配置和暂存表不递归包装。
-  if (
-    mode === 'readwrite' &&
-    [
-      OUTFITS_STORE,
-      OUTFIT_IMAGES_STORE,
-      OUTFIT_TAGS_STORE,
-      OUTFIT_IGNORED_CODES_STORE,
-      HOME_SCHEMES_STORE,
-      HOME_IMAGES_STORE,
-      HOME_TAGS_STORE,
-      CAMERA_FAVORITES_STORE,
-      CAMERA_COVERS_STORE,
-      CAMERA_TAGS_STORE
-    ].includes(storeName)
-  ) {
+  if (mode === 'readwrite' && Boolean(monitored[storeName])) {
     const { runDatabaseTransaction, databaseRequest } = await import('./transaction')
     return runDatabaseTransaction([storeName], mode, (tx) =>
       databaseRequest(action(tx.objectStore(storeName)))

@@ -1,6 +1,12 @@
 import type { BackupConfig, ModuleProgress } from '../../src/utils/directory-backup/engine'
-import { loadConfig, saveConfig, syncModule } from '../../src/utils/directory-backup/engine'
-import { DB_NAME, OUTFITS_STORE, OUTFIT_IMAGES_STORE } from '../../src/utils/file-system/database'
+import { loadConfig, syncModule } from '../../src/utils/directory-backup/engine'
+import {
+  BACKUP_SETTINGS_STORE,
+  runStoreRequest,
+  DB_NAME,
+  OUTFITS_STORE,
+  OUTFIT_IMAGES_STORE
+} from '../../src/utils/file-system/database'
 import { runDatabaseTransaction } from '../../src/utils/file-system/transaction'
 import {
   digest,
@@ -227,3 +233,7 @@ export async function moduleDir(directory: MemoryDirectory, module: BackupModule
 }
 export const modulePrefix = (module: BackupModule = 'outfits') =>
   `${DIRECTORY_NAME}/${MODULE_NAMES[module]}/`
+
+export async function saveConfig(config: BackupConfig): Promise<void> {
+  await runStoreRequest(BACKUP_SETTINGS_STORE, 'readwrite', (store) => store.put(config))
+}

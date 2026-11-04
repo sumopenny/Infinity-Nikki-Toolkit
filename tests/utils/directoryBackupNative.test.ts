@@ -1,3 +1,4 @@
+import { saveConfig } from '../helpers/directoryBackupFs'
 import 'fake-indexeddb/auto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -9,7 +10,7 @@ import {
   runStoreRequest
 } from '../../src/utils/file-system/database'
 import { databaseRequest, runDatabaseTransaction } from '../../src/utils/file-system/transaction'
-import { loadConfig, saveConfig } from '../../src/utils/directory-backup/engine'
+import { loadConfig } from '../../src/utils/directory-backup/engine'
 import { previewRestore, restoreSelected } from '../../src/utils/directory-backup/restore'
 import { digest } from '../../src/utils/directory-backup/disk'
 import { NativeDirectory, NativeDisk, nativeHandle } from '../helpers/directoryBackupNativeFs'

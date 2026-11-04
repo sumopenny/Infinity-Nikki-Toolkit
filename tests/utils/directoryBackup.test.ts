@@ -1,3 +1,4 @@
+import { saveConfig } from '../helpers/directoryBackupFs'
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -15,7 +16,6 @@ import { normalizeOutfitRecord } from '../../src/utils/outfit/outfitTypes'
 import {
   syncModule,
   loadConfig,
-  saveConfig,
   type BackupConfig,
   type ModuleProgress
 } from '../../src/utils/directory-backup/engine'

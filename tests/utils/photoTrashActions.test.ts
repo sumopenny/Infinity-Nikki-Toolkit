@@ -157,9 +157,21 @@ it('reuses retained trash objects and releases URLs for removed entries during r
   const retained = s.recentlyDeleted.value[0]!
   const removed = s.recentlyDeleted.value[1]!
   s.trashSelectedIds.value = new Set(['ta', 'tb'])
-  s.actions.mergeRecentlyDeleted([{ ...trash('ta'), size: 500, fileSizeText: '500 B' }])
+  s.actions.mergeRecentlyDeleted([
+    {
+      ...trash('ta'),
+      size: 500,
+      fileSizeText: '500 B',
+      note: 'recovered',
+      noteKey: 'trash/ta',
+      lastModified: 123
+    }
+  ])
   expect(s.recentlyDeleted.value[0]).toBe(retained)
   expect(retained.size).toBe(500)
+  expect(retained.note).toBe('recovered')
+  expect(retained.noteKey).toBe('trash/ta')
+  expect(retained.lastModified).toBe(123)
   expect(releasePhotoUrl).toHaveBeenCalledTimes(1)
   expect(releasePhotoUrl).toHaveBeenCalledWith(removed)
   expect([...s.trashSelectedIds.value]).toEqual(['ta'])

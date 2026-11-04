@@ -117,6 +117,7 @@ const parsing = ref(false)
 const error = ref('')
 const cover = shallowRef<Blob | null>(null)
 const coverName = ref('')
+let originalCover: Blob | null = null
 const previewUrl = ref('')
 const compact = useCompactLayout()
 const coverReading = ref(false)
@@ -557,6 +558,7 @@ async function openEditor(
   sidebar.value?.closeTagInput()
   error.value = ''
   setCover(item ? existingCover : file, item?.cover?.name ?? file?.name ?? '')
+  originalCover = existingCover
   editor.value = true
   await nextTick()
 }
@@ -688,6 +690,7 @@ async function save() {
       // 优先 WebP，编码失败则保存通过校验的原图；移动端已复制原始字节。
       if (
         cover.value &&
+        cover.value !== originalCover &&
         (cover.value instanceof File ||
           cover.value.type !== 'image/webp' ||
           !/\.webp$/i.test(coverName.value))
@@ -718,7 +721,12 @@ async function save() {
         code: parsedCode.value,
         source: source.value,
         result: cloneFavorite(parsed.value),
-        cover: cover.value ? await coverMetadata(cover.value, coverName.value) : null,
+        cover:
+          cover.value === originalCover && editing.value
+            ? editing.value.cover
+            : cover.value
+              ? await coverMetadata(cover.value, coverName.value)
+              : null,
         createdAt: editing.value?.createdAt ?? now,
         updatedAt: now
       }
@@ -749,7 +757,7 @@ async function remove(item: CameraFavorite) {
       return
     busy.value = true
     try {
-      await deleteCameraFavorite(item.id)
+      await deleteCameraFavorite(item.id, true)
       notifyChanged()
       emit('status', t('已删除收藏', 'Favorite deleted'), 'success')
     } catch (caught) {

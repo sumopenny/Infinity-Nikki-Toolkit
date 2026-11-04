@@ -201,3 +201,52 @@ it('keeps the spinner through final status readback until the success receipt is
   expect(directoryBackup.running.value).toBe(false)
   expect(badge()).toBe('success')
 })
+
+it('schedules another run when a change arrives during final sync work', async () => {
+  vi.useFakeTimers()
+  const { runDirectoryBackup } = await import('../../src/composables/useDirectoryBackup')
+  const config = {
+    handle: { name: 'folder' },
+    enabled: { outfits: true, home: false, camera: false },
+    initialized: { outfits: true, home: false, camera: false },
+    paused: false
+  }
+  mocks.loadConfig.mockResolvedValue(config)
+  let hasNewEdit = false
+  mocks.readModuleStatus.mockImplementation(async (_config, module) => ({
+    enabled: module === 'outfits',
+    state: module === 'outfits' ? (hasNewEdit ? 'waiting' : 'synced') : 'disabled',
+    count: 1,
+    lastSuccess: '2026-11-04T01:00:00Z'
+  }))
+  const host = mount(
+    defineComponent({
+      setup() {
+        useDirectoryBackupLifecycle()
+        return () => h('div')
+      }
+    })
+  )
+  try {
+    for (let i = 0; i < 16; i++) await Promise.resolve()
+    mocks.syncModule.mockImplementation(async (_config, _module, progress) => {
+      progress.state = 'syncing'
+      hasNewEdit = true
+      window.dispatchEvent(new Event('nuan-backup-change'))
+      for (let i = 0; i < 16; i++) await Promise.resolve()
+      progress.state = 'waiting'
+    })
+    await runDirectoryBackup(false)
+    expect(directoryBackup.statuses.outfits.state).toBe('waiting')
+    expect(directoryBackup.scheduled.value).toBe(true)
+    mocks.syncModule.mockImplementation(async (_config, _module, progress) => {
+      hasNewEdit = false
+      progress.state = 'synced'
+    })
+    await vi.advanceTimersByTimeAsync(2500)
+    expect(mocks.syncModule).toHaveBeenCalledTimes(2)
+    expect(directoryBackup.statuses.outfits.state).toBe('synced')
+  } finally {
+    host.unmount()
+  }
+})

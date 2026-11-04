@@ -67,6 +67,7 @@ export interface ModulePreview {
   imageBytes: number
   staged: number
   canResume: boolean
+  missing?: boolean
 }
 export interface RestorePreview {
   backupId: string
@@ -305,6 +306,7 @@ export async function previewRestore(handle: FileSystemDirectoryHandle): Promise
       }
     } catch (error) {
       item.canResume = false
+      item.missing = (error as DOMException).name === 'NotFoundError'
       item.message =
         (error as DOMException).name === 'NotFoundError'
           ? '未发现此模块备份'

@@ -46,7 +46,7 @@ import {
   resumeSource,
   type RestorePreview
 } from '../utils/directory-backup/restore'
-import { countBrowserRecords } from '../utils/directory-backup/repository'
+import { browserBaseline, type BrowserBaseline } from '../utils/directory-backup/repository'
 import { rebuildBackupDirectory } from '../utils/directory-backup/rebuild'
 import { createUuid } from '../utils/uuid'
 import type { BackupModule } from '../utils/directory-backup/changeJournal'
@@ -489,9 +489,7 @@ async function pauseOrResume() {
       await refreshDirectoryBackup()
       if (config.value?.handle) {
         const preview = await previewRestore(config.value.handle)
-        const invalid = preview.modules.filter(
-          (item) => !item.ready && item.message !== '未发现此模块备份'
-        )
+        const invalid = preview.modules.filter((item) => !item.ready && !item.missing)
         if (invalid.length)
           throw new Error(
             t(
@@ -681,11 +679,12 @@ async function rebuildCurrent() {
   if (!handle) return
   beginNotice(t('正在统计浏览器数据…', 'Counting browser records…'))
   let counts: string[]
+  let baseline: BrowserBaseline
   try {
+    baseline = await browserBaseline()
     counts = await Promise.all(
       MODULES.map(
-        async (module) =>
-          titleFor(module) + ' ' + (await countBrowserRecords(module)) + t(' 条', ' records')
+        async (module) => titleFor(module) + ' ' + baseline.counts[module] + t(' 条', ' records')
       )
     )
   } catch (error) {
@@ -727,10 +726,14 @@ async function rebuildCurrent() {
     busy.value = true
     beginNotice(t('正在重建并校验电脑备份…', 'Rebuilding and verifying backup…'))
     recoveryError.value = ''
-    await rebuildBackupDirectory(handle, (text) => {
-      recoveryProgress.value = text
-      beginNotice(text)
-    })
+    await rebuildBackupDirectory(
+      handle,
+      (text) => {
+        recoveryProgress.value = text
+        beginNotice(text)
+      },
+      baseline
+    )
     await refreshDirectoryBackup()
     recoveryDialog.value?.close()
     opened.value = true

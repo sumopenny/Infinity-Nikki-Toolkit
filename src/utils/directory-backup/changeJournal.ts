@@ -1,17 +1,5 @@
-import {
-  BACKUP_DIRTY_STORE,
-  BACKUP_SETTINGS_STORE,
-  CAMERA_COVERS_STORE,
-  CAMERA_FAVORITES_STORE,
-  CAMERA_TAGS_STORE,
-  HOME_IMAGES_STORE,
-  HOME_SCHEMES_STORE,
-  HOME_TAGS_STORE,
-  OUTFIT_IGNORED_CODES_STORE,
-  OUTFIT_IMAGES_STORE,
-  OUTFIT_TAGS_STORE,
-  OUTFITS_STORE
-} from '../file-system/database'
+import { monitored } from './monitoredStores'
+import { BACKUP_DIRTY_STORE, BACKUP_SETTINGS_STORE } from '../file-system/database'
 import { createUuid } from '../uuid'
 
 export type BackupModule = 'outfits' | 'home' | 'camera'
@@ -28,18 +16,7 @@ export interface Revision {
   revision: string
 }
 export const revisionKey = (module: BackupModule) => `revision:${module}`
-const monitored: Record<string, [BackupModule, ChangeKind]> = {
-  [OUTFITS_STORE]: ['outfits', 'record'],
-  [OUTFIT_IMAGES_STORE]: ['outfits', 'image'],
-  [OUTFIT_TAGS_STORE]: ['outfits', 'tags'],
-  [OUTFIT_IGNORED_CODES_STORE]: ['outfits', 'ignored'],
-  [HOME_SCHEMES_STORE]: ['home', 'record'],
-  [HOME_IMAGES_STORE]: ['home', 'image'],
-  [HOME_TAGS_STORE]: ['home', 'tags'],
-  [CAMERA_FAVORITES_STORE]: ['camera', 'record'],
-  [CAMERA_COVERS_STORE]: ['camera', 'image'],
-  [CAMERA_TAGS_STORE]: ['camera', 'tags']
-}
+
 export const changedModules = (stores: string[]): BackupModule[] => [
   ...new Set(stores.flatMap((name) => (monitored[name] ? [monitored[name][0]] : [])))
 ]

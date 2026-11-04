@@ -558,7 +558,7 @@ async function removeScheme(item: HomeSchemeItem) {
     if (
       isBusy.value ||
       !(await props.confirmAction(
-        props.messages.deleteConfirm + (await backupDeleteWarning('home'))
+        props.messages.deleteConfirm + (await backupDeleteWarning('home', props.language))
       ))
     )
       return
@@ -654,15 +654,17 @@ async function deleteSelectedSchemes() {
       if (
         !(await props.confirmAction(
           props.messages.deleteSelectedConfirm(selected.length) +
-            (await backupDeleteWarning('home'))
+            (await backupDeleteWarning('home', props.language))
         ))
       )
         return
       if (
         selected.length === schemes.value.length &&
-        (await backupDeleteWarning('home')) &&
+        (await backupDeleteWarning('home', props.language)) &&
         !(await props.confirmAction(
-          '这次删除覆盖全部家园方案。同步后电脑副本中的全部方案与图片也会删除，不能撤销。确定继续吗？'
+          props.language === 'zh'
+            ? '这次删除覆盖全部家园方案。同步后电脑副本中的全部方案与图片也会删除，不能撤销。确定继续吗？'
+            : 'This deletes every home scheme and its image from the computer backup too. This cannot be undone. Continue?'
         ))
       )
         return

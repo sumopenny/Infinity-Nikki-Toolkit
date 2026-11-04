@@ -248,11 +248,9 @@ export function validateManifest(value: unknown, module: BackupModule): ModuleMa
 }
 export async function readModuleManifest(
   dir: FileSystemDirectoryHandle,
-  module: BackupModule,
-  allowMissing = false
+  module: BackupModule
 ): Promise<ModuleManifest> {
   const value = await readJson<ModuleManifest>(dir, '模块信息.json')
-  if (!value && allowMissing) return defaultManifest(module)
   return validateManifest(value, module)
 }
 export async function readIndex(
@@ -404,14 +402,14 @@ export async function applyStage(
   if (cleanup) await finishStage(dir, id)
   return m
 }
-export async function stageAndApply(
+export async function stageAndApplyVerified(
   dir: FileSystemDirectoryHandle,
   module: BackupModule,
   operations: DiskOperation[],
   onStage?: (id: string) => void,
   receipt?: BatchReceipt,
   retain = false
-): Promise<string> {
+): Promise<StageManifest> {
   const id = createUuid()
   if (!operations.length || operations.at(-1)?.path !== '模块信息.json')
     throw new Error('缺少批次提交信息')
@@ -469,8 +467,7 @@ export async function stageAndApply(
   if (!actual || (await digest(actual)) !== sha256) throw new Error('暂存清单写入验证失败')
   await putBytes(dir, `${base}/ready.json`, jsonBytes({ sha256 }))
   onStage?.(id)
-  await applyStage(dir, id, module, !retain)
-  return id
+  return applyStage(dir, id, module, !retain)
 }
 export async function discoverStages(dir: FileSystemDirectoryHandle): Promise<string[]> {
   try {
@@ -493,4 +490,11 @@ export async function moduleDirectory(
 ) {
   const info = validateRoot(await readJson(root, '存档信息.json'))
   return directoryAt(root, info.modulePaths?.[module] ?? MODULE_NAMES[module], create)
+}
+
+/** Compatibility entry point for callers that only need the durable batch ID. */
+export async function stageAndApply(
+  ...args: Parameters<typeof stageAndApplyVerified>
+): Promise<string> {
+  return (await stageAndApplyVerified(...args)).id
 }

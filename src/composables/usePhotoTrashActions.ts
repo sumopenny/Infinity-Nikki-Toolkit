@@ -62,6 +62,9 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
     recentlyDeleted.value = nextPhotos.map((photo) => {
       const existing = currentByName.get(photo.trashName)
       if (!existing) return photo
+      existing.note = photo.note
+      existing.noteKey = photo.noteKey
+      existing.lastModified = photo.lastModified
       existing.size = photo.size
       existing.fileSizeText = photo.fileSizeText
       return existing

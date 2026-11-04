@@ -134,7 +134,7 @@ export function runDirectoryBackup(notifyAutomaticSuccess = true): Promise<void>
       })
       running.value = false
       currentRun = undefined
-      if (requestedAgain) {
+      if (requestedAgain || MODULES.some((module) => statuses[module].state === 'waiting')) {
         requestedAgain = false
         scheduleDirectoryBackup(false)
       }

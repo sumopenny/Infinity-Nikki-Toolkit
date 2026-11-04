@@ -9,7 +9,16 @@ import {
   type Revision
 } from './changeJournal'
 import { buildModuleCopy, locateRoot, permission } from './engine'
-import { loadConfig, moduleRange, readRevision, setting, type BackupConfig } from './repository'
+import {
+  browserBaseline,
+  assertBrowserBaseline,
+  type BrowserBaseline,
+  loadConfig,
+  moduleRange,
+  readRevision,
+  setting,
+  type BackupConfig
+} from './repository'
 import { verifyModule } from './restore'
 import {
   FORMAT,
@@ -60,6 +69,12 @@ function validateJournal(raw: unknown): RebuildJournal {
   return value
 }
 async function removeDirectory(root: FileSystemDirectoryHandle, path: string) {
+  const current = await rootBytes(root)
+  const activePaths = MODULES.map(
+    (module) => current.info.modulePaths?.[module] ?? MODULE_NAMES[module]
+  )
+  if (activePaths.some((active) => active === path || active.startsWith(path + '/')))
+    throw new Error('拒绝删除当前根清单仍在使用的模块目录')
   const parts = path.split('/'),
     name = parts.pop()!
   try {
@@ -153,10 +168,13 @@ async function publishBinding(
  */
 export async function rebuildBackupDirectory(
   handle: FileSystemDirectoryHandle,
-  progress: (text: string) => void
+  progress: (text: string) => void,
+  expected?: BrowserBaseline
 ): Promise<void> {
   if (!(await permission(handle))) throw new Error('重建需要用户授予目录写入权限')
+  const baseline = expected ?? (await browserBaseline())
   await withAllBackupLocks(async () => {
+    await assertBrowserBaseline(baseline)
     const config = await loadConfig(),
       root = await locateRoot(handle)
     if (!root) throw new Error('没有可识别的旧备份，请直接选择新目录')
@@ -199,9 +217,8 @@ export async function rebuildBackupDirectory(
         oldDigests.set(module, null)
       }
     }
-    const baselines = Object.fromEntries(
-      await Promise.all(MODULES.map(async (module) => [module, await readRevision(module)]))
-    ) as Record<BackupModule, string>
+    await assertBrowserBaseline(baseline)
+    const baselines = baseline.revisions
     const journal: RebuildJournal = {
       format: FORMAT,
       version: VERSION,
@@ -270,6 +287,7 @@ export async function rebuildBackupDirectory(
         if (sha !== oldDigests.get(module))
           throw new Error('旧电脑副本被其他写入方修改，已停止切换。')
       }
+      await assertBrowserBaseline(baseline)
       if ((await rootBytes(root)).sha !== journal.baseDigest)
         throw new Error('根目录身份在重建期间发生变化')
       nextInfo.modulePaths = Object.fromEntries(

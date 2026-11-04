@@ -1,3 +1,4 @@
+import { saveConfig } from '../helpers/directoryBackupFs'
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -25,7 +26,6 @@ import {
 import {
   readRevision,
   dirtyChanges,
-  saveConfig,
   scanProgress
 } from '../../src/utils/directory-backup/repository'
 import {

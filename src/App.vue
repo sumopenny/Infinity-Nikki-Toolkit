@@ -5,6 +5,7 @@ import {
   recoverAlbumNotes,
   type AlbumNoteSnapshot
 } from './utils/file-system/photoMetadata'
+import { browserBaseline } from './utils/directory-backup/repository'
 import { currentVersion } from './i18n/version'
 import { lazyFeature } from './utils/lazyFeature'
 import { isAlbumPhoto } from './utils/photoGrouping'
@@ -46,7 +47,9 @@ useDirectoryBackupLifecycle()
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
 import { clearAllBrowserData } from './utils/file-system/database'
 import {
-  pendingEnabledBackups, flushBackupsBeforeReset, pauseBackupsForBrowserReset
+  pendingEnabledBackups,
+  flushBackupsBeforeReset,
+  pauseBackupsForBrowserReset
 } from './utils/directory-backup/engine'
 
 import {
@@ -451,13 +454,19 @@ async function refreshAfterDirectoryRestore(event: Event) {
     tasks.push(reloadOutfitCollection())
   }
   if (modules.includes('home')) tasks.push(refreshHomeAfterImport())
-  if (modules.includes('camera')) tasks.push(cameraFavoritesRef.value
-    ? cameraFavoritesRef.value.reload() : refreshCameraFavoriteCodes())
+  if (modules.includes('camera'))
+    tasks.push(
+      cameraFavoritesRef.value ? cameraFavoritesRef.value.reload() : refreshCameraFavoriteCodes()
+    )
   const results = await Promise.allSettled(tasks)
-  if (hasRefreshFailure(results)) showStatus({
-    message: language.value === 'zh' ? '数据恢复成功，部分界面刷新失败，请重新加载页面查看。'
-      : 'Data restored; some views could not refresh. Reload to view them.', tone: 'warning'
-  })
+  if (hasRefreshFailure(results))
+    showStatus({
+      message:
+        language.value === 'zh'
+          ? '数据恢复成功，部分界面刷新失败，请重新加载页面查看。'
+          : 'Data restored; some views could not refresh. Reload to view them.',
+      tone: 'warning'
+    })
 }
 async function refreshAfterAllImport() {
   selectedOutfitIds.value = new Set()
@@ -1319,28 +1328,45 @@ async function clearData() {
   })
   // 清浏览器数据不等于业务主动清空：必须保留授权目录下的备份。
   if (!confirmed || isAnyFileOperationBusy.value) return
-  const stillClear = () => openConfirmDialog({
-    title: language.value === 'zh' ? '仍然清除本站数据？' : 'Clear browser data anyway?',
-    message: language.value === 'zh'
-      ? '未备份的最新修改可能丢失。电脑上已保存的副本会保留，但不保证包含最新修改。'
-      : 'Unbacked-up edits may be lost. Existing computer copies are preserved, but may not include the latest edits.',
-    tone: 'danger', confirmLabel: language.value === 'zh' ? '仍然清除' : 'Clear anyway',
-    cancelLabel: locale.value.app.dialogCancel
-  })
+  let resetBaseline: Awaited<ReturnType<typeof browserBaseline>>
+  try {
+    resetBaseline = await browserBaseline()
+  } catch (error) {
+    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    return
+  }
+  const stillClear = () =>
+    openConfirmDialog({
+      title: language.value === 'zh' ? '仍然清除本站数据？' : 'Clear browser data anyway?',
+      message:
+        language.value === 'zh'
+          ? '未备份的最新修改可能丢失。电脑上已保存的副本会保留，但不保证包含最新修改。'
+          : 'Unbacked-up edits may be lost. Existing computer copies are preserved, but may not include the latest edits.',
+      tone: 'danger',
+      confirmLabel: language.value === 'zh' ? '仍然清除' : 'Clear anyway',
+      cancelLabel: locale.value.app.dialogCancel
+    })
   try {
     if (await pendingEnabledBackups()) {
       const first = await openConfirmDialog({
         title: language.value === 'zh' ? '还有待备份修改' : 'Backup changes are pending',
         tone: 'warning',
-        message: language.value === 'zh' ? '是否先尝试完成电脑备份？未完成的最新修改在清除浏览器后无法找回。'
-          : 'Try completing the computer backup first? Pending edits cannot be recovered after clearing the browser.',
+        message:
+          language.value === 'zh'
+            ? '是否先尝试完成电脑备份？未完成的最新修改在清除浏览器后无法找回。'
+            : 'Try completing the computer backup first? Pending edits cannot be recovered after clearing the browser.',
         confirmLabel: language.value === 'zh' ? '先尝试备份' : 'Try backup first',
         cancelLabel: language.value === 'zh' ? '暂不备份' : 'Not now'
       })
-      if (!(first && await flushBackupsBeforeReset()) && !await stillClear()) return
+      const backedUp = first && (await flushBackupsBeforeReset())
+      if (!backedUp) {
+        resetBaseline = await browserBaseline()
+        if (!(await stillClear())) return
+      }
     }
   } catch {
-    if (!await stillClear()) return
+    resetBaseline = await browserBaseline()
+    if (!(await stillClear())) return
   }
 
   await operations.run('website-reset', async () => {
@@ -1349,7 +1375,7 @@ async function clearData() {
       photoActionParsing.reset()
       photoParams.close()
       await invalidateCacheWrites()
-      await pauseBackupsForBrowserReset(() => clearAllBrowserData())
+      await pauseBackupsForBrowserReset(() => clearAllBrowserData(), resetBaseline)
       localStorage.clear()
       sessionStorage.clear()
       statusState.value = {

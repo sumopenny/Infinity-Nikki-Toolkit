@@ -814,7 +814,7 @@ describe('camera cover conversion', () => {
   )
 })
 
-it('converts an existing non-WebP cover when saving an edit', async () => {
+it('preserves an unchanged legacy cover when saving an edit', async () => {
   const original = new Blob(['png'], { type: 'image/png' })
   const saved = {
     ...item,
@@ -834,12 +834,10 @@ it('converts an existing non-WebP cover when saving an edit', async () => {
     .querySelector('form')!
     .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
   await flushPromises()
-  expect(mocks.webp).toHaveBeenCalledTimes(1)
-  expect(mocks.save.mock.calls[0][0].cover).toMatchObject({
-    name: 'existing.webp',
-    type: 'image/webp'
-  })
-  expect(mocks.save.mock.calls[0][1].type).toBe('image/webp')
+  expect(mocks.webp).not.toHaveBeenCalled()
+  expect(mocks.cover).not.toHaveBeenCalled()
+  expect(mocks.save.mock.calls[0][0].cover).toEqual(saved.cover)
+  expect(mocks.save.mock.calls[0][1]).toBe(original)
 })
 
 it('does not read saved covers while the favorites page is inactive', async () => {
