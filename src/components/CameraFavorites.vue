@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
 import {
   readPhotoFile,
@@ -435,14 +436,25 @@ async function removeSelected() {
         t(
           '删除选中的 ' + ids.length + ' 条参数收藏？原照片不会删除。',
           'Delete ' + ids.length + ' selected favorites? Original photos will be kept.'
-        ),
+        ) + (await backupDeleteWarning('camera', props.language)),
         t('删除参数收藏', 'Delete camera favorites')
       ))
     )
       return
     busy.value = true
     try {
-      await deleteCameraFavorites(ids)
+      if (
+        ids.length === library.value.records.length &&
+        (await backupDeleteWarning('camera', props.language)) &&
+        !(await props.confirmAction(
+          t(
+            '这次删除覆盖全部相机参数收藏。同步后电脑副本中的全部记录与封面也会删除，不能撤销。确定继续吗？',
+            'This deletes every camera favorite and its cover from the computer copy too. Continue?'
+          )
+        ))
+      )
+        return
+      await deleteCameraFavorites(ids, true)
       selectedIds.value = new Set()
       notifyChanged()
       emit('status', t('已删除选中的收藏', 'Selected favorites deleted'), 'success')
@@ -730,7 +742,7 @@ async function remove(item: CameraFavorite) {
         t(
           '删除这条参数收藏？原照片不会删除。',
           'Delete this favorite? The original photo will be kept.'
-        ),
+        ) + (await backupDeleteWarning('camera', props.language)),
         t('删除参数收藏', 'Delete camera favorite')
       ))
     )

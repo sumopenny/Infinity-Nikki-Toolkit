@@ -7,27 +7,41 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.03 更新',
+  currentDate: '2026.11.04 更新',
   currentItems: [
     {
-      title: '从桌面打开暖立方轻量应用。',
-      text: '打开「更多 → 安装应用」，按提示将暖立方添加到手机主屏幕或电脑桌面。安装后，点击图标即可打开；支持的浏览器还可在独立窗口中运行。'
+      title: '新增电脑端自动备份功能。',
+      text: '为了更好地保护大家的数据，强烈建议电脑端用户开启自动备份！电脑端顶部新增「自动备份」入口，支持将搭配码、家园方案和相机参数收藏自动备份到指定的电脑本地文件夹，三个模块可自由选择开启。数据发生变化时会自动增量备份，也支持从备份目录恢复数据，有效降低浏览器数据意外丢失的风险。特别说明：自动备份的数据保存在你自己的电脑本地文件夹中，不会上传至云端。'
     },
     {
-      title: '新增「搭配总结」。',
-      text: '查看常用标签、常穿部件和常用妆容排行。可按部位筛选，点击标签即可查看对应搭配。优先读取本机已有的解析记录，剩余搭配码可一键批量解析。'
-    },
-    {
-      title: '优化分享图预览界面。',
-      text: '分享图预览采用与大图预览一致的样式，图片展示更清晰。'
-    },
-    {
-      title: '只填搭配码也能保存。',
-      text: '新建搭配时，填写搭配码或添加图片，任选其一即可保存。只有图片的搭配会归入「待填写」，方便之后补上搭配码。'
+      title: '优化界面动画与显示效果。',
+      text: '优化页面卡片、弹窗及部分交互动画，让界面切换更加自然流畅，操作反馈更加细腻，整体视觉体验更加舒适。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.5',
+      date: '2026.11.03',
+      items: [
+        {
+          title: '从桌面打开暖立方轻量应用。',
+          text: '打开「更多 → 安装应用」，按提示将暖立方添加到手机主屏幕或电脑桌面。安装后，点击图标即可打开；支持的浏览器还可在独立窗口中运行。'
+        },
+        {
+          title: '新增「搭配总结」。',
+          text: '查看常用标签、常穿部件和常用妆容排行。可按部位筛选，点击标签即可查看对应搭配。优先读取本机已有的解析记录，剩余搭配码可一键批量解析。'
+        },
+        {
+          title: '优化分享图预览界面。',
+          text: '分享图预览采用与大图预览一致的样式，图片展示更清晰。'
+        },
+        {
+          title: '只填搭配码也能保存。',
+          text: '新建搭配时，填写搭配码或添加图片，任选其一即可保存。只有图片的搭配会归入「待填写」，方便之后补上搭配码。'
+        }
+      ]
+    },
     {
       version: 'v2.4',
       date: '2026.11.01',
@@ -712,27 +726,41 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.03',
+  currentDate: 'Updated 2026.11.04',
   currentItems: [
     {
-      title: 'Open Nikki Toolkit from your home screen or desktop. ',
-      text: 'Choose More → Install app and follow the prompts to add Nikki Toolkit to your home screen or desktop. Select its icon to open it. Supported browsers can run it in a separate window.'
+      title: 'New automatic backups on desktop.',
+      text: 'To better protect your data, we strongly recommend enabling automatic backups on desktop! A new Auto backup button at the top lets you save outfit codes, home schemes, and camera parameter favorites to a folder on your own computer. Enable each module separately. Changes are backed up incrementally, and you can restore data from the backup folder to reduce the risk of losing browser data. Important: automatic backups are stored locally on your computer and are not uploaded to the cloud.'
     },
     {
-      title: 'New outfit summary. ',
-      text: 'See your most-used tags, clothing and makeup. Filter by part or select a tag to see matching outfits. The summary loads results saved on your device first. You can decode the remaining outfit codes in one go.'
-    },
-    {
-      title: 'Clearer share image previews. ',
-      text: 'Share image previews now use the same styling as the large-image viewer, making images easier to see.'
-    },
-    {
-      title: 'Save an outfit with just a code. ',
-      text: 'Enter an outfit code or add a photo to save a new outfit. Photo-only outfits appear under Pending so you can add a code later.'
+      title: 'Improved interface animations and visuals.',
+      text: 'Refined card, dialog, and interaction animations for smoother transitions, clearer feedback, and a more comfortable overall experience.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.5',
+      date: '2026.11.03',
+      items: [
+        {
+          title: 'Open Nikki Toolkit from your home screen or desktop. ',
+          text: 'Choose More → Install app and follow the prompts to add Nikki Toolkit to your home screen or desktop. Select its icon to open it. Supported browsers can run it in a separate window.'
+        },
+        {
+          title: 'New outfit summary. ',
+          text: 'See your most-used tags, clothing and makeup. Filter by part or select a tag to see matching outfits. The summary loads results saved on your device first. You can decode the remaining outfit codes in one go.'
+        },
+        {
+          title: 'Clearer share image previews. ',
+          text: 'Share image previews now use the same styling as the large-image viewer, making images easier to see.'
+        },
+        {
+          title: 'Save an outfit with just a code. ',
+          text: 'Enter an outfit code or add a photo to save a new outfit. Photo-only outfits appear under Pending so you can add a code later.'
+        }
+      ]
+    },
     {
       version: 'v2.4',
       date: '2026.11.01',

@@ -1,4 +1,5 @@
 import { reportPartialFailure } from '../errorReporting/errorReporter'
+import { markConfirmedDeletion } from '../directory-backup/changeJournal'
 import {
   databaseRequest as outfitRequest,
   runDatabaseTransaction as outfitTransaction
@@ -139,7 +140,11 @@ export async function readOutfitRecords(): Promise<{
   }
   return result
 }
-export async function readOutfitCollection(): Promise<{ outfits: OutfitItem[]; tags: string[]; unreadableCount: number }> {
+export async function readOutfitCollection(): Promise<{
+  outfits: OutfitItem[]
+  tags: string[]
+  unreadableCount: number
+}> {
   const { records, tags, sizes, unreadableCount } = await readOutfitRecords()
   return {
     outfits: records.map((record) =>
@@ -224,15 +229,17 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
         createdAt: previous?.createdAt ?? new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
-      const image = prepared
-        ? { ...prepared, id }
-        : ((await outfitRequest(images.get(id))) as OutfitImage | undefined)
-      if (record.image && (!image?.blob || image.size !== image.blob.size))
+      // 只改备注、搭配码或标签时绝不读取或重写图片二进制。
+      if (
+        record.image &&
+        !prepared &&
+        (!previous?.image || (await outfitRequest(images.getKey(id))) === undefined)
+      )
         throw new Error('outfit_image_missing')
       records.put(record)
-      if (prepared) images.put(image)
+      if (prepared) images.put({ ...prepared, id })
       if (code) tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(code)
-      return { record, size: image?.size ?? 0 }
+      return { record, size: prepared?.size ?? previous?.imageSize ?? 0 }
     }
   )
   return displayOutfit(saved.record, saved.size, () => readOutfitImage(saved.record.id))
@@ -274,11 +281,15 @@ export async function deleteOutfitTag(
     return { tags, updatedCount }
   })
 }
-export async function deleteOutfits(outfits: OutfitItem[]): Promise<OutfitDeleteResult> {
+export async function deleteOutfits(
+  outfits: OutfitItem[],
+  confirmed = false
+): Promise<OutfitDeleteResult> {
   return outfitTransaction(
     [OUTFITS_STORE, OUTFIT_IMAGES_STORE, OUTFIT_IGNORED_CODES_STORE],
     'readwrite',
     async (tx) => {
+      if (confirmed) markConfirmedDeletion(tx, 'outfits')
       const records = tx.objectStore(OUTFITS_STORE),
         deleted: OutfitItem[] = [],
         failedNames: string[] = []
@@ -305,8 +316,8 @@ export async function deleteOutfits(outfits: OutfitItem[]): Promise<OutfitDelete
     }
   )
 }
-export async function deleteOutfit(item: OutfitItem): Promise<void> {
-  const result = await deleteOutfits([item])
+export async function deleteOutfit(item: OutfitItem, confirmed = false): Promise<void> {
+  const result = await deleteOutfits([item], confirmed)
   if (result.failedNames.length) throw new Error('outfit_record_changed')
 }
 

@@ -1,5 +1,13 @@
 import { annotateDiagnosticError } from '../errorReporting/errorReporter'
 import { isDatabaseConnectionLost, openDb } from './database'
+import {
+  announceBackupChange,
+  changedModules,
+  journalStores,
+  needsJournal,
+  prepareJournal
+} from '../directory-backup/changeJournal'
+import { withBusinessWrites } from '../directory-backup/coordination'
 
 export function databaseRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -8,14 +16,18 @@ export function databaseRequest<T>(request: IDBRequest<T>): Promise<T> {
   })
 }
 
-/** 仅在事务内等待 IndexedDB 请求；图片/文件处理须提前完成，提交后才返回成功。 */
+/** 事务内只等待 IDB 请求；文件、图片处理放在外部，提交后才返回成功。 */
 export async function runDatabaseTransaction<T>(
   stores: string[],
   mode: IDBTransactionMode,
   action: (tx: IDBTransaction) => Promise<T>
 ): Promise<T> {
   try {
-    return await runTransactionAttempt(stores, mode, action)
+    return await (needsJournal(stores, mode)
+      ? withBusinessWrites(changedModules(stores), () =>
+          runTransactionAttempt(stores, mode, action)
+        )
+      : runTransactionAttempt(stores, mode, action))
   } catch (error) {
     if (mode !== 'readonly' || !isDatabaseConnectionLost(error)) throw error
     return runTransactionAttempt(stores, mode, action)
@@ -36,9 +48,11 @@ async function runTransactionAttempt<T>(
     let result: T
     let failure: unknown
     try {
-      tx = db.transaction(stores, mode)
+      const tracked = needsJournal(stores, mode)
+      tx = db.transaction(tracked ? journalStores(stores) : stores, mode)
       tx.oncomplete = () => {
         db.close()
+        if (tracked) announceBackupChange()
         resolve(result)
       }
       tx.onabort = () => {
@@ -53,7 +67,8 @@ async function runTransactionAttempt<T>(
       tx.onerror = () => {
         /* onabort reports the final failure */
       }
-      action(tx)
+      const execution = tracked ? prepareJournal(tx).then(action) : action(tx)
+      execution
         .then((value) => {
           result = value
         })

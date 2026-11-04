@@ -53,7 +53,7 @@
   --focus-ring-color: rgba(201, 132, 134, 0.45);
   --menu-selected-bg: rgba(255, 239, 237, 0.7544);
   /* 菜单、形态控件、信息底色及强调边框使用固定主题色。 */
-  --menu-bg: rgba(255, 255, 255, 0.84);
+  --menu-bg: rgba(255, 255, 255, 0.90);
   --form-control-bg: rgba(255, 255, 255, 0.6204);
   --form-control-border: #f9f4f0;
   --surface-accent-subtle: var(--share-soft);

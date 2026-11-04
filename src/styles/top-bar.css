@@ -288,6 +288,11 @@
   transform: translateY(0) scale(0.97);
 }
 
+/* 备份菜单按钮需要固定鼠标命中区域，防止底边悬停时上下跳动。 */
+.header-icon-button.auto-backup-button:is(:hover, [aria-expanded='true'], :active) {
+  transform: none;
+}
+
 .header-star-hint {
   max-width: min(37vw, 400px);
   height: auto;
@@ -327,7 +332,7 @@
   border-radius: var(--ui-radius);
   background: var(--menu-bg);
   box-shadow: 0 18px 44px rgba(45, 39, 35, 0.18);
-  backdrop-filter: blur(13px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
   --menu-rest-transform: translateX(calc(-50% + var(--menu-shift, 0px)));
   transform: var(--menu-rest-transform);
   animation: header-dropdown-in 0.18s var(--ease-spring);
@@ -898,7 +903,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .liked .like-heart svg {
-    animation: like-pop 400ms cubic-bezier(.32, 1.55, .55, 1);
+    animation: like-pop 400ms cubic-bezier(0.32, 1.55, 0.55, 1);
   }
 
   .liked .like-dot {
@@ -907,14 +912,33 @@
 }
 
 @keyframes like-pop {
-  0% { transform: scale(1); }
-  22% { transform: translateY(1px) scale(1.16, .68); fill: var(--pink-deep); }
-  58% { transform: translateY(-2px) scale(.98, 1.22); fill: var(--pink-deep); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  22% {
+    transform: translateY(1px) scale(1.16, 0.68);
+    fill: var(--pink-deep);
+  }
+  58% {
+    transform: translateY(-2px) scale(0.98, 1.22);
+    fill: var(--pink-deep);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes like-burst {
-  0%, 22% { opacity: 0; transform: translateY(-4px) scale(.5); }
-  32% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-20px) scale(.65); }
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.5);
+  }
+  32% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.65);
+  }
 }

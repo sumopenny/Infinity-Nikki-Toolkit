@@ -102,7 +102,9 @@ it('confirms and deletes only visible selected schemes, keeping the confirmed ta
     expect(wrapper.findComponent(SelectionBar).props('selectedCount')).toBe(1)
     wrapper.findComponent(SelectionBar).vm.$emit('delete')
     await flushPromises()
-    expect(confirmAction).toHaveBeenCalledWith(homeSchemeMessages.zh.deleteSelectedConfirm(1))
+    await vi.waitFor(() =>
+      expect(confirmAction).toHaveBeenCalledWith(homeSchemeMessages.zh.deleteSelectedConfirm(1))
+    )
     await wrapper.setProps({ searchQuery: 'Beta' })
     confirm(true)
     await vi.waitFor(async () =>

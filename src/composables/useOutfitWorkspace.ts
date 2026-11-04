@@ -1,3 +1,4 @@
+import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { reportPartialFailure } from '../utils/errorReporting/errorReporter'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import type { Ref, ComputedRef } from 'vue'
@@ -27,6 +28,7 @@ import {
 import { releasePhotoUrl } from '../utils/file-system/photoUrl'
 import { copyTextToClipboard } from '../utils/clipboard'
 interface OutfitWorkspaceOptions {
+  language?: Ref<'zh' | 'en'>
   activeOperation: Ref<ActiveOperation | null>
   isAnyFileOperationBusy: ComputedRef<boolean>
   outfitLocale: ComputedRef<OutfitMessages>
@@ -181,7 +183,9 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
     if (isAnyFileOperationBusy.value) return
     const confirmed = await openConfirmDialog({
       title: outfitLocale.value.operations.deleteOutfitTitle,
-      message: outfitLocale.value.operations.confirmPermanentDelete,
+      message:
+        outfitLocale.value.operations.confirmPermanentDelete +
+        (await backupDeleteWarning('outfits', options.language?.value ?? 'zh')),
       tone: 'danger',
       confirmLabel: outfitLocale.value.operations.permanentlyDelete,
       cancelLabel: locale.value.app.dialogCancel
@@ -189,7 +193,7 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
     if (!confirmed) return
     activeOperation.value = 'mutating-outfits'
     try {
-      await deleteOutfit(outfit)
+      await deleteOutfit(outfit, true)
       releasePhotoUrl(outfit)
       if (currentPreview.value?.id === outfit.id) currentPreview.value = null
       selectedOutfitIds.value = new Set(
@@ -217,10 +221,27 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
       cancelLabel: locale.value.app.dialogCancel
     })
     if (!confirmed) return
+    if (
+      targets.length === outfits.value.length &&
+      (await backupDeleteWarning('outfits', options.language?.value ?? 'zh'))
+    ) {
+      const cleared = await openConfirmDialog({
+        title:
+          options.language?.value === 'en' ? 'Clear the computer copy too?' : '同时清空电脑副本？',
+        message:
+          options.language?.value === 'en'
+            ? 'All outfit records and their images will also be removed from the latest computer backup.'
+            : '这次删除覆盖全部搭配记录。同步后，电脑最新副本中的全部搭配记录和图片也会删除，不能撤销。',
+        tone: 'danger',
+        confirmLabel: outfitLocale.value.operations.permanentlyDelete,
+        cancelLabel: locale.value.app.dialogCancel
+      })
+      if (!cleared) return
+    }
     activeOperation.value = 'mutating-outfits'
     showOutfitStatus(outfitLocale.value.operations.deletingSelected, 'info', true)
     try {
-      const result = await deleteOutfits(targets)
+      const result = await deleteOutfits(targets, true)
       const deletedIds = new Set(result.deleted.map((item) => item.id))
       result.deleted.forEach(releasePhotoUrl)
       if (currentPreview.value && deletedIds.has(currentPreview.value.id))

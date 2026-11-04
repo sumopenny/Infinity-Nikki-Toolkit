@@ -1,10 +1,11 @@
 import {
-  openDb,
   runStoreRequest,
   CAMERA_FAVORITES_STORE as RECORDS,
   CAMERA_COVERS_STORE as COVERS,
   CAMERA_TAGS_STORE as TAGS
 } from '../file-system/database'
+import { markConfirmedDeletion, markCursorUpdate } from '../directory-backup/changeJournal'
+import { runDatabaseTransaction } from '../file-system/transaction'
 import type { PhotoParamsResult } from './types'
 import { sha256Hex } from '../sha256'
 
@@ -58,41 +59,20 @@ async function transact<T>(
     tags: IDBObjectStore
   ) => void
 ): Promise<T> {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    let value: T
-    let failure: unknown
-    const tx = db.transaction([RECORDS, COVERS, TAGS], mode)
-    tx.oncomplete = () => {
-      db.close()
-      resolve(value)
-    }
-    tx.onabort = () => {
-      db.close()
-      const error = failure ?? tx.error
-      reject(
-        error instanceof DOMException && error.name === 'ConstraintError'
-          ? new DuplicateCameraCodeError()
-          : (error ?? new Error('收藏事务已取消'))
-      )
-    }
-    tx.onerror = () => {
-      /* onabort 统一处理，成功仅在提交后返回。 */
-    }
-    try {
-      action(
-        tx.objectStore(RECORDS),
-        tx.objectStore(COVERS),
-        (result) => {
-          value = result
-        },
-        tx.objectStore(TAGS)
-      )
-    } catch (error) {
-      failure = error
-      tx.abort()
-    }
-  })
+  try {
+    return await runDatabaseTransaction(
+      [RECORDS, COVERS, TAGS],
+      mode,
+      (tx) =>
+        new Promise<T>((resolve) =>
+          action(tx.objectStore(RECORDS), tx.objectStore(COVERS), resolve, tx.objectStore(TAGS))
+        )
+    )
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'ConstraintError')
+      throw new DuplicateCameraCodeError()
+    throw error
+  }
 }
 
 export function cameraFavoriteTags(library: Pick<FavoriteLibrary, 'records' | 'tags'>): string[] {
@@ -191,15 +171,19 @@ export async function saveCameraFavorite(
       const order = tags.get('order')
       order.onsuccess = () =>
         tags.put(cameraFavoriteTags({ records: [clean], tags: order.result ?? [] }), 'order')
-      if (cover) covers.put(cover, clean.id)
-      else covers.delete(clean.id)
+      // 原封面未变时保留磁盘和 IndexedDB 图片，不因改名重复写入 Blob。
+      if (JSON.stringify(expected?.cover ?? null) !== JSON.stringify(clean.cover)) {
+        if (cover) covers.put(cover, clean.id)
+        else covers.delete(clean.id)
+      }
       done()
     }
   })
 }
 
-export async function deleteCameraFavorite(id: string): Promise<void> {
+export async function deleteCameraFavorite(id: string, confirmed = false): Promise<void> {
   await transact<void>('readwrite', (records, covers, done) => {
+    if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
     records.delete(id)
     covers.delete(id)
     done()
@@ -348,8 +332,9 @@ export async function applyCameraImport(
   })
 }
 
-export async function clearCameraFavorites(): Promise<void> {
+export async function clearCameraFavorites(confirmed = false): Promise<void> {
   await transact<void>('readwrite', (records, covers, done, tags) => {
+    if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
     records.clear()
     covers.clear()
     tags.put([], 'order')
@@ -358,8 +343,9 @@ export async function clearCameraFavorites(): Promise<void> {
 }
 
 /** 一次事务删除选中记录及其独立封面，不触碰来源照片。 */
-export async function deleteCameraFavorites(ids: string[]): Promise<void> {
+export async function deleteCameraFavorites(ids: string[], confirmed = false): Promise<void> {
   await transact<void>('readwrite', (records, covers, done) => {
+    if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
     for (const id of new Set(ids)) {
       records.delete(id)
       covers.delete(id)
@@ -385,8 +371,10 @@ export async function deleteCameraFavoriteTag(tag: string): Promise<void> {
         return
       }
       const record = cursor.value as CameraFavorite
-      if (record.tag === tag)
+      if (record.tag === tag) {
         cursor.update({ ...record, tag: '', updatedAt: new Date().toISOString() })
+        markCursorUpdate(records.transaction, 'camera', record.id)
+      }
       cursor.continue()
     }
   })

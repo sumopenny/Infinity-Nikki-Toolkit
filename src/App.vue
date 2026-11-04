@@ -41,8 +41,13 @@ const ArchiveCloudDialog = lazyFeature(
 )
 const archiveCloud = useArchiveCloudSync((task) => operations.run('archive-cloud', task))
 provide(archiveCloudKey, archiveCloud)
+import { useDirectoryBackupLifecycle } from './composables/useDirectoryBackup'
+useDirectoryBackupLifecycle()
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
 import { clearAllBrowserData } from './utils/file-system/database'
+import {
+  pendingEnabledBackups, flushBackupsBeforeReset, pauseBackupsForBrowserReset
+} from './utils/directory-backup/engine'
 
 import {
   computed,
@@ -436,6 +441,24 @@ async function refreshAfterArchiveSync() {
       source: 'archive-cloud'
     })
 }
+/** 目录恢复只刷新所选模块，保留其他模块的编辑状态。 */
+async function refreshAfterDirectoryRestore(event: Event) {
+  const modules = (event as CustomEvent<string[]>).detail ?? []
+  const tasks: Promise<unknown>[] = []
+  if (modules.includes('outfits')) {
+    selectedOutfitIds.value = new Set()
+    if (currentPreview.value && 'code' in currentPreview.value) currentPreview.value = null
+    tasks.push(reloadOutfitCollection())
+  }
+  if (modules.includes('home')) tasks.push(refreshHomeAfterImport())
+  if (modules.includes('camera')) tasks.push(cameraFavoritesRef.value
+    ? cameraFavoritesRef.value.reload() : refreshCameraFavoriteCodes())
+  const results = await Promise.allSettled(tasks)
+  if (hasRefreshFailure(results)) showStatus({
+    message: language.value === 'zh' ? '数据恢复成功，部分界面刷新失败，请重新加载页面查看。'
+      : 'Data restored; some views could not refresh. Reload to view them.', tone: 'warning'
+  })
+}
 async function refreshAfterAllImport() {
   selectedOutfitIds.value = new Set()
   if (currentPreview.value && 'code' in currentPreview.value) currentPreview.value = null
@@ -567,6 +590,24 @@ const {
   isUserCancelledFilePicker,
   dispose: disposeStatusNotice
 } = useOperationNotice(locale, operations)
+// 电脑原始数据备份复用全站顶部通知；同一来源只保留一条持续加载提示。
+type BackupNoticeDetail = {
+  source: string
+  message: string | null
+  tone?: 'success' | 'error' | 'info'
+  loading?: boolean
+}
+function handleBackupNotice(event: Event) {
+  const { source, message, tone, loading } = (event as CustomEvent<BackupNoticeDetail>).detail
+  if (loading) {
+    updateLoadingNotice(source, message)
+  } else {
+    updateLoadingNotice(source, null)
+    if (message) showStatus({ message, tone: tone ?? 'success', source })
+  }
+}
+onMounted(() => window.addEventListener('nuan-backup-notice', handleBackupNotice))
+onBeforeUnmount(() => window.removeEventListener('nuan-backup-notice', handleBackupNotice))
 // 云端进度复用一条顶部通知，结束、失败或关闭后立即撤下。
 watch(
   [archiveCloud.visible, archiveCloud.phase, archiveCloud.action, language],
@@ -1276,8 +1317,31 @@ async function clearData() {
     confirmLabel: locale.value.app.clearDataConfirm,
     cancelLabel: locale.value.app.dialogCancel
   })
-  // 确认期间可能有其他模块开始读写，重置前再次核对忙碌状态。
+  // 清浏览器数据不等于业务主动清空：必须保留授权目录下的备份。
   if (!confirmed || isAnyFileOperationBusy.value) return
+  const stillClear = () => openConfirmDialog({
+    title: language.value === 'zh' ? '仍然清除本站数据？' : 'Clear browser data anyway?',
+    message: language.value === 'zh'
+      ? '未备份的最新修改可能丢失。电脑上已保存的副本会保留，但不保证包含最新修改。'
+      : 'Unbacked-up edits may be lost. Existing computer copies are preserved, but may not include the latest edits.',
+    tone: 'danger', confirmLabel: language.value === 'zh' ? '仍然清除' : 'Clear anyway',
+    cancelLabel: locale.value.app.dialogCancel
+  })
+  try {
+    if (await pendingEnabledBackups()) {
+      const first = await openConfirmDialog({
+        title: language.value === 'zh' ? '还有待备份修改' : 'Backup changes are pending',
+        tone: 'warning',
+        message: language.value === 'zh' ? '是否先尝试完成电脑备份？未完成的最新修改在清除浏览器后无法找回。'
+          : 'Try completing the computer backup first? Pending edits cannot be recovered after clearing the browser.',
+        confirmLabel: language.value === 'zh' ? '先尝试备份' : 'Try backup first',
+        cancelLabel: language.value === 'zh' ? '暂不备份' : 'Not now'
+      })
+      if (!(first && await flushBackupsBeforeReset()) && !await stillClear()) return
+    }
+  } catch {
+    if (!await stillClear()) return
+  }
 
   await operations.run('website-reset', async () => {
     suppressLocalPersistence = true
@@ -1285,7 +1349,7 @@ async function clearData() {
       photoActionParsing.reset()
       photoParams.close()
       await invalidateCacheWrites()
-      await clearAllBrowserData()
+      await pauseBackupsForBrowserReset(() => clearAllBrowserData())
       localStorage.clear()
       sessionStorage.clear()
       statusState.value = {
@@ -1868,6 +1932,7 @@ const {
   exportOutfits,
   importOutfits
 } = useOutfitWorkspace({
+  language,
   activeOperation,
   isAnyFileOperationBusy,
   outfitLocale,
@@ -2170,6 +2235,7 @@ onMounted(() => {
     topBarResizeObserver.observe(topBarElement)
   })
   window.addEventListener('resize', updateSidebarStickyOffset)
+  window.addEventListener('nuan-directory-restored', refreshAfterDirectoryRestore)
   window.addEventListener('focus', scheduleFocusRefresh)
   document.addEventListener('visibilitychange', scheduleFocusRefresh)
 })
@@ -2181,6 +2247,7 @@ onBeforeUnmount(() => {
   disposeStatusNotice()
   topBarResizeObserver?.disconnect()
   window.removeEventListener('resize', updateSidebarStickyOffset)
+  window.removeEventListener('nuan-directory-restored', refreshAfterDirectoryRestore)
   window.removeEventListener('focus', scheduleFocusRefresh)
   document.removeEventListener('visibilitychange', scheduleFocusRefresh)
   releasePhotoUrls(photos.value)

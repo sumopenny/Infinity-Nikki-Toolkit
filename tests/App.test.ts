@@ -99,6 +99,9 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
+  // jsdom 不提供浏览器广播通道；不能混用 Node 通道与 jsdom MessageEvent。
+  // 跨标签页协调由独立真实浏览器测试覆盖，挂载测试不连接其他测试的通道。
+  vi.stubGlobal('BroadcastChannel', undefined)
   // jsdom 不提供布局观察器；应用挂载测试使用无布局副作用的替身。
   vi.stubGlobal(
     'ResizeObserver',
@@ -567,7 +570,9 @@ describe('App lifecycle coordination', () => {
         'large'
       )
       expect(wrapper.findAll('.favorites-view-switch button')).toHaveLength(2)
-      expect(wrapper.findAll('.favorites-view-switch button')[1]!.attributes('aria-pressed')).toBe('true')
+      expect(wrapper.findAll('.favorites-view-switch button')[1]!.attributes('aria-pressed')).toBe(
+        'true'
+      )
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(false)
       await wrapper.getComponent({ name: 'TopBar' }).vm.$emit('toggleLanguage')
       await flushPromises()
@@ -758,9 +763,9 @@ describe('App lifecycle coordination', () => {
             .findAll('.outfit-header-actions button')
             .map((button) => (button.element as HTMLButtonElement).disabled)
         ).toEqual([false, false, true, false])
-        const exportButton = wrapper.findAll('.outfit-header-actions button').find(
-          (action) => action.text() === messages.zh.outfit.exportData
-        )!
+        const exportButton = wrapper
+          .findAll('.outfit-header-actions button')
+          .find((action) => action.text() === messages.zh.outfit.exportData)!
         await exportButton.trigger('click')
         await flushPromises()
         expect(wrapper.findComponent({ name: 'ConfirmDialog' }).props('visible')).toBe(false)

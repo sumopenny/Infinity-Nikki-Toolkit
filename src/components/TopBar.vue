@@ -32,6 +32,7 @@ import { useModalFocus } from '../composables/useModalFocus'
 import { useModalPresence } from '../composables/useModalPresence'
 import type { AlbumView } from './AlbumViewSwitcher.vue'
 import LikeCounter from './LikeCounter.vue'
+import AutoBackupMenu from './AutoBackupMenu.vue'
 import DesktopInstallDialog from './DesktopInstallDialog.vue'
 // 收款码图片，通过 Vite 打包以保证构建后路径正确
 import wxQrCode from '../../img/wx.jpg'
@@ -42,7 +43,7 @@ import { THUMBNAIL_SIZES, type ThumbnailMode, type ThumbnailSize } from '../type
 import type { ThemeMode } from '../types/theme'
 import brandIcon from '../../img/brand-mark.png'
 
-type OpenMenu = 'album' | 'view' | 'tools' | 'more' | null
+type OpenMenu = 'album' | 'view' | 'tools' | 'more' | 'backup' | null
 
 const props = defineProps<{
   viewMessages?: LocaleMessages['viewNav']
@@ -156,7 +157,10 @@ function enterMenu(menu: Exclude<OpenMenu, null>, event: PointerEvent) {
 function leaveMenu(event: PointerEvent) {
   if (compact.value || event.pointerType !== 'mouse') return
   cancelMenuClose()
-  menuCloseTimer = setTimeout(closeMenus, 120)
+  menuCloseTimer = setTimeout(() => {
+    // 自动备份为独立点击式面板，不受其他菜单遗留的悬停关闭计时器影响。
+    if (openMenu.value !== 'backup') closeMenus()
+  }, 120)
 }
 
 /** 切换顶部菜单，并保证同一时间只展开一个菜单。参数：menu 为目标菜单。 */
@@ -265,6 +269,15 @@ function clearMobileSearch() {
   mobileSearchInput.value?.focus()
 }
 
+/** 自动备份面板内部操作与顶栏共用展开状态。 */
+function setBackupMenuOpen(value: boolean) {
+  if (value) {
+    menuOpenedByHover = false
+    openMenu.value = 'backup'
+  } else if (openMenu.value === 'backup') {
+    closeMenus()
+  }
+}
 /** 关闭全部顶部菜单及搜索浮层，不抢占下一项操作的焦点。 */
 function closeMenus() {
   cancelMenuClose()
@@ -478,6 +491,14 @@ function openDonate() {
           ><X :size="15"
         /></button>
       </div>
+
+      <AutoBackupMenu
+        v-if="!compact"
+        :language="language"
+        :open="openMenu === 'backup'"
+        @trigger-click="toggleMenu('backup', $event)"
+        @update:open="setBackupMenuOpen"
+      />
 
       <div class="header-menu-wrap">
         <button
@@ -920,7 +941,12 @@ function openDonate() {
                   <span>{{ messages.clearData }}</span>
                 </button>
                 <div class="menu-separator"></div>
-                <button v-if="!desktopInstallDialog?.installed" type="button" role="menuitem" @click="openDesktopInstall">
+                <button
+                  v-if="!desktopInstallDialog?.installed"
+                  type="button"
+                  role="menuitem"
+                  @click="openDesktopInstall"
+                >
                   <Smartphone :size="16" />
                   <span>{{ language === 'zh' ? '安装应用' : 'Install app' }}</span>
                 </button>

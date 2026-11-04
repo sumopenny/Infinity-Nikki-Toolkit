@@ -8,6 +8,7 @@ import {
   HOME_IMAGES_STORE,
   HOME_TAGS_STORE
 } from '../file-system/database'
+import { markConfirmedDeletion } from '../directory-backup/changeJournal'
 import { convertImageForStorage, inspectStoredImage } from '../storedImage'
 import { sha256Hex } from '../sha256'
 import {
@@ -197,23 +198,28 @@ export async function saveHomeScheme(input: SaveHomeSchemeInput): Promise<HomeSc
       const duplicate = (await homeRequest(records.index('code').get(record.code))) as
         HomeSchemeRecord | undefined
       if (duplicate && duplicate.id !== id) throw new Error('home_scheme_code_duplicate')
-      let image = record.image
-        ? prepared
-          ? { ...prepared, id }
-          : ((await homeRequest(images.get(id))) as HomeSchemeImage | undefined)
-        : undefined
-      if (record.image && !image) throw new Error('home_scheme_image_missing')
-      if (image) images.put(image)
-      else images.delete(id)
+      // 名称、备注、方案码和标签变更只写记录；图片仅在更换/移除时发生 IO。
+      if (
+        record.image &&
+        !prepared &&
+        (!previous?.image || (await homeRequest(images.getKey(id))) === undefined)
+      )
+        throw new Error('home_scheme_image_missing')
+      if (prepared) images.put({ ...prepared, id })
+      else if (previous?.image && !record.image) images.delete(id)
       records.put(record)
-      return { record, image }
+      return { record }
     }
   )
   return displayHomeScheme(saved.record)
 }
 
-export async function deleteHomeScheme(item: Pick<HomeSchemeItem, 'id'>): Promise<void> {
+export async function deleteHomeScheme(
+  item: Pick<HomeSchemeItem, 'id'>,
+  confirmed = false
+): Promise<void> {
   await homeTransaction([HOME_SCHEMES_STORE, HOME_IMAGES_STORE], 'readwrite', async (tx) => {
+    if (confirmed) markConfirmedDeletion(tx, 'home')
     tx.objectStore(HOME_SCHEMES_STORE).delete(item.id)
     tx.objectStore(HOME_IMAGES_STORE).delete(item.id)
   })

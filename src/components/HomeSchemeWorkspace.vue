@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import {
@@ -554,10 +555,16 @@ async function save() {
 
 async function removeScheme(item: HomeSchemeItem) {
   return trackOperation(async () => {
-    if (isBusy.value || !(await props.confirmAction(props.messages.deleteConfirm))) return
+    if (
+      isBusy.value ||
+      !(await props.confirmAction(
+        props.messages.deleteConfirm + (await backupDeleteWarning('home'))
+      ))
+    )
+      return
     busy.value = true
     try {
-      await deleteHomeScheme(item)
+      await deleteHomeScheme(item, true)
       releaseHomeSchemeUrls([item])
       schemes.value = schemes.value.filter((entry) => entry.id !== item.id)
       selectedSchemeIds.value = new Set([...selectedSchemeIds.value].filter((id) => id !== item.id))
@@ -644,10 +651,23 @@ async function deleteSelectedSchemes() {
     busy.value = true
     const deletedIds = new Set<string>()
     try {
-      if (!(await props.confirmAction(props.messages.deleteSelectedConfirm(selected.length))))
+      if (
+        !(await props.confirmAction(
+          props.messages.deleteSelectedConfirm(selected.length) +
+            (await backupDeleteWarning('home'))
+        ))
+      )
+        return
+      if (
+        selected.length === schemes.value.length &&
+        (await backupDeleteWarning('home')) &&
+        !(await props.confirmAction(
+          '这次删除覆盖全部家园方案。同步后电脑副本中的全部方案与图片也会删除，不能撤销。确定继续吗？'
+        ))
+      )
         return
       for (const item of selected) {
-        await deleteHomeScheme(item)
+        await deleteHomeScheme(item, true)
         releaseHomeSchemeUrls([item])
         deletedIds.add(item.id)
       }
