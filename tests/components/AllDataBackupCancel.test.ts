@@ -7,12 +7,6 @@ vi.mock('../../src/utils/errorReporting/errorReporter', () => ({ reportError: vi
 vi.mock('../../src/utils/backup/backupAvailability', () => ({
   hasAllBackupData: async () => false
 }))
-vi.mock('../../src/components/CameraImportConflictDialog.vue', () => {
-  throw new Error('offline')
-})
-vi.mock('../../src/components/WardrobeRestoreRegionDialog.vue', () => {
-  throw new Error('offline')
-})
 vi.mock('../../src/utils/backup/allDataBackup', () => ({
   prepareAllDataBackup: async () => ({}),
   applyAllDataBackup: async (
@@ -21,29 +15,31 @@ vi.mock('../../src/utils/backup/allDataBackup', () => ({
     _start: unknown,
     region: (value: unknown) => Promise<unknown>
   ) => {
-    await (state.conflict === 'camera' ? camera({ conflicts: [] }) : region({}))
+    await (state.conflict === 'camera'
+      ? camera({ base: [], conflicts: [{ id: 'photo', name: 'Imported' }] })
+      : region({ local: 'cn', incoming: 'global' }))
     return null
   }
 }))
 
 it.each(['camera', 'wardrobe'])(
-  'releases import busy state when cancelling a failed %s dialog load',
+  'releases import busy state when cancelling a %s conflict',
   async (conflict) => {
     state.conflict = conflict
-    const wrapper = mount(AllDataBackup, { props: { language: 'zh', disabled: false } })
+    const wrapper = mount(AllDataBackup, { props: { language: 'en', disabled: false } })
     try {
       const input = wrapper.get('input')
       Object.defineProperty(input.element, 'files', { value: [new File(['zip'], 'backup.zip')] })
       await input.trigger('change')
-      await vi.waitFor(() => expect(document.body.textContent).toContain('窗口加载失败'))
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull())
       expect(wrapper.emitted('busy')?.at(-1)).toEqual([true])
       const cancel = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
-        (button) => button.textContent === '取消'
+        (button) => button.textContent?.trim() === 'Cancel'
       )!
       cancel.click()
       await flushPromises()
       expect(wrapper.emitted('busy')?.at(-1)).toEqual([false])
-      expect(wrapper.emitted('status')?.at(-1)?.[0]).toContain('已取消导入')
+      expect(wrapper.emitted('changed')).toBeUndefined()
     } finally {
       wrapper.unmount()
     }

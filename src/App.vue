@@ -36,10 +36,7 @@ provide(operationCoordinatorKey, operations)
 import { archiveCloudKey, useArchiveCloudSync } from './composables/useArchiveCloudSync'
 import { cloudMessages } from './i18n/messages/cloud'
 import { archiveCloudMessages } from './i18n/messages/archiveCloud'
-const ArchiveCloudDialog = lazyFeature(
-  () => import('./components/ArchiveCloudDialog.vue'),
-  () => language.value
-)
+import ArchiveCloudDialog from './components/ArchiveCloudDialog.vue'
 const archiveCloud = useArchiveCloudSync((task) => operations.run('archive-cloud', task))
 provide(archiveCloudKey, archiveCloud)
 import { useDirectoryBackupLifecycle } from './composables/useDirectoryBackup'
@@ -71,14 +68,8 @@ import {
   Upload
 } from 'lucide-vue-next'
 import DataStorageReminder from './components/DataStorageReminder.vue'
-const UpdateLogDialog = lazyFeature(
-  () => import('./components/UpdateLogDialogContent.vue'),
-  () => language.value
-)
-const HelpAboutDialog = lazyFeature(
-  () => import('./components/HelpAboutDialogContent.vue'),
-  () => language.value
-)
+import UpdateLogDialog from './components/UpdateLogDialogContent.vue'
+import HelpAboutDialog from './components/HelpAboutDialogContent.vue'
 import AlbumViewSwitcher, { type AlbumView } from './components/AlbumViewSwitcher.vue'
 import CleanupAccountPicker from './components/CleanupAccountPicker.vue'
 import CleanupDialog from './components/CleanupDialog.vue'
@@ -88,48 +79,21 @@ import Lightbox from './components/Lightbox.vue'
 import OperationNotice from './components/OperationNotice.vue'
 import PageScrollbar from './components/PageScrollbar.vue'
 import NoteDialog from './components/NoteDialog.vue'
-const OutfitEditor = lazyFeature(
-  () => import('./components/OutfitEditor.vue'),
-  () => language.value
-)
+import OutfitEditor from './components/OutfitEditor.vue'
 import OutfitGrid from './components/OutfitGrid.vue'
 const OutfitSummaryDialog = lazyFeature(
   () => import('./components/OutfitSummaryDialog.vue'),
   () => language.value
 )
-const OutfitGuideDialog = lazyFeature(
-  () => import('./components/OutfitGuideDialog.vue'),
-  () => language.value
-)
-const OutfitParseDialog = lazyFeature(
-  () => import('./components/OutfitParseDialog.vue'),
-  () => language.value
-)
-const ParseToolsDialog = lazyFeature(
-  () => import('./components/ParseToolsDialog.vue'),
-  () => language.value
-)
-const FortuneTimeDialog = lazyFeature(
-  () => import('./components/FortuneTimeDialog.vue'),
-  () => language.value
-)
+import OutfitGuideDialog from './components/OutfitGuideDialog.vue'
+import OutfitParseDialog from './components/OutfitParseDialog.vue'
+import ParseToolsDialog from './components/ParseToolsDialog.vue'
+import FortuneTimeDialog from './components/FortuneTimeDialog.vue'
 import OutfitSidebar, { type OutfitFilter } from './components/OutfitSidebar.vue'
-const HomeSchemeWorkspace = lazyFeature(
-  () => import('./components/HomeSchemeWorkspace.vue'),
-  () => language.value
-)
-const ResonanceRecords = lazyFeature(
-  () => import('./components/ResonanceRecords.vue'),
-  () => language.value
-)
-const PersonalWardrobe = lazyFeature(
-  () => import('./components/PersonalWardrobe.vue'),
-  () => language.value
-)
-const ResonanceSidebar = lazyFeature(
-  () => import('./components/ResonanceSidebar.vue'),
-  () => language.value
-)
+import HomeSchemeWorkspace from './components/HomeSchemeWorkspace.vue'
+import ResonanceRecords from './components/ResonanceRecords.vue'
+import PersonalWardrobe from './components/PersonalWardrobe.vue'
+import ResonanceSidebar from './components/ResonanceSidebar.vue'
 import PhotoGrid from './components/PhotoGrid.vue'
 import RecentlyDeletedGrid from './components/RecentlyDeletedGrid.vue'
 import SelectionBar from './components/SelectionBar.vue'
@@ -147,14 +111,8 @@ const CardShareDialog = lazyFeature(
 const sharingOutfit = ref<OutfitItem | null>(null)
 const autoSharePhoto = ref(false)
 const loadCardSharePhoto = () => readPhotoBlob(sharingOutfit.value!)
-const PhotoParamsDialog = lazyFeature(
-  () => import('./components/PhotoParamsDialog.vue'),
-  () => language.value
-)
-const CameraFavorites = lazyFeature(
-  () => import('./components/CameraFavorites.vue'),
-  () => language.value
-)
+import PhotoParamsDialog from './components/PhotoParamsDialog.vue'
+import CameraFavorites from './components/CameraFavorites.vue'
 import AllDataBackup from './components/AllDataBackup.vue'
 import { loadResonanceRecords } from './utils/resonance/resonanceStorage'
 import { normalizeCameraCode, readCameraFavorites } from './utils/photo-params/favorites'
@@ -315,8 +273,6 @@ function retainDialogAfterOpen(name: string, visible: import('vue').Ref<boolean>
     { immediate: true, flush: 'sync' }
   )
 }
-retainDialogAfterOpen('ParseToolsDialog', isParseToolsVisible)
-retainDialogAfterOpen('ArchiveCloudDialog', archiveCloud.visible)
 retainDialogAfterOpen('OutfitParseDialog', isOutfitParseVisible)
 retainDialogAfterOpen('OutfitEditor', isOutfitEditorVisible)
 
@@ -2372,7 +2328,6 @@ function importAllDataFromMenu() {
       "
     />
     <ArchiveCloudDialog
-      v-if="mountedDialogs.has('ArchiveCloudDialog')"
       :language="language"
       @notice="showStatus"
       @restored="refreshAfterArchiveSync"
@@ -3093,7 +3048,6 @@ function importAllDataFromMenu() {
     />
 
     <ParseToolsDialog
-      v-if="mountedDialogs.has('ParseToolsDialog')"
       :visible="isParseToolsVisible"
       :camera-params="cameraParamsInput"
       :outfit-code="parseCodeInput"

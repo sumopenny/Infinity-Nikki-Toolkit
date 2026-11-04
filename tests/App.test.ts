@@ -227,7 +227,7 @@ describe('App lifecycle coordination', () => {
     expect(reminder.props('visible')).toBe(true)
   })
 
-  it('keeps favorite counts without mounting the camera page and hands off saving after its first lazy mount', async () => {
+  it('keeps favorite counts without mounting the camera page and hands off saving after its first mount', async () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const metadata = vi.spyOn(cameraStorage, 'readCameraFavorites').mockResolvedValue({
       records: [{ code: 'existing' } as cameraStorage.CameraFavorite],
@@ -1224,7 +1224,7 @@ it('blocks desktop and mobile navigation until a child operation settles', async
   }
 })
 
-it('shows logout notices before the cloud dialog is first mounted and after it opens', async () => {
+it('shows logout notices before and after opening the cloud dialog', async () => {
   let cloud!: ArchiveCloudSync
   localStorage.clear()
   getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
@@ -1247,7 +1247,7 @@ it('shows logout notices before the cloud dialog is first mounted and after it o
   await vi.waitFor(() => expect(navigation.props('disabled')).toBe(false))
   navigation.vm.$emit('changeView', 'wardrobe')
   await flushPromises()
-  expect(wrapper.findComponent({ name: 'ArchiveCloudDialog' }).exists()).toBe(false)
+  expect(wrapper.findComponent({ name: 'ArchiveCloudDialog' }).exists()).toBe(true)
   vi.spyOn(cloud.session, 'logout').mockResolvedValue(undefined)
   await cloud.logout()
   await flushPromises()

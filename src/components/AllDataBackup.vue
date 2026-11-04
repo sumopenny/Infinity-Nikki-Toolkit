@@ -1,18 +1,9 @@
 <script setup lang="ts">
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { lazyFeature } from '../utils/lazyFeature'
-const CameraImportConflictDialog = lazyFeature(
-  () => import('./CameraImportConflictDialog.vue'),
-  () => props.language,
-  { active: () => conflict.value !== null, cancel: () => finishChoices(null) }
-)
-const WardrobeRestoreRegionDialog = lazyFeature(
-  () => import('./WardrobeRestoreRegionDialog.vue'),
-  () => props.language,
-  { active: () => regionConflict.value !== null, cancel: () => finishRegion(null) }
-)
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import CameraImportConflictDialog from './CameraImportConflictDialog.vue'
+import WardrobeRestoreRegionDialog from './WardrobeRestoreRegionDialog.vue'
 import { hasAllBackupData } from '../utils/backup/backupAvailability'
 import type {
   BackupModule,
@@ -39,23 +30,6 @@ const picker = ref<HTMLInputElement | null>(null),
 const conflict = ref<ImportPlan | null>(null)
 let resolveChoices: ((choices: CameraChoices | null) => void) | null = null
 const regionConflict = ref<WardrobeRegionConflict | null>(null)
-const cameraConflictLoaded = ref(false)
-const regionConflictLoaded = ref(false)
-// 首次出现才下载；关闭后保留实例，让原有焦点恢复和退出动画完成。
-watch(
-  conflict,
-  (value) => {
-    if (value) cameraConflictLoaded.value = true
-  },
-  { flush: 'sync' }
-)
-watch(
-  regionConflict,
-  (value) => {
-    if (value) regionConflictLoaded.value = true
-  },
-  { flush: 'sync' }
-)
 let resolveRegion: ((region: WardrobeRegionScope | null) => void) | null = null
 function finishRegion(value: WardrobeRegionScope | null) {
   regionConflict.value = null
@@ -263,14 +237,12 @@ defineExpose({ exportData, chooseImport, refreshAvailability })
 <template>
   <input ref="picker" type="file" accept=".zip,application/zip" hidden @change="importData" />
   <CameraImportConflictDialog
-    v-if="cameraConflictLoaded"
     :plan="conflict"
     :language="language"
     @confirm="finishChoices"
     @cancel="finishChoices(null)"
   />
   <WardrobeRestoreRegionDialog
-    v-if="regionConflictLoaded"
     :conflict="regionConflict"
     :language="language"
     @confirm="finishRegion"
