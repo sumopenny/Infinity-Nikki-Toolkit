@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { communityResourcesPaused } from '../communityResources'
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   BookHeart,
@@ -782,7 +783,7 @@ function openDonate() {
               <button
                 type="button"
                 role="menuitem"
-                :disabled="isBusy"
+                :disabled="isBusy || communityResourcesPaused"
                 @click="runMenuAction(() => emit('openParseTools'))"
                 ><ScanSearch :size="16" /><span>{{ messages.parseTools }}</span></button
               >
@@ -844,6 +845,7 @@ function openDonate() {
                   <button
                     type="button"
                     role="menuitem"
+                    :disabled="communityResourcesPaused"
                     @click="runMenuAction(() => emit('openParseTools'))"
                     ><ScanSearch :size="18" />{{ messages.parseTools }}</button
                   >
@@ -886,8 +888,8 @@ function openDonate() {
                   </template>
                   <p v-else class="mobile-capability-note">{{
                     language === 'zh'
-                      ? '相册与专项清理需在支持目录授权的电脑浏览器使用；手机可使用搭配、家园、相机参数和共鸣，并导入电脑备份。'
-                      : 'Album access and cleanup require a supported desktop browser. Use outfits, home schemes, camera parameters and resonance here, or import a desktop backup.'
+                      ? '相册与专项清理需在支持目录授权的电脑浏览器使用；手机可管理搭配、家园方案和已有收藏，也可导入电脑备份。'
+                      : 'Album access and cleanup require a supported desktop browser. Manage outfits, home schemes and saved favorites here, or import a desktop backup.'
                   }}</p>
                   <a
                     class="mobile-official-link"

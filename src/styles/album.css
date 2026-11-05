@@ -433,6 +433,17 @@
 .photo-card:hover .card-share-button:disabled {
   opacity: 0.5;
 }
+@media (min-width: 900px) and (hover: hover) {
+  .photo-card :is(.photo-params-parse, .card-share-button, .outfit-card-parse):disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .photo-card:is(:hover, :focus-visible, :has(:focus-visible))
+    :is(.photo-params-parse, .card-share-button, .outfit-card-parse):disabled {
+    opacity: 0.5;
+    pointer-events: auto;
+  }
+}
 @media (hover: none) {
   .photo-card .card-share-button {
     opacity: 1;

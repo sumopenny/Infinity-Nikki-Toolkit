@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import 'fake-indexeddb/auto'
 import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

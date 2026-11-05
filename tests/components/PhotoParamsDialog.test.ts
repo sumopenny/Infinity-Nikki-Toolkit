@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import PhotoParamsDialog from '../../src/components/PhotoParamsDialog.vue'

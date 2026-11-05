@@ -407,7 +407,7 @@ set REMOTE_API_ORIGIN=https://infinity-nikki-album-manager.pages.dev
 npm run dev:remote         # 连接线上服务并启动本地网站
 npm test                   # 运行自动化测试
 npm run build              # 类型检查并构建
-npm run build:cloudflare   # 更新资源并构建 Cloudflare 版本
+npm run build:cloudflare   # 使用仓库内置资源构建 Cloudflare 版本
 npm run preview            # 预览构建结果
 ```
 

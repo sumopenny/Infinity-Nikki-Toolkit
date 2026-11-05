@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, provide, ref } from 'vue'

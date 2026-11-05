@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { communityResourcesPaused } from '../communityResources'
 import { vCardReveal } from '../utils/cardReveal'
 import { onBeforeUnmount } from 'vue'
 import { Check, Copy, Edit3, ImagePlus, ScanSearch, Shirt, Trash2, Share2 } from 'lucide-vue-next'
@@ -126,7 +127,7 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
             type="button"
             :title="messages.parse"
             :aria-label="messages.parse"
-            :disabled="disabled || !outfit.code"
+            :disabled="communityResourcesPaused || disabled || !outfit.code"
             @click.stop="$emit('parse', outfit)"
           >
             <ScanSearch :size="16" aria-hidden="true" />
@@ -169,7 +170,7 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
               type="button"
               :title="messages.parse"
               :aria-label="messages.parse"
-              :disabled="disabled || !outfit.code"
+              :disabled="communityResourcesPaused || disabled || !outfit.code"
               @click.stop="$emit('parse', outfit)"
               ><ScanSearch :size="18" aria-hidden="true"
             /></button>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { communityResourcesPaused } from '../communityResources'
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
 import { ChevronLeft } from 'lucide-vue-next'
 import { onBeforeUnmount, ref } from 'vue'
@@ -29,6 +30,7 @@ const compact = useCompactLayout()
 let closeTimer: ReturnType<typeof setTimeout> | null = null
 
 function openResonanceMenu() {
+  if (communityResourcesPaused) return
   if (closeTimer) clearTimeout(closeTimer)
   resonanceMenuOpen.value = true
 }
@@ -100,7 +102,11 @@ function selectView(view: AlbumView) {
             activeView === item.view || (item.view === 'resonance' && activeView === 'wardrobe')
         }"
         type="button"
-        :disabled="disabled || (item.view === 'trash' && trashDisabled)"
+        :disabled="
+          disabled ||
+          (communityResourcesPaused && item.view === 'resonance') ||
+          (item.view === 'trash' && trashDisabled)
+        "
         :title="item.view === 'trash' && trashDisabled ? trashDisabledHint : undefined"
         :aria-pressed="
           activeView === item.view || (item.view === 'resonance' && activeView === 'wardrobe')

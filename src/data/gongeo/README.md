@@ -4,7 +4,7 @@ These compact catalogs and outfit name translations are from [dastrokes/gongeo.u
 
 The source project is licensed under MIT; its license is included in this directory. Refresh these catalog and locale files together from the upstream project when updating the mapping snapshot.
 
-Run `npm run resources:update:gongeo` to check the upstream catalog. The updater reads only the remote source; it never falls back to a neighboring checkout. Failed downloads keep the existing project snapshot. With `--strict`, the command also exits unsuccessfully.
+Builds use the bundled catalog. The legacy npm update commands skip community synchronization.
 
 `catalogSource.json` records the source URL, game version and generation time of the verified snapshot. Older versions, older snapshots within the same version, missing files, invalid records, empty translations, incorrect SHA-256/byte counts, and changes removing more than 2% of a file's existing IDs or translation keys are rejected before any data is written. All downloads and validations complete first, and the remote index is checked again before writing. Same-version content corrections are allowed. Metadata is recorded after the catalog files; identical content is not rewritten.
 

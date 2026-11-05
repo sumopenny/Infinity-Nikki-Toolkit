@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { messages } from '../../src/i18n'

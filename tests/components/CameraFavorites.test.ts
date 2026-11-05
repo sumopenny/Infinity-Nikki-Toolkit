@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
 vi.mock('../../src/utils/imageSelection', () => ({
   validateSelectedImage: vi.fn().mockResolvedValue(undefined)

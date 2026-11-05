@@ -1,7 +1,7 @@
-const { fetchResource } = require('./resource-network.cjs')
+const { fetchResource, skipCommunitySyncInCI } = require('./resource-network.cjs')
 // 从 gongeo.us-nikki-tracker 的中英文图鉴文案提取部件/妆容名称,刷新 src/data/itemCatalog.json
 // 用法: node scripts/generate-item-catalog.cjs [gongeo仓库根目录]
-// 远程构建: node scripts/generate-item-catalog.cjs --remote [--strict]
+// 本地维护: node scripts/generate-item-catalog.cjs --remote [--strict]
 const fs = require('fs')
 const path = require('path')
 
@@ -155,6 +155,7 @@ async function writeJsonAtomic(output, catalog) {
 }
 
 async function main() {
+  if (skipCommunitySyncInCI()) return
   const options = parseOptions(process.argv.slice(2))
   try {
     const catalog = await buildCatalog(options)

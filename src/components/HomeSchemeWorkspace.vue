@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { homeCoverForDisplay } from '../communityResources'
 import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
@@ -138,7 +139,9 @@ const visibleSchemes = computed(() => {
     : result
 })
 const previewUrl = computed(
-  () => localImageUrl.value ?? (removeLocalImage.value ? null : coverImageUrl.value)
+  () =>
+    localImageUrl.value ??
+    (removeLocalImage.value ? null : homeCoverForDisplay(coverImageUrl.value))
 )
 const isBusy = computed(() => props.disabled || busy.value)
 

@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import outfitItems from '../../src/data/gongeo/outfitItems.json'
 import {

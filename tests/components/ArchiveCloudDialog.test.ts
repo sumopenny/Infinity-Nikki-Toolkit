@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import 'fake-indexeddb/auto'
 import { defineComponent, provide, ref } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'

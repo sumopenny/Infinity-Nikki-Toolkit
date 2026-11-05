@@ -252,7 +252,7 @@ test('item updater CLI retains its local snapshot and continues, while explicit 
           ...(strict ? ['--strict'] : [])
         ],
         {
-          env: { ...process.env, NO_PROXY: '*', NODE_PATH: resolve(__dirname, '../node_modules') },
+          env: { ...process.env, CI: '', CF_PAGES: '', GITHUB_ACTIONS: '', NO_PROXY: '*', NODE_PATH: resolve(__dirname, '../node_modules') },
           windowsHide: true
         }
       )
@@ -283,7 +283,7 @@ test('item updater requires an explicit local source or remote mode', async (t) 
       process.execPath,
       [resolve(__dirname, '../scripts/generate-item-catalog.cjs'), '--out', output],
       {
-        env: { ...process.env, GONGEO_ROOT: '' },
+        env: { ...process.env, CI: '', CF_PAGES: '', GITHUB_ACTIONS: '', GONGEO_ROOT: '' },
         windowsHide: true
       }
     )

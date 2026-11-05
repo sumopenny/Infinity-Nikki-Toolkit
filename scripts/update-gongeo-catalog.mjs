@@ -475,6 +475,7 @@ export function formatGongeoResult(result) {
 }
 
 async function main() {
+  if (resourceNetwork.skipCommunitySyncInCI()) return
   const args = parseArgs(process.argv.slice(2))
   const baseUrl = args['base-url'] ?? process.env.GONGEO_CATALOG_BASE_URL ?? DEFAULT_BASE_URL
   try {

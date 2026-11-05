@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { communityResourcesPaused } from '../communityResources'
 import {
   computed,
   nextTick,
@@ -47,6 +48,7 @@ function selectRow(row: { id: string | number; name: string }, event: MouseEvent
     emit('tag', row.name)
     return
   }
+  if (communityResourcesPaused) return
   detailTrigger = event.currentTarget as HTMLButtonElement
   summaryScroll = content.value?.scrollTop ?? 0
   dialog.value?.close()
@@ -150,6 +152,7 @@ const parsed = computed(
   () => props.outfits.length - library.value.missing - library.value.invalid - pendingCount.value
 )
 async function parseRemaining() {
+  if (communityResourcesPaused) return
   if (reading.value || running.value) return
   const { signal } = session
   running.value = true
@@ -269,7 +272,7 @@ const ranked = computed(() => {
                 <button
                   v-if="pendingCount && !reading"
                   class="confirm-dialog-button ghost dialog-action-control parse-action"
-                  :disabled="running"
+                  :disabled="communityResourcesPaused || running"
                   @click="parseRemaining"
                 >
                   {{
@@ -336,6 +339,7 @@ const ranked = computed(() => {
                     v-for="row in ranked"
                     :key="row.id"
                     class="summary-row"
+                    :disabled="communityResourcesPaused && tab !== 'tags'"
                     @click="selectRow(row, $event)"
                   >
                     <span class="rank">{{ String(row.rank).padStart(2, '0') }}</span>

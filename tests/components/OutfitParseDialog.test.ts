@@ -1,3 +1,4 @@
+import '../helpers/enableCommunityResources'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import OutfitParseDialog from '../../src/components/OutfitParseDialog.vue'
