@@ -14,7 +14,7 @@ it('serves share images in real workerd and rejects upstream redirects', async (
           if (request.headers.has('Cookie') || request.headers.has('Authorization')) {
             throw new Error('Credentials forwarded');
           }
-          if (request.url.endsWith('/2.png')) {
+          if (request.url.includes('T_Icon_clothes_S0002H.png')) {
             return new Response(null, { status: 302, headers: { Location: 'https://example.com/private.png' } });
           }
           return new Response(new Uint8Array([137, 80, 78, 71]), { headers: { 'content-type': 'image/png' } });
@@ -45,7 +45,10 @@ it('serves share images in real workerd and rejects upstream redirects', async (
   })
   try {
     const response = await runtime.dispatchFetch(
-      'http://localhost/api/share-image?path=items/icons/1.png',
+      'http://localhost/api/share-image?resource=' +
+        encodeURIComponent(
+          'https://ik.imagekit.io/nikkicube/images/IconClothes/T_Icon_clothes_S0001H.png?tr=f-webp,q-70'
+        ),
       { headers: { Cookie: 'private', Authorization: 'Bearer private' } }
     )
     expect(response.status).toBe(200)
@@ -53,9 +56,9 @@ it('serves share images in real workerd and rejects upstream redirects', async (
     expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([137, 80, 78, 71])
     expect(response.headers.get('cache-control')).toBe('public, max-age=86400')
     for (const resource of [
-      'https://nikkigallery.vip/static/img/photography/T_Icon_Unicorn_03.png',
-      'https://cdn.nikkialbums.com/light/1090030001.webp',
-      'https://cdn.nikkialbums.com/filter/1090020001.webp'
+      'https://ik.imagekit.io/nikkicube/images/poses/T_Icon_Performance_002_Host.png?tr=f-webp,q-70',
+      'https://ik.imagekit.io/nikkicube/images/lights/T_Icon_HueEdgeLight_001_R.png?tr=f-webp,q-70',
+      'https://ik.imagekit.io/nikkicube/images/filters/T_Icon_Fresh_001.png?tr=f-webp,q-70'
     ]) {
       const result = await runtime.dispatchFetch(
         'http://localhost/api/share-image?resource=' + encodeURIComponent(resource)
@@ -64,7 +67,10 @@ it('serves share images in real workerd and rejects upstream redirects', async (
       await result.arrayBuffer()
     }
     const redirect = await runtime.dispatchFetch(
-      'http://localhost/api/share-image?path=items/icons/2.png'
+      'http://localhost/api/share-image?resource=' +
+        encodeURIComponent(
+          'https://ik.imagekit.io/nikkicube/images/IconClothes/T_Icon_clothes_S0002H.png?tr=f-webp,q-70'
+        )
     )
     expect(redirect.status).toBe(502)
     expect(redirect.headers.get('cache-control')).toBe('no-store')

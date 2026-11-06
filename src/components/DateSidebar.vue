@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { optimizedImageKitUrl } from '../utils/imagekit'
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
 import TreeCollapse from './TreeCollapse.vue'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -232,7 +233,11 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
         type="button"
         @click="$emit('jumpToAction', group.actionKey)"
       >
-        <img v-if="group.actionImageUrl" :src="group.actionImageUrl" :alt="group.actionName" />
+        <img
+          v-if="group.actionImageUrl"
+          :src="optimizedImageKitUrl(group.actionImageUrl)"
+          :alt="group.actionName"
+        />
         <span v-else class="action-link-placeholder" aria-hidden="true">?</span>
         <span class="action-link-name">{{ group.actionName }}</span>
         <small>{{ group.photos.length }}</small>

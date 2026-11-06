@@ -1,4 +1,5 @@
-import catalogJson from '../../data/nuan5ResourceCatalog.json'
+import catalogJson from '../../data/photo/photoResourceCatalog.json'
+import { encodeImagePath, optimizedImageKitUrl } from '../imagekit'
 
 type ResourceKind = 'light' | 'filter' | 'pose'
 type ImageKind = ResourceKind
@@ -68,12 +69,14 @@ export function resourceName(
   return key
 }
 
-/** 灯光、滤镜使用数据库内部 ID；普通动作使用图库目录提供的图片文件名。 */
+/** All resource kinds use explicit game filenames; missing images make no request. */
 export function resourceImage(kind: ImageKind, id: string | number): string | undefined {
   const entry = findEntry(kind, id)
   const template = catalog.templates[kind]
   if (!entry || !template || !template.replace) return undefined
-  const imageValue = kind === 'pose' ? entry.image : entry.key
+  const imageValue = entry.image
   if (!imageValue) return undefined
-  return template.baseUrl.replaceAll(template.replace, encodeURIComponent(imageValue))
+  return optimizedImageKitUrl(
+    template.baseUrl.replaceAll(template.replace, encodeImagePath(imageValue))
+  )
 }

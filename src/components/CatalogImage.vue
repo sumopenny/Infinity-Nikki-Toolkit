@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { catalogImageLoading, catalogImagePriority } from '../utils/gongeo/catalogImage'
+import { optimizedImageKitUrl } from '../utils/imagekit'
 
 defineOptions({ inheritAttrs: false })
 const props = withDefaults(
@@ -61,7 +62,7 @@ function retry(event: Event) {
     :tabindex="failed ? 0 : undefined"
     :role="failed ? 'button' : undefined"
     :data-image-failed="failed || undefined"
-    :src="failed ? placeholder : src"
+    :src="failed ? placeholder : optimizedImageKitUrl(src)"
     @load="!failed && emit('load', $event)"
     @error="onError"
     @click="retry"

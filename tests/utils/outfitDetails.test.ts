@@ -1,3 +1,4 @@
+import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   clearOutfitDetailCache,
@@ -26,11 +27,11 @@ describe('loadOutfitDetail', () => {
 
     const detail = await loadOutfitDetail(1020100001, 10347, 'zh', '时光讯号-发型', sampleDyes)
 
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/gongeo/outfits/10001?lang=zh')
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(detail.outfitId).toBe(10001)
     expect(detail.outfitName).toBe('绽响黎明前')
-    expect(detail.detailImageUrl).toContain('/images/items/1020100001.png')
-    expect(detail.outfitImageUrl).toContain('/images/outfits/10001.png')
+    expect(detail.detailImageUrl).toBe(getCatalogImageSource('item', 1020100001))
+    expect(detail.outfitImageUrl).toBe(getCatalogImageSource('outfit', 10001))
     expect(detail.outfitItemIds).toContain(1020100001)
     expect(detail.evolution).toBe('原套')
     expect(detail.dyeCondition).toBe('一进可染')
@@ -45,7 +46,7 @@ describe('loadOutfitDetail', () => {
 
     const detail = await loadOutfitDetail(1022100347, 10347, 'zh', '如果爱上一朵花-发型', [])
 
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/gongeo/outfits/1034701?lang=zh')
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(detail.outfitId).toBe(1034701)
     expect(detail.outfitName).toBe('如果爱上一朵花·青涩')
     expect(detail.evolution).toBe('焕新')
@@ -126,13 +127,13 @@ describe('loadOutfitDetail', () => {
     const first = loadOutfitDetail(1020100001, 10001, 'en', 'Signal of Time-Hair', [])
     const second = loadOutfitDetail(1020100001, 10001, 'en', 'Signal of Time-Hair', [])
     expect(await first).toBe(await second)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('keeps item details readable and marks failed API requests', async () => {
+  it('keeps local details available while offline', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
     const detail = await loadOutfitDetail(1020100001, null, 'zh', '时光讯号-发型', [])
-    expect(detail.loadError).toBe(true)
+    expect(detail.loadError).toBe(false)
     expect(detail.itemName).toBe('时光讯号-发型')
     expect(detail.dyes).toEqual([])
   })
@@ -159,7 +160,7 @@ describe('loadOutfitDetail', () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(detail.outfitName).toBe('')
-    expect(detail.detailImageUrl).toContain('/images/items/1021850019.png')
+    expect(detail.detailImageUrl).toBe(getCatalogImageSource('item', 1021850019))
     expect(detail.loadError).toBe(false)
   })
 
@@ -173,11 +174,9 @@ describe('loadOutfitDetail', () => {
     vi.stubGlobal('fetch', fetchMock)
     const detail = await loadOutfitDetail(1020810001, null, 'zh', '妆容-全妆', [], null)
 
-    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
-      expect.stringContaining('/api/gongeo/outfits/10001?lang=zh')
-    ])
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(detail.outfitId).toBe(10001)
-    expect(detail.outfitImageUrl).toContain('/images/outfits/10001.png')
+    expect(detail.outfitImageUrl).toBe(getCatalogImageSource('outfit', 10001))
     expect(detail.dyeCondition).toBe('无')
     expect(detail.loadError).toBe(false)
   })
@@ -195,22 +194,8 @@ describe('loadOutfitDetail', () => {
       itemIds.map((itemId) => loadOutfitDetail(itemId, null, 'zh', String(itemId), [], null))
     )
 
-    const requests = fetchMock.mock.calls.map(([url]) => String(url))
-    expect(requests.every((url) => /\/api\/gongeo\/outfits\/\d+\?lang=zh$/.test(url))).toBe(true)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
-})
-
-it('retries a failed detail request and caches the successful retry', async () => {
-  const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
-  vi.stubGlobal('fetch', fetchMock)
-  const failed = await loadOutfitDetail(1020100001, null, 'zh', 'Hair', [])
-  expect(failed.loadError).toBe(true)
-  fetchMock.mockImplementation(async () => jsonResponse({ name: 'Recovered' }))
-  const recovered = await loadOutfitDetail(1020100001, null, 'zh', 'Hair', [])
-  expect(recovered.loadError).toBe(false)
-  const calls = fetchMock.mock.calls.length
-  expect(await loadOutfitDetail(1020100001, null, 'zh', 'Hair', [])).toBe(recovered)
-  expect(fetchMock).toHaveBeenCalledTimes(calls)
 })
 
 // 英文详情复用双语区域标题，避免中文标签混入解析结果。
@@ -229,7 +214,7 @@ it('builds complete local details without requesting the remote API', async () =
   vi.stubGlobal('fetch', fetcher)
   const detail = await loadLocalOutfitDetail(1025740294, null, 'zh', '童话终章', [], null, true)
   expect(detail.itemName).toBe('童话终章')
-  expect(detail.detailImageUrl).toContain('1025740294.png')
+  expect(detail.detailImageUrl).toBe(getCatalogImageSource('item', 1025740294))
   expect(detail.dyeCondition).toBe('满进可染')
   expect(detail.loadError).toBe(false)
   expect(fetcher).not.toHaveBeenCalled()

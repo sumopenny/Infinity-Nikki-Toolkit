@@ -1,35 +1,50 @@
-import catalog from '../../src/data/nuan5ResourceCatalog.json'
-/** Fixed public catalog source only; never accept arbitrary URLs or forward credentials. */
-const allowedResources = new Set(
-  Object.entries(catalog.resources).flatMap(([kind, entries]) => {
-    const template = catalog.templates[kind as keyof typeof catalog.templates]
-    return entries.map((entry) =>
-      template.baseUrl.replaceAll(
-        template.replace,
-        encodeURIComponent(
-          kind === 'pose' ? ((('image' in entry && entry.image) || '') as string) : entry.key
+import catalog from '../../src/data/photo/photoResourceCatalog.json'
+import itemImages from '../../src/data/wardrobe/itemImageMap.json'
+import itemIcons from '../../src/data/wardrobe/itemIconMap.json'
+import outfitImages from '../../src/data/wardrobe/outfitImageMap.json'
+import {
+  IMAGEKIT_IMAGES,
+  IMAGEKIT_DETAILS,
+  encodeImagePath,
+  optimizedImageKitUrl
+} from '../../src/utils/imagekit'
+
+/** Exact catalog allowlist; no arbitrary hosts, query strings, or redirects. */
+const allowedResources = new Set<string>()
+for (const [kind, entries] of Object.entries(catalog.resources)) {
+  const template = catalog.templates[kind as keyof typeof catalog.templates]
+  for (const entry of entries) {
+    const filename = 'image' in entry ? entry.image : undefined
+    if (typeof filename === 'string' && filename)
+      allowedResources.add(
+        optimizedImageKitUrl(
+          template.baseUrl.replaceAll(template.replace, encodeImagePath(filename))
         )
       )
-    )
-  })
-)
+  }
+}
+for (const [map, base] of [
+  [itemImages, IMAGEKIT_DETAILS],
+  [itemIcons, IMAGEKIT_IMAGES + 'IconClothes/'],
+  [outfitImages, IMAGEKIT_IMAGES + 'outfits/']
+] as const) {
+  for (const [id, filename] of Object.entries(map)) {
+    if (/^\d+$/.test(id) && typeof filename === 'string')
+      allowedResources.add(optimizedImageKitUrl(base + encodeImagePath(filename)))
+  }
+}
 export async function onRequestGet({ request }: { request: Request }): Promise<Response> {
-  const path = new URL(request.url).searchParams.get('path') ?? ''
   const resourceUrl = new URL(request.url).searchParams.get('resource')
-  if (
-    resourceUrl
-      ? !allowedResources.has(resourceUrl)
-      : !/^items\/(?:icons|makeups)\/\d{1,12}\.png$/.test(path)
-  )
+  if (!resourceUrl || !allowedResources.has(resourceUrl))
     return new Response('Invalid image', { status: 400 })
   const unavailable = (message = 'Image unavailable') =>
     new Response(message, { status: 502, headers: { 'cache-control': 'no-store' } })
   try {
-    const upstream = await fetch(resourceUrl || `https://cdn.gongeo.us/images/${path}`, {
+    const upstream = await fetch(resourceUrl, {
       // Workers supports manual/follow only; non-2xx responses below reject redirects.
       redirect: 'manual',
       signal: AbortSignal.timeout(15000),
-      headers: { Accept: 'image/png' }
+      headers: { Accept: 'image/webp' }
     })
     if (
       !upstream.ok ||

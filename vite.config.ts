@@ -110,13 +110,6 @@ export default defineConfig(({ mode, command }) => {
         '/api/outfit-code': outfitCodeProxy,
         // 家园方案数据与搭配码一样直接代理固定 CDN，避免本地远程模式依赖尚未部署的 Pages Function。
         '/api/home-build': homeBuildProxy,
-        // 图鉴 API 通过本地开发服务器转发，避免浏览器直接触发跨域限制。
-        '/api/gongeo': {
-          target: 'https://data.gongeo.us',
-          changeOrigin: true,
-          secure: true,
-          rewrite: (path: string) => path.replace(/^\/api\/gongeo/, '/v1')
-        },
         // 共鸣、衣橱与点赞都访问线上 Pages/D1；云同步额外适配本地同源认证和 Cookie。
         '^/api/resonance/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
         '^/api/wardrobe/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
@@ -131,14 +124,7 @@ export default defineConfig(({ mode, command }) => {
     : {
         // 分享码路径由浏览器 WASM 解出，本地开发服务器代取原始对象以避开浏览器 CORS。
         '/api/outfit-code': outfitCodeProxy,
-        '/api/home-build': homeBuildProxy,
-        // 图鉴 API 通过本地开发服务器转发，避免浏览器直接触发跨域限制。
-        '/api/gongeo': {
-          target: 'https://data.gongeo.us',
-          changeOrigin: true,
-          secure: true,
-          rewrite: (path: string) => path.replace(/^\/api\/gongeo/, '/v1')
-        }
+        '/api/home-build': homeBuildProxy
       }
 
   return {

@@ -1,3 +1,4 @@
+import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import 'fake-indexeddb/auto'
 import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,7 +12,8 @@ import { loadWardrobe } from '../../src/utils/wardrobe/wardrobeStorage'
 import * as storage from '../../src/utils/wardrobe/wardrobeStorage'
 import * as pearpal from '../../src/utils/resonance/resonanceImport'
 import * as catalogModule from '../../src/utils/wardrobe/wardrobeCatalog'
-import { clearCatalogApiCache } from '../../src/utils/gongeo/catalogApi'
+import * as localText from '../../src/utils/outfit/outfitText'
+import type { OutfitText } from '../../src/utils/outfit/outfitText'
 
 const choose = async (key: string, label: string | RegExp) => {
   buttonFilter(key).click()
@@ -75,7 +77,6 @@ afterEach(() => {
   localStorage.removeItem('nikki-wardrobe-ownership-notice-v1')
   localStorage.removeItem('nikki-wardrobe-show-evolutions')
   wrapper.unmount()
-  clearCatalogApiCache()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   document.body.innerHTML = ''
@@ -800,7 +801,9 @@ describe('scheme A outfit detail', () => {
       expect(dialog.get('.wardrobe-style-tag').text()).toBe('甜美')
       expect(dialog.get('.wardrobe-suit-facts dt').text()).toBe('星级')
       expect(dialog.get('.wardrobe-suit-facts dd').text()).toBe('5 ★')
-      expect(dialog.get('.wardrobe-suit-preview img').attributes('src')).toContain('/1029402.png')
+      expect(dialog.get('.wardrobe-suit-preview img').attributes('src')).toBe(
+        getCatalogImageSource('outfit', 1029402)
+      )
       expect(dialog.findAll('.wardrobe-part')).toHaveLength(10)
       expect(dialog.findAll('.wardrobe-part.is-owned')).toHaveLength(owned)
       expect(dialog.get('progress').attributes('value')).toBe(String(owned))
@@ -816,30 +819,31 @@ describe('scheme A outfit detail', () => {
   )
 
   it('discards a closed request, uses the new variant/language and renders descriptions as plain text', async () => {
-    const pending: { resolve: (value: Response) => void; signal: AbortSignal; url: string }[] = []
+    const pending: { resolve: (value: OutfitText) => void; signal: AbortSignal; url: string }[] =
+      []
     const fetcher = vi.fn(
-      (url: string, init: RequestInit) =>
-        new Promise<Response>((resolve) => {
-          pending.push({ resolve, signal: init.signal as AbortSignal, url })
+      (path: string | number, language: 'zh' | 'en', signal?: AbortSignal) =>
+        new Promise<OutfitText>((resolve) => {
+          pending.push({ resolve, signal: signal!, url: String(path) + '?lang=' + language })
         })
     )
-    vi.stubGlobal('fetch', fetcher)
+    vi.spyOn(localText, 'loadOutfitText').mockImplementation(fetcher)
     const first = await openSuit()
     expect(pending).toHaveLength(1)
     expect(first.findAll('.wardrobe-part')).toHaveLength(10)
     await first.get('button').trigger('click')
     expect(pending[0].signal.aborted).toBe(true)
     const second = await openSuit('1034701')
-    pending[0].resolve(new Response(JSON.stringify({ description: 'Old variant' })))
+    pending[0].resolve({ id: 1029402, description: 'Old variant' })
     await flushPromises()
     expect(second.get('.wardrobe-suit-description').text()).toContain('正在加载套装描述')
-    pending[1].resolve(new Response(JSON.stringify({ description: '当前形态描述' })))
+    pending[1].resolve({ id: 1034701, description: '当前形态描述' })
     await flushPromises()
     expect(second.get('.wardrobe-suit-description').text()).toContain('当前形态描述')
     await wrapper.setProps({ language: 'en' })
     expect(second.get('.wardrobe-suit-description').text()).toContain('Loading outfit description')
-    expect(pending[2].url).toContain('/outfits/1034701?lang=en')
-    pending[2].resolve(new Response(JSON.stringify({ description: '<b>English description</b>' })))
+    expect(pending[2].url).toContain('1034701?lang=en')
+    pending[2].resolve({ id: 1034701, description: '<b>English description</b>' })
     await flushPromises()
     expect(second.get('.wardrobe-suit-description').text()).toContain('<b>English description</b>')
     expect(second.find('.wardrobe-suit-description b').exists()).toBe(false)
@@ -847,7 +851,7 @@ describe('scheme A outfit detail', () => {
     await second.get('button').trigger('click')
     await openSuit('1034701')
     await flushPromises()
-    expect(fetcher).toHaveBeenCalledTimes(3)
+    expect(fetcher).toHaveBeenCalledTimes(4)
     wrapper.unmount()
     expect(document.querySelector('.wardrobe-dialog')).toBeNull()
   })
@@ -856,10 +860,8 @@ describe('scheme A outfit detail', () => {
     const fetcher = vi
       .fn()
       .mockRejectedValueOnce(new Error('offline'))
-      .mockImplementation(
-        async () => new Response(JSON.stringify({ description: 'Recovered description' }))
-      )
-    vi.stubGlobal('fetch', fetcher)
+      .mockImplementation(async () => ({ id: 1029402, description: 'Recovered description' }))
+    vi.spyOn(localText, 'loadOutfitText').mockImplementation(fetcher)
     let dialog = await openSuit()
     await flushPromises()
     expect(dialog.findAll('.wardrobe-part')).toHaveLength(10)

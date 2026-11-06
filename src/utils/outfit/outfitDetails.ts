@@ -1,11 +1,7 @@
 import { catalogResources, loadCatalogNames } from '../gongeo/catalogResources'
 import { registerCacheReset } from '../cacheLifecycle'
 import type { Language } from '../../i18n'
-import {
-  requestCatalogEntity as requestEntity,
-  clearCatalogApiCache,
-  type CatalogEntity as ApiEntity
-} from '../gongeo/catalogApi'
+
 import { outfitMessages } from '../../i18n/messages/outfit'
 import type { LookbookDyeSwatch } from './outfitCodeParser'
 
@@ -174,18 +170,7 @@ const resolveOutfitVariantId = (
   return variants[getVariantIndex(itemId)] ?? outfitId
 }
 
-const getLocalizedName = (
-  entity: ApiEntity | null,
-  outfitId: number,
-  language: Language,
-  catalog: CatalogSnapshot
-) => {
-  if (typeof entity?.name === 'string' && entity.name.trim()) return entity.name
-  if (entity?.name && typeof entity.name === 'object') {
-    const localized = entity.name as { zh?: unknown; en?: unknown }
-    const value = localized[language]
-    if (typeof value === 'string' && value.trim()) return value
-  }
+const getLocalizedName = (outfitId: number, catalog: CatalogSnapshot) => {
   const names = catalog.outfitNames
   const variantName = names[`outfit.${outfitId}.name`]
   if (typeof variantName === 'string' && variantName.trim()) return variantName
@@ -337,8 +322,7 @@ const createDetail = async (
   fallbackItemName: string,
   dyes: LookbookDyeSwatch[],
   clothType: number | null,
-  hasSpecialEffect: boolean,
-  remote = true
+  hasSpecialEffect: boolean
 ): Promise<OutfitDetail> => {
   const catalog = await loadCatalogSnapshot(language)
   const isMakeup = isMakeupClothType(clothType) || isMakeupCatalogItem(catalog, itemId)
@@ -355,16 +339,6 @@ const createDetail = async (
   const resolvedCatalogOutfitId = catalogOutfitId
     ? resolveOutfitVariantId(catalog, catalogOutfitId, itemId)
     : null
-  // 部件字段均来自本地快照与解析结果，远程只补充实际使用的套装名称。
-  let outfitEntity: ApiEntity | null = null
-  let loadError = false
-  if (remote && resolvedCatalogOutfitId) {
-    try {
-      outfitEntity = await requestEntity(`/outfits/${resolvedCatalogOutfitId}`, language)
-    } catch {
-      loadError = true
-    }
-  }
   const outfitRow = resolvedCatalogOutfitId
     ? findOutfitRow(catalog, resolvedCatalogOutfitId)
     : undefined
@@ -398,9 +372,7 @@ const createDetail = async (
   }
 
   const resolvedOutfitId = resolvedCatalogOutfitId
-  const outfitName = resolvedOutfitId
-    ? getLocalizedName(outfitEntity, resolvedOutfitId, language, catalog)
-    : ''
+  const outfitName = resolvedOutfitId ? getLocalizedName(resolvedOutfitId, catalog) : ''
 
   return {
     itemId,
@@ -421,11 +393,11 @@ const createDetail = async (
       const areaOrder = Number(left.area.replace(/\D/g, '')) - Number(right.area.replace(/\D/g, ''))
       return areaOrder
     }),
-    loadError
+    loadError: false
   }
 }
 
-/** 仅使用本地快照生成基础详情，让图片与染色信息不等待远程接口。 */
+/** 仅使用本地快照生成详情，不请求第三方接口。 */
 export function loadLocalOutfitDetail(
   itemId: number,
   outfitId: number | null,
@@ -442,8 +414,7 @@ export function loadLocalOutfitDetail(
     fallbackItemName,
     dyes,
     clothType,
-    hasSpecialEffect,
-    false
+    hasSpecialEffect
   )
 }
 
@@ -518,7 +489,6 @@ export function loadOutfitDetail(
 }
 
 export function clearOutfitDetailCache(): void {
-  clearCatalogApiCache()
   detailCache.clear()
   catalogSnapshotPromise = null
 }

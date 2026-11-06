@@ -1,3 +1,4 @@
+import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import outfitItems from '../../src/data/gongeo/outfitItems.json'
 import {
@@ -58,7 +59,7 @@ describe('resonance catalog', () => {
     const pulls = normalizeBannerPulls('77', [{ itemId: HAIR, pullsToObtain: 18 }])
     const record = buildResonanceRecords('77', pulls).find((item) => item.outfitId === '10347')
     const part = record?.sets[0].parts.find((item) => item.id === HAIR)
-    expect(part?.imageUrl).toBe(`https://cdn.gongeo.us/images/items/icons/${HAIR}.png`)
+    expect(part?.imageUrl).toBe(getCatalogImageSource('icon', HAIR))
     expect(record?.outfitName.zh).not.toBe(record?.outfitName.en)
     expect(part?.name.zh).not.toBe(part?.name.en)
     expect(record?.bannerName.zh).not.toBe(record?.bannerName.en)

@@ -1,3 +1,4 @@
+import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import OutfitParseDialog from '../../src/components/OutfitParseDialog.vue'
@@ -404,7 +405,7 @@ it('keeps an already loaded image visible when retrying catalog details', async 
   )
   const sameImageDetail = {
     ...detail,
-    detailImageUrl: 'https://cdn.gongeo.us/images/items/1020100001.png'
+    detailImageUrl: getCatalogImageSource('item', 1020100001)
   }
   loadOutfitDetailMock
     .mockResolvedValueOnce({ ...sameImageDetail, loadError: true })

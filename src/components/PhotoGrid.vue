@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { optimizedImageKitUrl } from '../utils/imagekit'
 import { vCardReveal } from '../utils/cardReveal'
 import { computed, onBeforeUnmount } from 'vue'
 import { Check, Edit3, Heart, ScanSearch, Share2 } from 'lucide-vue-next'
@@ -111,7 +112,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
           ><img
             v-if="group.actionImageUrl"
             class="action-group-image"
-            :src="group.actionImageUrl"
+            :src="optimizedImageKitUrl(group.actionImageUrl)"
             :alt="group.title"
           />{{ group.title }} · {{ messages.photoCount(group.photos.length) }}</h2
         >

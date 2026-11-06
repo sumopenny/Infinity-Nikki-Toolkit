@@ -1,3 +1,4 @@
+import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
 import * as unifiedImport from '../../src/utils/unifiedDataImport'
 import * as resonanceImport from '../../src/utils/resonance/resonanceImport'
@@ -207,7 +208,7 @@ describe('ResonanceRecords', () => {
     expect(wrapper.emitted('recordsChange')?.[0]?.[0]).toEqual([savedRecord])
     expect(wrapper.find('.resonance-record').attributes('id')).toBe('resonance-record-77:10347')
     expect(wrapper.find('.resonance-part img').attributes('src')).toBe(
-      `https://cdn.gongeo.us/images/items/icons/${HAIR}.png`
+      getCatalogImageSource('icon', HAIR)
     )
   })
 
@@ -230,7 +231,7 @@ describe('ResonanceRecords', () => {
     expect(part.attributes('data-image-failed')).toBe('true')
     await part.trigger('click')
     expect(wrapper.find('.resonance-part img').attributes('src')).toBe(
-      `https://cdn.gongeo.us/images/items/icons/${HAIR}.png`
+      getCatalogImageSource('icon', HAIR)
     )
   })
 
@@ -817,8 +818,8 @@ it('does not let an old file preview overwrite a newer selection', async () => {
 })
 
 it('opens outfit and item details from record images without changing records', async () => {
-  const api = await import('../../src/utils/gongeo/catalogApi')
-  vi.spyOn(api, 'requestCatalogEntity').mockResolvedValue({})
+  const api = await import('../../src/utils/outfit/outfitText')
+  vi.spyOn(api, 'loadOutfitText').mockResolvedValue({ id: 10001, description: '' })
   await saveResonanceRecords([savedRecord])
   const wrapper = mount(ResonanceRecords, { attachTo: document.body })
   wrappers.push(wrapper)
@@ -835,8 +836,8 @@ it('opens outfit and item details from record images without changing records', 
   expect(document.querySelector('.wardrobe-dialog')).toBeNull()
   await wrapper.get('button.resonance-part').trigger('click')
   await vi.waitFor(() => expect(document.querySelector('.outfit-detail-panel')).not.toBeNull())
-  expect(document.querySelector<HTMLImageElement>('.outfit-detail-image')?.src).toContain(
-    '/images/items/' + HAIR + '.png'
+  expect(document.querySelector<HTMLImageElement>('.outfit-detail-image')?.src).toBe(
+    getCatalogImageSource('item', HAIR)
   )
   expect(document.querySelector('.outfit-detail-image-placeholder')).not.toBeNull()
   const { loadWardrobeCatalog } = await import('../../src/utils/wardrobe/wardrobeCatalog')
@@ -853,8 +854,8 @@ it('opens outfit and item details from record images without changing records', 
   const evolved = forms[evolvedIndex]!
   formButtons[evolvedIndex]!.click()
   await flushPromises()
-  expect(document.querySelector<HTMLImageElement>('.outfit-detail-image')?.src).toContain(
-    '/images/items/' + evolved.id + '.png'
+  expect(document.querySelector<HTMLImageElement>('.outfit-detail-image')?.src).toBe(
+    getCatalogImageSource('item', evolved.id)
   )
   expect(document.querySelector('.outfit-detail-info')?.textContent).toContain(evolved.name.zh)
   const evolvedOutfits = catalog.entries.filter(

@@ -1,4 +1,5 @@
 import brandMarkUrl from '../../img/brand-mark.png'
+import { isImageKitResource, optimizedImageKitUrl } from './imagekit'
 import poseBackgroundUrl from '../../img/dreamy.webp'
 import type { PhotoParamsResult } from './photo-params/types'
 import type { ParseItemView } from './outfit/parseItemView'
@@ -45,6 +46,7 @@ export function wrapShareText(
 }
 
 export function loadShareImage(url: string, signal?: AbortSignal): Promise<HTMLImageElement> {
+  url = optimizedImageKitUrl(url)
   return new Promise((resolve, reject) => {
     signal?.throwIfAborted()
     const image = new Image()
@@ -74,9 +76,8 @@ export function loadShareImage(url: string, signal?: AbortSignal): Promise<HTMLI
       reject(new Error('Image unavailable'))
     }
     signal?.addEventListener('abort', abort, { once: true })
-    image.src = url.startsWith('https://cdn.gongeo.us/images/')
-      ? '/api/share-image?path=' +
-        encodeURIComponent(url.slice('https://cdn.gongeo.us/images/'.length))
+    image.src = isImageKitResource(url)
+      ? '/api/share-image?resource=' + encodeURIComponent(url)
       : url
   })
 }
@@ -220,9 +221,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
   }
   // Fixed output-pixel dimensions, independent of source photo size and orientation.
   const watermark = (x: number, y: number) => {
-    const { unit, inset } = outfit
-      ? { unit: 2.8, inset: 40 }
-      : { unit: 1.6, inset: 28 }
+    const { unit, inset } = outfit ? { unit: 2.8, inset: 40 } : { unit: 1.6, inset: 28 }
     const size = 38 * unit
     const left = x + inset,
       top = y + inset
@@ -352,7 +351,10 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
   } else {
     // Zoom is a static camera field; place it beside weather in share images.
     const zoomField = result?.cameraFields.find((field) => field.static)
-    const environmentFields = [...(result?.environmentFields ?? []), ...(zoomField ? [zoomField] : [])]
+    const environmentFields = [
+      ...(result?.environmentFields ?? []),
+      ...(zoomField ? [zoomField] : [])
+    ]
     const cameraFields = (result?.cameraFields ?? []).filter((field) => field !== zoomField)
     const fields =
       result && modules.parameters
@@ -373,10 +375,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
       await Promise.all(
         result.resourceGroups.map(async (group) => {
           if (group.imageUrl)
-            resourcePictures.set(
-              group.imageUrl,
-              await load('/api/share-image?resource=' + encodeURIComponent(group.imageUrl))
-            )
+            resourcePictures.set(group.imageUrl, await load(optimizedImageKitUrl(group.imageUrl)))
         })
       )
     const poseBackground =
@@ -393,28 +392,18 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
           fields.slice(0, environmentFields.length),
           ...Array.from(
             {
-              length: Math.ceil(
-                ((cameraFields.length) + (result?.imageFields.length ?? 0)) / 6
-              )
+              length: Math.ceil((cameraFields.length + (result?.imageFields.length ?? 0)) / 6)
             },
             (_, i) =>
               fields
-                .slice(
-                  (environmentFields.length) + i * 6,
-                  (environmentFields.length) + (i + 1) * 6
-                )
+                .slice(environmentFields.length + i * 6, environmentFields.length + (i + 1) * 6)
                 .slice(
                   0,
-                  Math.min(
-                    6,
-                    (cameraFields.length) + (result?.imageFields.length ?? 0) - i * 6
-                  )
+                  Math.min(6, cameraFields.length + (result?.imageFields.length ?? 0) - i * 6)
                 )
           ),
           fields.slice(
-            (environmentFields.length) +
-              (cameraFields.length) +
-              (result?.imageFields.length ?? 0)
+            environmentFields.length + cameraFields.length + (result?.imageFields.length ?? 0)
           )
         ].filter((group) => group.length)
     const rows = groups.flatMap((group, rowIndex) =>
@@ -501,10 +490,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
       const fit = Math.min(photoWidth / image.naturalWidth, topHeight / image.naturalHeight)
       const fittedW = image.naturalWidth * fit,
         fittedH = image.naturalHeight * fit
-      watermark(
-        margin + (photoWidth - fittedW) / 2,
-        photoTop + (topHeight - fittedH) / 2
-      )
+      watermark(margin + (photoWidth - fittedW) / 2, photoTop + (topHeight - fittedH) / 2)
     })
     let y = photoTop + topHeight + (portrait ? gap : 34 * scale)
     if (fields.length) {
@@ -676,10 +662,8 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
         const spacePenalty = sideClothes
           ? (Math.max(0, availableHeight - candidate.total) / scale) * 0.01
           : candidate.heights.length * 2 +
-            Math.max(
-              0,
-              sectionWidth - padding * 2 - columns * size - (columns - 1) * itemGap
-            ) / scale
+            Math.max(0, sectionWidth - padding * 2 - columns * size - (columns - 1) * itemGap) /
+              scale
         const score = sizePenalty + overflow * 10 + spacePenalty
         if (score < bestScore) {
           bestScore = score

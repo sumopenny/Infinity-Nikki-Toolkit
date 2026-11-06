@@ -5,6 +5,8 @@ import { measureLookbook } from './lookbookDiagnostics'
 interface LookbookWasmExports extends WebAssembly.Exports {
   __newString(value: string): number
   __getString(pointer: number): string
+  __pin(pointer: number): number
+  __unpin(pointer: number): void
   decodeOutfitPayload(codePointer: number, payloadPointer: number): number
   decodeShareCodePathId(codePointer: number): number
 }
@@ -36,17 +38,31 @@ export async function decodeLookbookPayload<T>(
   payload: string
 ): Promise<LookbookWasmResult<T>> {
   const wasm = await getExports()
-  const result = wasm.__getString(
-    wasm.decodeOutfitPayload(wasm.__newString(code), wasm.__newString(payload))
-  )
-  return JSON.parse(result) as LookbookWasmResult<T>
+  const codePointer = wasm.__pin(wasm.__newString(code))
+  try {
+    const payloadPointer = wasm.__pin(wasm.__newString(payload))
+    try {
+      return JSON.parse(
+        wasm.__getString(wasm.decodeOutfitPayload(codePointer, payloadPointer))
+      ) as LookbookWasmResult<T>
+    } finally {
+      wasm.__unpin(payloadPointer)
+    }
+  } finally {
+    wasm.__unpin(codePointer)
+  }
 }
 
 /** 使用 WASM 还原分享码对应的固定对象路径编号；不支持的格式返回 null。 */
 export async function decodeLookbookShareCodePathId(code: string): Promise<string | null> {
   const wasm = await getExports()
-  const pathId = wasm.__getString(wasm.decodeShareCodePathId(wasm.__newString(code)))
-  return /^\d{18}$/.test(pathId) ? pathId : null
+  const pointer = wasm.__pin(wasm.__newString(code))
+  try {
+    const pathId = wasm.__getString(wasm.decodeShareCodePathId(pointer))
+    return /^\d{18}$/.test(pathId) ? pathId : null
+  } finally {
+    wasm.__unpin(pointer)
+  }
 }
 
 /** 进入解析工具时预热，失败由正式解析继续重试，不向用户显示预热错误。 */

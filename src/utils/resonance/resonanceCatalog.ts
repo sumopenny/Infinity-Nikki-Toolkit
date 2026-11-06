@@ -1,4 +1,5 @@
 import { catalogResources, loadCatalogNames } from '../gongeo/catalogResources'
+import { getCatalogImageSource } from '../gongeo/catalogImage'
 import { getBannerMeta, loadResonanceBanners, localizedName } from './resonanceBanners'
 import { getResonancePartIconUrl } from './resonanceView'
 import type {
@@ -33,7 +34,6 @@ function createCatalog({
   itemNames,
   outfitNames
 }: Awaited<ReturnType<typeof loadResources>>) {
-  const CDN = 'https://cdn.gongeo.us/images'
   /** 套装 ID -> 该套装的全部部件 ID */
   const outfitParts = new Map(
     (outfitItems as unknown as Array<[number, number[]]>).map(([id, items]) => [
@@ -196,7 +196,7 @@ function createCatalog({
           outfitId: id,
           outfitName: getOutfitName(id),
           rarity,
-          outfitImageUrl: `${CDN}/outfits/${displayId}.png`,
+          outfitImageUrl: getCatalogImageSource('outfit', displayId),
           sets: [makeSet(1), makeSet(2)]
         }
       })

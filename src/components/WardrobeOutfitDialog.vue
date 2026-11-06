@@ -27,7 +27,7 @@ import { getOwnershipSummary, hasWardrobeSnapshot } from '../utils/wardrobe/ward
 import { wardrobeVariantLabels } from '../utils/wardrobe/wardrobePresentation'
 import type { WardrobeSnapshot } from '../utils/wardrobe/wardrobeStorage'
 import { useLatestRequest } from '../composables/useLatestRequest'
-import { requestCatalogEntity } from '../utils/gongeo/catalogApi'
+import { loadOutfitText } from '../utils/outfit/outfitText'
 import { useModalFocus } from '../composables/useModalFocus'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 const props = defineProps<{
@@ -126,7 +126,7 @@ watch(
     }
     const request = detailRequest.begin()
     try {
-      const entity = await requestCatalogEntity('/outfits/' + id, language, request.signal)
+      const entity = await loadOutfitText(id, language, request.signal)
       if (request.isCurrent())
         detailDescription.value =
           typeof entity.description === 'string' ? entity.description.trim() : ''

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CatalogImage from './CatalogImage.vue'
+import { getCatalogImageSource } from '../utils/gongeo/catalogImage'
 import WardrobeFormNav from './WardrobeFormNav.vue'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 import { computed, ref, watch } from 'vue'
@@ -33,7 +34,7 @@ const emit = defineEmits<{
 const visible = computed(() => !!props.item)
 const panel = ref<HTMLElement | null>(null)
 const imageState = ref<'loading' | 'loaded' | 'failed'>('loading')
-const imageUrl = computed(() => props.item?.image.replace('/items/icons/', '/items/') ?? '')
+const imageUrl = computed(() => (props.item ? getCatalogImageSource('item', props.item.id) : ''))
 const text = (zh: string, en: string) => (props.language === 'zh' ? zh : en)
 const close = () => emit('close')
 watch(

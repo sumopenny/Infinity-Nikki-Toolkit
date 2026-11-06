@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, toRef, watch } from 'vue'
+import { optimizedImageKitUrl } from '../utils/imagekit'
 import type { Language } from '../i18n'
 import { outfitMessages } from '../i18n/messages/outfit'
 const OutfitParseDialog = defineAsyncComponent(() => import('./OutfitParseDialog.vue'))
@@ -112,7 +113,7 @@ function markImageFailed(title: string, name: string) {
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
+    <Transition name="confirm-dialog" appear @before-leave="(el) => el.setAttribute('inert', '')">
       <div
         v-if="visible"
         class="dialog-overlay fortune-time-dialog photo-params-overlay"
@@ -260,9 +261,10 @@ function markImageFailed(title: string, name: string) {
                       >
                         <img
                           v-if="
-                            group.imageUrl && !failedImages.has(resourceKey(group.title, group.name))
+                            group.imageUrl &&
+                            !failedImages.has(resourceKey(group.title, group.name))
                           "
-                          :src="group.imageUrl"
+                          :src="group.imageUrl ? optimizedImageKitUrl(group.imageUrl) : undefined"
                           :alt="group.name"
                           @error="markImageFailed(group.title, group.name)"
                         />

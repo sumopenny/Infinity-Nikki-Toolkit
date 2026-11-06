@@ -27,11 +27,19 @@ it('only forwards fixed public PNGs without request credentials', async () => {
   )
   vi.stubGlobal('fetch', fetch)
   const response = await onRequestGet({
-    request: new Request('https://local/api/share-image?path=items/icons/123.png', {
-      headers: { Cookie: 'private' }
-    })
+    request: new Request(
+      'https://local/api/share-image?resource=' +
+        encodeURIComponent(
+          'https://ik.imagekit.io/nikkicube/images/IconClothes/T_Icon_clothes_S0001H.png?tr=f-webp,q-70'
+        ),
+      {
+        headers: { Cookie: 'private' }
+      }
+    )
   })
   expect(response.status).toBe(200)
-  expect(fetch.mock.calls[0]?.[0]).toBe('https://cdn.gongeo.us/images/items/icons/123.png')
+  expect(fetch.mock.calls[0]?.[0]).toBe(
+    'https://ik.imagekit.io/nikkicube/images/IconClothes/T_Icon_clothes_S0001H.png?tr=f-webp,q-70'
+  )
   expect(response.headers.get('content-type')).toBe('image/png')
 })

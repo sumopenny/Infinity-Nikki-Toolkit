@@ -4,7 +4,7 @@ import {
   persistCacheIfCurrent,
   registerCacheReset
 } from '../cacheLifecycle'
-// 搭配码解析：缓存未命中时并发请求同源原始数据和第三方，以首个有效解析结果为准。
+// 搭配码解析：缓存未命中时获取官方原始数据，在本地通过 WASM 解码。
 import {
   clearSavedOutfitParseResults,
   getSavedOutfitParseResult,
@@ -14,7 +14,6 @@ import { inferClothTypeFromItemId } from './clothType'
 import { lookbookTiming, measureLookbook } from './lookbookDiagnostics'
 
 const LOOKBOOK_DATA_PROXY_BASE_URL = '/api/outfit-code'
-const LOOKBOOK_THIRD_PARTY_URL = 'https://api-nikki.ranaxro.com/conv-clothdiydata'
 const LOOKBOOK_CODE_PATTERN = /^[A-Za-z0-9]{11}#$/
 const LOOKBOOK_REQUEST_TIMEOUT_MS = 10000
 
@@ -63,7 +62,7 @@ export interface LookbookDecodeResult {
   dyeItems: LookbookDyeItem[]
 }
 
-/** 两路统一按部件 ID 推导类型、排序；套装关系交给共同图鉴解析，避免第三方附加信息改变展示。 */
+/** 按部件 ID 推导类型、排序；套装关系由本地图鉴解析。 */
 function normalizeLookbookResult(result: LookbookDecodeResult): LookbookDecodeResult {
   const infer = <T extends { itemId: number; clothType: number | null }>(cloth: T): T =>
     ({
@@ -149,7 +148,7 @@ const isCachedParseResult = (value: unknown, code: string): value is LookbookDec
   )
 }
 
-/** 同时启动两条完整解析任务；失败不抢占成功，赢家确定后取消另一条。 */
+/** 只请求同源官方数据代理；超时覆盖响应正文及本地解析。 */
 async function requestLookbookParse(code: string): Promise<LookbookDecodeResult> {
   let pathId: string | null
   try {
@@ -166,57 +165,31 @@ async function requestLookbookParse(code: string): Promise<LookbookDecodeResult>
     throw new OutfitCodeParseError('invalid', 'Invalid lookbook code: ' + code)
   }
 
-  const controllers = [new AbortController(), new AbortController()]
-  const urls = [
-    LOOKBOOK_DATA_PROXY_BASE_URL + '/' + pathId,
-    LOOKBOOK_THIRD_PARTY_URL + '?' + encodeURIComponent(code)
-  ]
+  const controller = new AbortController()
+  let onAbort!: () => void
+  const cancelled = new Promise<never>((_, reject) => {
+    onAbort = () => reject(new OutfitCodeParseError('unavailable', 'Lookbook request timed out'))
+    controller.signal.addEventListener('abort', onAbort, { once: true })
+  })
+  const timer = setTimeout(() => controller.abort(), LOOKBOOK_REQUEST_TIMEOUT_MS)
   try {
-    return await Promise.any(
-      urls.map((url, index) => {
-        const controller = controllers[index]
-        // 独立超时覆盖响应头、正文和解析等待；即使另一条失败也不延长总等待。
-        const timer = setTimeout(
-          () => controller.abort(new DOMException('Timed out', 'TimeoutError')),
-          LOOKBOOK_REQUEST_TIMEOUT_MS
-        )
-        let onAbort!: () => void
-        const cancelled = new Promise<never>((_resolve, reject) => {
-          onAbort = () =>
-            reject(
-              new OutfitCodeParseError('unavailable', 'Lookbook request cancelled or timed out')
-            )
-          controller.signal.addEventListener('abort', onAbort, { once: true })
-        })
-        return Promise.race([
-          requestLookbookSource(
-            code,
-            url,
-            controller.signal,
-            index === 0 ? 'proxy' : 'third_party'
-          ),
-          cancelled
-        ]).finally(() => {
-          clearTimeout(timer)
-          controller.signal.removeEventListener('abort', onAbort)
-        })
-      })
-    )
-  } catch (error) {
-    const errors: unknown[] = error instanceof AggregateError ? error.errors : [error]
-    // 只有两路都明确拒绝才判无效，网络故障与无效码混合时允许用户重试。
-    if (errors.every((value) => value instanceof OutfitCodeParseError && value.kind === 'invalid'))
-      throw new OutfitCodeParseError('invalid', 'Both lookbook sources rejected the code')
-    const unavailable = errors.find(
-      (value) => value instanceof OutfitCodeParseError && value.kind === 'unavailable'
-    )
-    throw unavailable ?? new OutfitCodeParseError('unavailable', 'Both lookbook sources failed')
+    return await Promise.race([
+      requestLookbookSource(
+        code,
+        LOOKBOOK_DATA_PROXY_BASE_URL + '/' + pathId,
+        controller.signal,
+        'proxy'
+      ),
+      cancelled
+    ])
   } finally {
-    controllers.forEach((controller) => controller.abort())
+    clearTimeout(timer)
+    controller.signal.removeEventListener('abort', onAbort)
+    controller.abort()
   }
 }
 
-/** 完整读取、WASM 解析和结构校验都成功后，才有资格成为竞速赢家。 */
+/** 完整读取、WASM 解析和结构校验都成功后才返回结果。 */
 async function requestLookbookSource(
   code: string,
   url: string,

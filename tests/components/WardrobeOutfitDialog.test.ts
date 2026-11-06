@@ -3,8 +3,8 @@ import { expect, it, vi } from 'vitest'
 import WardrobeOutfitDialog from '../../src/components/WardrobeOutfitDialog.vue'
 import { emptyWardrobe } from '../../src/utils/wardrobe/wardrobeStorage'
 import type { WardrobeEntry } from '../../src/utils/wardrobe/wardrobeCatalog'
-vi.mock('../../src/utils/gongeo/catalogApi', () => ({
-  requestCatalogEntity: vi.fn().mockResolvedValue({})
+vi.mock('../../src/utils/outfit/outfitText', () => ({
+  loadOutfitText: vi.fn().mockResolvedValue({})
 }))
 it('shows unknown ownership without wardrobe records and actual ownership after import', async () => {
   const detail: WardrobeEntry = {

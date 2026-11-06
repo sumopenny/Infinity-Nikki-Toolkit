@@ -80,73 +80,30 @@ describe('parseOutfitCode', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it.each(['proxy', 'third_party'])(
-    '%s 先成功即返回，取消慢线路且复用并发请求与缓存',
-    async (winner) => {
-      let finish!: (response: Response) => void
-      const signals: AbortSignal[] = []
-      const fetchMock = vi.fn((url: string, init: RequestInit) => {
-        signals.push(init.signal as AbortSignal)
-        const isWinner = url.startsWith('/api/') === (winner === 'proxy')
-        if (isWinner)
-          return new Promise<Response>((resolve) => {
-            finish = resolve
-          })
-        return new Promise<Response>((_resolve, reject) => {
-          init.signal?.addEventListener('abort', () => reject(new Error('cancelled')), {
-            once: true
-          })
-        })
-      })
-      vi.stubGlobal('fetch', fetchMock)
-      const first = parseOutfitCode(validCode)
-      const duplicate = parseOutfitCode(validCode)
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-      expect(fetchMock.mock.calls[1][0]).toBe(
-        'https://api-nikki.ranaxro.com/conv-clothdiydata?1I43NTCbOn0%23'
-      )
-      expect(fetchMock.mock.calls[1][1]).toMatchObject({
-        credentials: 'omit',
-        referrerPolicy: 'no-referrer'
-      })
-      finish(
-        jsonResponse({ clothes: [{ cloth: { id: 1020980001, cloth_type: 98, outfit: 123 } }] })
-      )
-      const result = await first
-      expect(result.wearingClothes).toEqual([{ itemId: 1020980001, clothType: 76, outfitId: null }])
-      expect(await duplicate).toEqual(result)
-      expect(await parseOutfitCode(validCode)).toEqual(result)
-      expect(fetchMock).toHaveBeenCalledTimes(2)
-      expect(signals.every((signal) => signal.aborted)).toBe(true)
-    }
-  )
-
-  it('先到的无效正文不抢占后到的有效结果', async () => {
+  it('只请求官方代理一次，并发调用及成功缓存复用该结果', async () => {
     let finish!: (response: Response) => void
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(new Response('{broken json'))
-        .mockImplementationOnce(
-          () =>
-            new Promise<Response>((resolve) => {
-              finish = resolve
-            })
-        )
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve
+        })
     )
-    let settled = false
-    const pending = parseOutfitCode(validCode).finally(() => {
-      settled = true
-    })
-    await vi.waitFor(() => expect(finish).toBeDefined())
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(settled).toBe(false)
-    finish(jsonResponse({ clothes: [] }))
-    await expect(pending).resolves.toMatchObject({ code: normalizedCode })
+    vi.stubGlobal('fetch', fetchMock)
+    const first = parseOutfitCode(validCode)
+    const second = parseOutfitCode(validCode)
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/outfit-code/488547348102388135',
+      expect.objectContaining({ credentials: 'omit' })
+    )
+    finish(jsonResponse({ Content: { Content: { wearingClothes: [1020980001] } } }))
+    const result = await first
+    expect(await second).toEqual(result)
+    expect(await parseOutfitCode(validCode)).toEqual(result)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('两路返回不同顺序、类型别名和套装附加信息时生成一致结果', async () => {
+  it('原生及历史载荷格式均保持相同的规范化结果', async () => {
     const raw = { Content: { Content: { wearingClothes: [1020980001, 1020100001] } } }
     const third = {
       clothes: [
@@ -167,7 +124,7 @@ describe('parseOutfitCode', () => {
     expect(await parseOutfitCode(validCode)).toEqual(direct)
   })
 
-  it('响应头已到但正文挂起也受总超时约束，混合失败判 unavailable', async () => {
+  it('响应头已到但正文挂起也受总超时约束', async () => {
     const original = globalThis.setTimeout
     vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
       handler: TimerHandler,
@@ -239,14 +196,6 @@ describe('parseOutfitCode', () => {
             finish = resolve
           })
       )
-      .mockImplementationOnce(
-        (_url, init) =>
-          new Promise((_resolve, reject) => {
-            init.signal.addEventListener('abort', () => reject(new Error('aborted')), {
-              once: true
-            })
-          })
-      )
       .mockImplementation(() => Promise.resolve(jsonResponse({ clothes: [] })))
     vi.stubGlobal('fetch', fetchMock)
     const pending = parseOutfitCode(validCode)
@@ -256,7 +205,7 @@ describe('parseOutfitCode', () => {
     await pending
     expect(save).not.toHaveBeenCalled()
     await parseOutfitCode(validCode)
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(save).toHaveBeenCalledOnce()
   })
 
@@ -294,7 +243,7 @@ describe('parseOutfitCode', () => {
 
     const result = await parseOutfitCode(validCode)
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][0]).toBe('/api/outfit-code/488547348102388135')
     expect(result.code).toBe(normalizedCode)
     expect(result.wearingClothes).toEqual([
@@ -396,20 +345,19 @@ describe('parseOutfitCode', () => {
     const second = await parseOutfitCode(normalizedCode)
 
     expect(second).toEqual(first)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('不缓存失败结果，重试时重新请求服务', async () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce(jsonResponse({ clothes: [] }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(parseOutfitCode(validCode)).rejects.toMatchObject({ kind: 'unavailable' })
     await expect(parseOutfitCode(validCode)).resolves.toMatchObject({ code: normalizedCode })
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
 

@@ -4,12 +4,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "resources:update": "node scripts/generate-nuan5-resource-catalog.mjs",
+    "resources:update": "npm run resources:update:startup",
     "resources:update:items": "node scripts/generate-item-catalog.cjs --remote",
-    "resources:update:poses": "node scripts/update-nikkigallery-poses.mjs",
-    "resources:update:light-filters": "node scripts/update-nuan5-light-filters.mjs",
+    "resources:update:poses": "node scripts/validate-photo-catalog.mjs",
+    "resources:update:light-filters": "node scripts/validate-photo-catalog.mjs",
     "resources:update:gongeo": "node scripts/update-gongeo-catalog.mjs",
-    "resources:update:startup": "npm run resources:update:poses && npm run resources:update:light-filters && npm run resources:update:items && npm run resources:update:gongeo",
+    "resources:update:startup": "npm run resources:update:items && npm run resources:update:gongeo",
     "predev": "npm run resources:update:startup",
     "build": "vue-tsc --noEmit && vite build",
     "build:cloudflare": "npm run resources:update:startup && npm run build",
@@ -29,7 +29,7 @@
     "errors:report": "node scripts/error-report.mjs event",
     "errors:prune": "node scripts/error-report.mjs prune",
     "test:errors": "vitest run tests/utils/errorReporting tests/functions/errors.test.ts && node --test tests/errorBuildPolicy.test.mjs",
-    "test:without-d1": "vitest run --exclude tests/resonanceCloud.test.ts --exclude tests/wardrobeCloud.test.ts --exclude tests/archiveCloud.test.ts --exclude tests/functions/gongeoRuntime.test.ts --exclude tests/functions/outfitCodeRuntime.test.ts && node --test tests/startupDependencies.test.mjs tests/resourceNetwork.test.cjs tests/errorBuildPolicy.test.mjs"
+    "test:without-d1": "vitest run --exclude tests/resonanceCloud.test.ts --exclude tests/wardrobeCloud.test.ts --exclude tests/archiveCloud.test.ts --exclude tests/functions/outfitCodeRuntime.test.ts && node --test tests/startupDependencies.test.mjs tests/resourceNetwork.test.cjs tests/errorBuildPolicy.test.mjs"
   },
   "dependencies": {
     "@assemblyscript/loader": "0.28.20",
