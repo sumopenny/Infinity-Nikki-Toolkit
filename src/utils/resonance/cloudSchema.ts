@@ -7,8 +7,7 @@ const object = (v: unknown): v is Record<string, unknown> =>
 const text = (v: unknown, max = 512): v is string => typeof v === 'string' && v.length <= max
 const name = (v: unknown) => object(v) && text(v.zh) && text(v.en)
 const number = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
-const url = (v: unknown) =>
-  text(v, 2048) && (v === '' || v === '/catalog-placeholder.svg' || /^https?:\/\//i.test(v))
+const url = (v: unknown) => text(v, 2048) && (v === '' || /^https?:\/\//i.test(v))
 
 /** 前后端共用备份边界校验，不加载资源目录；拒绝重复主键及超大单条记录。 */
 export function validateCloudRecords(value: unknown): asserts value is ResonanceRecord[] {

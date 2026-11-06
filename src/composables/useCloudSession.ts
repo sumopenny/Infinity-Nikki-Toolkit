@@ -96,9 +96,8 @@ const refresh = () => {
   if (document.visibilityState === 'visible') void session.refresh().catch(() => {})
 }
 /** 广播只表示会话失效；真实账号始终重新向服务端查询。 */
-export function useCloudSession(subscribe = true) {
+export function useCloudSession() {
   onMounted(() => {
-    if (!subscribe) return
     if (consumers++ === 0) {
       document.addEventListener('visibilitychange', refresh)
       if (typeof BroadcastChannel !== 'undefined') {
@@ -111,7 +110,6 @@ export function useCloudSession(subscribe = true) {
     }
   })
   onBeforeUnmount(() => {
-    if (!subscribe) return
     if (--consumers === 0) {
       document.removeEventListener('visibilitychange', refresh)
       channel?.close()

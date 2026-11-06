@@ -1,7 +1,6 @@
 vi.mock('../../src/utils/imageSelection', () => ({
   validateSelectedImage: vi.fn().mockResolvedValue(undefined)
 }))
-import '../helpers/enableCommunityResources'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getOutfitMessages } from '../helpers/outfitMessages'

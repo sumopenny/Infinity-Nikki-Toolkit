@@ -174,15 +174,7 @@ function createResourceNetwork({
 }
 
 const network = createResourceNetwork()
-function skipCommunitySyncInCI() {
-  const flags = [process.env.CI, process.env.CF_PAGES, process.env.GITHUB_ACTIONS]
-  const remoteBuild = flags.some((value) => /^(1|true)$/i.test(value || ''))
-  if (remoteBuild) console.log('Using bundled resource snapshots; community sync is paused.')
-  return remoteBuild
-}
-
 module.exports = {
-  skipCommunitySyncInCI,
   fetchResource: network.fetchResource,
   createResourceNetwork,
   localProxy,

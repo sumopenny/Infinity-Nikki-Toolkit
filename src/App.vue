@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { communityResourcesPaused } from './communityResources'
 import AlbumNoteNotice from './components/AlbumNoteNotice.vue'
 import {
   inspectAlbumNotes,
@@ -855,8 +854,8 @@ watch(
         ? `compat:${directoryState.value.type !== 'none' ? directoryState.value.name : ''}`
         : directory!.name,
       resolveActionCandidateUids,
-      !communityResourcesPaused && enabled,
-      !communityResourcesPaused && enabled && previous?.[0] === false
+      enabled,
+      enabled && previous?.[0] === false
     )
   },
   { immediate: true }
@@ -1623,7 +1622,6 @@ async function updateOutfitLibrary(announce = true, promptSharedAccess = announc
 
 /** 切换相册视图并清空上个视图的选中状态（重复点击当前视图不清空）。参数：view 为目标视图；电脑端进入搭配码时按用户偏好显示操作指南。 */
 function changeAlbumView(view: AlbumView) {
-  if (communityResourcesPaused && (view === 'wardrobe' || view === 'resonance')) return
   if (navigationBusy.value) return
   if (view === 'trash' && isCompatibleAlbum.value) {
     showStatus({ message: compatibleMessages.value.trash, tone: 'info' })
@@ -1770,7 +1768,6 @@ function openOutfitEditor(outfit: OutfitItem | null = null) {
 
 /** 打开搭配码解析窗口。参数：目标搭配方案或直接输入的搭配码；空值时忽略。 */
 function openOutfitParse(target: OutfitItem | string) {
-  if (communityResourcesPaused) return
   const code = normalizeOutfitCode(typeof target === 'string' ? target : target.code)
   if (!code) return
   parsingOutfitCode.value = code
@@ -1795,7 +1792,6 @@ function closeOutfitParse() {
 }
 
 function openParseTools() {
-  if (communityResourcesPaused) return
   isParseToolsVisible.value = true
 }
 
@@ -1804,7 +1800,6 @@ function closeParseTools() {
 }
 
 function parseToolsOutfitCode(code: string) {
-  if (communityResourcesPaused) return
   const normalizedCode = normalizeOutfitCode(code)
   if (!normalizedCode) return
   reopenParseToolsAfterOutfitClose.value = true
@@ -1841,14 +1836,12 @@ async function editPhotoNote(photo: PhotoDisplayItem | null) {
 }
 
 function openPhotoParams(photo: PhotoDisplayItem, share = false) {
-  if (communityResourcesPaused) return
   autoSharePhoto.value = share
   if (!isAlbumPhoto(photo)) return
   reopenParseToolsAfterPhotoClose.value = false
   return photoParams.openForPhoto(photo as PhotoItem)
 }
 async function parseHeaderCameraParams(input?: string) {
-  if (communityResourcesPaused) return
   const raw = (input ?? normalizedCameraParamsInput.value).trim()
   if (!raw) return
   reopenParseToolsAfterPhotoClose.value = true
@@ -2563,9 +2556,7 @@ function importAllDataFromMenu() {
                 :data-tooltip="locale.grid.autoParseActionsHint"
               >
                 <input
-                  :checked="!communityResourcesPaused && autoParseActionsEnabled"
-                  :disabled="communityResourcesPaused"
-                  @change="autoParseActionsEnabled = ($event.target as HTMLInputElement).checked"
+                  v-model="autoParseActionsEnabled"
                   class="app-checkbox"
                   style="--checkbox-size: 17px"
                   type="checkbox"
@@ -2753,9 +2744,7 @@ function importAllDataFromMenu() {
                 :data-tooltip="locale.grid.autoParseActionsHint"
               >
                 <input
-                  :checked="!communityResourcesPaused && autoParseActionsEnabled"
-                  :disabled="communityResourcesPaused"
-                  @change="autoParseActionsEnabled = ($event.target as HTMLInputElement).checked"
+                  v-model="autoParseActionsEnabled"
                   class="app-checkbox"
                   style="--checkbox-size: 17px"
                   type="checkbox"
@@ -3059,7 +3048,7 @@ function importAllDataFromMenu() {
     />
 
     <ParseToolsDialog
-      :visible="!communityResourcesPaused && isParseToolsVisible"
+      :visible="isParseToolsVisible"
       :camera-params="cameraParamsInput"
       :outfit-code="parseCodeInput"
       :outfit-max-length="MAX_OUTFIT_CODE_LENGTH"
@@ -3082,7 +3071,7 @@ function importAllDataFromMenu() {
       @update:outfit-code="parseCodeInput = $event"
       @parse-camera="parseHeaderCameraParams"
       @parse-outfit="parseToolsOutfitCode"
-      @upload="!communityResourcesPaused && photoParams.openForFile($event)"
+      @upload="photoParams.openForFile"
     />
 
     <FortuneTimeDialog

@@ -315,7 +315,6 @@ function templateValue(value) {
 }
 
 async function main() {
-  if (resourceNetwork.skipCommunitySyncInCI()) return
   const args = parseArgs(process.argv.slice(2))
   const manifestSource =
     args.manifest ??

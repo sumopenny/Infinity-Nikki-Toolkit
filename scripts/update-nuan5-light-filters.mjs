@@ -164,7 +164,6 @@ export async function updateLightFilters({
 }
 
 async function main() {
-  if (resourceNetwork.skipCommunitySyncInCI()) return
   const args = process.argv.slice(2)
   const option = (name) => {
     const index = args.indexOf(name)

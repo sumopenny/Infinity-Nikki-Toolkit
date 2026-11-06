@@ -1,4 +1,3 @@
-import '../helpers/enableCommunityResources'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { messages } from '../../src/i18n'

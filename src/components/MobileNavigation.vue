@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { communityResourcesPaused } from '../communityResources'
 import { Camera, House, Shirt, Sparkles } from 'lucide-vue-next'
 import type { AlbumView } from './AlbumViewSwitcher.vue'
 import type { LocaleMessages } from '../i18n'
@@ -24,7 +23,7 @@ defineEmits<{ changeView: [view: AlbumView] }>()
       ]"
       :key="entry.view"
       type="button"
-      :disabled="disabled || (communityResourcesPaused && entry.view === 'resonance')"
+      :disabled="disabled"
       :aria-current="
         activeView === entry.view || (entry.view === 'resonance' && activeView === 'wardrobe')
           ? 'page'

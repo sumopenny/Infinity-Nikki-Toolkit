@@ -1,4 +1,3 @@
-import '../helpers/enableCommunityResources'
 import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
 import * as unifiedImport from '../../src/utils/unifiedDataImport'
 import * as resonanceImport from '../../src/utils/resonance/resonanceImport'

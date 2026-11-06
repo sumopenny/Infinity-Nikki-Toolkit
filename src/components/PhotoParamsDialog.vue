@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { communityResourcesPaused } from '../communityResources'
 import { computed, defineAsyncComponent, ref, toRef, watch } from 'vue'
 import type { Language } from '../i18n'
 import { outfitMessages } from '../i18n/messages/outfit'
@@ -56,9 +55,7 @@ const layoutStorageKey = 'nikki-photo-params-layout'
 const sideBySide = ref(readLocalStorage(layoutStorageKey) !== 'stack')
 // 只记录用户选择，窄屏回退不覆盖桌面布局偏好。
 watch(sideBySide, (split) => writeLocalStorage(layoutStorageKey, split ? 'split' : 'stack'))
-const splitLayout = computed(
-  () => !communityResourcesPaused && sideBySide.value && !compact.value && !!props.result?.outfit
-)
+const splitLayout = computed(() => sideBySide.value && !compact.value && !!props.result?.outfit)
 const layoutLabel = computed(() =>
   props.language === 'en'
     ? splitLayout.value
@@ -115,7 +112,7 @@ function markImageFailed(title: string, name: string) {
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear @before-leave="(el) => el.setAttribute('inert', '')">
+    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
       <div
         v-if="visible"
         class="dialog-overlay fortune-time-dialog photo-params-overlay"
@@ -138,7 +135,6 @@ function markImageFailed(title: string, name: string) {
             </div>
             <button
               v-if="canShare"
-              :disabled="communityResourcesPaused"
               type="button"
               :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
               :title="language === 'en' ? 'Export share image' : '导出分享图'"
@@ -146,7 +142,7 @@ function markImageFailed(title: string, name: string) {
               ><Share2 :size="18"
             /></button>
             <button
-              v-if="!communityResourcesPaused && result?.outfit && !compact"
+              v-if="result?.outfit && !compact"
               type="button"
               class="photo-params-layout-button"
               :aria-label="layoutLabel"
@@ -264,9 +260,7 @@ function markImageFailed(title: string, name: string) {
                       >
                         <img
                           v-if="
-                            !communityResourcesPaused &&
-                            group.imageUrl &&
-                            !failedImages.has(resourceKey(group.title, group.name))
+                            group.imageUrl && !failedImages.has(resourceKey(group.title, group.name))
                           "
                           :src="group.imageUrl"
                           :alt="group.name"
@@ -284,10 +278,7 @@ function markImageFailed(title: string, name: string) {
                     </section>
                   </div>
                 </div>
-                <section
-                  v-if="!communityResourcesPaused && result.outfit"
-                  class="photo-params-section photo-params-outfit"
-                >
+                <section v-if="result.outfit" class="photo-params-section photo-params-outfit">
                   <div class="photo-params-outfit-heading">
                     <h3>{{ language === 'en' ? 'Outfit and dyes' : '穿搭与染色' }}</h3>
                     <span class="photo-params-outfit-count">{{

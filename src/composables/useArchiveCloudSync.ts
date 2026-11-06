@@ -1,4 +1,3 @@
-import { communityResourcesPaused } from '../communityResources'
 import { computed, inject, onMounted, ref, shallowRef, type InjectionKey } from 'vue'
 import { useCloudSession } from './useCloudSession'
 import {
@@ -30,7 +29,7 @@ type Phase = 'idle' | 'preparing' | 'ready' | 'submitting' | 'conflict' | 'uncer
 export function useArchiveCloudSync(
   run: <T>(task: () => Promise<T>) => Promise<T> = (task) => task()
 ) {
-  const session = useCloudSession(!communityResourcesPaused)
+  const session = useCloudSession()
   const visible = ref(false),
     checking = ref(true),
     authBusy = ref(false)
@@ -144,7 +143,7 @@ export function useArchiveCloudSync(
     }
   }
   async function open(next: ArchiveDialogAction) {
-    if (communityResourcesPaused || busy.value || checking.value) return
+    if (busy.value || checking.value) return
     action.value = next
     visible.value = true
     phase.value = 'idle'
@@ -248,7 +247,7 @@ export function useArchiveCloudSync(
   }
   onMounted(async () => {
     try {
-      if (!communityResourcesPaused) await session.refresh()
+      await session.refresh()
     } catch {
       /* 本地功能不依赖云服务。 */
     } finally {

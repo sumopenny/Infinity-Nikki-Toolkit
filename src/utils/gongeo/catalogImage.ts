@@ -1,11 +1,8 @@
-import { communityResourcesPaused } from '../../communityResources'
-
 /** 公共图鉴图片路径集中管理；仅使用现有原图来源，不接入转换服务。 */
 export function getCatalogImageSource(
   kind: 'outfit' | 'item' | 'icon' | 'makeup',
   id: string | number
 ) {
-  if (communityResourcesPaused) return '/catalog-placeholder.svg'
   const directories = {
     outfit: 'outfits',
     item: 'items',

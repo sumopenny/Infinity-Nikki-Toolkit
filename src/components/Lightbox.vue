@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { communityResourcesPaused } from '../communityResources'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   ChevronLeft,
@@ -443,7 +442,7 @@ onUnmounted(() => {
               type="button"
               :title="messages.parsePhoto"
               :aria-label="messages.parsePhoto"
-              :disabled="communityResourcesPaused || photoActionsDisabled"
+              :disabled="photoActionsDisabled"
               @click="!photoActionsDisabled && emit('parsePhoto')"
               ><ScanSearch :size="18"
             /></button>

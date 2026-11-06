@@ -1,4 +1,3 @@
-import '../helpers/enableCommunityResources'
 import { flushPromises, mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 import OutfitSummaryDialog from '../../src/components/OutfitSummaryDialog.vue'

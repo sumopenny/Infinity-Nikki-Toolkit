@@ -1,4 +1,3 @@
-import { homeCoverForDisplay } from '../../communityResources'
 import {
   databaseRequest as homeRequest,
   runDatabaseTransaction as homeTransaction
@@ -98,10 +97,7 @@ export async function readHomeSchemeSnapshot(): Promise<HomeSchemeSnapshot> {
 
 /** 列表只提供元数据，本地图片由可见卡片或编辑器按 ID 读取。 */
 function displayHomeScheme(record: HomeSchemeRecord): HomeSchemeItem {
-  return {
-    ...record,
-    imageUrl: record.image ? null : homeCoverForDisplay(record.metadata.coverImageUrl)
-  }
+  return { ...record, imageUrl: record.image ? null : record.metadata.coverImageUrl }
 }
 
 /** 按需读取单张封面，保留缺图和大小校验。 */

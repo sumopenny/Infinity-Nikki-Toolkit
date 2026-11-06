@@ -118,7 +118,6 @@ export async function updateGalleryPoses({
 }
 
 async function main() {
-  if (resourceNetwork.skipCommunitySyncInCI()) return
   const args = parseArgs(process.argv.slice(2))
   const catalogPath = resolve(process.cwd(), args.catalog ?? 'src/data/nuan5ResourceCatalog.json')
   const apiBase = args.api ?? process.env.NIKKIGALLERY_API_BASE ?? DEFAULT_GALLERY_API

@@ -1,4 +1,3 @@
-import './helpers/enableCommunityResources'
 import { useModuleOperation } from '../src/composables/useOperationCoordinator'
 import { useArchiveCloud, type ArchiveCloudSync } from '../src/composables/useArchiveCloudSync'
 import * as cameraStorage from '../src/utils/photo-params/favorites'

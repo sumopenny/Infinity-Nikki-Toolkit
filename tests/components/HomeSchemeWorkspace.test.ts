@@ -1,3 +1,4 @@
+import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
 vi.mock('../../src/utils/imageSelection', () => ({
   validateSelectedImage: vi.fn().mockResolvedValue(undefined)
 }))
@@ -365,16 +366,13 @@ it('does not release an in-flight deletion merely because the component unmounts
   expect(coordinator.isBusy.value).toBe(false)
 })
 
-it.each([
-  ['https://x6cn-home-design-photo.nuanpaper.com/fixture.png', true],
-  ['https://x6cn-home-design-photo.nuanpaper.com.example.invalid/fixture.png', false],
-  ['https://example.invalid/fixture.png', false]
-])('accepts only official home covers while resources are paused: %s', async (url, allowed) => {
+it('reports the displayed home cover failure while preserving the editor', async () => {
+  const capture = vi.spyOn(diagnosticReporter, 'reportError').mockReturnValue('test-event')
   vi.mocked(parseHomeScheme).mockResolvedValue({
     code: 'CODE1',
     name: 'fixture',
     templateType: 0,
-    coverImage: String(url),
+    coverImage: 'https://example.invalid/fixture.png',
     lastModifyTime: 0,
     version: '2.10',
     furnitureCount: 7,
@@ -390,14 +388,23 @@ it.each([
     await wrapper.vm.$nextTick()
     await vi.advanceTimersByTimeAsync(450)
     await flushPromises()
-    expect(parseHomeScheme).toHaveBeenCalled()
-    const image = document.querySelector<HTMLImageElement>('.home-scheme-editor img')
-    if (allowed) expect(image?.src).toBe(url)
-    else expect(image).toBeNull()
+    const image = document.querySelector<HTMLImageElement>('.home-scheme-editor img')!
+    expect(image).not.toBeNull()
+    image.dispatchEvent(new Event('error'))
+    await flushPromises()
+    expect(capture).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        module: 'home-schemes',
+        code: 'IMAGE_PREVIEW_FAILED',
+        stage: 'preview-element'
+      })
+    )
     expect(document.querySelector('.home-scheme-editor')).not.toBeNull()
-    expect(wrapper.emitted('status')?.at(-1)?.[1]).toBe('success')
+    expect(wrapper.emitted('status')?.at(-1)?.[1]).toBe('error')
   } finally {
     wrapper.unmount()
+    capture.mockRestore()
   }
 })
 

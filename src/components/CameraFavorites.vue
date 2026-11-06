@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { communityResourcesPaused } from '../communityResources'
 import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
 import {
@@ -298,12 +297,7 @@ watch(modal, async (visible) => {
 watch(
   () => normalizeCameraCode(code.value),
   (normalized) => {
-    if (
-      communityResourcesPaused ||
-      !editor.value ||
-      (parsed.value && normalized === parsedCode.value)
-    )
-      return
+    if (!editor.value || (parsed.value && normalized === parsedCode.value)) return
     cancelAutoParse()
     parsed.value = null
     parsedCode.value = ''
@@ -386,9 +380,7 @@ function showPreviewDetails() {
   previewId.value = null
 }
 const resources = favoriteResources
-const compactResourceCover = computed(
-  () => !communityResourcesPaused && compact.value && props.thumbnailSize === 'small'
-)
+const compactResourceCover = computed(() => compact.value && props.thumbnailSize === 'small')
 
 /** 手机小图的无封面卡片仅展示有图片的灯光和滤镜，详情仍保留完整资源信息。 */
 function cardResources(result: PhotoParamsResult) {
@@ -594,7 +586,6 @@ async function openFromResult(
   })
 }
 async function parse() {
-  if (communityResourcesPaused) return
   if (disposed || !editor.value || !normalizeCameraCode(code.value)) return
   if (parsed.value && normalizeCameraCode(code.value) === parsedCode.value) return
   const raw = code.value
@@ -979,7 +970,7 @@ function handleImportChoices(value: typeof choices.value) {
           type="button"
           :aria-label="t('添加收藏', 'Add favorite')"
           :title="t('添加收藏', 'Add favorite')"
-          :disabled="communityResourcesPaused || busy"
+          :disabled="busy"
           @click="openEditor()"
           ><Plus :size="15" aria-hidden="true" /><span class="collection-action-label">{{
             t('添加收藏', 'Add favorite')
@@ -1063,7 +1054,7 @@ function handleImportChoices(value: typeof choices.value) {
           >
             <div v-for="group in cardResources(item.result)" :key="group.kind">
               <img
-                v-if="!communityResourcesPaused && group.imageUrl"
+                v-if="group.imageUrl"
                 :src="group.imageUrl"
                 :alt="group.name"
                 loading="lazy"
@@ -1266,13 +1257,12 @@ function handleImportChoices(value: typeof choices.value) {
               <textarea
                 id="camera-favorite-code"
                 v-model="code"
-                :disabled="communityResourcesPaused"
                 maxlength="100000"
                 rows="3"
                 :placeholder="t('粘贴相机参数码', 'Paste a camera parameter code')"
                 required
               />
-              <div v-if="!communityResourcesPaused" class="camera-parse-status" aria-live="polite"
+              <div class="camera-parse-status" aria-live="polite"
                 ><span>{{
                   parsing
                     ? t('解析中…', 'Parsing…')

@@ -1,30 +1,16 @@
 import { onRequestGet as shareImageRequest } from './functions/api/share-image'
-import {
-  communityResourcesPaused,
-  isPausedCommunityRoute,
-  officialHomeCoverOrigin
-} from './src/communityResources'
-import { defineConfig, loadEnv, type Plugin, type Connect } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { assertDiagnosticsBuild } from './scripts/error-build-policy.mjs'
 import { errorBuildInfo } from './scripts/error-build'
 import { resonanceCloudProxy } from './scripts/resonance-cloud-proxy'
 import { onRequestPost as forwardPearpalRequest } from './functions/api/resonance/pearpal'
 
-const blockPausedResources: Connect.NextHandleFunction = (req, res, next) => {
-  if (!isPausedCommunityRoute(new URL(req.url ?? '/', 'http://localhost').pathname)) return next()
-  res.writeHead(503, { 'cache-control': 'no-store' }).end()
-}
-
 /** 本地开发复用 Pages Function：只接受固定 POST 动作，并沿用凭据校验、超时与禁缓存响应。 */
 function localPearpalApi(): Plugin {
   return {
     name: 'local-pearpal-api',
-    configurePreviewServer(server) {
-      server.middlewares.use(blockPausedResources)
-    },
     configureServer(server) {
-      server.middlewares.use(blockPausedResources)
       server.middlewares.use('/api/share-image', async (req, res) => {
         if (req.method !== 'GET') {
           res.statusCode = 405
@@ -156,26 +142,7 @@ export default defineConfig(({ mode, command }) => {
       }
 
   return {
-    plugins: [
-      vue(),
-      localPearpalApi(),
-      {
-        name: 'paused-community-network',
-        transformIndexHtml() {
-          if (!communityResourcesPaused) return
-          return [
-            {
-              tag: 'meta',
-              injectTo: 'head-prepend',
-              attrs: {
-                'http-equiv': 'Content-Security-Policy',
-                content: `img-src 'self' blob: data: ${officialHomeCoverOrigin}; connect-src 'self' blob: data:`
-              }
-            }
-          ]
-        }
-      }
-    ],
+    plugins: [vue(), localPearpalApi()],
     define: { __ERROR_BUILD__: JSON.stringify(diagnosticBuild) },
     build: { sourcemap: false },
     server: {

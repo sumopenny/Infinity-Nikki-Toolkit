@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { communityResourcesPaused } from '../communityResources'
 import { vCardReveal } from '../utils/cardReveal'
 import { computed, onBeforeUnmount } from 'vue'
 import { Check, Edit3, Heart, ScanSearch, Share2 } from 'lucide-vue-next'
@@ -110,7 +109,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
       <div class="date-block-header">
         <h2
           ><img
-            v-if="!communityResourcesPaused && group.actionImageUrl"
+            v-if="group.actionImageUrl"
             class="action-group-image"
             :src="group.actionImageUrl"
             :alt="group.title"
@@ -158,7 +157,6 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
             <button
               class="card-share-button"
               type="button"
-              :disabled="communityResourcesPaused"
               :title="language === 'en' ? 'Export share image' : '导出分享图'"
               :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
               @click.stop="emit('sharePhoto', photo)"
@@ -169,7 +167,6 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
             <button
               class="photo-params-parse"
               type="button"
-              :disabled="communityResourcesPaused"
               :title="messages.parsePhoto"
               :aria-label="messages.parsePhoto"
               @click.stop="emit('parsePhoto', photo)"
