@@ -4,6 +4,8 @@ These catalogs and name translations come from the GitHub repository [dastrokes/
 
 The source project is licensed under MIT; its license is included in this directory. Refresh these catalog and locale files together from the upstream project when updating the mapping snapshot.
 
+The bilingual `item.json` and `makeup.json` files are shared directly by the frontend. No merged name JSON is generated. Makeup translations must have matching Chinese/English IDs, and updates removing any existing makeup ID are rejected before writing.
+
 Run `npm run resources:update:gongeo` to check the upstream catalog. The updater reads only the remote source; it never falls back to a neighboring checkout. Failed downloads keep the existing project snapshot. With `--strict`, the command also exits unsuccessfully.
 
 `catalogSource.json` records the source URL, game version and generation time of the verified snapshot. Older versions, older snapshots within the same version, missing files, invalid records, empty translations, incorrect SHA-256/byte counts, and changes removing more than 2% of a file's existing IDs or translation keys are rejected before any data is written. All downloads and validations complete first, and the remote index is checked again before writing. Same-version content corrections are allowed. Metadata is recorded after the catalog files; identical content is not rewritten.

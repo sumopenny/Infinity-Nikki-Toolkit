@@ -1,12 +1,13 @@
 # 正式数据目录
 
-本次整理于 2026-11-06。正式数据共 22 个 JSON；图片已接入 ImageKit。
+本次整理于 2026-11-06。正式数据共 23 个 JSON；图片已接入 ImageKit。
+
+完整来源审计、FModel 导出清单、字段解析规则、JSON 契约及新增数据维护流程保存在仓库外的本机文档 `D:/desktop/wasm/解包与数据迁移/FMODEL_DATA_MAINTENANCE.md`。其中明确区分自行解包整理的数据与 GitHub 同步数据，并记录映射辅助依据和旧脚本的重跑限制。
 
 | 路径 | 数量 | 来源与用途 |
 |---|---:|---|
 | `gongeo/*.json` | 9 | GitHub 目录及本地派生的筛选、来源记录 |
-| `gongeo/locales/{zh,en}/{item,outfit,banner}.json` | 6 | GitHub 中英文名称 |
-| `itemCatalog.json` | 1 | GitHub 部件、整妆名称合并生成 |
+| `gongeo/locales/{zh,en}/{item,outfit,banner,makeup}.json` | 8 | GitHub 中英文名称，包含整妆名称 |
 | `photo/photoResourceCatalog.json` | 1 | 自有拍照资源目录及图片映射 |
 | `wardrobe/itemImageMap.json` | 1 | ID 到自有 Showpic 图片文件名映射 |
 | `wardrobe/itemIconMap.json` | 1 | 游戏 V2 配置中的部件图标引用 |
@@ -16,8 +17,9 @@
 ## GitHub 数据
 
 默认仓库：https://github.com/dastrokes/gongeo.us-nikki-tracker ，分支 master。
-使用 `scripts/update-gongeo-catalog.mjs` 同步 gongeo 下的 15 个 JSON，使用
-`scripts/generate-item-catalog.cjs --remote` 生成 itemCatalog.json。
+使用 `scripts/update-gongeo-catalog.mjs` 统一同步 gongeo 下的 17 个 JSON。
+衣橱、共鸣、搭配解析及分享共用原始部件名称；解析所需的整妆名称来自双语 makeup.json。
+名称查询索引仅在内存生成，不再生成合并名称 JSON。同步时检查整妆双语 ID 一致及既有 ID 保留，下载或校验失败则保留现有快照。
 实际版本见 `gongeo/catalogSource.json`。
 
 套装名称仅使用 GitHub 版本，不引入外部输出目录中的 outfit.zh.json / outfit.en.json，

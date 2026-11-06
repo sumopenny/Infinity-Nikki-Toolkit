@@ -2,10 +2,6 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const http = require('node:http')
 const net = require('node:net')
-const { mkdtemp, mkdir, copyFile, writeFile, readFile, rm } = require('node:fs/promises')
-const { tmpdir } = require('node:os')
-const { join, resolve } = require('node:path')
-const { spawn } = require('node:child_process')
 const {
   createResourceNetwork,
   localProxy,
@@ -221,80 +217,4 @@ test('NO_PROXY bypasses discovery for matching hosts and local endpoints', async
   t.after(() => network.close())
   assert.equal(await network.fetchResource('https://resources.example.test'), 'direct')
   assert.equal(await network.fetchResource('http://127.0.0.1:5173'), 'direct')
-})
-
-test('item updater CLI retains its local snapshot and continues, while explicit strict mode fails', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'nikki-resource-network-'))
-  t.after(() => rm(directory, { recursive: true, force: true }))
-  await mkdir(join(directory, 'scripts'))
-  await mkdir(join(directory, 'src/data'), { recursive: true })
-  for (const file of ['resource-network.cjs', 'generate-item-catalog.cjs'])
-    await copyFile(resolve(__dirname, '../scripts', file), join(directory, 'scripts', file))
-  const snapshot = '{"existing":"local snapshot"}\n'
-  const output = join(directory, 'src/data/itemCatalog.json')
-  await writeFile(output, snapshot)
-  const target = await listen(
-    t,
-    http.createServer((_, response) => {
-      response.writeHead(503)
-      response.end('unavailable')
-    })
-  )
-  for (const strict of [false, true]) {
-    const result = await new Promise((resolveResult, reject) => {
-      const child = spawn(
-        process.execPath,
-        [
-          join(directory, 'scripts/generate-item-catalog.cjs'),
-          '--remote',
-          '--base-url',
-          target,
-          ...(strict ? ['--strict'] : [])
-        ],
-        {
-          env: { ...process.env, NO_PROXY: '*', NODE_PATH: resolve(__dirname, '../node_modules') },
-          windowsHide: true
-        }
-      )
-      let text = ''
-      child.stdout.on('data', (data) => {
-        text += data
-      })
-      child.stderr.on('data', (data) => {
-        text += data
-      })
-      child.on('error', reject)
-      child.on('close', (code) => resolveResult({ code, text }))
-    })
-    assert.equal(result.code, strict ? 1 : 0, result.text)
-    assert.match(result.text, /503/)
-    assert.equal(await readFile(output, 'utf8'), snapshot)
-  }
-})
-
-// 无默认本机目录时应直接提示用法，不读取或改写已有图鉴。
-test('item updater requires an explicit local source or remote mode', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'nikki-item-source-'))
-  t.after(() => rm(directory, { recursive: true, force: true }))
-  const output = join(directory, 'catalog.json')
-  await writeFile(output, '{"kept":true}')
-  const result = await new Promise((resolveResult, reject) => {
-    const child = spawn(
-      process.execPath,
-      [resolve(__dirname, '../scripts/generate-item-catalog.cjs'), '--out', output],
-      {
-        env: { ...process.env, GONGEO_ROOT: '' },
-        windowsHide: true
-      }
-    )
-    let stderr = ''
-    child.stderr.on('data', (data) => {
-      stderr += data
-    })
-    child.on('error', reject)
-    child.on('close', (code) => resolveResult({ code, stderr }))
-  })
-  assert.equal(result.code, 1)
-  assert.match(result.stderr, /Specify a Gongeo directory or --remote/)
-  assert.equal(await readFile(output, 'utf8'), '{"kept":true}')
 })

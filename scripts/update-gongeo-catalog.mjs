@@ -281,6 +281,13 @@ const validateLocale = (language, name, value) => {
   ) {
     throw problem('Gongeo ' + language + '/' + name + ' 翻译为空或结构无效')
   }
+  if (
+    name === 'makeup' &&
+    !Object.entries(value).every(
+      ([key, entry]) => /^makeup\.[1-9]\d*\.name$/u.test(key) && entry.trim()
+    )
+  )
+    throw problem('Gongeo 整妆名称 ID 或名称无效')
 }
 
 async function readOptional(file) {
@@ -350,6 +357,9 @@ const guardExistingEntries = (relative, current, next) => {
   if (!current) return
   const oldIds = new Set(entryKeys(relative, current))
   const removed = [...oldIds].filter((id) => !newIds.has(id)).length
+  if (relative.endsWith('/makeup.json') && removed > 0) {
+    throw problem(relative + ' 丢失既有整妆名称', 'GONGEO_INCOMPLETE')
+  }
   if (oldIds.size && removed / oldIds.size > MAX_REMOVED_RATIO) {
     throw problem(
       relative + ' 丢失 ' + removed + '/' + oldIds.size + ' 个现有条目，超过 2% 上限',
@@ -396,12 +406,17 @@ export async function updateGongeoCatalog(options = {}) {
     entries.set(name + '.json', value)
   }
   for (const language of LOCALES) {
-    for (const name of ['item', 'outfit', 'banner']) {
+    for (const name of ['item', 'outfit', 'banner', 'makeup']) {
       const path = 'app/locales/' + language + '/' + name + '.json'
       const value = parseJson(await fetchText(root + '/' + path, timeoutMs), path)
       validateLocale(language, name, value)
       entries.set('locales/' + language + '/' + name + '.json', value)
     }
+  }
+  const zhMakeupKeys = Object.keys(entries.get('locales/zh/makeup.json')).sort()
+  const enMakeupKeys = Object.keys(entries.get('locales/en/makeup.json')).sort()
+  if (JSON.stringify(zhMakeupKeys) !== JSON.stringify(enMakeupKeys)) {
+    throw problem('整妆中英文 ID 不一致', 'GONGEO_INCOMPLETE')
   }
   if (!entries.has('banners.json')) {
     const source = await fetchText(root + '/data/banners.ts', timeoutMs)

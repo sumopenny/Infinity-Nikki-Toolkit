@@ -5,11 +5,11 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "resources:update": "npm run resources:update:startup",
-    "resources:update:items": "node scripts/generate-item-catalog.cjs --remote",
+    "resources:update:items": "npm run resources:update:gongeo",
     "resources:update:poses": "node scripts/validate-photo-catalog.mjs",
     "resources:update:light-filters": "node scripts/validate-photo-catalog.mjs",
     "resources:update:gongeo": "node scripts/update-gongeo-catalog.mjs",
-    "resources:update:startup": "npm run resources:update:items && npm run resources:update:gongeo",
+    "resources:update:startup": "npm run resources:update:gongeo",
     "predev": "npm run resources:update:startup",
     "build": "vue-tsc --noEmit && vite build",
     "build:cloudflare": "npm run resources:update:startup && npm run build",

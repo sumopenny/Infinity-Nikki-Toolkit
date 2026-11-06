@@ -135,7 +135,7 @@ function fixtures(published = false): Fixture {
     ])
   )
   for (const language of ['zh', 'en']) {
-    for (const name of ['item', 'outfit', 'banner']) {
+    for (const name of ['item', 'outfit', 'banner', 'makeup']) {
       const count = name === 'banner' ? 70 : 100
       const first = name === 'item' ? 1000 : name === 'outfit' ? 2000 : 1
       const locale = Object.fromEntries(
@@ -205,6 +205,28 @@ afterEach(async () => {
 })
 
 describe('Gongeo catalog updater', () => {
+  it('rejects missing makeup IDs, mismatched languages and failed downloads before writing', async () => {
+    const { fixture, outputDir } = await initialize()
+    const before = await snapshot(outputDir)
+    const zhUrl = baseUrl + '/app/locales/zh/makeup.json'
+    const enUrl = baseUrl + '/app/locales/en/makeup.json'
+    const zh = fixture.responses.get(zhUrl)!
+    const en = fixture.responses.get(enUrl)!
+    fixture.responses.delete(enUrl)
+    await expect(updateGongeoCatalog({ baseUrl, outputDir })).rejects.toThrow()
+    expect(await snapshot(outputDir)).toEqual(before)
+    fixture.responses.set(enUrl, en)
+    const reduced = JSON.parse(zh)
+    delete reduced['makeup.1.name']
+    fixture.responses.set(zhUrl, JSON.stringify(reduced))
+    await expect(updateGongeoCatalog({ baseUrl, outputDir })).rejects.toThrow('中英文 ID 不一致')
+    expect(await snapshot(outputDir)).toEqual(before)
+    const reducedEn = JSON.parse(en)
+    delete reducedEn['makeup.1.name']
+    fixture.responses.set(enUrl, JSON.stringify(reducedEn))
+    await expect(updateGongeoCatalog({ baseUrl, outputDir })).rejects.toThrow('丢失既有整妆名称')
+    expect(await snapshot(outputDir)).toEqual(before)
+  })
   it.each([false, true])(
     'downloads a complete remote snapshot and skips identical content (published banners: %s)',
     async (published) => {
@@ -213,8 +235,8 @@ describe('Gongeo catalog updater', () => {
       const fetchMock = mockRemote(fixture)
       const result = await updateGongeoCatalog({ baseUrl, outputDir })
       expect(result).toEqual({
-        updated: 14,
-        total: 14,
+        updated: 16,
+        total: 16,
         version: '2.10.1',
         generatedAt,
         source: baseUrl

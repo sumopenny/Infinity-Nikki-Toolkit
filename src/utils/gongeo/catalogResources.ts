@@ -23,6 +23,10 @@ export const catalogResources = {
   palettes: resource(() => import('../../data/gongeo/palettes.json'))
 }
 const names = {
+  makeup: {
+    zh: resource(() => import('../../data/gongeo/locales/zh/makeup.json')),
+    en: resource(() => import('../../data/gongeo/locales/en/makeup.json'))
+  },
   item: {
     zh: resource(() => import('../../data/gongeo/locales/zh/item.json')),
     en: resource(() => import('../../data/gongeo/locales/en/item.json'))
@@ -34,7 +38,7 @@ const names = {
 }
 
 export function loadCatalogNames(
-  kind: 'item' | 'outfit',
+  kind: 'item' | 'outfit' | 'makeup',
   language: Language
 ): Promise<Record<string, string>> {
   return names[kind][language]()
