@@ -1306,39 +1306,6 @@
   position: relative;
 }
 
-.outfit-image-spinner {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 22px;
-  height: 22px;
-  margin: -11px 0 0 -11px;
-  border: 3px solid color-mix(in srgb, var(--line) 72%, transparent);
-  border-top-color: color-mix(in srgb, var(--pink-deep) 72%, var(--muted));
-  border-radius: 50%;
-  animation: outfit-image-spin 700ms linear infinite;
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .outfit-image-spinner {
-    border: 3px solid rgba(228, 213, 206, 0.72);
-    border-top-color: rgba(188.12, 135.08, 135.4, 1);
-    border-radius: 50%;
-  }
-
-  :where(:root[data-theme='dark']) .outfit-image-spinner {
-    border: 3px solid rgba(99, 87, 92, 0.72);
-    border-top-color: rgba(223.32, 174.32, 174.36, 1);
-    border-radius: 50%;
-  }
-}
-
-@keyframes outfit-image-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .outfit-parse-item-button {
   display: block;
   width: 100%;
@@ -1746,9 +1713,6 @@
   background: var(--frame-bg);
   color: var(--muted);
   font-size: 14px;
-}
-.outfit-detail-image-placeholder .outfit-image-spinner {
-  position: static;
 }
 
 /* 搭配码部件详情与衣橱共用形态导航，染色区域继续使用原有双栏。 */

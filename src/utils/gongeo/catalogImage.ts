@@ -32,3 +32,12 @@ export function getCatalogImageSource(
 
 export const catalogImageLoading = (index: number) => (index < 6 ? 'eager' : 'lazy')
 export const catalogImagePriority = (index: number) => (index === 0 ? 'high' : 'auto')
+
+/** Keep presentation placeholders out of persistent records. */
+export function getCatalogRecordImage(
+  kind: Parameters<typeof getCatalogImageSource>[0],
+  id: string | number
+) {
+  const source = getCatalogImageSource(kind, id)
+  return source === catalogImagePlaceholder ? '' : source
+}

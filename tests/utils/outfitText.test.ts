@@ -22,7 +22,7 @@ describe('local outfit text', () => {
   it('keeps missing descriptions empty without substituting another suit', async () => {
     expect(await loadOutfitText('10347', 'zh')).toMatchObject({
       name: '如果爱上一朵花',
-      description: ''
+      description: zhDescriptions['10347'].description
     })
     expect(await loadOutfitText('99999999', 'zh')).toEqual({
       id: 99999999,

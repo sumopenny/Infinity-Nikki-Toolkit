@@ -1,7 +1,6 @@
 import { catalogResources, loadCatalogNames } from '../gongeo/catalogResources'
-import { getCatalogImageSource } from '../gongeo/catalogImage'
+import { getCatalogRecordImage } from '../gongeo/catalogImage'
 import { getBannerMeta, loadResonanceBanners, localizedName } from './resonanceBanners'
-import { getResonancePartIconUrl } from './resonanceView'
 import type {
   ResonanceBanner,
   ResonanceLocalizedName,
@@ -169,7 +168,7 @@ function createCatalog({
           const parts: ResonanceSet['parts'] = itemIds.map((itemId) => ({
             id: itemId,
             name: getItemName(itemId),
-            imageUrl: getResonancePartIconUrl(itemId),
+            imageUrl: getCatalogRecordImage('icon', itemId),
             pullNumber: 0
           }))
           let totalPulls = 0
@@ -196,7 +195,7 @@ function createCatalog({
           outfitId: id,
           outfitName: getOutfitName(id),
           rarity,
-          outfitImageUrl: getCatalogImageSource('outfit', displayId),
+          outfitImageUrl: getCatalogRecordImage('outfit', displayId),
           sets: [makeSet(1), makeSet(2)]
         }
       })

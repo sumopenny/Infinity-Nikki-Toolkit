@@ -1,3 +1,4 @@
+import { resolveResourceImage } from './photo-params/resourceManifest'
 import brandMarkUrl from '../../img/brand-mark.png'
 import { isImageKitResource, optimizedImageKitUrl } from './imagekit'
 import poseBackgroundUrl from '../../img/星梦.webp'
@@ -375,7 +376,10 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
       await Promise.all(
         result.resourceGroups.map(async (group) => {
           if (group.imageUrl)
-            resourcePictures.set(group.imageUrl, await load(optimizedImageKitUrl(group.imageUrl)))
+            resourcePictures.set(
+              group.imageUrl,
+              await load(resolveResourceImage(group) || '/catalog-placeholder.svg')
+            )
         })
       )
     const poseBackground =

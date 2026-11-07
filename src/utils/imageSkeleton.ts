@@ -1,9 +1,10 @@
+import { createImageReadiness } from './imageReadiness'
 import type { InjectionKey, ObjectDirective } from 'vue'
 
 export const globalSkeletonSweepKey: InjectionKey<boolean> = Symbol('global-skeleton-sweep')
 interface ImageState {
   source: string
-  generation: number
+  readiness: ReturnType<typeof createImageReadiness>
   bone: HTMLSpanElement | null
   parent: HTMLElement
   opacity: string
@@ -38,7 +39,7 @@ function restore(image: HTMLImageElement, state: ImageState) {
 }
 function fail(image: HTMLImageElement, state: ImageState) {
   if (state.settled) return
-  state.generation++
+  state.readiness.reset()
   state.settled = true
   resize?.unobserve(image)
   if (!state.bone) return
@@ -51,21 +52,18 @@ function fail(image: HTMLImageElement, state: ImageState) {
 }
 async function reveal(image: HTMLImageElement, state: ImageState) {
   if (!states.has(image)) return
-  const recovering = state.bone?.classList.contains('image-skeleton-failed') && image.complete && image.naturalWidth > 0
+  const recovering =
+    state.bone?.classList.contains('image-skeleton-failed') &&
+    image.complete &&
+    image.naturalWidth > 0
   if (state.settled && !recovering) return
   state.settled = false
-  const run = ++state.generation
-  try {
-    if (typeof image.decode === 'function') await image.decode()
-  } catch {
-    if (states.get(image) !== state || run !== state.generation) return
-    // decode() can reject even after a successful native load; keep usable images visible.
-    if (!image.complete || image.naturalWidth === 0) {
-      fail(image, state)
-      return
-    }
+  const result = await state.readiness.load(image)
+  if (states.get(image) !== state || result === 'stale') return
+  if (result === 'failed') {
+    fail(image, state)
+    return
   }
-  if (states.get(image) !== state || run !== state.generation) return
   state.settled = true
   resize?.unobserve(image)
   restore(image, state)
@@ -78,7 +76,7 @@ async function reveal(image: HTMLImageElement, state: ImageState) {
   }
 }
 function start(image: HTMLImageElement, state: ImageState) {
-  state.generation++
+  state.readiness.reset()
   state.source = image.getAttribute('src') ?? ''
   state.animation?.cancel()
   removeBone(state)
@@ -111,7 +109,7 @@ function attach(image: HTMLImageElement) {
   }
   const state: ImageState = {
     source: '',
-    generation: 0,
+    readiness: createImageReadiness(),
     bone: null,
     parent,
     settled: false,
@@ -136,7 +134,7 @@ function attach(image: HTMLImageElement) {
 function detach(image: HTMLImageElement) {
   const state = states.get(image)
   if (!state) return
-  state.generation++
+  state.readiness.reset()
   state.animation?.cancel()
   removeBone(state)
   restore(image, state)
@@ -178,7 +176,7 @@ export const vImageSkeleton: ObjectDirective<HTMLImageElement, boolean | undefin
   beforeUnmount(image) {
     const state = states.get(image)
     if (state) {
-      state.generation++
+      state.readiness.reset()
       state.settled = true
     }
   },

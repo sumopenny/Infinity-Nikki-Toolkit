@@ -44,3 +44,35 @@ it('remembers cards within a grid and starts fresh for a new grid', async () => 
     vi.unstubAllGlobals()
   }
 })
+
+it('registers offscreen first-load cards once their loading surface is ready', async () => {
+  const observe = vi.fn()
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe = observe
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  vi.stubGlobal('matchMedia', () => ({ matches: false }))
+  const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'animate')
+  Object.defineProperty(HTMLElement.prototype, 'animate', { configurable: true, value: vi.fn() })
+  const wrapper = mount({
+    directives: { cardReveal: vCardReveal },
+    template:
+      '<section data-loading-surface="revealing"><article v-card-reveal="\'below\'"><div data-load-block></div></article></section>'
+  })
+  try {
+    expect(observe).not.toHaveBeenCalled()
+    wrapper.element.setAttribute('data-loading-surface', 'ready')
+    wrapper.get('article').element.dispatchEvent(new Event('nuan-content-ready', { bubbles: true }))
+    expect(observe).toHaveBeenCalledOnce()
+    expect(wrapper.get('article').classes()).toContain('card-reveal-pending')
+  } finally {
+    wrapper.unmount()
+    if (descriptor) Object.defineProperty(HTMLElement.prototype, 'animate', descriptor)
+    else Reflect.deleteProperty(HTMLElement.prototype, 'animate')
+    vi.unstubAllGlobals()
+  }
+})

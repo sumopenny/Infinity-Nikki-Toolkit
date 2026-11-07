@@ -1,10 +1,6 @@
 import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  clearOutfitDetailCache,
-  loadOutfitDetail,
-  loadLocalOutfitDetail
-} from '../../src/utils/outfit/outfitDetails'
+import { clearOutfitDetailCache, loadOutfitDetail } from '../../src/utils/outfit/outfitDetails'
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -212,7 +208,7 @@ it('builds complete local details without requesting the remote API', async () =
     throw new Error('Remote API must not be needed')
   })
   vi.stubGlobal('fetch', fetcher)
-  const detail = await loadLocalOutfitDetail(1025740294, null, 'zh', '童话终章', [], null, true)
+  const detail = await loadOutfitDetail(1025740294, null, 'zh', '童话终章', [], null, true)
   expect(detail.itemName).toBe('童话终章')
   expect(detail.detailImageUrl).toBe(getCatalogImageSource('item', 1025740294))
   expect(detail.dyeCondition).toBe('满进可染')

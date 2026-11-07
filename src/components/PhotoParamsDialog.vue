@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { resolveResourceImage } from '../utils/photo-params/resourceManifest'
+
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { computed, defineAsyncComponent, ref, toRef, watch } from 'vue'
-import { optimizedImageKitUrl } from '../utils/imagekit'
 import type { Language } from '../i18n'
 import { outfitMessages } from '../i18n/messages/outfit'
 const OutfitParseDialog = defineAsyncComponent(() => import('./OutfitParseDialog.vue'))
@@ -260,12 +261,13 @@ function markImageFailed(title: string, name: string) {
                         class="photo-params-resource-row"
                         :class="{ 'photo-params-resource-row--pose': group.kind === 'pose' }"
                       >
-                        <img v-image-skeleton
+                        <img
+                          v-image-skeleton
                           v-if="
                             group.imageUrl &&
                             !failedImages.has(resourceKey(group.title, group.name))
                           "
-                          :src="group.imageUrl ? optimizedImageKitUrl(group.imageUrl) : undefined"
+                          :src="resolveResourceImage(group)"
                           :alt="group.name"
                           @error="markImageFailed(group.title, group.name)"
                         />

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { computed, ref, watch } from 'vue'
-import { catalogImageLoading, catalogImagePriority } from '../utils/gongeo/catalogImage'
+import {
+  catalogImageLoading,
+  catalogImagePriority,
+  catalogImagePlaceholder
+} from '../utils/gongeo/catalogImage'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 
 defineOptions({ inheritAttrs: false })
@@ -9,6 +13,7 @@ const props = withDefaults(
   defineProps<{
     src: string
     skeleton?: boolean
+    managed?: boolean
     alt?: string
     language?: 'zh' | 'en'
     index?: number
@@ -36,6 +41,10 @@ watch(
   }
 )
 function onError(event: Event) {
+  if (props.managed) {
+    emit('error', event)
+    return
+  }
   if (failed.value) return
   failed.value = true
   emit('error', event)
@@ -65,7 +74,7 @@ function retry(event: Event) {
     :tabindex="failed ? 0 : undefined"
     :role="failed ? 'button' : undefined"
     :data-image-failed="failed || undefined"
-    :src="failed ? placeholder : optimizedImageKitUrl(src)"
+    :src="failed ? placeholder : optimizedImageKitUrl(src || catalogImagePlaceholder)"
     @load="!failed && emit('load', $event)"
     @error="onError"
     @click="retry"

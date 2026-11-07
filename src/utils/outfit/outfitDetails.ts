@@ -397,27 +397,6 @@ const createDetail = async (
   }
 }
 
-/** 仅使用本地快照生成详情，不请求第三方接口。 */
-export function loadLocalOutfitDetail(
-  itemId: number,
-  outfitId: number | null,
-  language: Language,
-  fallbackItemName: string,
-  dyes: LookbookDyeSwatch[],
-  clothType: number | null = null,
-  hasSpecialEffect = false
-): Promise<OutfitDetail> {
-  return createDetail(
-    itemId,
-    outfitId,
-    language,
-    fallbackItemName,
-    dyes,
-    clothType,
-    hasSpecialEffect
-  )
-}
-
 /** 弹窗打开时立即可用的预览；尚未读取的图鉴字段明确显示为加载中。 */
 export function createOutfitDetailPreview(
   itemId: number,

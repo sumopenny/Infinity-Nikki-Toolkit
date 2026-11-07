@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue'
 import CatalogImage from './CatalogImage.vue'
+import { createImageReadiness } from '../utils/imageReadiness'
 
 defineOptions({ inheritAttrs: false })
 const props = withDefaults(
@@ -16,13 +17,11 @@ const root = ref<HTMLElement | null>(null)
 const ready = ref(false)
 const failed = ref(false)
 const attempt = ref(0)
-let generation = 0
+const readiness = createImageReadiness()
 let disposed = false
-let decoding: HTMLImageElement | null = null
 
 function reset() {
-  generation++
-  decoding = null
+  readiness.reset()
   ready.value = false
   failed.value = false
 }
@@ -30,28 +29,19 @@ watch(() => props.src, reset, { flush: 'sync' })
 
 function onError(event: Event) {
   if (disposed || failed.value) return
-  generation++
-  decoding = null
+  readiness.reset()
   failed.value = true
   ready.value = false
   emit('error', event)
 }
 async function onLoad(event: Event, image = event.target as HTMLImageElement) {
-  if (disposed || ready.value || failed.value || decoding === image || !root.value?.contains(image))
+  if (disposed || ready.value || failed.value || !root.value?.contains(image)) return
+  const result = await readiness.load(image)
+  if (disposed || !root.value?.contains(image) || result === 'stale') return
+  if (result === 'failed') {
+    onError(event)
     return
-  const run = generation
-  decoding = image
-  try {
-    if (typeof image.decode === 'function') await image.decode()
-  } catch {
-    if (disposed || run !== generation || !root.value?.contains(image)) return
-    if (!image.complete || image.naturalWidth === 0) {
-      onError(event)
-      return
-    }
   }
-  if (disposed || run !== generation || !root.value?.contains(image)) return
-  decoding = null
   ready.value = true
   emit('load', event)
 }
@@ -72,7 +62,7 @@ function retry(event: Event) {
 }
 onBeforeUnmount(() => {
   disposed = true
-  generation++
+  readiness.reset()
 })
 </script>
 
@@ -89,6 +79,7 @@ onBeforeUnmount(() => {
       :key="src + ':' + attempt"
       v-bind="$attrs"
       :skeleton="false"
+      managed
       :src="src"
       :language="language"
       :aria-hidden="failed || undefined"

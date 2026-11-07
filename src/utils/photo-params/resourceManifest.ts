@@ -1,5 +1,5 @@
 import catalogJson from '../../data/photo/photoResourceCatalog.json'
-import { encodeImagePath, optimizedImageKitUrl } from '../imagekit'
+import { encodeImagePath, optimizedImageKitUrl, isLegacyImageUrl } from '../imagekit'
 
 type ResourceKind = 'light' | 'filter' | 'pose'
 type ImageKind = ResourceKind
@@ -79,4 +79,14 @@ export function resourceImage(kind: ImageKind, id: string | number): string | un
   return optimizedImageKitUrl(
     template.baseUrl.replaceAll(template.replace, encodeImagePath(imageValue))
   )
+}
+
+export function resolveResourceImage(group: {
+  kind: ResourceKind
+  id?: string
+  imageUrl?: string
+}): string | undefined {
+  if (!group.imageUrl || isLegacyImageUrl(group.imageUrl))
+    return group.id ? resourceImage(group.kind, group.id) : undefined
+  return optimizedImageKitUrl(group.imageUrl)
 }

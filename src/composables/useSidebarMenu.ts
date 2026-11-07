@@ -7,21 +7,35 @@ export function useSidebarMenu(
   active: Readonly<Ref<boolean>> = ref(true)
 ) {
   const menuStyle = ref<CSSProperties>({})
-  function positionMenu(trigger: HTMLElement) {
+  function positionMenu(
+    trigger: HTMLElement,
+    options?: { minWidth: number; viewportPadding: number; gap: number; zIndex: number }
+  ) {
     const box = trigger.getBoundingClientRect()
-    const below = window.innerHeight - box.bottom - 10
-    const above = box.top - 10
+    const viewport = options ? window.visualViewport : undefined
+    const viewportTop = viewport?.offsetTop ?? 0
+    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight)
+    const gap = options?.gap ?? 10
+    const below = Math.max(0, viewportBottom - box.bottom - gap)
+    const above = Math.max(0, box.top - viewportTop - gap)
+    const padding = options?.viewportPadding ?? 0
+    const width = options
+      ? Math.min(Math.max(box.width, options.minWidth), window.innerWidth - padding * 2)
+      : box.width
     const upward = below < 180 && above > below
     menuStyle.value = {
       position: 'fixed',
-      left: box.left + 'px',
+      left:
+        (options
+          ? Math.max(padding, Math.min(box.left, window.innerWidth - width - padding))
+          : box.left) + 'px',
       right: 'auto',
-      width: box.width + 'px',
+      width: width + 'px',
       boxSizing: 'border-box',
-      zIndex: '100',
+      zIndex: options?.zIndex ?? '100',
       top: upward ? 'auto' : box.bottom + 6 + 'px',
       bottom: upward ? window.innerHeight - box.top + 6 + 'px' : 'auto',
-      maxHeight: Math.max(40, Math.min(320, upward ? above : below)) + 'px'
+      maxHeight: Math.max(options ? 0 : 40, Math.min(320, upward ? above : below)) + 'px'
     }
   }
   function onViewportChange(event: Event) {

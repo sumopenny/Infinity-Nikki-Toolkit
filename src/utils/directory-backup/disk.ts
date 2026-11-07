@@ -491,10 +491,3 @@ export async function moduleDirectory(
   const info = validateRoot(await readJson(root, '存档信息.json'))
   return directoryAt(root, info.modulePaths?.[module] ?? MODULE_NAMES[module], create)
 }
-
-/** Compatibility entry point for callers that only need the durable batch ID. */
-export async function stageAndApply(
-  ...args: Parameters<typeof stageAndApplyVerified>
-): Promise<string> {
-  return (await stageAndApplyVerified(...args)).id
-}

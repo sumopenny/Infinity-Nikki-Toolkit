@@ -102,7 +102,9 @@ it('shows the linked makeup beside an eligible outfit title and opens its detail
   await saveResonanceRecords([savedRecord])
   const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
   wrappers.push(wrapper)
-  await vi.waitFor(() => expect(wrapper.find('.resonance-makeup-link').exists()).toBe(true), { timeout: 10000 })
+  await vi.waitFor(() => expect(wrapper.find('.resonance-makeup-link').exists()).toBe(true), {
+    timeout: 10000
+  })
   expect(wrapper.find('.resonance-title-actions').text()).toContain('查看妆容')
   await wrapper.get('.resonance-makeup-link').trigger('click')
   await vi.waitFor(
@@ -115,7 +117,9 @@ it('hides the makeup shortcut when the outfit has no linked makeup', async () =>
   await saveResonanceRecords([{ ...savedRecord, outfitId: '99999999' }])
   const wrapper = mount(ResonanceRecords)
   wrappers.push(wrapper)
-  await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .resonance-record').exists()).toBe(true))
+  await vi.waitFor(() =>
+    expect(wrapper.find('.content-loaded-layer .resonance-record').exists()).toBe(true)
+  )
   await flushPromises()
   expect(wrapper.find('.resonance-makeup-link').exists()).toBe(false)
 })
@@ -195,7 +199,9 @@ describe('ResonanceRecords', () => {
       await saveResonanceRecords([record])
       const wrapper = mount(ResonanceRecords, { props: { language } })
       wrappers.push(wrapper)
-      await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
+      await vi.waitFor(() =>
+        expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1)
+      )
       const desktopSummary = wrapper.find('.resonance-overall-summary').text()
       const buttons = wrapper.findAll('.resonance-set-switch button')
       expect(buttons[0]!.attributes('aria-pressed')).toBe('true')
@@ -224,10 +230,14 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1)
+    )
 
     expect(wrapper.emitted('recordsChange')?.[0]?.[0]).toEqual([savedRecord])
-    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe('resonance-record-77:10347')
+    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe(
+      'resonance-record-77:10347'
+    )
     expect(wrapper.find('.resonance-part img').attributes('src')).toBe(
       getCatalogImageSource('icon', HAIR)
     )
@@ -243,18 +253,20 @@ describe('ResonanceRecords', () => {
     ])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1)
+    )
     const outfit = wrapper.find('.resonance-outfit-image img')
     await outfit.trigger('error')
-    expect(outfit.attributes('data-image-failed')).toBe('true')
-    await outfit.trigger('click')
+    expect(wrapper.find('.resonance-outfit-image .is-failed').exists()).toBe(true)
+    await wrapper.get('.resonance-outfit-image .catalog-image-retry').trigger('click')
     expect(wrapper.find('.resonance-outfit-image img').attributes('src')).toBe(
       'https://ik.imagekit.io/nikkicube/images/outfits/T_showpic_suit_S0347.png?tr=f-webp,q-70'
     )
     const part = wrapper.find('.resonance-part img')
     await part.trigger('error')
-    expect(part.attributes('data-image-failed')).toBe('true')
-    await part.trigger('click')
+    expect(wrapper.find('.resonance-part .is-failed').exists()).toBe(true)
+    await wrapper.get('.resonance-part .catalog-image-retry').trigger('click')
     expect(wrapper.find('.resonance-part img').attributes('src')).toBe(
       getCatalogImageSource('icon', HAIR)
     )
@@ -283,7 +295,9 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([odd, even])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(2))
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(2)
+    )
 
     const partClasses = (recordId: string, name: string) =>
       wrapper
@@ -344,9 +358,14 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([older, sameBanner, savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh', bannerOrder: 'newest' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(3))
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(3)
+    )
 
-    const cardIds = () => wrapper.findAll('.content-loaded-layer .resonance-record').map((card) => card.attributes('id'))
+    const cardIds = () =>
+      wrapper
+        .findAll('.content-loaded-layer .resonance-record')
+        .map((card) => card.attributes('id'))
     const newestOrder = cardIds()
     expect(newestOrder.slice(0, 2).sort()).toEqual([
       'resonance-record-77:10347',
@@ -369,10 +388,16 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([fourStar, savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh', rarityFilter: 5 } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
-    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe('resonance-record-77:10347')
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1)
+    )
+    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe(
+      'resonance-record-77:10347'
+    )
     await wrapper.setProps({ rarityFilter: 4 })
-    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe('resonance-record-76:10343')
+    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe(
+      'resonance-record-76:10343'
+    )
     await wrapper.setProps({ rarityFilter: 'all' })
     expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(2)
     expect(await loadResonanceRecords()).toEqual([fourStar, savedRecord])
@@ -466,7 +491,9 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'en' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1)
+    )
 
     const loaded = (await loadResonanceRecords())[0]!
     expect(wrapper.find('.resonance-record h3').text()).toContain(loaded.outfitName.en)
@@ -506,7 +533,9 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([record])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1)
+    )
     expect(summaryValues(wrapper)).toEqual([
       { label: '总抽数', value: '58' },
       { label: '平均抽数', value: '19.3' }
@@ -620,7 +649,9 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1)
+    )
 
     await wrapper
       .findAll('.resonance-actions button')

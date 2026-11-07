@@ -72,24 +72,12 @@ function toggle(key: FilterKey, event: MouseEvent) {
     return
   }
   const trigger = event.currentTarget as HTMLElement
-  positionMenu(trigger)
-  const box = trigger.getBoundingClientRect()
-  const viewport = window.visualViewport
-  const top = viewport?.offsetTop ?? 0
-  const bottom = top + (viewport?.height ?? window.innerHeight)
-  const below = Math.max(0, bottom - box.bottom - 14)
-  const above = Math.max(0, box.top - top - 14)
-  const upward = below < 180 && above > below
-  const width = Math.min(Math.max(box.width, compact.value ? 180 : 240), window.innerWidth - 24)
-  menuStyle.value = {
-    ...menuStyle.value,
-    left: Math.max(12, Math.min(box.left, window.innerWidth - width - 12)) + 'px',
-    width: width + 'px',
-    top: upward ? 'auto' : box.bottom + 6 + 'px',
-    bottom: upward ? window.innerHeight - box.top + 6 + 'px' : 'auto',
-    maxHeight: Math.min(320, upward ? above : below) + 'px',
+  positionMenu(trigger, {
+    minWidth: compact.value ? 180 : 240,
+    viewportPadding: 12,
+    gap: 14,
     zIndex: 110
-  }
+  })
   openFilter.value = key
 }
 function select(key: FilterKey, value: string) {

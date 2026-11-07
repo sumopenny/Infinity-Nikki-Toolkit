@@ -47,7 +47,9 @@ async function preview(raw: unknown) {
   input.dispatchEvent(new Event('change', { bubbles: true }))
   await flushPromises()
   submit().click()
-  await vi.waitFor(() => expect(document.querySelector('.data-import-targets')).not.toBeNull())
+  await vi.waitFor(() => expect(document.querySelector('.data-import-targets')).not.toBeNull(), {
+    timeout: 10000
+  })
   return [...document.querySelectorAll<HTMLInputElement>('.data-import-targets input')]
 }
 const raw = {

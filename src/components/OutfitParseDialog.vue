@@ -25,7 +25,6 @@ import {
 import { getClothTypeLabel, inferClothTypeFromItemId } from '../utils/outfit/clothType'
 import {
   createOutfitDetailPreview,
-  loadLocalOutfitDetail,
   loadOutfitDetail,
   type OutfitDetail
 } from '../utils/outfit/outfitDetails'
@@ -148,7 +147,12 @@ const items = computed(() =>
 async function openItemDetail(item: DetailItem, event?: Event) {
   const request = detailRequest.begin()
   makeupPreview.value = null
-  if (!makeupData.value) {
+  if (
+    !makeupData.value &&
+    item.clothType !== null &&
+    item.clothType >= 80 &&
+    item.clothType <= 85
+  ) {
     void loadMakeupCatalog()
       .then((data) => {
         if (request.isCurrent()) makeupData.value = data
@@ -189,21 +193,6 @@ async function openItemDetail(item: DetailItem, event?: Event) {
         captureDiagnosticError(error, { module: 'outfits', action: 'load-wardrobe-ownership' })
     })
   try {
-    try {
-      const local = await loadLocalOutfitDetail(
-        item.id,
-        item.outfitId,
-        props.language,
-        item.name,
-        item.dyes,
-        item.clothType,
-        item.hasSpecialEffect
-      )
-      if (!request.isCurrent()) return
-      selectedDetail.value = local
-    } catch {
-      // 本地图鉴失败仍保留即时预览，后续读取可重试。
-    }
     const result = await loadOutfitDetail(
       item.id,
       item.outfitId,
@@ -463,7 +452,13 @@ onBeforeUnmount(() => {
                 <p>{{ messages.parseLoading }}</p>
               </div>
               <div class="outfit-parse-grid" aria-hidden="true">
-                <span v-for="index in 10" :key="index" class="outfit-parse-skeleton" data-image-skeleton data-image-pending="true"></span>
+                <span
+                  v-for="index in 10"
+                  :key="index"
+                  class="outfit-parse-skeleton"
+                  data-image-skeleton
+                  data-image-pending="true"
+                ></span>
               </div>
             </template>
 

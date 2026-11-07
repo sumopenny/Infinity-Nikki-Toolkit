@@ -1,3 +1,4 @@
+import { clearMakeupCatalogCache } from '../../src/utils/loadMakeupCatalog'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MakeupCatalog from '../../src/components/MakeupCatalog.vue'
@@ -26,6 +27,7 @@ vi.mock('../../src/utils/gongeo/catalogResources', () => ({
 vi.mock('../../src/utils/cardReveal', () => ({ vCardReveal: {} }))
 
 beforeEach(() => {
+  clearMakeupCatalogCache()
   resources.makeups.mockReset().mockResolvedValue([
     [[10001001], 5, 0, 0, 21001],
     [99999999, 4, 0, 0, 20007],

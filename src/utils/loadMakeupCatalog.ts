@@ -1,3 +1,4 @@
+import { registerCacheReset } from './cacheLifecycle'
 import { catalogResources, loadCatalogNames } from './gongeo/catalogResources'
 import { getCatalogImageSource } from './gongeo/catalogImage'
 import { wardrobeVariantLabels } from './wardrobe/wardrobePresentation'
@@ -11,7 +12,7 @@ export interface MakeupCatalogData {
   relations: Map<string, MakeupRelations>
   relatedOutfits: MakeupRelatedOutfit[]
 }
-export async function loadMakeupCatalog(): Promise<MakeupCatalogData> {
+async function buildMakeupCatalog(): Promise<MakeupCatalogData> {
   const [rows, makeups, outfits, makeupOutfits, zh, en, zhItems, enItems, zhOutfits, enOutfits] =
     await Promise.all([
       catalogResources.makeupItems(),
@@ -129,3 +130,20 @@ export async function loadMakeupCatalog(): Promise<MakeupCatalogData> {
   }
   return { entries, parts, relations, relatedOutfits }
 }
+
+let pending: Promise<MakeupCatalogData> | undefined
+export function loadMakeupCatalog(): Promise<MakeupCatalogData> {
+  if (!pending) {
+    const request = buildMakeupCatalog().catch((error) => {
+      if (pending === request) pending = undefined
+      throw error
+    })
+    pending = request
+  }
+  return pending
+}
+
+export function clearMakeupCatalogCache() {
+  pending = undefined
+}
+registerCacheReset('makeup-catalog', clearMakeupCatalogCache)

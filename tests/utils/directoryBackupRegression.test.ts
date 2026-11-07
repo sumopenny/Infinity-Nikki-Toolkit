@@ -5,7 +5,7 @@ import { dirtyChanges } from '../../src/utils/directory-backup/repository'
 import {
   digest,
   jsonBytes,
-  stageAndApply,
+  stageAndApplyVerified,
   MAX_JSON_BYTES,
   defaultManifest,
   recordPath,
@@ -19,7 +19,7 @@ describe('目录恢复回归', () => {
   it('超出恢复格式上限的 JSON 在准备阶段即拒绝，不能标为完整备份', async () => {
     const { directory, disk } = await setup()
     await expect(
-      stageAndApply(asHandle(directory), 'outfits', [
+      stageAndApplyVerified(asHandle(directory), 'outfits', [
         { path: recordPath(await keyHash('TOO-LARGE')), data: new Uint8Array(MAX_JSON_BYTES + 1) },
         { path: '模块信息.json', data: jsonBytes(defaultManifest('outfits')) }
       ])

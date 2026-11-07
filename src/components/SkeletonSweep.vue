@@ -12,7 +12,26 @@ let observer: MutationObserver | undefined
 let resize: ResizeObserver | undefined
 let frame: number | undefined
 let disposed = false
-let hasPending = false
+const candidates = new Set<HTMLElement>()
+const visible = new Set<HTMLElement>()
+let intersection: IntersectionObserver | undefined
+function collect(area: Element) {
+  for (const element of [...candidates]) {
+    if (area.contains(element) && !element.matches(selector)) {
+      candidates.delete(element)
+      visible.delete(element)
+      intersection?.unobserve(element)
+    }
+  }
+  const matches = [...area.querySelectorAll<HTMLElement>(selector)]
+  if (area.matches(selector)) matches.push(area as HTMLElement)
+  for (const element of matches) {
+    if (candidates.has(element)) continue
+    candidates.add(element)
+    if (intersection) intersection.observe(element)
+    else visible.add(element)
+  }
+}
 const selector =
   '[data-image-skeleton][data-image-pending], [data-image-pending] [data-image-skeleton], [data-loading-surface="loading"] [data-skeleton-block]'
 
@@ -32,9 +51,16 @@ function measure() {
     (el) => el.getBoundingClientRect().width > 0 && getComputedStyle(el).visibility !== 'hidden'
   )
   const dialog = dialogs[dialogs.length - 1]
-  const candidates = [...area.querySelectorAll<HTMLElement>(selector)]
-  hasPending = candidates.length > 0
-  shapes.value = candidates.flatMap((element) => {
+  const styles = new Map<HTMLElement, CSSStyleDeclaration>()
+  const styleFor = (element: HTMLElement) => {
+    let style = styles.get(element)
+    if (!style) {
+      style = getComputedStyle(element)
+      styles.set(element, style)
+    }
+    return style
+  }
+  shapes.value = [...visible].flatMap((element) => {
     if (dialog && !dialog.contains(element)) return []
     const box = element.getBoundingClientRect()
     if (
@@ -50,14 +76,14 @@ function measure() {
       top = Math.max(0, box.top)
     let right = Math.min(width.value, box.right),
       bottom = Math.min(height.value, box.bottom)
-    const radius = parseFloat(getComputedStyle(element).borderRadius) || 0
+    const radius = parseFloat(styleFor(element).borderRadius) || 0
     // Clip to scrolling panels so the sweep never paints over headers or adjacent content.
     for (
       let parent = element.parentElement;
       parent && parent !== document.body;
       parent = parent.parentElement
     ) {
-      const style = getComputedStyle(parent)
+      const style = styleFor(parent)
       if (
         style.visibility === 'hidden' ||
         style.display === 'none' ||
@@ -88,30 +114,60 @@ function schedule() {
   frame = requestAnimationFrame(measure)
 }
 function onScroll() {
-  if (hasPending) schedule()
+  if (visible.size) schedule()
 }
 function bind() {
   observer?.disconnect()
   resize?.disconnect()
   const area = props.global ? document.body : props.scope
   if (area) {
+    intersection?.disconnect()
+    candidates.clear()
+    visible.clear()
+    if (typeof IntersectionObserver !== 'undefined') {
+      intersection = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          const element = entry.target as HTMLElement
+          if (entry.isIntersecting) visible.add(element)
+          else visible.delete(element)
+        }
+        schedule()
+      })
+    }
+    collect(area)
     if (typeof MutationObserver !== 'undefined') {
       observer ??= new MutationObserver((records) => {
-        const relevant = records.some((record) => {
-          if (record.target instanceof Element && record.target.closest('[data-skeleton-sweep]'))
-            return false
-          if (record.type === 'attributes')
-            return (
-              hasPending ||
-              record.attributeName === 'data-image-pending' ||
-              record.attributeName === 'data-loading-surface'
-            )
-          return [...record.addedNodes, ...record.removedNodes].some(
-            (node) =>
-              node instanceof Element && (node.matches(selector) || node.querySelector(selector))
-          )
-        })
-        if (relevant) schedule()
+        let changed = false
+        for (const record of records) {
+          const target = record.target
+          if (!(target instanceof Element) || target.closest('[data-skeleton-sweep]')) continue
+          if (record.type === 'childList') {
+            for (const node of record.addedNodes) if (node instanceof Element) collect(node)
+            for (const node of record.removedNodes) {
+              if (!(node instanceof Element)) continue
+              for (const element of [...candidates])
+                if (node === element || node.contains(element)) {
+                  candidates.delete(element)
+                  visible.delete(element)
+                  intersection?.unobserve(element)
+                }
+            }
+            changed =
+              [...record.addedNodes, ...record.removedNodes].some(
+                (node) =>
+                  node instanceof Element &&
+                  (node.matches(selector) || !!node.querySelector(selector))
+              ) || changed
+          } else if (
+            record.attributeName === 'data-image-pending' ||
+            record.attributeName === 'data-loading-surface'
+          ) {
+            collect(target)
+            changed = true
+          } else if ([...visible].some((element) => target === element || target.contains(element)))
+            changed = true
+        }
+        if (changed) schedule()
       })
       observer.observe(area, {
         subtree: true,
@@ -137,6 +193,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   disposed = true
   observer?.disconnect()
+  intersection?.disconnect()
+  candidates.clear()
+  visible.clear()
   resize?.disconnect()
   if (frame !== undefined) cancelAnimationFrame(frame)
   window.removeEventListener('scroll', onScroll, true)

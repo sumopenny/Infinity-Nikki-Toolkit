@@ -243,15 +243,14 @@ describe('mobile navigation and collection controls', () => {
         .get(compact ? '.mobile-header-row button[aria-label="打开视图菜单"]' : '.view-menu-button')
         .trigger('click')
       await flushPromises()
-      const options = [...document.querySelectorAll<HTMLButtonElement>('.thumbnail-options button')]
-      expect(options).toHaveLength(3)
+      let options = [...document.querySelectorAll<HTMLButtonElement>('.thumbnail-options button')]
+      expect(options).toHaveLength(0)
       expect(options.every((button) => button.disabled)).toBe(true)
       expect(
         [...document.querySelectorAll<HTMLButtonElement>('.thumbnail-size-options button')].every(
           (button) => button.disabled
         )
       ).toBe(true)
-      options[1]!.click()
       expect(wrapper.emitted('changeThumbnailMode')).toBeUndefined()
       expect(
         [...document.querySelectorAll<HTMLButtonElement>('.view-toggle-option')].every(
@@ -259,6 +258,8 @@ describe('mobile navigation and collection controls', () => {
         )
       ).toBe(true)
       await wrapper.setProps({ thumbnailModeDisabled: false, thumbnailSizeDisabled: false })
+      options = [...document.querySelectorAll<HTMLButtonElement>('.thumbnail-options button')]
+      expect(options).toHaveLength(3)
       expect(options[0]!.disabled).toBe(false)
       expect(options[1]!.disabled).toBe(false)
       expect(options[2]!.disabled).toBe(false)
