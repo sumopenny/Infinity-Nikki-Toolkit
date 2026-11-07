@@ -482,6 +482,9 @@ const ranked = computed(() => {
   padding-block: 16px;
 }
 @media (min-width: 900px) {
+  .summary-dialog .outfit-parse-panel {
+    width: min(960px, 100%);
+  }
   .summary-dialog .outfit-parse-panel > header {
     padding-block: 24px;
   }

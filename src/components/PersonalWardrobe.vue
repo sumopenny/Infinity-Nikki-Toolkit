@@ -1252,9 +1252,6 @@ async function clearRecords() {
 .is-pieces .wardrobe-cover {
   aspect-ratio: 1;
 }
-.is-pieces .wardrobe-cover {
-  background-image: var(--archive-pink-card-background);
-}
 .wardrobe-cover img {
   width: 100%;
   height: 100%;
