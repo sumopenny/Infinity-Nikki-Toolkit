@@ -4,7 +4,8 @@ import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
-import CatalogImage from './CatalogImage.vue'
+import CatalogImage from './LoadingCatalogImage.vue'
+import ContentLoadingSurface from './ContentLoadingSurface.vue'
 import { groupWardrobeEntries, wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 import { wardrobeCatalogForRegion, wardrobeRegionScope } from '../utils/wardrobe/wardrobeRegion'
 import { useWardrobeFilters, type FilterKey } from '../composables/useWardrobeFilters'
@@ -553,7 +554,7 @@ async function clearRecords() {
       </ResonanceDataActions>
     </header>
     <CollectionFilterBar
-      v-if="compact && loaded"
+      v-if="compact"
       class="wardrobe-mobile-filter-bar"
       tag-picker
       actions-id="wardrobe-filter-actions"
@@ -568,7 +569,7 @@ async function clearRecords() {
       @clear="resetFilters"
     />
     <WardrobeEvolutionSwitch
-      v-if="compact && loaded"
+      v-if="compact"
       v-model="showEvolutions"
       :language="language"
       :disabled="blocked"
@@ -608,6 +609,19 @@ async function clearRecords() {
     >
       <div id="wardrobe-mobile-filter-target"></div>
     </AdaptiveFilterPanel>
+    <ContentLoadingSurface :loading="!loaded && !loadFailed" :label="text('正在加载衣橱…', 'Loading wardrobe…')">
+      <template #skeleton>
+        <div class="wardrobe-grid" :class="{ 'is-pieces': tab === 'item' }">
+          <article v-for="index in 6" :key="index" class="wardrobe-card" data-skeleton-card>
+            <div class="wardrobe-cover" data-skeleton-block></div>
+            <div class="wardrobe-card-body">
+              <h3 class="skeleton-title" data-skeleton-block>&nbsp;</h3>
+              <div class="wardrobe-card-status" data-skeleton-block>&nbsp;</div>
+              <div v-if="tab === 'outfit'" class="skeleton-progress" data-skeleton-block></div>
+            </div>
+          </article>
+        </div>
+      </template>
     <div v-if="!loaded" class="wardrobe-empty" role="status">
       <p>{{
         loadFailed
@@ -782,8 +796,9 @@ async function clearRecords() {
               :aria-label="name(entry) + ' · ' + variants[entry.variant] + ' · ' + status(entry)"
               @click="openDetail(entry)"
             >
-              <div class="wardrobe-cover">
+              <div class="wardrobe-cover" data-load-block>
                 <CatalogImage
+                  fit="contain"
                   :language="language"
                   referrerpolicy="no-referrer"
                   :src="entry.image"
@@ -805,7 +820,7 @@ async function clearRecords() {
             />
           </div>
           <div class="wardrobe-card-body" @click="!blocked && openDetail(entry)">
-            <div class="wardrobe-card-heading">
+            <div class="wardrobe-card-heading" data-load-block>
               <button
                 class="wardrobe-card-name"
                 type="button"
@@ -826,7 +841,7 @@ async function clearRecords() {
                 @select="openDetail"
               />
             </div>
-            <div class="wardrobe-card-status">
+            <div class="wardrobe-card-status" data-load-block>
               <span :class="complete(entry) ? 'wardrobe-owned' : ''">
                 {{ status(entry) }}
                 <small v-if="entry.kind === 'outfit'"
@@ -835,7 +850,7 @@ async function clearRecords() {
               </span>
               <small class="wardrobe-card-rarity">{{ entry.quality }} ★</small>
             </div>
-            <progress
+            <progress data-load-block
               v-if="entry.kind === 'outfit'"
               :value="ownedCount(entry)"
               :max="entry.parts.length || 1"
@@ -859,6 +874,7 @@ async function clearRecords() {
       ></div>
     </template>
 
+    </ContentLoadingSurface>
     <WardrobeItemDialog
       :item="itemPreview"
       :catalog="catalog"

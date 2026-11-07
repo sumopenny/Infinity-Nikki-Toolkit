@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { observeStoredImageVisibility } from '../utils/storedImageVisibility'
 
@@ -70,7 +71,8 @@ onBeforeUnmount(deactivate)
 
 <template>
   <div ref="root" class="stored-image">
-    <img v-if="url && !failed" :src="url" :alt="alt" @error="failed = true" />
+    <img v-image-skeleton v-if="url && !failed" :src="url" :alt="alt" @error="failed = true" />
+    <span v-else-if="!failed" class="image-skeleton-block" style="inset: 0; width: 100%; height: 100%" data-image-skeleton data-image-pending="true" aria-hidden="true"></span>
     <span v-else-if="failed" role="img" :aria-label="alt">×</span>
   </div>
 </template>

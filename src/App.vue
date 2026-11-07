@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import SkeletonSweep from './components/SkeletonSweep.vue'
+import { globalSkeletonSweepKey } from './utils/imageSkeleton'
+provide(globalSkeletonSweepKey, true)
 import AlbumNoteNotice from './components/AlbumNoteNotice.vue'
 import { archiveMotionDeadlineKey, archiveMotionLoadDelay } from './composables/useAfterArchiveMotion'
 import {
@@ -2265,6 +2268,7 @@ function importAllDataFromMenu() {
 
 <template>
   <div ref="appShellRef" class="app-shell">
+    <SkeletonSweep global />
     <PageScrollbar :label="language === 'zh' ? '页面滚动' : 'Page scroll'" />
     <TopBar
       ref="topBarRef"

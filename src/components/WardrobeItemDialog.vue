@@ -105,10 +105,9 @@ useModalFocus(visible, panel, close)
                   />
                   <div
                     v-if="imageState === 'loading'"
-                    class="outfit-detail-image-placeholder"
+                    class="visually-hidden"
                     role="status"
                   >
-                    <span class="outfit-image-spinner" aria-hidden="true"></span>
                     <span>{{ text('正在加载图片…', 'Loading image…') }}</span>
                   </div>
                 </div>

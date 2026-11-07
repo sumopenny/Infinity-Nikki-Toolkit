@@ -1,3 +1,4 @@
+import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import { mount, DOMWrapper } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 import WardrobeItemDialog from '../../src/components/WardrobeItemDialog.vue'
@@ -39,7 +40,7 @@ it('衣橱详情在加载、失败、重试和切换部件时保留展示框', a
       item: { ...item, id: '1020100002', image: 'https://example.test/items/icons/1020100002.png' }
     })
     expect(wrapper.get('.outfit-detail-image-frame').attributes('aria-busy')).toBe('true')
-    expect(wrapper.get('img').attributes('src')).toContain('/items/1020100002.png')
+    expect(wrapper.get('img').attributes('src')).toBe(getCatalogImageSource('item', '1020100002'))
   } finally {
     wrapper.unmount()
   }
@@ -111,7 +112,7 @@ it.each([false, true])(
       expect(view.get('.outfit-detail-panel').element).toBe(panel)
       expect(view.get('.outfit-detail-info').text()).toContain(evolved.name.zh)
       expect(view.get('.outfit-detail-image').attributes('src')).toBe(
-        evolved.image.replace('/items/icons/', '/items/')
+        getCatalogImageSource('item', evolved.id)
       )
     } finally {
       wrapper.unmount()

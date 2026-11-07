@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PhotoDisplayItem } from '../utils/photoGrouping'
 
@@ -81,6 +82,8 @@ onBeforeUnmount(() => {
     <div
       v-if="loadState === 'idle' || loadState === 'loading'"
       class="photo-skeleton"
+      data-image-skeleton
+      data-image-pending="true"
       aria-hidden="true"
     ></div>
     <div
@@ -92,6 +95,6 @@ onBeforeUnmount(() => {
     >
       <span aria-hidden="true">×</span>
     </div>
-    <img v-else-if="displayedUrl" :src="displayedUrl" :alt="photo.name" loading="lazy" />
+    <img v-image-skeleton v-else-if="displayedUrl" :src="displayedUrl" :alt="photo.name" loading="lazy" />
   </div>
 </template>

@@ -71,7 +71,7 @@ beforeEach(async () => {
     document.body.append(target)
   }
   wrapper = mount(PersonalWardrobe, { attachTo: document.body })
-  await vi.waitFor(() => expect(wrapper.find('.wardrobe-grid').exists()).toBe(true))
+  await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
 })
 afterEach(() => {
   localStorage.removeItem('nikki-wardrobe-ownership-notice-v1')
@@ -229,7 +229,7 @@ describe('personal wardrobe interactions', () => {
       removeEventListener() {}
     }))
     wrapper = mount(PersonalWardrobe, { attachTo: document.body, props: { searchQuery: '10347' } })
-    await vi.waitFor(() => expect(wrapper.find('.wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
     const expandedCount = wrapper.findAll('.wardrobe-card').length
     expect(expandedCount).toBeGreaterThan(1)
     await wrapper.get('input[role="switch"]').setValue(false)
@@ -269,7 +269,7 @@ describe('personal wardrobe interactions', () => {
     }))
     localStorage.setItem('nikki-wardrobe-show-evolutions', 'false')
     wrapper = mount(PersonalWardrobe, { attachTo: document.body, props: { searchQuery: '10347' } })
-    await vi.waitFor(() => expect(wrapper.find('.wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
     const rect = {
       top: window.innerHeight - 200,
       bottom: window.innerHeight - 10,
@@ -331,7 +331,7 @@ describe('personal wardrobe interactions', () => {
     await reload()
     expect(wrapper.text()).toContain('衣橱加载失败或超时')
     await new DOMWrapper(button('重新加载')).trigger('click')
-    await vi.waitFor(() => expect(wrapper.find('.wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
   })
 
   it('times out a stalled load and ignores its late result after retry', async () => {
@@ -351,10 +351,10 @@ describe('personal wardrobe interactions', () => {
       await pending
       expect(wrapper.text()).toContain('衣橱加载失败或超时')
       await reload()
-      expect(wrapper.find('.wardrobe-grid').exists()).toBe(true)
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
       resolveStalled(storage.emptyWardrobe())
       await flushPromises()
-      expect(wrapper.find('.wardrobe-grid').exists()).toBe(true)
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
     } finally {
       vi.useRealTimers()
     }
@@ -366,7 +366,7 @@ describe('personal wardrobe interactions', () => {
     expect(wrapper.find('.wardrobe-collection-notice').exists()).toBe(false)
     wrapper.unmount()
     wrapper = mount(PersonalWardrobe, { attachTo: document.body })
-    await vi.waitFor(() => expect(wrapper.find('.wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
     expect(wrapper.find('.wardrobe-collection-notice').exists()).toBe(false)
     await new DOMWrapper(button('收集状态说明')).trigger('click')
     expect(wrapper.find('.wardrobe-collection-notice').exists()).toBe(true)
@@ -389,7 +389,7 @@ describe('personal wardrobe interactions', () => {
       document.body.append(target)
     }
     wrapper = mount(PersonalWardrobe, { attachTo: document.body })
-    await vi.waitFor(() => expect(wrapper.find('.wardrobe-mobile-filter-bar').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
     await flushPromises()
     expect(
       document.querySelector('#wardrobe-mobile-category-target .wardrobe-mobile-category-switch')
@@ -590,7 +590,7 @@ describe('personal wardrobe interactions', () => {
       outfitPiece.name.zh,
       individualPiece.name.zh
     ])
-    expect(wrapper.find('.wardrobe-grid.is-pieces').exists()).toBe(true)
+    expect(wrapper.find('.content-loaded-layer .wardrobe-grid.is-pieces').exists()).toBe(true)
   })
   it('uses the shared menu styling and applies a variant before closing the menu', async () => {
     expect(wrapper.find('select').exists()).toBe(false)
@@ -629,7 +629,7 @@ describe('personal wardrobe interactions', () => {
     await wrapper.find('.wardrobe-empty button').trigger('click')
     expect(wrapper.emitted('update-search')?.at(-1)).toEqual([''])
     await wrapper.setProps({ searchQuery: '' })
-    expect(wrapper.find('.wardrobe-grid').exists()).toBe(true)
+    expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
   })
   it('mounts mobile actions after the asynchronous wardrobe toolbar becomes available', async () => {
     wrapper.unmount()

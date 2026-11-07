@@ -61,6 +61,9 @@ function onIntersection(entries: IntersectionObserverEntry[]) {
 export const vCardReveal: ObjectDirective<HTMLElement, string> = {
   mounted(card, { value }) {
     card.setAttribute('data-reveal-card', '')
+    // First-load blocks are animated by the shared skeleton surface.
+    const loadingSurface = card.closest('[data-loading-surface]')
+    if (loadingSurface && loadingSurface.getAttribute('data-loading-surface') !== 'ready') return
     const grid = card.parentElement
     if (!grid || !window.IntersectionObserver || !card.animate ||
         window.matchMedia('(prefers-reduced-motion: reduce)').matches) return

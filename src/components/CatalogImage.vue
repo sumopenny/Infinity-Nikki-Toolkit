@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { computed, ref, watch } from 'vue'
 import { catalogImageLoading, catalogImagePriority } from '../utils/gongeo/catalogImage'
 import { optimizedImageKitUrl } from '../utils/imagekit'
@@ -7,13 +8,14 @@ defineOptions({ inheritAttrs: false })
 const props = withDefaults(
   defineProps<{
     src: string
+    skeleton?: boolean
     alt?: string
     language?: 'zh' | 'en'
     index?: number
     loading?: 'eager' | 'lazy'
     fetchpriority?: 'high' | 'low' | 'auto'
   }>(),
-  { alt: '', language: 'zh', index: 6 }
+  { alt: '', language: 'zh', index: 6, skeleton: true }
 )
 const emit = defineEmits<{ load: [event: Event]; error: [event: Event]; retry: [] }>()
 const failed = ref(false)
@@ -51,6 +53,7 @@ function retry(event: Event) {
 
 <template>
   <img
+    v-image-skeleton="skeleton"
     :key="`${src}:${attempt}`"
     v-bind="$attrs"
     referrerpolicy="no-referrer"

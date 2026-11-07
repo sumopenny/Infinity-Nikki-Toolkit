@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
 import {
@@ -1053,7 +1054,7 @@ function handleImportChoices(value: typeof choices.value) {
             :class="{ 'is-image-only': compactResourceCover }"
           >
             <div v-for="group in cardResources(item.result)" :key="group.kind">
-              <img
+              <img v-image-skeleton
                 v-if="group.imageUrl"
                 :src="group.imageUrl"
                 :alt="group.name"

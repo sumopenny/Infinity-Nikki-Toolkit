@@ -3,7 +3,8 @@ import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
-import CatalogImage from './CatalogImage.vue'
+import CatalogImage from './LoadingCatalogImage.vue'
+import ContentLoadingSurface from './ContentLoadingSurface.vue'
 import { backupBaseName } from '../utils/backup/backupName'
 import MobileEmptyScreenshot from './MobileEmptyScreenshot.vue'
 import { useCompactLayout } from '../composables/useCompactLayout'
@@ -195,6 +196,7 @@ async function openPreview(id: string, kind: 'outfit' | 'item') {
 }
 const records = ref<ResonanceRecord[]>([])
 const recordsLoaded = ref(false)
+const recordsLoadFailed = ref(false)
 const selectedSet = ref<Record<string, 1 | 2>>({})
 const compactLayout = useCompactLayout()
 const showAddDialog = ref(false)
@@ -314,6 +316,7 @@ async function clearRecords() {
 
 /** 与衣橱保持相同刷新契约，调用方可汇总已保存但刷新失败的情况。 */
 async function reload(): Promise<boolean> {
+  recordsLoadFailed.value = false
   return trackOperation(async () => {
     try {
       expandedRecordId.value = null
@@ -324,6 +327,7 @@ async function reload(): Promise<boolean> {
       recordsLoaded.value = true
       return true
     } catch (error) {
+      recordsLoadFailed.value = true
       captureDiagnosticError(error, { module: 'resonance', action: 'load' })
       notify(
         'load-error',
@@ -366,7 +370,33 @@ defineExpose({ reload })
       </ResonanceDataActions>
     </header>
 
-    <div v-if="!records.length" class="resonance-empty">
+    <ContentLoadingSurface :loading="!recordsLoaded && !recordsLoadFailed" :label="language === 'zh' ? '正在加载共鸣记录…' : 'Loading resonance records…'">
+      <template #skeleton>
+        <div class="resonance-list">
+          <article v-for="index in 2" :key="index" class="resonance-record" data-skeleton-card>
+            <div class="resonance-record-heading" data-load-block>
+              <div class="resonance-record-title-row"><h3 class="skeleton-title" data-skeleton-block>&nbsp;</h3></div>
+              <p class="resonance-overall-summary skeleton-summary" data-skeleton-block>&nbsp;</p>
+              <p class="resonance-mobile-progress" data-skeleton-block>&nbsp;</p>
+            </div>
+            <div class="resonance-mobile-details" data-skeleton-block><div class="resonance-set-switch">&nbsp;</div><p class="resonance-set-summary">&nbsp;</p></div>
+            <div class="resonance-record-body">
+              <div class="resonance-outfit-preview"><div class="resonance-outfit-image" data-skeleton-block></div></div>
+              <div class="resonance-sets">
+                <section v-for="set in (compactLayout ? 1 : 2)" :key="set" class="resonance-set-row">
+                  <div v-if="!compactLayout" class="resonance-desktop-set-heading" data-skeleton-block>&nbsp;</div>
+                  <div class="resonance-parts"><span v-for="part in 10" :key="part" class="resonance-part" data-skeleton-block></span></div>
+                </section>
+              </div>
+            </div>
+          </article>
+        </div>
+      </template>
+    <div v-if="recordsLoadFailed" class="resonance-empty" role="alert">
+      <p>{{ language === 'zh' ? '共鸣记录加载失败，请重试。' : 'Could not load records. Please retry.' }}</p>
+      <button type="button" class="primary-button" @click="reload">{{ language === 'zh' ? '重新加载' : 'Retry' }}</button>
+    </div>
+    <div v-else-if="!records.length" class="resonance-empty">
       <h3>{{ t.emptyTitle }}</h3>
       <p>{{ t.emptyDescription }}</p>
       <MobileEmptyScreenshot page="resonance" :language="language" />
@@ -383,7 +413,7 @@ defineExpose({ reload })
         :key="record.id"
         class="resonance-record"
       >
-        <div class="resonance-record-heading">
+        <div class="resonance-record-heading" data-load-block>
           <div class="resonance-record-title-row">
             <div class="resonance-title-actions">
               <h3 :title="`${displayName(record.outfitName)} ${t.rarity(record.rarity)}`">
@@ -434,7 +464,7 @@ defineExpose({ reload })
             )
           }}</p>
         </div>
-        <div class="resonance-mobile-details">
+        <div class="resonance-mobile-details" data-load-block>
           <div class="resonance-set-switch" role="group" :aria-label="t.setSelection">
             <button
               v-for="set in record.sets"
@@ -454,7 +484,7 @@ defineExpose({ reload })
           }}</p>
         </div>
         <div class="resonance-record-body">
-          <div :id="`resonance-outfit-anchor-${record.id}`" class="resonance-outfit-preview">
+          <div :id="`resonance-outfit-anchor-${record.id}`" class="resonance-outfit-preview" data-load-block>
             <button
               type="button"
               class="resonance-outfit-image"
@@ -504,7 +534,7 @@ defineExpose({ reload })
                   v-for="(part, partIndex) in sortResonanceParts(set.parts)"
                   :key="part.id"
                   v-card-reveal="`resonance:${record.id}:${set.setNumber}:${part.id}`"
-                  class="resonance-part"
+                  class="resonance-part" data-load-block
                   :class="{
                     'is-even-banner': Number(record.bannerId) % 2 === 0,
                     'is-missing': part.pullNumber === 0 && !part.manual
@@ -530,6 +560,7 @@ defineExpose({ reload })
       </article>
     </div>
 
+    </ContentLoadingSurface>
     <DataImportWindow
       :visible="showAddDialog"
       :language="language"

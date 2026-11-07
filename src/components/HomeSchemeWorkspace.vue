@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
@@ -1057,7 +1058,7 @@ function handleAddTag(value: string) {
                 :load="() => readHomeSchemeImage(item.id)"
                 :alt="item.name || item.code"
               />
-              <img v-else-if="item.imageUrl" :src="item.imageUrl" alt="" loading="lazy" />
+              <img v-image-skeleton v-else-if="item.imageUrl" :src="item.imageUrl" alt="" loading="lazy" />
               <div v-else class="scheme-card-no-image"
                 ><ImagePlus :size="22" aria-hidden="true"
               /></div>

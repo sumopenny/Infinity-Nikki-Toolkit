@@ -463,7 +463,7 @@ onBeforeUnmount(() => {
                 <p>{{ messages.parseLoading }}</p>
               </div>
               <div class="outfit-parse-grid" aria-hidden="true">
-                <span v-for="index in 10" :key="index" class="outfit-parse-skeleton"></span>
+                <span v-for="index in 10" :key="index" class="outfit-parse-skeleton" data-image-skeleton data-image-pending="true"></span>
               </div>
             </template>
 
@@ -508,11 +508,6 @@ onBeforeUnmount(() => {
                     @error="markItemImageFailed(item.id)"
                     @retry="failedItemImages.delete(item.id)"
                   />
-                  <span
-                    v-if="!loadedItemImages.has(item.id) && !failedItemImages.has(item.id)"
-                    class="outfit-image-spinner"
-                    aria-hidden="true"
-                  ></span>
                 </button>
                 <span v-else class="outfit-parse-item-icon is-missing" aria-hidden="true">?</span>
                 <p class="outfit-parse-item-name">{{ item.name }}</p>
@@ -609,10 +604,9 @@ onBeforeUnmount(() => {
                   />
                   <div
                     v-if="selectedDetail.detailImageUrl && detailImageState === 'idle'"
-                    class="outfit-detail-image-placeholder"
+                    class="visually-hidden"
                     role="status"
                   >
-                    <span class="outfit-image-spinner" aria-hidden="true"></span>
                     <span>{{ language === 'zh' ? '正在加载图片…' : 'Loading image…' }}</span>
                   </div>
                   <div

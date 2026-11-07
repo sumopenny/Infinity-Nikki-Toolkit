@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
 import TreeCollapse from './TreeCollapse.vue'
@@ -233,7 +234,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
         type="button"
         @click="$emit('jumpToAction', group.actionKey)"
       >
-        <img
+        <img v-image-skeleton
           v-if="group.actionImageUrl"
           :src="optimizedImageKitUrl(group.actionImageUrl)"
           :alt="group.actionName"

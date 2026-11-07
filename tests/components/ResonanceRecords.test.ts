@@ -115,7 +115,7 @@ it('hides the makeup shortcut when the outfit has no linked makeup', async () =>
   await saveResonanceRecords([{ ...savedRecord, outfitId: '99999999' }])
   const wrapper = mount(ResonanceRecords)
   wrappers.push(wrapper)
-  await vi.waitFor(() => expect(wrapper.find('.resonance-record').exists()).toBe(true))
+  await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .resonance-record').exists()).toBe(true))
   await flushPromises()
   expect(wrapper.find('.resonance-makeup-link').exists()).toBe(false)
 })
@@ -123,8 +123,7 @@ it('hides the makeup shortcut when the outfit has no linked makeup', async () =>
 it('shows a screenshot only for an empty resonance library, not a rarity miss', async () => {
   const wrapper = mount(ResonanceRecords)
   wrappers.push(wrapper)
-  await flushPromises()
-  expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(true)
+  await vi.waitFor(() => expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(true))
   await saveResonanceRecords([savedRecord])
   await (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
   expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(false)
@@ -196,7 +195,7 @@ describe('ResonanceRecords', () => {
       await saveResonanceRecords([record])
       const wrapper = mount(ResonanceRecords, { props: { language } })
       wrappers.push(wrapper)
-      await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(1))
+      await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
       const desktopSummary = wrapper.find('.resonance-overall-summary').text()
       const buttons = wrapper.findAll('.resonance-set-switch button')
       expect(buttons[0]!.attributes('aria-pressed')).toBe('true')
@@ -225,10 +224,10 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(1))
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
 
     expect(wrapper.emitted('recordsChange')?.[0]?.[0]).toEqual([savedRecord])
-    expect(wrapper.find('.resonance-record').attributes('id')).toBe('resonance-record-77:10347')
+    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe('resonance-record-77:10347')
     expect(wrapper.find('.resonance-part img').attributes('src')).toBe(
       getCatalogImageSource('icon', HAIR)
     )
@@ -244,7 +243,7 @@ describe('ResonanceRecords', () => {
     ])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(1))
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
     const outfit = wrapper.find('.resonance-outfit-image img')
     await outfit.trigger('error')
     expect(outfit.attributes('data-image-failed')).toBe('true')
@@ -284,11 +283,11 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([odd, even])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(2))
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(2))
 
     const partClasses = (recordId: string, name: string) =>
       wrapper
-        .findAll('.resonance-record')
+        .findAll('.content-loaded-layer .resonance-record')
         .find((card) => card.attributes('id') === `resonance-record-${recordId}`)!
         .findAll('.resonance-part')
         .find((part) => part.find('img').attributes('alt') === name)!
@@ -345,9 +344,9 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([older, sameBanner, savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh', bannerOrder: 'newest' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(3))
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(3))
 
-    const cardIds = () => wrapper.findAll('.resonance-record').map((card) => card.attributes('id'))
+    const cardIds = () => wrapper.findAll('.content-loaded-layer .resonance-record').map((card) => card.attributes('id'))
     const newestOrder = cardIds()
     expect(newestOrder.slice(0, 2).sort()).toEqual([
       'resonance-record-77:10347',
@@ -370,12 +369,12 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([fourStar, savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh', rarityFilter: 5 } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(1))
-    expect(wrapper.find('.resonance-record').attributes('id')).toBe('resonance-record-77:10347')
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
+    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe('resonance-record-77:10347')
     await wrapper.setProps({ rarityFilter: 4 })
-    expect(wrapper.find('.resonance-record').attributes('id')).toBe('resonance-record-76:10343')
+    expect(wrapper.find('.content-loaded-layer .resonance-record').attributes('id')).toBe('resonance-record-76:10343')
     await wrapper.setProps({ rarityFilter: 'all' })
-    expect(wrapper.findAll('.resonance-record')).toHaveLength(2)
+    expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(2)
     expect(await loadResonanceRecords()).toEqual([fourStar, savedRecord])
   })
 
@@ -467,7 +466,7 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'en' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(1))
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
 
     const loaded = (await loadResonanceRecords())[0]!
     expect(wrapper.find('.resonance-record h3').text()).toContain(loaded.outfitName.en)
@@ -507,7 +506,7 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([record])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(1))
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
     expect(summaryValues(wrapper)).toEqual([
       { label: '总抽数', value: '58' },
       { label: '平均抽数', value: '19.3' }
@@ -621,7 +620,7 @@ describe('ResonanceRecords', () => {
     await saveResonanceRecords([savedRecord])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
-    await vi.waitFor(() => expect(wrapper.findAll('.resonance-record')).toHaveLength(1))
+    await vi.waitFor(() => expect(wrapper.findAll('.content-loaded-layer .resonance-record')).toHaveLength(1))
 
     await wrapper
       .findAll('.resonance-actions button')
@@ -865,7 +864,7 @@ it('opens outfit and item details from record images without changing records', 
   expect(document.querySelector<HTMLImageElement>('.outfit-detail-image')?.src).toBe(
     getCatalogImageSource('item', HAIR)
   )
-  expect(document.querySelector('.outfit-detail-image-placeholder')).not.toBeNull()
+  expect(document.querySelector('.outfit-detail-image-frame [data-image-pending]')).not.toBeNull()
   const { loadWardrobeCatalog } = await import('../../src/utils/wardrobe/wardrobeCatalog')
   const { wardrobeFamilyKey } = await import('../../src/utils/wardrobe/wardrobeFamilies')
   const catalog = await loadWardrobeCatalog()

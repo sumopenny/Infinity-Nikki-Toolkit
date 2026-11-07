@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 import { vCardReveal } from '../utils/cardReveal'
 import { computed, onBeforeUnmount } from 'vue'
@@ -109,7 +110,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
     >
       <div class="date-block-header">
         <h2
-          ><img
+          ><img v-image-skeleton
             v-if="group.actionImageUrl"
             class="action-group-image"
             :src="optimizedImageKitUrl(group.actionImageUrl)"

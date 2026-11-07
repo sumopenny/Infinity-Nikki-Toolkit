@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSidebarMenu } from '../composables/useSidebarMenu'
@@ -211,7 +212,7 @@ function hideBrokenImage(event: Event) {
       @click="emit('jumpToRecord', record.id)"
     >
       <span class="resonance-sidebar-thumbnail">
-        <img
+        <img v-image-skeleton
           referrerpolicy="no-referrer"
           :src="record.outfitImageUrl"
           alt=""

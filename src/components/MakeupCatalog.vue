@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { useAfterArchiveMotion } from '../composables/useAfterArchiveMotion'
 import { ArrowLeftRight } from 'lucide-vue-next'
-import CatalogImage from './CatalogImage.vue'
+import CatalogImage from './LoadingCatalogImage.vue'
+import ContentLoadingSurface from './ContentLoadingSurface.vue'
 import MakeupFilters from './MakeupFilters.vue'
 import MakeupDetailDialog from './MakeupDetailDialog.vue'
 import type { MakeupEntry, MakeupRelations, MakeupRelatedOutfit } from '../utils/makeupCatalog'
@@ -262,10 +263,19 @@ const filtered = computed(() => {
         </nav>
       </template>
     </MakeupFilters>
-    <p v-if="loading" class="makeup-empty" role="status">{{
-      text('正在加载妆容图鉴…', 'Loading makeup catalog…')
-    }}</p>
-    <div v-else-if="failed" class="makeup-empty" role="alert">
+    <ContentLoadingSurface :loading="loading" :label="text('正在加载妆容图鉴…', 'Loading makeup catalog…')">
+      <template #skeleton>
+        <div class="makeup-grid" :class="{ 'is-pieces': tab === 'part' }">
+          <article v-for="index in 6" :key="index" class="makeup-card" data-skeleton-card>
+            <div class="makeup-cover" data-skeleton-block></div>
+            <div class="makeup-card-body" data-load-block>
+              <h3 class="skeleton-title" data-skeleton-block>&nbsp;</h3>
+              <small class="makeup-card-rarity" data-skeleton-block>&nbsp;&nbsp;&nbsp;</small>
+            </div>
+          </article>
+        </div>
+      </template>
+    <div v-if="failed" class="makeup-empty" role="alert">
       <p>{{
         text('妆容图鉴加载失败，请重试。', 'Could not load the makeup catalog. Please retry.')
       }}</p>
@@ -288,7 +298,7 @@ const filtered = computed(() => {
         @keydown.enter.self.prevent="selectedMakeup = entry"
         @keydown.space.self.prevent="selectedMakeup = entry"
       >
-        <div class="makeup-cover">
+        <div class="makeup-cover" data-load-block>
           <span v-if="entry.image === catalogImagePlaceholder" class="makeup-missing">{{
             text('暂无图片', 'Image unavailable')
           }}</span>
@@ -309,7 +319,7 @@ const filtered = computed(() => {
                 : wardrobeVariantLabels[language][entry.variant]
           }}</span>
         </div>
-        <div class="makeup-card-body">
+        <div class="makeup-card-body" data-load-block>
           <h3 :title="entry.name[language]">{{ entry.name[language] }}</h3>
           <small v-if="entry.quality !== undefined" class="makeup-card-rarity"
             >{{ entry.quality }} ★</small
@@ -322,6 +332,7 @@ const filtered = computed(() => {
         ? text('没有符合条件的妆容', 'No matching makeup')
         : text('没有符合条件的妆容部件', 'No matching makeup pieces')
     }}</p>
+    </ContentLoadingSurface>
   </section>
   <MakeupDetailDialog
     :detail="selectedMakeup"

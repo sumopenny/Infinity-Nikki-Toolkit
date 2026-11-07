@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vImageSkeleton } from '../utils/imageSkeleton'
 import { computed, defineAsyncComponent, ref, toRef, watch } from 'vue'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 import type { Language } from '../i18n'
@@ -259,7 +260,7 @@ function markImageFailed(title: string, name: string) {
                         class="photo-params-resource-row"
                         :class="{ 'photo-params-resource-row--pose': group.kind === 'pose' }"
                       >
-                        <img
+                        <img v-image-skeleton
                           v-if="
                             group.imageUrl &&
                             !failedImages.has(resourceKey(group.title, group.name))

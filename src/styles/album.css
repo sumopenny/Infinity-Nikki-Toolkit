@@ -71,7 +71,7 @@
 
 .photo-skeleton {
   background: var(--surface-soft);
-  animation: photo-skeleton-pulse 1.2s ease-in-out infinite alternate;
+  /* A single shared diagonal sweep covers all pending images. */
 }
 
 .photo-load-failed {
@@ -81,30 +81,6 @@
   color: var(--muted);
   font-size: 24px;
   font-weight: 700;
-}
-
-.lazy-photo-image.is-loaded img {
-  animation: photo-image-enter 0.2s ease-out both;
-}
-
-@keyframes photo-skeleton-pulse {
-  from {
-    opacity: 0.45;
-  }
-
-  to {
-    opacity: 0.9;
-  }
-}
-
-@keyframes photo-image-enter {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
 }
 
 .photo-frame img {
