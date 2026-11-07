@@ -50,7 +50,7 @@ useModalFocus(visible, panel, close)
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog">
+    <Transition name="confirm-dialog" appear>
       <div
         v-if="item"
         class="outfit-detail-overlay"

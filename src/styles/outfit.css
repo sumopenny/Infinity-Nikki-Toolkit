@@ -401,7 +401,7 @@
 .outfit-tag-editor-enter-from,
 .outfit-tag-editor-leave-to {
   opacity: 0;
-  transform: translateX(-10px) scale(0.9);
+  transform: translateX(-10px);
 }
 
 .outfit-filter-list {
@@ -1290,7 +1290,7 @@
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--frame-bg);
   color: var(--muted);
   font-size: 16px;
@@ -1344,7 +1344,7 @@
   width: 100%;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: transparent;
   cursor: pointer;
 }
@@ -1537,9 +1537,10 @@
   border-radius: 0;
 }
 
-/* 2026-10-11：搭配码部件详情的套装图片使用 back.png，缺图占位保留默认背景。 */
+/* 搭配码部件详情的套装图片跟随档案背景风格，缺图占位保留默认背景。 */
 .outfit-detail-image-frame img.outfit-detail-image {
-  background: var(--frame-bg) url('../../img/back.png') center / cover no-repeat;
+  background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
+  background-color: var(--frame-bg);
 }
 
 .outfit-detail-image.is-loading {
@@ -1571,6 +1572,7 @@
 
 .outfit-detail-info div {
   display: grid;
+  align-items: center;
   grid-template-columns: 88px minmax(0, 1fr);
   gap: 10px;
   padding: 11px 0;

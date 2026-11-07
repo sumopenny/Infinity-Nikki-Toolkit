@@ -18,6 +18,7 @@ export const catalogResources = {
   items: resource(() => import('../../data/gongeo/items.json')),
   outfits: resource(() => import('../../data/gongeo/outfits.json')),
   outfitItems: resource(() => import('../../data/gongeo/outfitItems.json')),
+  makeups: resource(() => import('../../data/gongeo/makeups.json')),
   makeupItems: resource(() => import('../../data/gongeo/makeupItems.json')),
   makeupOutfits: resource(() => import('../../data/gongeo/makeupOutfits.json')),
   palettes: resource(() => import('../../data/gongeo/palettes.json'))

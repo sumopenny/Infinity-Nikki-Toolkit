@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import CatalogImage from './CatalogImage.vue'
 import WardrobeFormNav from './WardrobeFormNav.vue'
+import MakeupDetailDialog from './MakeupDetailDialog.vue'
+import { catalogResources } from '../utils/gongeo/catalogResources'
+import { loadMakeupCatalog, type MakeupCatalogData } from '../utils/loadMakeupCatalog'
+import type { MakeupEntry } from '../utils/makeupCatalog'
 import { matchesWardrobeSource, wardrobeSourceOptions } from '../utils/wardrobe/wardrobeFilters'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
-import { computed, ref, toRef, watch } from 'vue'
+import { computed, ref, shallowRef, toRef, watch } from 'vue'
 import {
   CalendarDays,
+  ChevronRight,
   CircleCheck,
   CircleHelp,
   CircleMinus,
@@ -35,6 +40,7 @@ const props = defineProps<{
   catalog: WardrobeCatalog | null
   snapshot: WardrobeSnapshot
   language: Language
+  layer?: number
 }>()
 const hasForms = computed(
   () =>
@@ -45,6 +51,60 @@ const hasForms = computed(
 )
 const emit = defineEmits<{ close: []; openOutfit: [outfit: WardrobeEntry] }>()
 const itemPreview = ref<WardrobeEntry | null>(null)
+const makeupPreview = shallowRef<MakeupEntry | null>(null)
+const makeupData = shallowRef<MakeupCatalogData | null>(null)
+const makeupIds = ref<string[]>([])
+const makeupLoading = ref(false)
+const makeupFailed = ref(false)
+const makeupRequest = useLatestRequest()
+watch(
+  () => props.detail?.id,
+  async (id, _, onCleanup) => {
+    let current = true
+    onCleanup(() => {
+      current = false
+    })
+    makeupRequest.invalidate()
+    makeupPreview.value = null
+    makeupLoading.value = false
+    makeupFailed.value = false
+    makeupIds.value = []
+    if (!id) return
+    try {
+      const rows = await catalogResources.makeupOutfits()
+      if (current)
+        makeupIds.value = [
+          ...new Set(
+            rows
+              .filter((row) => String(row[0]) === id)
+              .flatMap((row) => (Array.isArray(row[1]) ? row[1].map(String) : []))
+          )
+        ]
+    } catch {
+      // Optional association lookup must not block the outfit details.
+    }
+  },
+  { immediate: true }
+)
+async function openMakeup() {
+  const request = makeupRequest.begin()
+  makeupLoading.value = true
+  makeupFailed.value = false
+  try {
+    const data = makeupData.value ?? (await loadMakeupCatalog())
+    if (!request.isCurrent()) return
+    const entry = makeupIds.value.flatMap((id) =>
+      data.entries.filter((entry) => entry.id === id)
+    )[0]
+    if (!entry) throw new Error('MAKEUP_NOT_FOUND')
+    makeupData.value = data
+    makeupPreview.value = entry
+  } catch {
+    if (request.isCurrent()) makeupFailed.value = true
+  } finally {
+    if (request.isCurrent()) makeupLoading.value = false
+  }
+}
 const itemOutfits = computed(() =>
   (props.catalog?.entries ?? []).filter(
     (entry) =>
@@ -148,10 +208,11 @@ useModalFocus(dialogOpen, panel, closeDialog)
 </script>
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog">
+    <Transition name="confirm-dialog" appear>
       <div
         v-if="dialogOpen && detail"
         class="dialog-overlay wardrobe-detail-overlay"
+        :style="{ zIndex: layer ?? 221 }"
         @click.self="closeDialog"
       >
         <section
@@ -203,7 +264,23 @@ useModalFocus(dialogOpen, panel, closeDialog)
                     />
                   </div>
                   <div class="wardrobe-suit-copy">
-                    <h3>{{ name(detail) }}</h3>
+                    <button
+                      v-if="makeupIds.length"
+                      type="button"
+                      class="wardrobe-makeup-link"
+                      :disabled="makeupLoading"
+                      @click="openMakeup"
+                    >
+                      {{
+                        makeupLoading
+                          ? text('正在加载妆容…', 'Loading makeup…')
+                          : makeupFailed
+                            ? text('加载失败，点击重试', 'Load failed. Retry')
+                            : text('查看对应妆容', 'View matching makeup')
+                      }}
+                      <ChevronRight :size="18" aria-hidden="true" />
+                    </button>
+                    <h3 v-else>{{ name(detail) }}</h3>
                     <p
                       class="wardrobe-suit-message"
                       :class="{ 'is-complete': detailProgress.complete }"
@@ -349,11 +426,25 @@ useModalFocus(dialogOpen, panel, closeDialog)
     @select-form="itemPreview = $event"
     :outfits="itemOutfits"
     :language="language"
-    :layer="222"
+    :layer="(layer ?? 221) + 1"
     @close="itemPreview = null"
     @open-outfit="openAssociatedOutfit"
   />
+  <MakeupDetailDialog
+    v-if="makeupData"
+    :detail="makeupPreview"
+    :entries="makeupData.entries"
+    :parts="makeupData.parts"
+    :relations="makeupData.relations"
+    :outfits="makeupData.relatedOutfits"
+    :language="language"
+    :layer="(layer ?? 221) + 2"
+    @close="makeupPreview = null"
+    @select-form="makeupPreview = $event"
+    @select-entry="makeupPreview = $event"
+  />
 </template>
+<style scoped src="../styles/wardrobe-detail-tokens.css"></style>
 <style scoped>
 /* 形态导航的左右分栏仅用于电脑端，手机端由 mobile.css 提供单列滚动布局。 */
 @media (min-width: 900px) {
@@ -484,42 +575,6 @@ useModalFocus(dialogOpen, panel, closeDialog)
   flex-shrink: 0;
   align-self: flex-start;
 }
-.wardrobe-detail-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  min-width: 0;
-  max-width: 100%;
-  gap: 12px;
-  font-size: 15px;
-}
-.wardrobe-detail-source {
-  display: inline-block;
-  min-width: 0;
-  max-width: 100%;
-  padding: 3px 9px;
-  border: 1px solid var(--capsule-source-border);
-  border-radius: 999px;
-  background: var(--capsule-source-bg);
-  color: var(--capsule-source-text);
-  font-size: 12px;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wardrobe-detail-variant {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  border: 1px solid var(--capsule-variant-border);
-  border-radius: 999px;
-  background: var(--capsule-variant-bg);
-  color: var(--heading);
-  font-size: 12px;
-  line-height: 1.3;
-  white-space: nowrap;
-}
 .wardrobe-dialog-body {
   min-height: 0;
   overflow: auto;
@@ -607,6 +662,53 @@ useModalFocus(dialogOpen, panel, closeDialog)
   padding: 18px 16px 18px 10px;
   overflow: hidden;
 }
+.wardrobe-makeup-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 9px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--pink-deep);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
+}
+.wardrobe-makeup-link > svg {
+  flex-shrink: 0;
+  transition: transform var(--motion-fast) ease;
+}
+.wardrobe-makeup-link:hover:not(:disabled) {
+  color: var(--menu-hover-text);
+}
+:global(:root[data-theme='dark'] .wardrobe-makeup-link:hover:not(:disabled)) {
+  color: var(--heading);
+}
+.wardrobe-makeup-link:hover:not(:disabled) > svg {
+  transform: translateX(2px);
+}
+.wardrobe-makeup-link:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.wardrobe-makeup-link:focus-visible {
+  outline: 2px solid var(--pink-deep);
+  outline-offset: 2px;
+}
+.wardrobe-makeup-link:disabled {
+  cursor: wait;
+}
 .wardrobe-suit-copy h3 {
   color: var(--heading);
   font-size: 18px;
@@ -659,59 +761,6 @@ useModalFocus(dialogOpen, panel, closeDialog)
 .wardrobe-suit-progress progress::-moz-progress-bar {
   border-radius: 999px;
   background: var(--notice-success);
-}
-.wardrobe-suit-facts {
-  margin: 0;
-  padding-left: 20px;
-  border-left: 1px solid var(--line);
-  font-size: 12px;
-}
-.wardrobe-suit-facts > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  padding: 10px 0;
-}
-.wardrobe-suit-facts > div + div {
-  border-top: 1px solid var(--line-soft);
-}
-.wardrobe-suit-facts dt {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.wardrobe-suit-facts dt svg {
-  flex-shrink: 0;
-  color: var(--pink-deep);
-}
-.wardrobe-suit-facts dd {
-  min-width: 0;
-  margin: 0;
-  color: var(--heading);
-  overflow-wrap: anywhere;
-}
-.wardrobe-style-tag,
-.wardrobe-version-tag,
-.wardrobe-rarity-tag {
-  display: inline-block;
-  padding: 2px 11px;
-  border-radius: 999px;
-  background: var(--tag-bg);
-}
-/* 风格标签：比公共浅粉更鲜明的玫瑰红，贴近方案 A 的原始配色。 */
-.wardrobe-style-tag {
-  color: var(--capsule-style-text);
-  background: var(--tag-bg);
-}
-.wardrobe-rarity-tag {
-  color: var(--capsule-rarity-text);
-  background: var(--capsule-rarity-bg);
-}
-.wardrobe-version-tag {
-  color: var(--capsule-version-text);
-  background: var(--capsule-version-bg);
 }
 .wardrobe-suit-description {
   min-width: 0;
@@ -914,6 +963,9 @@ useModalFocus(dialogOpen, panel, closeDialog)
   .wardrobe-suit-preview,
   .wardrobe-suit-summary {
     min-height: 140px;
+  }
+  .wardrobe-makeup-link {
+    font-size: 14px;
   }
   .wardrobe-suit-copy h3 {
     font-size: 16px;

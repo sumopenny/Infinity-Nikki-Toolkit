@@ -93,6 +93,7 @@ import OutfitSidebar, { type OutfitFilter } from './components/OutfitSidebar.vue
 import HomeSchemeWorkspace from './components/HomeSchemeWorkspace.vue'
 import ResonanceRecords from './components/ResonanceRecords.vue'
 import PersonalWardrobe from './components/PersonalWardrobe.vue'
+import MakeupCatalog from './components/MakeupCatalog.vue'
 import ResonanceSidebar from './components/ResonanceSidebar.vue'
 import PhotoGrid from './components/PhotoGrid.vue'
 import RecentlyDeletedGrid from './components/RecentlyDeletedGrid.vue'
@@ -315,6 +316,7 @@ const topBarRef = ref<InstanceType<typeof TopBar> | null>(null)
 // 筛选栏提供当前位置，顶栏保留唯一点赞实例。
 provide('mobileLikeTarget', ref<HTMLElement | null>(null))
 const activeView = ref<AlbumView>(compactLayout.value && !directorySupported ? 'outfits' : 'all')
+const isArchiveView = computed(() => ['resonance', 'wardrobe', 'makeup'].includes(activeView.value))
 const sidebarMode = ref<'date' | 'action'>('date')
 const actionSort = ref<ActionSort>('id')
 const currentPreview = ref<PhotoDisplayItem | null>(null)
@@ -496,12 +498,7 @@ watch(
   { immediate: true, flush: 'sync' }
 )
 // 共鸣、衣橱及相机参数均禁用比例设置；相机参数另支持独立的大小设置。
-const isThumbnailModeDisabled = computed(
-  () =>
-    isCameraFavoritesView.value ||
-    activeView.value === 'resonance' ||
-    activeView.value === 'wardrobe'
-)
+const isThumbnailModeDisabled = computed(() => isCameraFavoritesView.value || isArchiveView.value)
 const photoParamsSaved = computed(() =>
   cameraFavoriteCodes.value.includes(
     normalizeCameraCode(photoParamsResult.value?.rawCameraParams ?? '')
@@ -1376,9 +1373,7 @@ const thumbnailKind = computed(() =>
 const thumbnailSizeKind = computed(() =>
   isCameraFavoritesView.value ? 'camera' : thumbnailKind.value
 )
-const isThumbnailSizeDisabled = computed(
-  () => activeView.value === 'resonance' || activeView.value === 'wardrobe'
-)
+const isThumbnailSizeDisabled = computed(() => isArchiveView.value)
 const displayedThumbnailSize = computed(() => thumbnailSizes.value[thumbnailSizeKind.value])
 
 /** 比例与大小独立保存；固定卡片页面拒绝修改。 */
@@ -2274,7 +2269,12 @@ function importAllDataFromMenu() {
               ...locale.topBar,
               searchPlaceholder: mobileText('搜索服装名称或 ID', 'Search clothes by name or ID')
             }
-          : locale.topBar
+          : activeView === 'makeup'
+            ? {
+                ...locale.topBar,
+                searchPlaceholder: mobileText('搜索妆容名称或 ID', 'Search makeup by name or ID')
+              }
+            : locale.topBar
       "
       :search-query="searchQuery"
       @choose-directory="chooseDirectory"
@@ -2352,6 +2352,7 @@ function importAllDataFromMenu() {
           activeView !== 'home' &&
           activeView !== 'resonance' &&
           activeView !== 'wardrobe' &&
+          activeView !== 'makeup' &&
           !isCameraFavoritesView
       }"
     >
@@ -2381,8 +2382,15 @@ function importAllDataFromMenu() {
           class="date-sidebar"
           :aria-label="mobileText('衣橱分类与筛选', 'Wardrobe categories and filters')"
         ></aside>
+        <aside
+          v-if="activeView === 'makeup'"
+          v-show="!compactLayout"
+          id="makeup-sidebar"
+          class="date-sidebar"
+          :aria-label="mobileText('妆容筛选', 'Makeup filters')"
+        ></aside>
         <AdaptiveFilterPanel
-          v-if="activeView !== 'wardrobe'"
+          v-if="activeView !== 'wardrobe' && activeView !== 'makeup'"
           :compact="compactLayout"
           :open="mobileFiltersOpen"
           :tag-picker="mobileCollectionPicker"
@@ -2464,7 +2472,7 @@ function importAllDataFromMenu() {
           }}</button>
         </div>
         <div
-          v-if="compactLayout && (activeView === 'resonance' || activeView === 'wardrobe')"
+          v-if="compactLayout && isArchiveView"
           class="archive-main-toolbar"
           :class="{ 'is-wardrobe': activeView === 'wardrobe' }"
         >
@@ -2488,10 +2496,23 @@ function importAllDataFromMenu() {
               @click="changeAlbumView('wardrobe')"
               >{{ locale.viewNav.wardrobe }}</button
             >
+            <button
+              type="button"
+              :disabled="operations.isBusy.value"
+              class="resonance-choice"
+              :aria-pressed="activeView === 'makeup'"
+              @click="changeAlbumView('makeup')"
+              >{{ locale.viewNav.makeup }}</button
+            >
           </nav>
           <div
             v-if="activeView === 'wardrobe'"
             id="wardrobe-mobile-category-target"
+            class="archive-wardrobe-extra"
+          ></div>
+          <div
+            v-if="activeView === 'makeup'"
+            id="makeup-mobile-category-target"
             class="archive-wardrobe-extra"
           ></div>
         </div>
@@ -2501,6 +2522,7 @@ function importAllDataFromMenu() {
             activeView !== 'home' &&
             activeView !== 'resonance' &&
             activeView !== 'wardrobe' &&
+            activeView !== 'makeup' &&
             activeView !== 'trash' &&
             !isCameraFavoritesView
           "
@@ -2611,6 +2633,7 @@ function importAllDataFromMenu() {
             activeView !== 'home' &&
             activeView !== 'resonance' &&
             activeView !== 'wardrobe' &&
+            activeView !== 'makeup' &&
             !isCameraFavoritesView
           "
           class="empty-album-start"
@@ -2649,6 +2672,7 @@ function importAllDataFromMenu() {
             activeView !== 'home' &&
             activeView !== 'resonance' &&
             activeView !== 'wardrobe' &&
+            activeView !== 'makeup' &&
             activeView !== 'favorites'
           "
           class="gallery-header"
@@ -2812,6 +2836,13 @@ function importAllDataFromMenu() {
           @status="handleHomeSchemeStatus"
           @count-change="handleHomeSchemeCount"
         />
+        <MakeupCatalog
+          v-else-if="activeView === 'makeup'"
+          sidebar-target="#makeup-sidebar"
+          mobile-category-target="#makeup-mobile-category-target"
+          :language="language"
+          :search-query="searchQuery"
+        />
         <PersonalWardrobe
           ref="wardrobeRef"
           v-else-if="activeView === 'wardrobe'"
@@ -2905,6 +2936,7 @@ function importAllDataFromMenu() {
         activeView !== 'home' &&
         activeView !== 'resonance' &&
         activeView !== 'wardrobe' &&
+        activeView !== 'makeup' &&
         !isCameraFavoritesView
       "
       :mode="

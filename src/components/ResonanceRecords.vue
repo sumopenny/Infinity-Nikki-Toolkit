@@ -16,6 +16,11 @@ import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import WardrobeOutfitDialog from './WardrobeOutfitDialog.vue'
 import WardrobeItemDialog from './WardrobeItemDialog.vue'
+import MakeupDetailDialog from './MakeupDetailDialog.vue'
+import { ChevronRight } from 'lucide-vue-next'
+import { catalogResources } from '../utils/gongeo/catalogResources'
+import { loadMakeupCatalog, type MakeupCatalogData } from '../utils/loadMakeupCatalog'
+import type { MakeupEntry } from '../utils/makeupCatalog'
 import WardrobeFormPopover from './WardrobeFormPopover.vue'
 import { groupWardrobeEntries, wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 import { useLatestRequest } from '../composables/useLatestRequest'
@@ -100,6 +105,61 @@ async function loadFormContext() {
 }
 const itemPreview = shallowRef<WardrobeEntry | null>(null)
 const previewRequest = useLatestRequest()
+const makeupRequest = useLatestRequest()
+const makeupRelationRequest = useLatestRequest()
+const makeupByOutfit = shallowRef<Map<string, string[]>>(new Map())
+const makeupData = shallowRef<MakeupCatalogData | null>(null)
+const makeupPreview = shallowRef<MakeupEntry | null>(null)
+const makeupLoading = ref<string | null>(null)
+
+/** 只读取关联索引，不为无妆容的套装显示无效入口。 */
+async function loadMakeupRelations() {
+  const request = makeupRelationRequest.begin()
+  try {
+    const rows = await catalogResources.makeupOutfits()
+    if (!request.isCurrent()) return
+    makeupByOutfit.value = new Map<string, string[]>(
+      rows.map(([outfitId, ids]) => [
+        String(outfitId),
+        [...new Set((Array.isArray(ids) ? ids : [ids]).map(String))]
+      ])
+    )
+  } catch (error) {
+    if (request.isCurrent()) {
+      makeupByOutfit.value = new Map()
+      captureDiagnosticError(error, { module: 'resonance', action: 'load-makeup-relations' })
+    }
+  }
+}
+
+async function openMakeup(record: ResonanceRecord) {
+  if (props.disabled || makeupLoading.value) return
+  const request = makeupRequest.begin()
+  makeupLoading.value = record.id
+  try {
+    const data = makeupData.value ?? (await loadMakeupCatalog())
+    if (!request.isCurrent()) return
+    const makeupIds = makeupByOutfit.value.get(record.outfitId) ?? []
+    const entry = makeupIds.map((id) => data.entries.find((item) => item.id === id)).find(Boolean)
+    if (!entry) throw new Error('MAKEUP_NOT_FOUND')
+    makeupData.value = data
+    makeupPreview.value = entry
+  } catch (error) {
+    if (request.isCurrent()) {
+      captureDiagnosticError(error, { module: 'resonance', action: 'load-makeup-detail' })
+      notify(
+        'makeup-error',
+        props.language === 'zh'
+          ? '妆容详情加载失败，请重试。'
+          : 'Makeup details could not be loaded. Retry.',
+        'error'
+      )
+    }
+  } finally {
+    if (request.isCurrent()) makeupLoading.value = null
+  }
+}
+
 const itemOutfits = computed(() =>
   (previewCatalog.value?.entries ?? []).filter(
     (entry) =>
@@ -258,6 +318,7 @@ async function reload(): Promise<boolean> {
       expandedRecordId.value = null
       records.value = await loadResonanceRecords()
       void loadFormContext()
+      void loadMakeupRelations()
       selectedSet.value = {}
       recordsLoaded.value = true
       return true
@@ -323,10 +384,30 @@ defineExpose({ reload })
       >
         <div class="resonance-record-heading">
           <div class="resonance-record-title-row">
-            <h3 :title="`${displayName(record.outfitName)} ${t.rarity(record.rarity)}`">
-              <span class="resonance-outfit-title">{{ displayName(record.outfitName) }}</span>
-              <span class="resonance-rarity-tag">{{ record.rarity }} ★</span>
-            </h3>
+            <div class="resonance-title-actions">
+              <h3 :title="`${displayName(record.outfitName)} ${t.rarity(record.rarity)}`">
+                <span class="resonance-outfit-title">{{ displayName(record.outfitName) }}</span>
+                <span class="resonance-rarity-tag">{{ record.rarity }} ★</span>
+              </h3>
+              <button
+                v-if="makeupByOutfit.has(record.outfitId)"
+                type="button"
+                class="resonance-makeup-link"
+                :disabled="disabled || makeupLoading !== null"
+                @click="openMakeup(record)"
+              >
+                {{
+                  makeupLoading === record.id
+                    ? language === 'zh'
+                      ? '正在加载…'
+                      : 'Loading…'
+                    : language === 'zh'
+                      ? '查看妆容'
+                      : 'View makeup'
+                }}
+                <ChevronRight :size="15" aria-hidden="true" />
+              </button>
+            </div>
             <span class="resonance-banner-name" :title="displayName(record.bannerName)">{{
               displayName(record.bannerName)
             }}</span>
@@ -479,6 +560,19 @@ defineExpose({ reload })
     @close="itemPreview = null"
     @open-outfit="openPreview($event.id, 'outfit')"
   />
+  <MakeupDetailDialog
+    v-if="makeupData"
+    :detail="makeupPreview"
+    :entries="makeupData.entries"
+    :parts="makeupData.parts"
+    :relations="makeupData.relations"
+    :outfits="makeupData.relatedOutfits"
+    :language="language"
+    :layer="223"
+    @close="makeupPreview = null"
+    @select-form="makeupPreview = $event"
+    @select-entry="makeupPreview = $event"
+  />
   <WardrobeOutfitDialog
     :detail="outfitPreview"
     :catalog="previewCatalog"
@@ -493,10 +587,7 @@ defineExpose({ reload })
 button.resonance-outfit-image,
 button.resonance-part {
   padding: 0;
-  /* 交互轮廓不占布局空间，避免图片与底图之间留下实体边框宽度。 */
   border: 0;
-  outline: 1px solid transparent;
-  outline-offset: -1px;
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -505,14 +596,26 @@ button.resonance-part {
     outline-color var(--motion-fast) ease,
     box-shadow var(--motion-fast) ease;
 }
+button.resonance-outfit-image {
+  --photo-hover-shadow: 0 1px 5px rgba(201, 132, 134, 0.202);
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+:where(:root[data-theme='dark']) button.resonance-outfit-image {
+  --photo-hover-shadow: 0 2px 8px rgba(185, 126, 126, 0.524);
+}
 button.resonance-outfit-image:hover,
 button.resonance-outfit-image:focus-visible {
-  outline-color: var(--wardrobe-card-hover-border);
+  border-color: var(--pink-deep);
   box-shadow: var(--photo-hover-shadow);
 }
 button.resonance-part {
   /* 常态轮廓随底图配色，沿用内侧绘制以免挤压图片。 */
-  outline-color: var(--part-outline-color);
+  outline: 1px solid var(--part-outline-color);
+  outline-offset: -1px;
 }
 button.resonance-part:hover,
 button.resonance-part:focus-visible {
@@ -557,11 +660,63 @@ button.resonance-part:focus-visible {
   justify-content: space-between;
   gap: 12px;
 }
+.resonance-title-actions {
+  display: flex;
+  align-items: baseline;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+}
+.resonance-makeup-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--pink-deep);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
+}
+.resonance-makeup-link svg {
+  flex: none;
+  transition: transform var(--motion-fast) ease;
+}
+.resonance-makeup-link:hover:not(:disabled) {
+  color: var(--menu-hover-text);
+}
+:global(:root[data-theme='dark'] .resonance-makeup-link:hover:not(:disabled)) {
+  color: var(--heading);
+}
+.resonance-makeup-link:hover:not(:disabled) svg {
+  transform: translateX(2px);
+}
+.resonance-makeup-link:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.resonance-makeup-link:focus-visible {
+  outline: 2px solid var(--pink-deep);
+  outline-offset: 2px;
+}
+.resonance-makeup-link:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
 .resonance-record-title-row h3 {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
 }
 .resonance-outfit-title {
@@ -645,7 +800,8 @@ button.resonance-part:focus-visible {
   aspect-ratio: 448 / 656;
   overflow: hidden;
   border-radius: var(--radius-md);
-  background: var(--frame-bg) url('../../img/back.png') center / cover no-repeat;
+  background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
+  background-color: var(--frame-bg);
   /* 背景覆盖整个卡片区域。 */
   background-origin: border-box;
 }
@@ -704,17 +860,18 @@ button.resonance-part:focus-visible {
   aspect-ratio: 1;
   overflow: visible;
   border-radius: 12px;
-  background: var(--frame-bg) url('../../img/pinkCardBg.png') center / 100% 100% no-repeat;
+  background: var(--archive-pink-card-background) center / 100% 100% no-repeat;
+  background-color: var(--frame-bg);
   /* 方形底图按实际宽高铺满，避免移动端亚像素取整留下细条。 */
   background-origin: border-box;
 }
 .resonance-part.is-even-banner {
   --part-outline-color: #cec4dd;
-  background-image: url('../../img/purpleCardBg.png');
+  background-image: var(--archive-purple-card-background);
 }
 .resonance-part.is-missing {
   --part-outline-color: #d0d0d3;
-  background-image: url('../../img/silverCardBg.png');
+  background-image: var(--archive-silver-card-background);
 }
 .resonance-part img {
   border-radius: inherit;
@@ -763,8 +920,14 @@ button.resonance-part:focus-visible {
     align-items: flex-start;
     gap: 6px;
   }
+  .resonance-title-actions {
+    flex-wrap: wrap;
+    gap: 3px 8px;
+    max-width: 100%;
+  }
   .resonance-record-title-row h3 {
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
     max-width: 100%;
     font-size: 16px;
     line-height: 1.4;

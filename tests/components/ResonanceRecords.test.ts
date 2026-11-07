@@ -98,6 +98,28 @@ async function openDialog(language: 'zh' | 'en' = 'zh', expectReady = true) {
   return { wrapper, panel: document.body.querySelector('.resonance-import-panel') as HTMLElement }
 }
 
+it('shows the linked makeup beside an eligible outfit title and opens its detail', async () => {
+  await saveResonanceRecords([savedRecord])
+  const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
+  wrappers.push(wrapper)
+  await vi.waitFor(() => expect(wrapper.find('.resonance-makeup-link').exists()).toBe(true))
+  expect(wrapper.find('.resonance-title-actions').text()).toContain('查看妆容')
+  await wrapper.get('.resonance-makeup-link').trigger('click')
+  await vi.waitFor(
+    () => expect(document.body.querySelector('.makeup-detail-dialog')).not.toBeNull(),
+    { timeout: 10000 }
+  )
+})
+
+it('hides the makeup shortcut when the outfit has no linked makeup', async () => {
+  await saveResonanceRecords([{ ...savedRecord, outfitId: '99999999' }])
+  const wrapper = mount(ResonanceRecords)
+  wrappers.push(wrapper)
+  await vi.waitFor(() => expect(wrapper.find('.resonance-record').exists()).toBe(true))
+  await flushPromises()
+  expect(wrapper.find('.resonance-makeup-link').exists()).toBe(false)
+})
+
 it('shows a screenshot only for an empty resonance library, not a rarity miss', async () => {
   const wrapper = mount(ResonanceRecords)
   wrappers.push(wrapper)
@@ -214,7 +236,11 @@ describe('ResonanceRecords', () => {
 
   it('shows retryable failed images and retries the original without a proxy', async () => {
     await saveResonanceRecords([
-      { ...savedRecord, outfitImageUrl: 'https://ik.imagekit.io/nikkicube/images/outfits/T_showpic_suit_S0347.png?tr=f-webp,q-70' }
+      {
+        ...savedRecord,
+        outfitImageUrl:
+          'https://ik.imagekit.io/nikkicube/images/outfits/T_showpic_suit_S0347.png?tr=f-webp,q-70'
+      }
     ])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)

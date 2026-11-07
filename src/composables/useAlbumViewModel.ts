@@ -1,4 +1,5 @@
 // 相册视图模型：集中计算筛选结果、日期分组、预览数据和界面展示文案。
+import type { AlbumView } from '../components/AlbumViewSwitcher.vue'
 import { computed, type ComputedRef, type Ref } from 'vue'
 import { getThumbnailModeOptions, type LocaleMessages } from '../i18n'
 import {
@@ -23,7 +24,7 @@ export function useAlbumViewModel(options: {
   outfits: Ref<OutfitItem[]>
   recentlyDeleted: Ref<RecentlyDeletedPhoto[]>
   favoriteIds: Ref<Set<string>>
-  activeView: Ref<'all' | 'favorites' | 'trash' | 'outfits' | 'home' | 'resonance' | 'wardrobe'>
+  activeView: Ref<AlbumView>
   activeOutfitFilter: Ref<OutfitFilter>
   searchQuery: Ref<string>
   currentPreview: Ref<PhotoDisplayItem | null>

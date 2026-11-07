@@ -33,6 +33,9 @@ import { useLatestRequest } from '../composables/useLatestRequest'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 
 import WardrobeOutfitDialog from './WardrobeOutfitDialog.vue'
+import MakeupDetailDialog from './MakeupDetailDialog.vue'
+import { loadMakeupCatalog, type MakeupCatalogData } from '../utils/loadMakeupCatalog'
+import type { MakeupEntry } from '../utils/makeupCatalog'
 import {
   loadWardrobeCatalog,
   type WardrobeCatalog,
@@ -80,6 +83,16 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailRequest = useLatestRequest()
 const selectedDetail = ref<OutfitDetail | null>(null)
+const makeupData = shallowRef<MakeupCatalogData | null>(null)
+const makeupPreview = shallowRef<MakeupEntry | null>(null)
+const associatedMakeups = computed(() => {
+  const detail = selectedDetail.value
+  const data = makeupData.value
+  if (!detail || !data) return []
+  return data.entries.filter((entry) =>
+    data.relations.get(entry.id)?.partIds.includes(String(detail.itemId))
+  )
+})
 const selectedWardrobeItem = computed(() => {
   const entry = wardrobeCatalog.value?.byId.get(String(selectedDetail.value?.itemId))
   return entry?.kind === 'item' ? entry : null
@@ -114,7 +127,10 @@ function selectDetailForm(entry: WardrobeEntry) {
 const loadedItemImages = ref(new Set<number>())
 const failedItemImages = ref(new Set<number>())
 const detailImageState = ref<'idle' | 'loaded' | 'failed'>('idle')
-type DetailItem = Pick<ParseItemView, 'id' | 'name' | 'clothType' | 'outfitId' | 'dyes' | 'hasSpecialEffect'>
+type DetailItem = Pick<
+  ParseItemView,
+  'id' | 'name' | 'clothType' | 'outfitId' | 'dyes' | 'hasSpecialEffect'
+>
 let detailItem: DetailItem | null = null
 let detailTrigger: HTMLButtonElement | null = null
 let detailTriggerItemId: number | null = null
@@ -131,6 +147,17 @@ const items = computed(() =>
 
 async function openItemDetail(item: DetailItem, event?: Event) {
   const request = detailRequest.begin()
+  makeupPreview.value = null
+  if (!makeupData.value) {
+    void loadMakeupCatalog()
+      .then((data) => {
+        if (request.isCurrent()) makeupData.value = data
+      })
+      .catch((error) => {
+        if (request.isCurrent())
+          captureDiagnosticError(error, { module: 'outfits', action: 'load-makeup-catalog' })
+      })
+  }
   detailItem = item
   if (event) {
     detailTrigger = event.currentTarget instanceof HTMLButtonElement ? event.currentTarget : null
@@ -251,6 +278,7 @@ function markDetailImageFailed() {
 }
 
 function closeItemDetail() {
+  makeupPreview.value = null
   outfitPreview.value = null
   detailRequest.invalidate()
   const trigger = detailTrigger
@@ -309,7 +337,14 @@ async function startParse() {
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (!props.visible || event.defaultPrevented || outfitPreview.value || shareVisible.value) return
+  if (
+    !props.visible ||
+    event.defaultPrevented ||
+    outfitPreview.value ||
+    makeupPreview.value ||
+    shareVisible.value
+  )
+    return
   if (props.embedded && !detailVisible.value) return
   if (event.key === 'Escape') {
     event.preventDefault()
@@ -507,7 +542,7 @@ onBeforeUnmount(() => {
     </Transition>
   </Teleport>
   <Teleport to="body">
-    <Transition name="confirm-dialog">
+    <Transition name="confirm-dialog" appear>
       <div
         v-if="visible && detailVisible"
         class="outfit-detail-overlay"
@@ -587,21 +622,44 @@ onBeforeUnmount(() => {
                   >
                 </div>
                 <dl class="outfit-detail-info">
-                  <div
-                    ><dt>{{ messages.detailOutfit }}</dt
-                    ><dd
-                      >{{ selectedDetail.outfitName || messages.detailOutfitUnavailable }}
-                      <button
-                        v-if="associatedOutfit"
-                        type="button"
-                        class="wardrobe-outfit-link"
-                        :aria-label="messages.detailOutfit + ': ' + selectedDetail.outfitName"
-                        :title="messages.detailOutfit"
-                        @click="openAssociatedOutfit"
-                      >
-                        <ExternalLink :size="15" aria-hidden="true" />
-                      </button> </dd
-                  ></div>
+                  <div>
+                    <dt>{{
+                      !selectedDetail.outfitId && associatedMakeups.length
+                        ? language === 'zh'
+                          ? '全妆'
+                          : 'Full makeup'
+                        : messages.detailOutfit
+                    }}</dt>
+                    <dd class="outfit-detail-associations">
+                      <span v-if="selectedDetail.outfitId || !associatedMakeups.length">
+                        {{ selectedDetail.outfitName || messages.detailOutfitUnavailable }}
+                        <button
+                          v-if="associatedOutfit"
+                          type="button"
+                          class="wardrobe-outfit-link"
+                          :aria-label="messages.detailOutfit + ': ' + selectedDetail.outfitName"
+                          :title="messages.detailOutfit"
+                          @click="openAssociatedOutfit"
+                        >
+                          <ExternalLink :size="15" aria-hidden="true" />
+                        </button>
+                      </span>
+                      <span v-for="makeup in associatedMakeups" :key="makeup.id">
+                        <span class="makeup-name">{{ makeup.name[language] }}</span>
+                        <button
+                          type="button"
+                          class="wardrobe-outfit-link makeup-name-link"
+                          :aria-label="
+                            (language === 'zh' ? '全妆：' : 'Full makeup: ') + makeup.name[language]
+                          "
+                          :title="language === 'zh' ? '查看全妆详情' : 'View makeup details'"
+                          @click="makeupPreview = makeup"
+                        >
+                          <ExternalLink :size="15" aria-hidden="true" />
+                        </button>
+                      </span>
+                    </dd>
+                  </div>
                   <div
                     ><dt>{{ messages.detailCurrentItem }}</dt
                     ><dd>{{ selectedDetail.itemName }}</dd></div
@@ -678,6 +736,19 @@ onBeforeUnmount(() => {
     :language="language"
     @close="outfitPreview = null"
   />
+  <MakeupDetailDialog
+    v-if="makeupData"
+    :detail="makeupPreview"
+    :entries="makeupData.entries"
+    :parts="makeupData.parts"
+    :relations="makeupData.relations"
+    :outfits="makeupData.relatedOutfits"
+    :language="language"
+    :layer="222"
+    @close="makeupPreview = null"
+    @select-form="makeupPreview = $event"
+    @select-entry="makeupPreview = $event"
+  />
 </template>
 
 <style scoped>
@@ -699,6 +770,12 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 
+.outfit-detail-associations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
 .wardrobe-outfit-link {
   display: inline-flex;
   align-items: center;

@@ -31,6 +31,7 @@ import { useCompactLayout } from '../composables/useCompactLayout'
 import { useModalFocus } from '../composables/useModalFocus'
 import { useModalPresence } from '../composables/useModalPresence'
 import type { AlbumView } from './AlbumViewSwitcher.vue'
+import { archiveBackgrounds, useArchiveBackground } from '../composables/useArchiveBackground'
 import LikeCounter from './LikeCounter.vue'
 import AutoBackupMenu from './AutoBackupMenu.vue'
 import DesktopInstallDialog from './DesktopInstallDialog.vue'
@@ -98,6 +99,8 @@ const emit = defineEmits<{
 const FEEDBACK_URL = 'https://v.wjx.cn/vm/tUM7gga.aspx'
 
 const compact = useCompactLayout()
+const isArchiveView = computed(() => ['resonance', 'wardrobe', 'makeup'].includes(props.activeView ?? ''))
+const { selectedBackground, selectBackground } = useArchiveBackground()
 const mobileLikeTarget = inject('mobileLikeTarget', ref<HTMLElement | null>(null))
 const mobileSearchOpen = ref(false)
 const mobileSearchInput = ref<HTMLInputElement | null>(null)
@@ -685,6 +688,27 @@ function openDonate() {
                   </button>
                 </div>
               </div>
+              <template v-if="isArchiveView && activeView !== 'makeup'">
+                <div class="menu-section-label">{{ language === 'zh' ? '背景图风格' : 'Background style' }}</div>
+                <div class="archive-background-options">
+                  <button
+                    v-for="background in archiveBackgrounds"
+                    :key="background.id"
+                    type="button"
+                    class="archive-background-option"
+                    :class="{ active: selectedBackground === background.id }"
+                    role="menuitemradio"
+                    :aria-checked="selectedBackground === background.id"
+                    @click="selectBackground(background.id)"
+                  >
+                    <span class="archive-background-preview" :style="{ '--archive-preview-source': `url('${background.url}')` }">
+                      <span v-if="selectedBackground === background.id" class="archive-background-check" aria-hidden="true">✓</span>
+                    </span>
+                    <span>{{ language === 'zh' ? background.label : background.en }}</span>
+                  </button>
+                </div>
+              </template>
+              <template v-else-if="!isArchiveView">
               <div class="menu-section-label">{{ messages.thumbnailSize }}</div>
               <div class="thumbnail-size-options">
                 <button
@@ -702,6 +726,7 @@ function openDonate() {
                   <span>{{ messages.thumbnailSizes[size] }}</span>
                 </button>
               </div>
+              <template v-if="!thumbnailModeDisabled">
               <div class="menu-section-label">{{ messages.thumbnailRatio }}</div>
               <div class="thumbnail-options">
                 <button
@@ -719,6 +744,8 @@ function openDonate() {
                   <span>{{ option.label }}</span>
                 </button>
               </div>
+              </template>
+              </template>
             </div>
           </Transition>
         </Teleport>

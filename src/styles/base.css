@@ -233,7 +233,7 @@ h1 {
     .cloud-actions-options
   ) {
     opacity: 0;
-    transform: var(--menu-rest-transform, translateY(0)) translateY(-4px) scale(0.98);
+    transform: var(--menu-rest-transform, translateY(0)) translateY(-4px);
   }
   .header-menu-chevron:not(.is-open),
   .resonance-nav-arrow:not(.is-open),

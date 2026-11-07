@@ -1084,14 +1084,21 @@ async function clearRecords() {
   outline: 2px solid var(--pink-deep);
   outline-offset: 2px;
 }
+.wardrobe-filter-select {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
 .wardrobe-filter-select .action-sort-select {
   box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   height: 32px;
   min-height: 32px;
   padding: 4px 8px;
   gap: 4px;
 }
 .wardrobe-filter-select .action-sort-select > span {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -1172,12 +1179,18 @@ async function clearRecords() {
     border-color var(--motion-fast) ease,
     box-shadow var(--motion-fast) ease;
 }
+.wardrobe-grid:not(.is-pieces) .wardrobe-card {
+  --photo-hover-shadow: 0 1px 5px rgba(201, 132, 134, 0.202);
+}
+:where(:root[data-theme='dark']) .wardrobe-grid:not(.is-pieces) .wardrobe-card {
+  --photo-hover-shadow: 0 2px 8px rgba(185, 126, 126, 0.524);
+}
 :root.is-theme-switching .wardrobe-card {
   transition: none;
 }
 .wardrobe-card:hover,
 .wardrobe-card:has(button:focus-visible) {
-  border-color: var(--wardrobe-card-hover-border);
+  border-color: var(--pink-deep);
   box-shadow: var(--photo-hover-shadow);
 }
 .wardrobe-grid.is-pieces .wardrobe-card:hover,
@@ -1211,13 +1224,14 @@ async function clearRecords() {
   aspect-ratio: 448 / 656;
 }
 .wardrobe-cover {
-  background: var(--frame-bg) url('../../img/back.png') center / cover no-repeat;
+  background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
+  background-color: var(--frame-bg);
 }
 .is-pieces .wardrobe-cover {
   aspect-ratio: 1;
 }
 .is-pieces .wardrobe-cover {
-  background-image: url('../../img/pinkCardBg.png');
+  background-image: var(--archive-pink-card-background);
 }
 .wardrobe-cover img {
   width: 100%;
@@ -1323,11 +1337,13 @@ progress::-webkit-progress-value {
   align-items: stretch;
 }
 .wardrobe-sidebar-controls .wardrobe-filter-field {
+  min-width: 0;
   justify-content: space-between;
 }
 .wardrobe-sidebar-controls .wardrobe-filter-select {
+  flex: 1 1 0;
+  width: auto;
   min-width: 0;
-  width: 70%;
 }
 @media (max-width: 899px) {
   /* 复用其他模块的手机筛选栏及操作按钮；桌面标题和侧栏保持原样。 */

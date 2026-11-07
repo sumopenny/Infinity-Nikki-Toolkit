@@ -6,7 +6,7 @@ import { useCompactLayout } from '../composables/useCompactLayout'
 import type { LocaleMessages } from '../i18n'
 
 export type AlbumView =
-  'all' | 'outfits' | 'home' | 'resonance' | 'wardrobe' | 'favorites' | 'trash'
+  'all' | 'outfits' | 'home' | 'resonance' | 'wardrobe' | 'makeup' | 'favorites' | 'trash'
 
 defineProps<{
   activeView: AlbumView
@@ -97,13 +97,15 @@ function selectView(view: AlbumView) {
         class="album-view-button"
         :class="{
           active:
-            activeView === item.view || (item.view === 'resonance' && activeView === 'wardrobe')
+            activeView === item.view ||
+            (item.view === 'resonance' && (activeView === 'wardrobe' || activeView === 'makeup'))
         }"
         type="button"
         :disabled="disabled || (item.view === 'trash' && trashDisabled)"
         :title="item.view === 'trash' && trashDisabled ? trashDisabledHint : undefined"
         :aria-pressed="
-          activeView === item.view || (item.view === 'resonance' && activeView === 'wardrobe')
+          activeView === item.view ||
+          (item.view === 'resonance' && (activeView === 'wardrobe' || activeView === 'makeup'))
         "
         :aria-haspopup="item.view === 'resonance' ? 'menu' : undefined"
         :aria-expanded="item.view === 'resonance' ? resonanceMenuOpen : undefined"
@@ -144,6 +146,13 @@ function selectView(view: AlbumView) {
             :class="{ active: activeView === 'wardrobe' }"
             @click.stop="selectView('wardrobe')"
             >{{ messages.wardrobe }}</button
+          >
+          <button
+            type="button"
+            role="menuitem"
+            :class="{ active: activeView === 'makeup' }"
+            @click.stop="selectView('makeup')"
+            >{{ messages.makeup }}</button
           >
         </div>
       </DesktopMenuTransition>

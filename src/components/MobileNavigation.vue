@@ -25,7 +25,8 @@ defineEmits<{ changeView: [view: AlbumView] }>()
       type="button"
       :disabled="disabled"
       :aria-current="
-        activeView === entry.view || (entry.view === 'resonance' && activeView === 'wardrobe')
+        activeView === entry.view ||
+        (entry.view === 'resonance' && (activeView === 'wardrobe' || activeView === 'makeup'))
           ? 'page'
           : undefined
       "

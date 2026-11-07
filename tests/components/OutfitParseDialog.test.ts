@@ -35,6 +35,29 @@ vi.mock('../../src/utils/outfit/outfitDetails', async (importOriginal) => {
   }
 })
 
+vi.mock('../../src/utils/loadMakeupCatalog', () => ({
+  loadMakeupCatalog: vi.fn().mockResolvedValue({
+    entries: [
+      {
+        id: '10001001',
+        category: 0,
+        name: { zh: '测试全妆', en: 'Test makeup' },
+        image: '/makeup.png',
+        quality: 5,
+        variant: 0,
+        version: '2.10',
+        obtainType: null,
+        sourceDetails: []
+      }
+    ],
+    parts: [],
+    relations: new Map([
+      ['10001001', { partIds: ['1020840001'], formIds: ['10001001'], outfitIds: [] }]
+    ]),
+    relatedOutfits: []
+  })
+}))
+
 const detail = {
   itemId: 1020100001,
   outfitId: 1001,
@@ -49,6 +72,60 @@ const detail = {
 }
 
 describe('OutfitParseDialog', () => {
+  it.each([
+    { id: 1020840001, outfitId: null, full: true },
+    { id: 1020840001, outfitId: 1001, full: false },
+    { id: 1020849999, outfitId: null, full: false }
+  ])(
+    'uses full makeup only when the piece has no outfit: $id / $outfitId',
+    async ({ id, outfitId, full }) => {
+      loadOutfitDetailMock.mockResolvedValue({
+        ...detail,
+        itemId: id,
+        outfitId,
+        outfitName: outfitId ? '绽响黎明前' : '',
+        dyes: []
+      })
+      const wrapper = mount(OutfitParseDialog, {
+        attachTo: document.body,
+        props: {
+          visible: true,
+          code: '',
+          directItem: { id, name: '测试美瞳', clothType: 84 },
+          language: 'zh',
+          messages: getOutfitMessages('zh')
+        },
+        global: { stubs: { Teleport: true, Transition: true } }
+      })
+      try {
+        await flushPromises()
+        const row = wrapper.get('.outfit-detail-info > div')
+        expect(row.get('dt').text()).toBe(full ? '全妆' : getOutfitMessages('zh').detailOutfit)
+        expect(wrapper.find('.makeup-name-link').exists()).toBe(id === 1020840001)
+        if (outfitId) expect(row.text()).toContain('绽响黎明前')
+        if (id === 1020840001) {
+          expect(row.text()).toContain('测试全妆')
+          expect(wrapper.get('.makeup-name-link').text()).toBe('')
+          await wrapper.get('.makeup-name').trigger('click')
+          expect(wrapper.find('.makeup-detail-dialog').exists()).toBe(false)
+          await wrapper.get('.makeup-name-link').trigger('click')
+          await flushPromises()
+          expect(wrapper.get('#makeup-detail-title').text()).toBe('测试全妆')
+          await wrapper.get('.makeup-detail-header button').trigger('click')
+          await flushPromises()
+          expect(wrapper.find('.makeup-detail-dialog').exists()).toBe(false)
+          expect(wrapper.find('.outfit-detail-info').exists()).toBe(true)
+        } else {
+          expect(row.text()).toContain(
+            outfitId ? '绽响黎明前' : getOutfitMessages('zh').detailOutfitUnavailable
+          )
+        }
+      } finally {
+        wrapper.unmount()
+      }
+    }
+  )
+
   it('切换搭配码后旧图鉴的晚响应不能覆盖新图鉴', async () => {
     parseOutfitCodeMock.mockResolvedValue({
       code: '13dub3nPiPu#',
@@ -235,7 +312,7 @@ describe('OutfitParseDialog', () => {
     await wrapper.get('.outfit-detail-panel header button').trigger('click')
     await flushPromises()
     expect(wrapper.find('.outfit-detail-panel').exists()).toBe(false)
-    expect(document.activeElement).toBe(itemButton.element)
+    expect(document.activeElement).toBe(wrapper.get('button[data-item-id="1020100001"]').element)
     wrapper.unmount()
   })
 

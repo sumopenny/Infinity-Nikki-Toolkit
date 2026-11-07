@@ -1,4 +1,5 @@
 // 选择状态管理：处理照片、搭配和回收站项目的选择、全选及收藏联动。
+import type { AlbumView } from '../components/AlbumViewSwitcher.vue'
 import { computed, type Ref } from 'vue'
 import type { PhotoItem, RecentlyDeletedPhoto } from '../utils/photoGrouping'
 import type { OutfitItem } from '../utils/outfit/outfitTypes'
@@ -24,7 +25,7 @@ export function useSelectionState(options: {
   selectedIds: Ref<Set<string>>
   selectedOutfitIds: Ref<Set<string>>
   trashSelectedIds: Ref<Set<string>>
-  activeView: Ref<'all' | 'favorites' | 'trash' | 'outfits' | 'home' | 'resonance' | 'wardrobe'>
+  activeView: Ref<AlbumView>
 }) {
   const {
     visiblePhotos,

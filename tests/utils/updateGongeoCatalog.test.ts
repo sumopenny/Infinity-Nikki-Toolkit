@@ -80,6 +80,10 @@ function fixtures(published = false): Fixture {
     'makeupOutfits',
     Array.from({ length: 100 }, (_, i) => [2000 + i, [3000 + i]])
   )
+  setAsset(fixture, 'makeups', [
+    [3000, 5, 0],
+    [[3001, 3002], 4, 0]
+  ])
   setAsset(fixture, 'palettes', {
     items: Array.from({ length: 100 }, (_, i) => [i % 2 ? [1000 + i] : 1000 + i, [1], [2]]),
     palettes: { '1': [1, 2, 3] }
@@ -235,8 +239,8 @@ describe('Gongeo catalog updater', () => {
       const fetchMock = mockRemote(fixture)
       const result = await updateGongeoCatalog({ baseUrl, outputDir })
       expect(result).toEqual({
-        updated: 16,
-        total: 16,
+        updated: 17,
+        total: 17,
         version: '2.10.1',
         generatedAt,
         source: baseUrl

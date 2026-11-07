@@ -143,7 +143,8 @@ button {
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--surface) url('../../img/longBg.jpg') center / cover no-repeat;
+  background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
+  background-color: var(--surface);
   box-shadow: var(--photo-shadow);
   color: var(--text);
   cursor: pointer;
@@ -153,7 +154,7 @@ button {
     box-shadow var(--motion-fast) ease;
 }
 :where(:root[data-theme='dark']) button {
-  background-image: url('../../img/longBgdark.jpg');
+  background-image: var(--archive-background-image, url('../../img/longBgdark.jpg'));
 }
 .form-stage {
   position: relative;

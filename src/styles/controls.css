@@ -322,10 +322,11 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
 .wardrobe-form-popover .wardrobe-form-nav.is-horizontal img {
   border: 0;
   border-radius: 4px;
-  background: var(--frame-bg) url('../../img/longBg.jpg') center / cover no-repeat;
+  background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
+  background-color: var(--frame-bg);
 }
 :where(:root[data-theme='dark']) .wardrobe-form-popover .wardrobe-form-nav.is-horizontal img {
-  background-image: url('../../img/longBgdark.jpg');
+  background-image: var(--archive-background-image, url('../../img/longBgdark.jpg'));
 }
 .wardrobe-form-popover .wardrobe-form-selected {
   display: none;
@@ -406,4 +407,89 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
     top: auto;
     bottom: 10px;
   }
+}
+
+/* 档案背景预览复用视图菜单，选择后保持菜单展开以便比较。 */
+.archive-background-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 4px 8px 10px;
+}
+.view-dropdown .archive-background-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.view-dropdown .archive-background-option:hover,
+.view-dropdown .archive-background-option.active {
+  border-color: var(--pink-deep);
+  background: var(--surface-soft);
+}
+.view-dropdown .archive-background-option:focus-visible {
+  outline: 2px solid var(--pink-deep);
+  outline-offset: 2px;
+}
+.archive-background-preview {
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-image: var(--archive-background-overlay), var(--archive-preview-source);
+  background-position: center;
+  background-size: cover;
+}
+.archive-background-check {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--pink-deep);
+  font-weight: 700;
+}
+
+/* Only the background layers are dimmed; foreground images and text stay unchanged. */
+:root {
+  --archive-background-dim: 0;
+  --archive-pink-card-background: url('../../img/pinkCardBg.png');
+  --archive-purple-card-background: url('../../img/purpleCardBg.png');
+  --archive-silver-card-background: url('../../img/silverCardBg.png');
+  --archive-pose-card-background: url('../../img/星梦.webp');
+  --archive-background-overlay: linear-gradient(
+    rgba(0, 0, 0, var(--archive-background-dim)),
+    rgba(0, 0, 0, var(--archive-background-dim))
+  );
+  --archive-background-image: var(--archive-background-overlay),
+    var(--archive-background-source, url('../../img/云绸.webp'));
+}
+:root[data-theme='dark'] {
+  --archive-background-dim: 0.18;
+  --archive-pink-card-background: var(--archive-background-overlay),
+    url('../../img/pinkCardBg.png');
+  --archive-purple-card-background: var(--archive-background-overlay),
+    url('../../img/purpleCardBg.png');
+  --archive-silver-card-background: var(--archive-background-overlay),
+    url('../../img/silverCardBg.png');
+  --archive-pose-card-background: var(--archive-background-overlay),
+    url('../../img/星梦.webp');
+  --archive-background-image: var(--archive-background-overlay),
+    var(--archive-background-source, url('../../img/云绸.webp'));
 }

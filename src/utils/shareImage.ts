@@ -1,6 +1,6 @@
 import brandMarkUrl from '../../img/brand-mark.png'
 import { isImageKitResource, optimizedImageKitUrl } from './imagekit'
-import poseBackgroundUrl from '../../img/dreamy.webp'
+import poseBackgroundUrl from '../../img/星梦.webp'
 import type { PhotoParamsResult } from './photo-params/types'
 import type { ParseItemView } from './outfit/parseItemView'
 

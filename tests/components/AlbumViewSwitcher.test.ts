@@ -89,12 +89,14 @@ it('localizes the resonance submenu and updates it when the language changes', a
     await item.trigger('pointerenter', { pointerType: 'mouse' })
     expect(item.findAll('[role="menuitem"]').map((button) => button.text())).toEqual([
       'Resonance records',
-      'Personal wardrobe'
+      'Personal wardrobe',
+      'Makeup catalog'
     ])
     await wrapper.setProps({ messages: messages.zh.viewNav })
     expect(item.findAll('[role="menuitem"]').map((button) => button.text())).toEqual([
       '共鸣记录',
-      '个人衣橱'
+      '个人衣橱',
+      '妆容图鉴'
     ])
     await item.findAll('[role="menuitem"]')[1]!.trigger('click')
     expect(wrapper.emitted('changeView')).toEqual([['wardrobe']])

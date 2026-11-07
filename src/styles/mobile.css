@@ -993,34 +993,32 @@
     flex: 1;
     min-height: var(--mobile-control-size);
   }
-  /* 共鸣/衣橱主标签与衣橱分类按钮、收集数共处一行。 */
+  /* 档案三个主标签独占一行，衣橱分类及收集数另起一行。 */
   .archive-main-toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
     min-width: 0;
     margin-bottom: 8px;
   }
   .archive-main-toolbar .archive-main-tabs.resonance-choice-row {
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     min-width: 0;
     margin-bottom: 0;
   }
   .archive-main-toolbar .archive-wardrobe-extra {
     display: flex;
-    flex: none;
+    flex: 1 1 100%;
+    justify-content: flex-end;
     align-items: center;
     gap: 6px;
     min-width: 0;
   }
-  .archive-main-toolbar.is-wardrobe .archive-main-tabs .resonance-choice {
-    font-size: 12px;
-    padding-inline: 2px;
-  }
   /* 档案页签直接复用导入窗口的分段按钮；只为手机内容区补足自适应宽高。 */
   .archive-main-tabs.resonance-choice-row {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
     max-width: 100%;
     height: var(--mobile-control-size);
@@ -1432,7 +1430,7 @@
   .mobile-modal-enter-from .mobile-filter-panel,
   .mobile-modal-leave-to .mobile-filter-panel {
     opacity: 0;
-    transform: translateY(8px) scale(0.99);
+    transform: translateY(8px);
   }
   .mobile-menu-sheet.mobile-menu-enter-active {
     transition:
@@ -1451,7 +1449,7 @@
   }
   .mobile-menu-sheet.view-dropdown.mobile-menu-enter-from,
   .mobile-menu-sheet.view-dropdown.mobile-menu-leave-to {
-    transform: translateY(calc(-50% + 8px)) scale(0.99);
+    transform: translateY(calc(-50% + 8px));
   }
   .collection-action-options {
     transform-origin: top right;
@@ -1504,7 +1502,7 @@
   .mobile-action-menu-enter-from,
   .mobile-action-menu-leave-to {
     opacity: 0;
-    transform: translateY(-4px) scale(0.98);
+    transform: translateY(-4px);
   }
   .mobile-menu-leave-active,
   .mobile-action-menu-leave-active {
@@ -1715,14 +1713,15 @@
     aspect-ratio: 1;
     border: 0;
     border-radius: 10px;
-    background: var(--surface) url('../../img/longBg.jpg') center / cover no-repeat;
+    background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
+  background-color: var(--surface);
   }
   :where(:root[data-theme='dark'])
     body
     :is(.wardrobe-dialog, .outfit-detail-panel)
     .wardrobe-form-nav.is-horizontal
     img {
-    background-image: url('../../img/longBgdark.jpg');
+    background-image: var(--archive-background-image, url('../../img/longBgdark.jpg'));
   }
   body
     :is(.wardrobe-dialog, .outfit-detail-panel)

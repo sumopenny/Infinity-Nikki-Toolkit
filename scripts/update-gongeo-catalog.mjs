@@ -7,7 +7,15 @@ import { pathToFileURL } from 'node:url'
 
 export const DEFAULT_BASE_URL =
   'https://raw.githubusercontent.com/dastrokes/gongeo.us-nikki-tracker/master'
-const FILES = ['items', 'outfits', 'outfitItems', 'makeupItems', 'makeupOutfits', 'palettes']
+const FILES = [
+  'items',
+  'outfits',
+  'outfitItems',
+  'makeupItems',
+  'makeupOutfits',
+  'makeups',
+  'palettes'
+]
 const LOCALES = ['zh', 'en']
 const SOURCE_FILE = 'catalogSource.json'
 const FILTER_METADATA_FILE = 'filterMetadata.json'
@@ -136,7 +144,7 @@ const validate = (name, value) => {
     ) {
       throw problem('Gongeo banners 记录不完整')
     }
-  } else if (name === 'items' || name === 'outfits') {
+  } else if (name === 'items' || name === 'outfits' || name === 'makeups') {
     if (!value.every((row) => Array.isArray(row) && validIds(row[0]) && validId(row[1]))) {
       throw problem('Gongeo ' + name + ' 记录结构无效')
     }
@@ -345,7 +353,7 @@ const entryKeys = (relative, value) => {
   }
   if (relative === 'banners.json') return value.map((row) => row.bannerId)
   if (relative === 'palettes.json') return value.items.flatMap((row) => row[0])
-  if (relative === 'items.json' || relative === 'outfits.json')
+  if (relative === 'items.json' || relative === 'outfits.json' || relative === 'makeups.json')
     return value.flatMap((row) => row[0])
   return value.map((row) => row[0])
 }

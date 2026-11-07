@@ -292,6 +292,7 @@ export interface FullLocaleMessages {
     resonance: string
     resonanceRecords: string
     wardrobe: string
+    makeup: string
     comingSoon: string
     favorites: string
     recentlyDeleted: string

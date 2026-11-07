@@ -382,7 +382,8 @@ function markImageFailed(title: string, name: string) {
 
 /* 仅动作图片使用梦幻背景，加载失败时保留默认占位背景。 */
 .photo-params-resource-row--pose img {
-  background: var(--surface-soft) url('../../img/dreamy.webp') center / cover no-repeat;
+  background: var(--archive-pose-card-background) center / cover no-repeat;
+  background-color: var(--surface-soft);
 }
 .photo-params-header-content {
   flex: 1;

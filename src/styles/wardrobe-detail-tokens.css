@@ -1,0 +1,89 @@
+.wardrobe-detail-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  gap: 12px;
+  font-size: 15px;
+}
+.wardrobe-detail-source {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 9px;
+  border: 1px solid var(--capsule-source-border);
+  border-radius: 999px;
+  background: var(--capsule-source-bg);
+  color: var(--capsule-source-text);
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wardrobe-detail-variant {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--capsule-variant-border);
+  border-radius: 999px;
+  background: var(--capsule-variant-bg);
+  color: var(--heading);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.wardrobe-suit-facts {
+  margin: 0;
+  padding-left: 20px;
+  border-left: 1px solid var(--line);
+  font-size: 12px;
+}
+.wardrobe-suit-facts > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 10px 0;
+}
+.wardrobe-suit-facts > div + div {
+  border-top: 1px solid var(--line-soft);
+}
+.wardrobe-suit-facts dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.wardrobe-suit-facts dt svg {
+  flex-shrink: 0;
+  color: var(--pink-deep);
+}
+.wardrobe-suit-facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+}
+.wardrobe-style-tag,
+.wardrobe-version-tag,
+.wardrobe-rarity-tag {
+  display: inline-block;
+  padding: 2px 11px;
+  border-radius: 999px;
+  background: var(--tag-bg);
+}
+/* 风格标签：比公共浅粉更鲜明的玫瑰红，贴近方案 A 的原始配色。 */
+.wardrobe-style-tag {
+  color: var(--capsule-style-text);
+  background: var(--tag-bg);
+}
+.wardrobe-rarity-tag {
+  color: var(--capsule-rarity-text);
+  background: var(--capsule-rarity-bg);
+}
+.wardrobe-version-tag {
+  color: var(--capsule-version-text);
+  background: var(--capsule-version-bg);
+}
