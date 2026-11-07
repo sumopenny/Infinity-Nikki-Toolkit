@@ -782,7 +782,7 @@ async function clearRecords() {
 
       <div v-if="filtered.length" class="wardrobe-grid" :class="{ 'is-pieces': tab === 'item' }">
         <article
-          v-for="(entry, imageIndex) in displayEntries.slice(0, limit)"
+          v-for="(entry, imageIndex) in (tab === 'outfit' ? displayEntries : displayEntries.slice(0, limit))"
           :key="merged ? wardrobeFamilyKey(entry) : entry.id"
           v-card-reveal="`wardrobe:${merged ? wardrobeFamilyKey(entry) : entry.id}`"
           class="wardrobe-card"
@@ -867,7 +867,7 @@ async function clearRecords() {
         </button>
       </div>
       <div
-        v-if="displayEntries.length > limit"
+        v-if="tab === 'item' && displayEntries.length > limit"
         ref="loadMoreTarget"
         class="wardrobe-load-more-target"
         aria-hidden="true"

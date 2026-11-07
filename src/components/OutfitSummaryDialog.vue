@@ -294,7 +294,10 @@ const ranked = computed(() => {
               </button>
             </header>
             <main class="outfit-parse-content summary-content">
-              <div class="summary-toolbar">
+              <div
+                class="summary-toolbar"
+                :class="{ 'has-part-menu': tab !== 'tags' && types.length }"
+              >
                 <nav
                   class="resonance-choice-row ranking-tabs"
                   :aria-label="t('排行类别', 'Ranking category')"
@@ -310,17 +313,21 @@ const ranked = computed(() => {
                     {{ label }}
                   </button>
                 </nav>
-                <DialogChoiceMenu
-                  v-if="tab !== 'tags' && types.length"
-                  :key="tab"
-                  v-model="part"
-                  class="part-menu"
-                  :label="t('筛选部位', 'Filter by type')"
-                  :options="[
-                    { value: null, label: t('全部部位', 'All types') },
-                    ...types.map(([value, label]) => ({ value, label }))
-                  ]"
-                />
+                <div class="summary-part-slot">
+                  <Transition name="summary-part">
+                    <DialogChoiceMenu
+                      v-if="tab !== 'tags' && types.length"
+                      :key="tab"
+                      v-model="part"
+                      class="part-menu"
+                      :label="t('筛选部位', 'Filter by type')"
+                      :options="[
+                        { value: null, label: t('全部部位', 'All types') },
+                        ...types.map(([value, label]) => ({ value, label }))
+                      ]"
+                    />
+                  </Transition>
+                </div>
               </div>
               <section class="ranking-panel" :aria-label="tabs[tab]">
                 <small v-if="tab === 'tags' && rows.length">{{
@@ -430,7 +437,9 @@ const ranked = computed(() => {
   background: transparent;
 }
 .summary-dialog .outfit-parse-panel {
-  height: min(640px, calc(100dvh - 48px));
+  width: min(1120px, 100%);
+  height: min(720px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
   background: var(--surface-strong);
 }
 .summary-dialog .summary-content {
@@ -479,10 +488,6 @@ const ranked = computed(() => {
   .summary-dialog .outfit-editor {
     padding-block: 24px;
   }
-  .summary-dialog .outfit-parse-panel {
-    width: min(900px, 100%);
-    height: min(680px, calc(100dvh - 48px));
-  }
   .summary-dialog .outfit-parse-panel > :is(header, main, footer) {
     padding-inline: 32px;
   }
@@ -500,16 +505,78 @@ footer,
 }
 
 .summary-toolbar {
-  justify-content: space-between;
-  flex-wrap: wrap;
+  --summary-part-width: 112px;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+}
+.summary-toolbar .ranking-tabs {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  flex-wrap: nowrap;
+}
+.ranking-tabs .resonance-choice {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  white-space: nowrap;
+  transition:
+    padding-inline 220ms ease,
+    font-size 220ms ease,
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
+}
+.summary-part-slot {
+  position: relative;
+  flex: none;
+  width: 0;
+  margin-inline-start: 0;
+  transition:
+    width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    margin-inline-start 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.has-part-menu .summary-part-slot {
+  width: var(--summary-part-width);
+  margin-inline-start: 8px;
+}
+.summary-part-enter-active {
+  transition:
+    opacity 180ms ease 40ms,
+    transform 180ms ease 40ms;
+}
+.summary-part-leave-active {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  pointer-events: none;
+}
+.summary-part-enter-from,
+.summary-part-leave-to {
+  opacity: 0;
+  transform: translateX(4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .summary-part-slot,
+  .ranking-tabs .resonance-choice,
+  .summary-part-enter-active,
+  .summary-part-leave-active {
+    transition: none;
+  }
 }
 .coverage span {
   display: inline-block;
 }
 .part-menu {
-  min-width: 104px;
-  margin-inline-start: auto;
-  max-width: 100%;
+  width: var(--summary-part-width);
+  min-width: 0;
+}
+.part-menu :deep(.cleanup-account-select) {
+  width: 100%;
 }
 .part-menu :deep(.cleanup-account-menu) {
   max-height: 400px;
@@ -580,12 +647,21 @@ button.summary-row:hover {
   text-align: center;
 }
 @media (max-width: 899px) {
-  .summary-dialog .outfit-parse-panel {
-    height: min(560px, var(--mobile-dialog-space));
+  .summary-toolbar {
+    --summary-part-width: clamp(88px, 24vw, 112px);
   }
-  .summary-toolbar .ranking-tabs {
-    width: auto;
-    flex: 1 1 auto;
+  .ranking-tabs .resonance-choice {
+    padding-inline: 4px;
+    font-size: clamp(10px, 3vw, 13px);
+  }
+  .has-part-menu .ranking-tabs .resonance-choice {
+    padding-inline: 1px;
+    font-size: clamp(10px, 2.8vw, 12px);
+  }
+  .part-menu :deep(.cleanup-account-select) {
+    padding-inline: 8px;
+    gap: 4px;
+    font-size: clamp(10px, 2.8vw, 12px);
   }
   .ranking-tabs button {
     flex: 1;
@@ -593,6 +669,13 @@ button.summary-row:hover {
   }
   .part-menu :deep(.cleanup-account-select) {
     min-height: var(--mobile-control-size);
+  }
+}
+@media (max-width: 640px) {
+  .summary-dialog .outfit-parse-panel {
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+    border-radius: 20px;
   }
 }
 @media (min-width: 641px) and (max-width: 899px) {

@@ -259,6 +259,7 @@ useModalFocus(dialogOpen, panel, closeDialog)
                       :key="detail.id"
                       referrerpolicy="no-referrer"
                       :src="detail.image"
+                      :skeleton="false"
                       loading="eager"
                       fetchpriority="high"
                       :alt="name(detail)"
@@ -380,6 +381,7 @@ useModalFocus(dialogOpen, panel, closeDialog)
                         v-if="part.entry"
                         referrerpolicy="no-referrer"
                         :src="part.entry.image"
+                        :skeleton="false"
                         alt=""
                         loading="lazy"
                       />
