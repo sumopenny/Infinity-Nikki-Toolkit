@@ -214,7 +214,7 @@ describe('ResonanceRecords', () => {
 
   it('shows retryable failed images and retries the original without a proxy', async () => {
     await saveResonanceRecords([
-      { ...savedRecord, outfitImageUrl: 'https://cdn.gongeo.us/images/outfits/103471.png' }
+      { ...savedRecord, outfitImageUrl: 'https://ik.imagekit.io/nikkicube/images/outfits/T_showpic_suit_S0347.png?tr=f-webp,q-70' }
     ])
     const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
     wrappers.push(wrapper)
@@ -224,7 +224,7 @@ describe('ResonanceRecords', () => {
     expect(outfit.attributes('data-image-failed')).toBe('true')
     await outfit.trigger('click')
     expect(wrapper.find('.resonance-outfit-image img').attributes('src')).toBe(
-      'https://cdn.gongeo.us/images/outfits/103471.png'
+      'https://ik.imagekit.io/nikkicube/images/outfits/T_showpic_suit_S0347.png?tr=f-webp,q-70'
     )
     const part = wrapper.find('.resonance-part img')
     await part.trigger('error')

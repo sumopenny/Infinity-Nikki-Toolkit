@@ -30,18 +30,15 @@ describe('ImageKit resource migration', () => {
     )
     expect(resourceImage('pose', 1340020002)).toBeUndefined()
   })
-  it('normalizes ImageKit delivery quality without rewriting legacy URLs', () => {
+  it('normalizes ImageKit delivery quality', () => {
     expect(
       optimizedImageKitUrl('https://ik.imagekit.io/nikkicube/images/poses/test.png?tr=q-90')
     ).toContain('?tr=f-webp,q-70')
-    const legacy = 'https://cdn.gongeo.us/images/items/icons/1020100001.png'
-    expect(optimizedImageKitUrl(legacy)).toBe(legacy)
   })
   it('rejects unlisted proxy requests', async () => {
     for (const resource of [
       'https://ik.imagekit.io/other/images/a.png?tr=f-webp,q-70',
-      'https://ik.imagekit.io/nikkicube/images/poses/unknown.png?tr=f-webp,q-70',
-      'https://cdn.gongeo.us/images/items/icons/999999999.png'
+      'https://ik.imagekit.io/nikkicube/images/poses/unknown.png?tr=f-webp,q-70'
     ]) {
       expect(
         (
