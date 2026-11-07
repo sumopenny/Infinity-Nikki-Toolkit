@@ -23,12 +23,12 @@ it('resolves old saved catalog URLs without changing custom URLs', () => {
 it.each([
   ['78', '1020100431'],
   ['79', '1020100455']
-])('keeps missing image mappings cloud-syncable: %s', async (bannerId, itemId) => {
+])('keeps completed image mappings cloud-syncable: %s', async (bannerId, itemId) => {
   const catalog = await loadResonanceCatalog()
   await catalog.loadResonanceBanners()
   const pulls = catalog.normalizeBannerPulls(bannerId, [['2026-11-07', itemId]])
   const records = catalog.buildResonanceRecords(bannerId, pulls)
   expect(records.length).toBeGreaterThan(0)
-  expect(records[0]!.outfitImageUrl).toBe('')
+  expect(records[0]!.outfitImageUrl).toContain('T_showpic_suit_')
   expect(() => validateCloudRecords(records)).not.toThrow()
 })

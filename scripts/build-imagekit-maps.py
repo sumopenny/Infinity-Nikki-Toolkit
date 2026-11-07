@@ -24,12 +24,12 @@ def write(path, value):
 
 records = read(base / 'LocalizationAnalysis/item-mapping/item-v2-records.json')
 icons = {p.name.lower(): p.name for p in (content / 'UI/Image/IconClothes').rglob('*.png')}
-icon_map = {}
+icon_map = read(data / 'wardrobe/itemIconMap.json')
 for row in records:
     match = re.search(r'/IconClothes/([^/.]+)\.', row['imageReference'])
     if match and (match[1] + '.png').lower() in icons:
         name = icons[(match[1] + '.png').lower()]
-        assert row['id'] not in icon_map or icon_map[row['id']] == name
+        assert row['id'] not in icon_map or icon_map[row['id']] == name or icon_map[row['id']] == f"icon_{row['id']}.png"
         icon_map[row['id']] = name
 assert icon_map, 'No IconClothes exports found'
 write(data / 'wardrobe/itemIconMap.json', icon_map)
@@ -41,7 +41,7 @@ for key, value in list(item_map.items()):
         item_map[key] = local_items[value.lower()]
 write(data / 'wardrobe/itemImageMap.json', item_map)
 suits = {p.name.lower(): p.name for p in (content / 'UI/Image/SuitShowPic').rglob('*.png')}
-suit_map = {}
+suit_map = read(data / 'wardrobe/outfitImageMap.json')
 missing = []
 for outfit_id, members in read(data / 'gongeo/outfitItems.json'):
     codes = set()

@@ -7,19 +7,61 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.04 更新',
+  currentDate: '2026.11.07 更新',
   currentItems: [
     {
-      title: '新增电脑端自动备份功能。',
-      text: '为了更好地保护大家的数据，强烈建议电脑端用户开启自动备份！电脑端顶部新增「自动备份」入口，支持将搭配码、家园方案和相机参数收藏自动备份到指定的电脑本地文件夹，三个模块可自由选择开启。数据发生变化时会自动增量备份，也支持从备份目录恢复数据，有效降低浏览器数据意外丢失的风险。特别说明：自动备份的数据保存在你自己的电脑本地文件夹中，不会上传至云端。'
+      title: '全新「妆容图鉴」模块上线！',
+      text: '「暖暖档案」新增「妆容图鉴」，支持查看游戏中的完整妆容及各类妆容部件。可按全妆、底妆、眉妆、睫毛、美瞳、唇妆分类浏览，并根据游戏版本、获取来源、星级等条件筛选，也支持通过名称或 ID 搜索，查找喜欢的妆容更加方便。'
     },
     {
-      title: '优化界面动画与显示效果。',
-      text: '优化页面卡片、弹窗及部分交互动画，让界面切换更加自然流畅，操作反馈更加细腻，整体视觉体验更加舒适。'
+      title: '妆容详情全面开放，支持关联跳转。',
+      text: '点击妆容卡片即可查看大图、名称、星级、所属版本、获取来源及组成部件。支持切换不同进化形态，查看相关全妆和套装，并可点击对应部件或套装进一步查看详情，让妆容之间的关系更加清晰。'
+    },
+    {
+      title: '共鸣记录、个人衣橱及搭配解析新增妆容入口。',
+      text: '共鸣记录中，有对应妆容的套装新增「查看妆容」入口；个人衣橱的套装详情也可直接查看关联妆容。搭配码解析时，点击妆容部件查看详情，还能看到对应的全妆名称并跳转查看。多个模块之间可以直接切换，查找妆容、套装与部件更加便捷。'
+    },
+    {
+      title: '新增背景图自由切换功能。',
+      text: '「暖暖档案」新增背景图切换功能，提供云绸、纱衣、闪烁、幻彩等 9 款不同风格的背景图。可在「视图」菜单中自由选择喜欢的背景，切换后立即生效，并自动记住你的选择，让共鸣记录和个人衣橱的展示更加个性化。'
+    },
+    {
+      title: '优化图片资源与图鉴数据。',
+      text: '重新整理服装、套装、妆容及拍照相关素材，优化图片加载与展示。补充妆容名称、套装介绍及部分拍照资源，完善中英文资料，并改善部分图片缺失、资源加载失败及图鉴信息显示异常的情况。'
+    },
+    {
+      title: '全新骨架加载与扫光动画。',
+      text: '相册、搭配码、家园方案、相机参数收藏、共鸣记录、个人衣橱及妆容图鉴等页面的图片加载体验全面优化。新增与内容布局相匹配的骨架占位、柔和扫光效果和加载完成后的渐入动画，减少加载时的空白与突兀感，让浏览过程更加自然。'
+    },
+    {
+      title: '优化页面切换与卡片动画。',
+      text: '进一步调整卡片出现、加载完成及模块切换时的过渡效果。优化手机端「共鸣记录」「个人衣橱」「妆容图鉴」之间的切换动画和顶部分类栏显示，让页面衔接更加流畅、操作反馈更加自然。'
+    },
+    {
+      title: '优化界面布局与视觉细节。',
+      text: '调整妆容图鉴、套装详情、筛选菜单和部件详情窗口的排版，优化图片比例、圆角、背景、按钮及悬停效果。同步改善电脑端与手机端布局，让不同页面的视觉风格更加统一。'
+    },
+    {
+      title: '多项功能修复与稳定性优化。',
+      text: ''
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.5.1',
+      date: '2026.11.04',
+      items: [
+        {
+          title: '新增电脑端自动备份功能。',
+          text: '为了更好地保护大家的数据，强烈建议电脑端用户开启自动备份！电脑端顶部新增「自动备份」入口，支持将搭配码、家园方案和相机参数收藏自动备份到指定的电脑本地文件夹，三个模块可自由选择开启。数据发生变化时会自动增量备份，也支持从备份目录恢复数据，有效降低浏览器数据意外丢失的风险。特别说明：自动备份的数据保存在你自己的电脑本地文件夹中，不会上传至云端。'
+        },
+        {
+          title: '优化界面动画与显示效果。',
+          text: '优化页面卡片、弹窗及部分交互动画，让界面切换更加自然流畅，操作反馈更加细腻，整体视觉体验更加舒适。'
+        }
+      ]
+    },
     {
       version: 'v2.5',
       date: '2026.11.03',
@@ -726,19 +768,61 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.04',
+  currentDate: 'Updated 2026.11.07',
   currentItems: [
     {
-      title: 'New automatic backups on desktop.',
-      text: 'To better protect your data, we strongly recommend enabling automatic backups on desktop! A new Auto backup button at the top lets you save outfit codes, home schemes, and camera parameter favorites to a folder on your own computer. Enable each module separately. Changes are backed up incrementally, and you can restore data from the backup folder to reduce the risk of losing browser data. Important: automatic backups are stored locally on your computer and are not uploaded to the cloud.'
+      title: 'Introducing the new Makeup Catalog!',
+      text: 'A new Makeup Catalog is available under Nikki Archive, where you can browse full makeup looks and individual makeup pieces. Explore full looks, base makeup, eyebrows, eyelashes, contact lenses, and lips. Filter by game version, source, or rarity, and search by name or ID to find your favorites.'
     },
     {
-      title: 'Improved interface animations and visuals.',
-      text: 'Refined card, dialog, and interaction animations for smoother transitions, clearer feedback, and a more comfortable overall experience.'
+      title: 'Explore makeup details and related looks.',
+      text: 'Select a makeup card to see its full image, name, rarity, release version, source, and included pieces. Switch between evolution forms, explore related full looks and outfits, and open linked pieces or outfit details to see how everything connects.'
+    },
+    {
+      title: 'Makeup shortcuts in Resonance, Wardrobe, and outfit decoding.',
+      text: 'Resonance records now include a View makeup shortcut for outfits with matching makeup, and Wardrobe outfit details link to their related makeup. When inspecting a makeup piece in outfit decoding, you can also see and open its matching full makeup look. Navigate between outfits, pieces, and makeup more easily.'
+    },
+    {
+      title: 'New customizable background styles.',
+      text: 'Nikki Archive now offers nine background styles, including Cloud Silk, Rose Gauze, Shimmer, and Iridescence. Choose your favorite from the View menu and see it applied immediately. Your selection is remembered automatically, bringing a more personal touch to Resonance records and your Wardrobe.'
+    },
+    {
+      title: 'Improved image resources and catalog data.',
+      text: 'Reorganized clothing, outfit, makeup, and photography assets to improve image loading and display. Added makeup names, outfit descriptions, and selected photo resources, expanded Chinese and English catalog information, and improved handling of missing images, resource loading errors, and inconsistent catalog details.'
+    },
+    {
+      title: 'New skeleton placeholders and shimmer animations.',
+      text: 'Image loading is smoother across the Album, outfit codes, home schemes, camera parameter favorites, Resonance, Wardrobe, and Makeup Catalog. Layout-matched skeleton placeholders, subtle shimmer effects, and fade-in transitions reduce empty spaces and abrupt changes as content appears.'
+    },
+    {
+      title: 'Smoother page transitions and card animations.',
+      text: 'Refined the way cards appear, content finishes loading, and modules transition. Mobile transitions between Resonance, Wardrobe, and Makeup Catalog are smoother, with improved top category controls and more natural interaction feedback.'
+    },
+    {
+      title: 'Refined layouts and visual details.',
+      text: 'Updated the Makeup Catalog, outfit details, filter menus, and piece detail windows. Improved image sizing, rounded corners, backgrounds, buttons, and hover states, with more consistent desktop and mobile styling.'
+    },
+    {
+      title: 'Bug fixes and stability improvements.',
+      text: ''
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.5.1',
+      date: '2026.11.04',
+      items: [
+        {
+          title: 'New automatic backups on desktop.',
+          text: 'To better protect your data, we strongly recommend enabling automatic backups on desktop! A new Auto backup button at the top lets you save outfit codes, home schemes, and camera parameter favorites to a folder on your own computer. Enable each module separately. Changes are backed up incrementally, and you can restore data from the backup folder to reduce the risk of losing browser data. Important: automatic backups are stored locally on your computer and are not uploaded to the cloud.'
+        },
+        {
+          title: 'Improved interface animations and visuals.',
+          text: 'Refined card, dialog, and interaction animations for smoother transitions, clearer feedback, and a more comfortable overall experience.'
+        }
+      ]
+    },
     {
       version: 'v2.5',
       date: '2026.11.03',
