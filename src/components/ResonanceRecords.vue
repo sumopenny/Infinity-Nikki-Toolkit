@@ -12,7 +12,8 @@ const trackOperation = useModuleOperation('resonance')
 import ResonanceDataActions from './ResonanceDataActions.vue'
 import DataImportWindow from './DataImportWindow.vue'
 import ArchiveCloudActions from './ArchiveCloudActions.vue'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
+import { useAfterArchiveMotion } from '../composables/useAfterArchiveMotion'
 import ConfirmDialog from './ConfirmDialog.vue'
 import WardrobeOutfitDialog from './WardrobeOutfitDialog.vue'
 import WardrobeItemDialog from './WardrobeItemDialog.vue'
@@ -335,7 +336,7 @@ async function reload(): Promise<boolean> {
     }
   })
 }
-onMounted(reload)
+useAfterArchiveMotion(reload)
 defineExpose({ reload })
 </script>
 

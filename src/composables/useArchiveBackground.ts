@@ -7,6 +7,7 @@ import sparkle from '../../img/闪点.webp'
 import dream from '../../img/星梦.webp'
 import silk from '../../img/云绸.webp'
 import sakura from '../../img/樱格.webp'
+import mist from '../../img/幻雾.webp'
 
 export const archiveBackgrounds = [
   { id: 'silk', label: '云绸', en: 'Cloud silk', url: silk },
@@ -16,7 +17,8 @@ export const archiveBackgrounds = [
   { id: 'prism2', label: '幻彩2', en: 'Iridescence 2', url: prism2 },
   { id: 'gold', label: '鎏金', en: 'Gilded', url: gold },
   { id: 'dream', label: '星梦', en: 'Star dream', url: dream },
-  { id: 'sakura', label: '樱格', en: 'Sakura plaid', url: sakura }
+  { id: 'sakura', label: '樱格', en: 'Sakura plaid', url: sakura },
+  { id: 'mist', label: '幻雾', en: 'Dream mist', url: mist }
 ] as const
 
 type BackgroundId = (typeof archiveBackgrounds)[number]['id']

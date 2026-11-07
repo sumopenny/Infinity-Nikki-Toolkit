@@ -83,6 +83,28 @@ afterEach(() => {
 })
 
 describe('personal wardrobe interactions', () => {
+  it('keeps the mobile switch mounted and disabled while wardrobe data loads', async () => {
+    const saved = await storage.loadWardrobe()
+    wrapper.unmount()
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener() {},
+      removeEventListener() {}
+    }))
+    let finish!: (value: Awaited<ReturnType<typeof storage.loadWardrobe>>) => void
+    vi.spyOn(storage, 'loadWardrobe').mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    wrapper = mount(PersonalWardrobe, { attachTo: document.body })
+    await wrapper.vm.$nextTick()
+    const target = document.getElementById('wardrobe-mobile-category-target')!
+    const switchButton = target.querySelector<HTMLButtonElement>('.wardrobe-mobile-category-switch')!
+    expect(switchButton).not.toBeNull()
+    expect(switchButton.disabled).toBe(true)
+    expect(target.querySelector('.wardrobe-mobile-summary strong')?.textContent).toBe('—')
+    finish(saved)
+    await vi.waitFor(() => expect(switchButton.disabled).toBe(false))
+    expect(target.querySelector('.wardrobe-mobile-category-switch')).toBe(switchButton)
+    expect(target.querySelector('.wardrobe-mobile-summary strong')?.textContent).not.toBe('—')
+  })
   it('keeps the English name and expansion controls separate and opens details from the name', async () => {
     await wrapper.setProps({ searchQuery: '10347', language: 'en' })
     await wrapper.get('input[role="switch"]').setValue(false)

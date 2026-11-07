@@ -452,8 +452,52 @@ describe('App lifecycle coordination', () => {
     }
   })
 
+  it.each([false, true])('finishes the archive exit before unmounting controls (reduced motion=%s)', async (reducedMotion) => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('prefers-reduced-motion') ? reducedMotion : true,
+      addEventListener() {},
+      removeEventListener() {}
+    }))
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const wrapper = mount(App, {
+      attachTo: document.body,
+      global: { stubs: { PersonalWardrobe: true, MakeupCatalog: true, ResonanceRecords: true, CameraFavorites: true } }
+    })
+    try {
+      await flushPromises()
+      const navigation = wrapper.getComponent({ name: 'AlbumViewSwitcher' })
+      await vi.waitFor(() => expect(navigation.props('disabled')).toBe(false))
+      navigation.vm.$emit('changeView', 'wardrobe')
+      await flushPromises()
+      vi.useFakeTimers()
+      navigation.vm.$emit('changeView', 'resonance')
+      await nextTick()
+      if (!reducedMotion) {
+        expect(navigation.props('activeView')).toBe('wardrobe')
+        expect(wrapper.find('.archive-main-toolbar.is-category-closing').exists()).toBe(true)
+        await vi.advanceTimersByTimeAsync(119)
+        expect(navigation.props('activeView')).toBe('wardrobe')
+        // A newer click cancels the pending return rather than running it later.
+        navigation.vm.$emit('changeView', 'makeup')
+        await nextTick()
+        await vi.advanceTimersByTimeAsync(120)
+        expect(navigation.props('activeView')).toBe('makeup')
+        navigation.vm.$emit('changeView', 'resonance')
+        await nextTick()
+        await vi.advanceTimersByTimeAsync(120)
+      }
+      await nextTick()
+      expect(navigation.props('activeView')).toBe('resonance')
+      expect(wrapper.find('.archive-main-toolbar.has-category').exists()).toBe(false)
+    } finally {
+      wrapper.unmount()
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  })
+
   it.each([true, false])(
-    'disables all resonance ratios and rejects preference changes (compact=%s)',
+    'hides resonance ratio controls and rejects preference changes (compact=%s)',
     async (compact) => {
       vi.stubGlobal(
         'matchMedia',
@@ -481,8 +525,7 @@ describe('App lifecycle coordination', () => {
         const options = [
           ...document.querySelectorAll<HTMLButtonElement>('.thumbnail-options button')
         ]
-        expect(options.length).toBeGreaterThan(0)
-        expect(options.every((button) => button.disabled)).toBe(true)
+        expect(options).toHaveLength(0)
         expect(topBar.props('thumbnailSizeDisabled')).toBe(true)
         topBar.vm.$emit('changeThumbnailSize', 'large')
         topBar.vm.$emit('changeThumbnailMode', 'portrait-standard')

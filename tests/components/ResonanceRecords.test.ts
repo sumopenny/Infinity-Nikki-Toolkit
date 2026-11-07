@@ -102,7 +102,7 @@ it('shows the linked makeup beside an eligible outfit title and opens its detail
   await saveResonanceRecords([savedRecord])
   const wrapper = mount(ResonanceRecords, { props: { language: 'zh' } })
   wrappers.push(wrapper)
-  await vi.waitFor(() => expect(wrapper.find('.resonance-makeup-link').exists()).toBe(true))
+  await vi.waitFor(() => expect(wrapper.find('.resonance-makeup-link').exists()).toBe(true), { timeout: 10000 })
   expect(wrapper.find('.resonance-title-actions').text()).toContain('查看妆容')
   await wrapper.get('.resonance-makeup-link').trigger('click')
   await vi.waitFor(

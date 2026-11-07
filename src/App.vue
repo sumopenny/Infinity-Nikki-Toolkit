@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AlbumNoteNotice from './components/AlbumNoteNotice.vue'
+import { archiveMotionDeadlineKey, archiveMotionLoadDelay } from './composables/useAfterArchiveMotion'
 import {
   inspectAlbumNotes,
   recoverAlbumNotes,
@@ -317,6 +318,11 @@ const topBarRef = ref<InstanceType<typeof TopBar> | null>(null)
 provide('mobileLikeTarget', ref<HTMLElement | null>(null))
 const activeView = ref<AlbumView>(compactLayout.value && !directorySupported ? 'outfits' : 'all')
 const isArchiveView = computed(() => ['resonance', 'wardrobe', 'makeup'].includes(activeView.value))
+const archiveToolbarClosing = ref(false)
+const archiveToolbarMotionDeadline = ref(0)
+provide(archiveMotionDeadlineKey, archiveToolbarMotionDeadline)
+let archiveToolbarExitTimer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(archiveToolbarExitTimer))
 const sidebarMode = ref<'date' | 'action'>('date')
 const actionSort = ref<ActionSort>('id')
 const currentPreview = ref<PhotoDisplayItem | null>(null)
@@ -1616,8 +1622,27 @@ async function updateOutfitLibrary(announce = true, promptSharedAccess = announc
 }
 
 /** 切换相册视图并清空上个视图的选中状态（重复点击当前视图不清空）。参数：view 为目标视图；电脑端进入搭配码时按用户偏好显示操作指南。 */
-function changeAlbumView(view: AlbumView) {
+function changeAlbumView(view: AlbumView, afterArchiveExit = false) {
   if (navigationBusy.value) return
+  clearTimeout(archiveToolbarExitTimer)
+  archiveToolbarExitTimer = undefined
+  archiveToolbarClosing.value = false
+  if (!afterArchiveExit) {
+    const animateArchive = compactLayout.value && view !== activeView.value &&
+      ['resonance', 'wardrobe', 'makeup'].includes(view) &&
+      !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    archiveToolbarMotionDeadline.value = animateArchive ? Date.now() + archiveMotionLoadDelay : 0
+  }
+  // Keep the source module mounted until its teleported controls have faded out.
+  if (
+    !afterArchiveExit && compactLayout.value && view === 'resonance' &&
+    (activeView.value === 'wardrobe' || activeView.value === 'makeup') &&
+    !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  ) {
+    archiveToolbarClosing.value = true
+    archiveToolbarExitTimer = setTimeout(() => changeAlbumView(view, true), 120)
+    return
+  }
   if (view === 'trash' && isCompatibleAlbum.value) {
     showStatus({ message: compatibleMessages.value.trash, tone: 'info' })
     return
@@ -2474,7 +2499,7 @@ function importAllDataFromMenu() {
         <div
           v-if="compactLayout && isArchiveView"
           class="archive-main-toolbar"
-          :class="{ 'is-wardrobe': activeView === 'wardrobe' }"
+          :class="{ 'is-wardrobe': activeView === 'wardrobe', 'is-category-closing': archiveToolbarClosing, 'has-category': !archiveToolbarClosing && (activeView === 'wardrobe' || activeView === 'makeup') }"
         >
           <nav
             class="resonance-choice-row archive-main-tabs"
@@ -2506,15 +2531,23 @@ function importAllDataFromMenu() {
             >
           </nav>
           <div
-            v-if="activeView === 'wardrobe'"
-            id="wardrobe-mobile-category-target"
-            class="archive-wardrobe-extra"
-          ></div>
-          <div
-            v-if="activeView === 'makeup'"
-            id="makeup-mobile-category-target"
-            class="archive-wardrobe-extra"
-          ></div>
+            class="archive-category-slot"
+            :aria-hidden="archiveToolbarClosing || activeView === 'resonance'"
+            :inert="archiveToolbarClosing || activeView === 'resonance'"
+          >
+            <div class="archive-category-content" :key="activeView">
+              <div
+                v-if="activeView === 'wardrobe'"
+                id="wardrobe-mobile-category-target"
+                class="archive-wardrobe-extra"
+              ></div>
+              <div
+                v-if="activeView === 'makeup'"
+                id="makeup-mobile-category-target"
+                class="archive-wardrobe-extra"
+              ></div>
+            </div>
+          </div>
         </div>
         <CollectionFilterBar
           v-if="

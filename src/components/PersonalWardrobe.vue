@@ -30,6 +30,7 @@ import WardrobeOutfitDialog from './WardrobeOutfitDialog.vue'
 import { messages } from '../i18n'
 import { useSidebarMenu } from '../composables/useSidebarMenu'
 import { useCompactLayout } from '../composables/useCompactLayout'
+import { useAfterArchiveMotion } from '../composables/useAfterArchiveMotion'
 import { useModuleOperation } from '../composables/useOperationCoordinator'
 import type { Language } from '../i18n/types'
 import {
@@ -396,7 +397,7 @@ async function reload(): Promise<boolean> {
     if (version === loadVersion) cancelLoad = undefined
   }
 }
-onMounted(reload)
+useAfterArchiveMotion(reload)
 defineExpose({ reload })
 
 const dialog = ref<'import' | 'detail' | null>(null)
@@ -572,7 +573,7 @@ async function clearRecords() {
       :language="language"
       :disabled="blocked"
     />
-    <Teleport v-if="compact && loaded" to="#wardrobe-mobile-category-target" defer>
+    <Teleport v-if="compact" to="#wardrobe-mobile-category-target" defer>
       <button
         type="button"
         class="wardrobe-mobile-category-switch"
@@ -590,7 +591,7 @@ async function clearRecords() {
       <p class="wardrobe-mobile-summary">
         {{ tab === 'outfit' ? text('已集齐', 'Complete') : text('已拥有', 'Owned') }}
         <strong>{{
-          (tab === 'outfit' ? stats.outfits : stats.items).toLocaleString(language)
+          loaded ? (tab === 'outfit' ? stats.outfits : stats.items).toLocaleString(language) : '—'
         }}</strong>
         {{ tab === 'outfit' ? text('套', 'outfits') : text('件', 'pieces') }}
       </p>
@@ -1065,18 +1066,23 @@ async function clearRecords() {
   min-height: 0;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
 }
 .wardrobe-reset-button svg {
   flex-shrink: 0;
 }
-.wardrobe-reset-button:hover {
+.wardrobe-reset-button:hover:not(:disabled) {
   border-color: var(--pink-deep);
   background: var(--surface-strong);
 }
@@ -1172,7 +1178,7 @@ async function clearRecords() {
   min-width: 0;
   overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line);
   border-radius: var(--ui-radius);
   box-shadow: var(--photo-shadow);
   transition:
@@ -1528,6 +1534,26 @@ progress::-webkit-progress-value {
   .wardrobe-collection-notice-close {
     width: 32px;
     height: 32px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wardrobe-reset-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--accent-shadow-sm);
+  }
+}
+.wardrobe-reset-button:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wardrobe-reset-button {
+    transition: none;
+  }
+  .wardrobe-reset-button:hover:not(:disabled),
+  .wardrobe-reset-button:active:not(:disabled) {
+    transform: none;
   }
 }
 </style>

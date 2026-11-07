@@ -332,15 +332,20 @@ onBeforeUnmount(() => document.removeEventListener('click', outside))
   min-height: 0;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
 }
-.makeup-reset-button:hover {
+.makeup-reset-button:hover:not(:disabled) {
   border-color: var(--pink-deep);
   background: var(--surface-strong);
 }
@@ -350,5 +355,25 @@ onBeforeUnmount(() => document.removeEventListener('click', outside))
 }
 .is-compact .makeup-reset-button {
   height: 36px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .makeup-reset-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--accent-shadow-sm);
+  }
+}
+.makeup-reset-button:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .makeup-reset-button {
+    transition: none;
+  }
+  .makeup-reset-button:hover:not(:disabled),
+  .makeup-reset-button:active:not(:disabled) {
+    transform: none;
+  }
 }
 </style>

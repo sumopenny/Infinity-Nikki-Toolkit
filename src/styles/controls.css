@@ -422,9 +422,10 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 5px;
+  --archive-background-option-padding: 5px;
+  padding: var(--archive-background-option-padding);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius-sm) + var(--archive-background-option-padding) + 1px);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -444,6 +445,7 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
 .archive-background-preview {
   display: block;
   position: relative;
+  box-sizing: border-box;
   width: 100%;
   aspect-ratio: 3 / 4;
   border: 1px solid var(--line);

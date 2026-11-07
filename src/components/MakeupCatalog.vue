@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
+import { useAfterArchiveMotion } from '../composables/useAfterArchiveMotion'
 import { ArrowLeftRight } from 'lucide-vue-next'
 import CatalogImage from './CatalogImage.vue'
 import MakeupFilters from './MakeupFilters.vue'
@@ -119,7 +120,7 @@ async function load() {
     if (!disposed) loading.value = false
   }
 }
-onMounted(load)
+useAfterArchiveMotion(load)
 const versionOptions = computed(() => [
   { value: 'all', label: text('全部', 'All') },
   ...wardrobeGameVersionOptions(props.language).filter((option) =>
@@ -217,7 +218,7 @@ const filtered = computed(() => {
       </button>
       <p class="makeup-mobile-summary"
         >{{ tab === 'full' ? text('全妆', 'Full makeup') : text('部件', 'Pieces') }}
-        <strong>{{ currentEntries.length }}</strong> {{ unit }}</p
+        <strong>{{ loading || failed ? '—' : currentEntries.length }}</strong> {{ unit }}</p
       >
     </Teleport>
     <MakeupFilters
@@ -445,7 +446,7 @@ const filtered = computed(() => {
   min-width: 0;
   overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line);
   border-radius: var(--ui-radius);
   box-shadow: var(--photo-shadow);
   transition:
@@ -533,6 +534,13 @@ const filtered = computed(() => {
   color: var(--muted);
 }
 @media (max-width: 899px) {
+  /* Mobile headings are shown in the archive toolbar; hide the empty divider row. */
+  .makeup-header {
+    display: none;
+  }
+  .makeup-page > :deep(.collection-filter-bar) {
+    margin-bottom: 10px;
+  }
   .makeup-variant {
     top: 6px;
     left: 6px;
