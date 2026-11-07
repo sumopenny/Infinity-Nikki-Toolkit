@@ -35,7 +35,7 @@ export function useWardrobeFilters(tab: Ref<WardrobeKind>, language: Ref<Languag
   const variants = computed(() => wardrobeVariantLabels[language.value])
   const categories = computed(() => wardrobeCategoryLabels[language.value])
   const createFilters = (): WardrobeFilters => ({
-    ownership: 'owned',
+    ownership: 'all',
     rarity: 'all',
     variant: 'all',
     version: 'all',
@@ -48,7 +48,7 @@ export function useWardrobeFilters(tab: Ref<WardrobeKind>, language: Ref<Languag
   // 套装和部件各自保存筛选条件，切换分类只切换当前使用的状态。
   const filtersByTab = ref<Record<WardrobeKind, WardrobeFilters>>({
     outfit: createFilters(),
-    item: { ...createFilters(), ownership: 'all' }
+    item: createFilters()
   })
   function currentFilter<K extends FilterKey>(key: K) {
     return computed({
@@ -190,7 +190,7 @@ export function useWardrobeFilters(tab: Ref<WardrobeKind>, language: Ref<Languag
     Object.assign(filtersByTab.value[tab.value], { [key]: value })
   }
   function reset() {
-    Object.assign(filtersByTab.value[tab.value], createFilters(), { ownership: 'all' })
+    Object.assign(filtersByTab.value[tab.value], createFilters())
     if (tab.value === 'item') automaticOwnership.value = null
   }
   return {

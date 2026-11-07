@@ -51,7 +51,7 @@ beforeEach(async () => {
     removeEventListener() {}
   }))
   await clearAllBrowserData()
-  // 当前衣橱默认只看已拥有；无数据时是初始界面，不能沿用旧测试的空库全图鉴假设。
+  // 使用少量拥有记录测试交互；拥有筛选由用例显式选择，不依赖产品默认值。
   const catalog = await catalogModule.loadWardrobeCatalog()
   await storage.updateWardrobe(() => ({
     ...storage.emptyWardrobe(),
@@ -70,8 +70,10 @@ beforeEach(async () => {
     target.id = 'wardrobe-mobile-category-target'
     document.body.append(target)
   }
-  wrapper = mount(PersonalWardrobe, { attachTo: document.body })
+  wrapper = mount(PersonalWardrobe, { attachTo: document.body, props: { searchQuery: '10347' } })
   await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
+  await choose('ownership', '已拥有')
+  await wrapper.setProps({ searchQuery: '' })
 })
 afterEach(() => {
   localStorage.removeItem('nikki-wardrobe-ownership-notice-v1')
@@ -398,7 +400,7 @@ describe('personal wardrobe interactions', () => {
       document.querySelector('#wardrobe-filter-actions .collection-icon-actions')
     ).not.toBeNull()
     const trigger = wrapper.get('.wardrobe-mobile-filter-bar .collection-tag-select')
-    expect(trigger.text()).toContain('已拥有')
+    expect(trigger.text()).toContain('全部筛选')
     await trigger.trigger('click')
     await flushPromises()
     const modal = document.querySelector<HTMLElement>('.mobile-filter-overlay')
@@ -407,7 +409,7 @@ describe('personal wardrobe interactions', () => {
     await choose('source', '限定卡池')
     expect(buttonFilter('source').textContent).toContain('限定卡池')
     expect(wrapper.get('.wardrobe-mobile-filter-bar .collection-tag-select').text()).toContain(
-      '已筛选'
+      '限定卡池'
     )
     await wrapper.setProps({ searchQuery: '1020100347' })
     document
