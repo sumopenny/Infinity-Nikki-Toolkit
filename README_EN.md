@@ -3,7 +3,7 @@
 <div align="center">
   <img src="img/brand-mark.png" alt="Nikki³ NikkiCube" width="72" height="72">
   <p><strong>Nikki³ · Infinity Nikki Toolkit</strong></p>
-  <p>NikkiCube manages albums, outfit codes, home schemes, camera parameters and resonance records in your browser, with optional resonance and wardrobe cloud sync and targeted cleanup.</p>
+  <p>NikkiCube manages albums, outfit codes, home schemes and camera favorites in your browser. Nikki Archive includes resonance records, personal wardrobe and a makeup catalog, alongside backups, optional cloud sync and desktop cleanup.</p>
   <p style="color: orange;">If you run into any issues, please fill out the survey in the site's Feedback section, or report them through GitHub/Gitee Issues or the author's social platforms.</p>
   <p>
     <a href="https://github.com/sumopenny/Infinity-Nikki-Toolkit/releases">GitHub Releases</a> ·
@@ -36,7 +36,8 @@ For local use, see [Local installation](#local-installation).
 | Feature | Phone / tablet | Desktop |
 | --- | --- | --- |
 | Outfits, home schemes, camera parameters | Supported | Supported |
-| Resonance and personal wardrobe | Supported | Supported |
+| Resonance, personal wardrobe and makeup catalog | Supported | Supported |
+| Automatic backups to a local computer folder | Unavailable | Supported (folder permission required) |
 | Manual backups, migration, and cloud sync for resonance and wardrobe | Supported | Supported |
 | Parse codes or uploaded original photos | Supported | Supported |
 | Game album folders and Recently Deleted | Unavailable | Folder authorization required |
@@ -61,10 +62,11 @@ Phones, tablets, and foldable screens adjust their layout to the available width
 
 ### First use and navigation
 
-- Switch between Outfit codes, Home schemes, Camera parameters, and Nikki Archive using bottom navigation.
+- Switch between Outfit codes, Home schemes, Camera parameters, and Nikki Archive using bottom navigation; within the archive, select Resonance, Wardrobe or Makeup catalog.
 - Search the current module with the header magnifier; View changes display, theme, and language. Header More provides parsers, lucky draw times, full-data backups, and help.
 - “+” adds data, and the page “⋯” menu manages the current module. Use tag or rarity entries to filter. Large previews support swiping, pinch-to-zoom, and panning.
-- Use a computer for album folders, automatically reading in-game outfits, and game-file cleanup.
+- Use a computer for album folders, automatically reading in-game outfits, and game-file cleanup. The mobile Add to Home Screen entry provides instructions; native install prompts depend on the browser.
+
 
 ### Outfit codes
 
@@ -75,7 +77,7 @@ Save outfit images and share codes, then copy, edit, or parse them.
   <p><sub>Outfit list and item details</sub></p>
 </div>
 
-- Tap “+” to add an image, code, note, and tag. The code can be left empty and filled in later.
+- Tap “+” to add **either an image or an outfit code to save a plan**; notes and tags are optional.
 - Card actions provide Copy, Edit, Delete, and Parse. Copy and Parse require a code; double-tap a card for the large preview.
 - Use the tag selector to filter or manage tags, and the page “⋯” menu for module ZIP import/export.
 
@@ -101,7 +103,7 @@ Both collections use the page “⋯” menu for ZIP import/export. Deleting a t
 
 ### Nikki Archive
 
-Open Nikki Archive from the bottom navigation, then switch between Resonance records and Personal wardrobe at the top.
+Open Nikki Archive from the bottom navigation, then switch between Resonance records, Personal wardrobe and Makeup catalog at the top.
 
 <div align="center">
   <img src="img/page/resonance.webp" alt="Mobile resonance records and set switching" width="40%">
@@ -121,11 +123,30 @@ Open Nikki Archive from the bottom navigation, then switch between Resonance rec
 - Turn on “Show evolution forms” to list forms separately, or turn it off to group each family into one card. Tap the expand icon in a card’s upper right corner and select a form to open its details; forms can also be switched below the detail header.
 - Tap “+” to import wardrobe data; use “⋯” to export, clear records or access cloud sync. See [Backup and Migration](#backup-and-migration) for import replacement and cloud-sync rules.
 
+**Makeup catalog (mobile)**
+
+<div align="center">
+  <img src="img/page/makeup-catalog.webp" alt="Mobile makeup catalog, parts and related details" width="66%">
+  <p><sub>Full looks, individual parts, evolution forms and details</sub></p>
+</div>
+
+- Browse full makeup, foundation, brows, lashes, contacts and lips. Filter by version, source or rarity and search by name or ID.
+- Open cards for images, parts, evolution forms, related makeup and outfits; no personal wardrobe import is required.
+
 ## Desktop
 
 ### First use and navigation
 
-Use desktop Chrome, Edge, or a compatible Chromium browser. Switch modules and filter from the sidebar; search the current module from the header. View controls display, theme, and language; Tools opens parsers and utilities; More provides full-data backups and help.
+Use desktop Chrome, Edge, or a compatible Chromium browser. Switch modules and filter from the sidebar; search from the header. View controls display, theme, language and background options; Tools opens parsers and utilities; More provides full-data backups and help. Optional Auto Backup writes incremental changes to a selected local folder.
+
+#### Desktop · Install the web app
+
+<div align="center">
+  <img src="img/screenshots/install-app.webp" alt="Desktop install instructions for NikkiCube in Chrome, Edge and other browsers" width="80%">
+  <p><sub>Desktop · Instructions for installing the NikkiCube web app</sub></p>
+</div>
+
+Open the site's Add to Home Screen entry for desktop browser installation instructions. Supported browsers can install the site in a separate app window; the exact install prompt and menu depend on the browser.
 
 ### Albums, photo decoding, and Recently Deleted
 
@@ -135,6 +156,11 @@ Browse game photos by date or action, open large previews, save favorites, and i
   <img src="img/screenshots/album-timeline.webp" alt="Photo timeline" width="49%">
   <img src="img/screenshots/photo-lightbox.webp" alt="Large photo preview" width="49%">
   <p><sub>Left · Browse by date ｜ Right · Large preview and photo actions</sub></p>
+</div>
+
+<div align="center">
+  <img src="img/screenshots/album-actions.webp" alt="Browse album photos by pose" width="80%">
+  <p><sub>Album · Browse photos by pose</sub></p>
 </div>
 
 Click Choose / restore album folder and select the following directory directly. Avoid drive roots, Program Files, and high-level game installation directories:
@@ -179,6 +205,16 @@ If normal authorization cannot open your game album, choose **Compatibility open
 - When restoring, if a file with the same name exists in the original album, suffixes like `_restored_1` and `_restored_2` are used automatically without overwriting existing photos.
 - Recently Deleted photos do not expire automatically and remain until restored or manually permanently deleted.
 
+#### Photo share cards
+
+<div align="center">
+  <img src="img/screenshots/photo-share-portrait.webp" alt="Portrait photo share card" width="49%">
+  <img src="img/screenshots/photo-share-landscape.webp" alt="Landscape photo share card" width="49%">
+  <p><sub>Portrait and landscape share cards</sub></p>
+</div>
+
+Create portrait or landscape share cards from photo cards or parameter windows, optionally showing camera settings, outfit pieces and camera code. Drag and zoom the preview up to 400%.
+
 ### Outfit codes and automatic updates
 
 <div align="center">
@@ -187,7 +223,7 @@ If normal authorization cannot open your game album, choose **Compatibility open
   <p><sub>Left · Outfit plans ｜ Right · Add or edit an outfit</sub></p>
 </div>
 
-- Click Add outfit to select, drag, or paste an image and enter a code, notes, and a tag. Codes can be empty. Double-click for a large preview; single-click to select multiple plans and use the bottom action bar.
+- Click Add outfit to select, drag or paste an image, or enter an outfit code. **Either an image or a code is sufficient to save a plan**; notes and tags are optional. Double-click for a large preview; single-click to select multiple plans and use the bottom action bar.
 - Card actions provide Copy, Edit, Delete, and Parse. Manage categories and tag order in the sidebar. Create up to 40 user tags of up to 5 characters each, with one tag per plan.
 - View or edit notes in the editor and find them through header search. Selecting an album migrates an old `clothe` collection; check any files reported as skipped before handling them.
 
@@ -210,6 +246,17 @@ Authorize the game’s `X6Game` folder from Current album. In the game, tap Shar
 Use the card’s Parse action, or enter a code directly in Tools → Parameter / outfit-code parser without creating a plan. Copy and Parse are unavailable for plans without a code.
 
 Click a parsed item to view its details. When multiple forms are available, switch between them using the left sidebar on desktop or the row below the title on mobile. Returning to the worn item preserves its outfit-code dyes; other forms show their own details. Owned forms have a green check beside their names.
+
+#### Outfit summary and share cards
+
+<div align="center">
+  <img src="img/screenshots/outfit-summary.webp" alt="Outfit tag, clothing and makeup rankings" width="49%">
+  <img src="img/screenshots/outfit-code-share.webp" alt="9:16 outfit share card" width="49%">
+  <p><sub>Left · Outfit summary ｜ Right · Outfit-code share card</sub></p>
+</div>
+
+- Outfit Summary ranks tags, clothing and makeup. Filter by item type, open related details, and optionally parse remaining outfit codes using cached results first.
+- Generate 9:16 share cards for saved outfits with images from a card or parser window; drag and zoom previews up to 400%.
 
 ### Home schemes
 
@@ -239,12 +286,12 @@ Click a parsed item to view its details. When multiple forms are available, swit
 - Open Favorites → Camera parameters, add and parse a parameter code, then enter a name and save. Covers and tags are optional.
 - Parameters can also be saved directly from photo-parsing results. Card actions provide Copy, Edit, Details, and Delete; copied codes can be imported into the in-game camera.
 - On desktop, use the view button to the left of Save parameters to switch between stacked and side-by-side layouts when a photo contains outfit data. The initial layout is side-by-side; subsequent visits restore your last choice. The parameter code spans the bottom in split view. Mobile stays stacked without changing the desktop preference.
-- When an original game photo contains outfit data, worn parts and dye swatches appear below its camera parameters. Click a part to view dye details. Standalone camera codes do not contain outfits.
+- When an original game photo contains outfit data, worn parts and dye swatches appear below its camera parameters. Click a part for dye details. Standalone camera codes do not contain outfits. Newer photos may include weather, wind, zoom and pose playback progress where recorded.
 - Page actions provide module ZIP import/export. The parser in Tools also accepts parameter codes or original game photos.
 
 ### Nikki Archive
 
-Open Resonance records or Personal wardrobe from Nikki Archive in the sidebar.
+Open Resonance records, Personal wardrobe or Makeup catalog from Nikki Archive in the sidebar.
 
 <div align="center">
   <img src="img/screenshots/resonance.webp" alt="Desktop resonance records" width="98%">
@@ -270,8 +317,26 @@ Open Resonance records or Personal wardrobe from Nikki Archive in the sidebar.
 
 - **Personal wardrobe:** browse original, recolor, and evolution versions. Switch between outfits and pieces, search by name or ID, and filter by rarity, version, item category, or ownership to view details.
 - Use **Show evolution forms** to list all forms or group each family into one card. Your preference is saved. Expand a grouped card to choose a form, or switch forms in outfit and piece details. Desktop outfit details also show source labels.
-- Import a Whim-Log notebook from China or any global server, or wardrobe JSON, and export a separate JSON backup. One notebook preview lets you choose both resonance and wardrobe data. Clearing wardrobe records does not affect resonance. Wardrobe and resonance share an account and one sync dialog, allowing selected modules to upload, download or delete together. Makeup is not supported.
+- Import a Whim-Log notebook from China or any global server, or wardrobe JSON, and export a separate JSON backup. One notebook preview lets you choose both resonance and wardrobe data. Clearing wardrobe records does not affect resonance. Wardrobe and resonance share an account and one sync dialog, allowing selected modules to upload, download or delete together. The makeup catalog can be browsed without imported data; its static reference images are not part of wardrobe sync saves.
 - Check the replacement rules in [Backup and Migration](#backup-and-migration) before importing.
+
+
+### Makeup catalog and backgrounds
+
+<div align="center">
+  <img src="img/screenshots/makeup-catalog.webp" alt="Desktop makeup catalog and filters" width="49%">
+  <img src="img/screenshots/makeup-details.webp" alt="Makeup details and evolution forms" width="49%">
+  <p><sub>Left · Makeup catalog ｜ Right · Details and related looks</sub></p>
+</div>
+
+- Browse full makeup, foundation, brows, lashes, contacts and lips. Filter by version, source or rarity and search by name or ID. Details include parts, evolution forms, related makeup and outfits.
+- Resonance, wardrobe and outfit parsing link to makeup details without requiring an archive import.
+- Choose an archive card background from View in light or dark theme; the preference is remembered.
+
+<div align="center">
+  <img src="img/screenshots/archive-background.webp" alt="Archive background selection" width="80%">
+  <p><sub>Nikki Archive background options</sub></p>
+</div>
 
 
 <div align="center">
@@ -300,7 +365,14 @@ The following cleanup items are available:
 
 Open other utilities from Tools. More provides usage help, update notes, and feedback.
 
+<div align="center">
+  <img src="img/screenshots/parse-tools.webp" alt="Outfit code and photo parameter parsers" width="70%">
+  <p><sub>Tools · Outfit and camera parameter parsers</sub></p>
+</div>
+
 ## Backup and Migration
+
+### Manual backup and migration
 
 From More, choose Export all data to download a ZIP containing outfit plans, home schemes, camera favorites, resonance records, and the wardrobe, including saved scheme images and covers. Transfer the ZIP to another device, then choose Import all data there. **Game album originals are not included; back them up separately.**
 
@@ -322,6 +394,17 @@ Resonance and wardrobe share one cloud-sync dialog, accessible from either page.
 </div>
 
 Unrecorded wardrobe pieces were absent from the notebook response; this does not mean they are unowned in the game. A resonance-only export cannot be imported as wardrobe data.
+
+### Automatic desktop backups
+
+<div align="center">
+  <img src="img/screenshots/directory-backup.webp" alt="Automatic backup folder and module controls" width="80%">
+  <p><sub>Desktop · Incremental backup and folder-based restore</sub></p>
+</div>
+
+Auto Backup is optional. Choose a local folder, then separately enable incremental backups for **outfit codes, home schemes and camera favorites**, or restore from that folder. Editing and importing remain available without enabling backups. Game album originals, resonance and wardrobe are not included.
+
+Pending, healthy and abnormal status indicators help monitor backups. Unexpected data loss can pause an affected module to protect previous backups; verify restored contents and module states, and keep separate manual ZIP backups.
 
 ## FAQ
 
@@ -414,4 +497,6 @@ npm run preview            # Preview the build
 
 ## Acknowledgements and License
 
-Some features were inspired by and use the related services of [Nikki Albums](https://github.com/RanAxro/nikki_albums) and [Gongeo.us Nikki Tracker](https://github.com/dastrokes/gongeo.us-nikki-tracker). Please refer to the root [LICENSE](LICENSE) file for this project's license.
+Reference repositories: [Nikki Albums](https://github.com/RanAxro/nikki_albums) and [Gongeo.us Nikki Tracker](https://github.com/dastrokes/gongeo.us-nikki-tracker).
+
+Please refer to the root [LICENSE](LICENSE) file for this project's license.
