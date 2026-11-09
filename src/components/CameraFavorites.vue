@@ -1054,7 +1054,8 @@ function handleImportChoices(value: typeof choices.value) {
             :class="{ 'is-image-only': compactResourceCover }"
           >
             <div v-for="group in cardResources(item.result)" :key="group.kind">
-              <img v-image-skeleton
+              <img
+                v-image-skeleton
                 v-if="group.imageUrl"
                 :src="group.imageUrl"
                 :alt="group.name"
@@ -1072,7 +1073,7 @@ function handleImportChoices(value: typeof choices.value) {
           <!-- 标记常驻，通过公共选中样式切换，保留淡入与缩放动画。 -->
           <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
           <button
-            class="outfit-card-delete camera-card-delete desktop-only"
+            class="card-action card-action-delete outfit-card-delete camera-card-delete desktop-only"
             type="button"
             :title="t('删除', 'Delete')"
             :aria-label="t('删除', 'Delete')"

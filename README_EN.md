@@ -77,6 +77,7 @@ Save outfit images and share codes, then copy, edit, or parse them.
   <p><sub>Outfit list and item details</sub></p>
 </div>
 
+- Optionally save a source link in the editor. Pasted share text extracts a single web link; keep only one if multiple links are found. The chain icon on desktop and mobile cards opens the source, and backups preserve the link.
 - Tap “+” to add **either an image or an outfit code to save a plan**; notes and tags are optional.
 - Card actions provide Copy, Edit, Delete, and Parse. Copy and Parse require a code; double-tap a card for the large preview.
 - Use the tag selector to filter or manage tags, and the page “⋯” menu for module ZIP import/export.

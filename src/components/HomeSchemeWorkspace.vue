@@ -1058,13 +1058,19 @@ function handleAddTag(value: string) {
                 :load="() => readHomeSchemeImage(item.id)"
                 :alt="item.name || item.code"
               />
-              <img v-image-skeleton v-else-if="item.imageUrl" :src="item.imageUrl" alt="" loading="lazy" />
+              <img
+                v-image-skeleton
+                v-else-if="item.imageUrl"
+                :src="item.imageUrl"
+                alt=""
+                loading="lazy"
+              />
               <div v-else class="scheme-card-no-image"
                 ><ImagePlus :size="22" aria-hidden="true"
               /></div>
               <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
               <button
-                class="outfit-card-delete home-scheme-card-delete desktop-only"
+                class="card-action card-action-delete outfit-card-delete home-scheme-card-delete desktop-only"
                 type="button"
                 :title="messages.delete"
                 :aria-label="messages.delete"

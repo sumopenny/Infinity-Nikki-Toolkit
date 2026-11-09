@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
 import { validateSelectedImage } from '../utils/imageSelection'
+import { parseSourceUrl } from '../utils/outfit/outfitSourceUrl'
+import type { SaveOutfitInput } from '../utils/outfit/outfitTypes'
 import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { ImagePlus, Plus, Upload, X } from 'lucide-vue-next'
 import type { OutfitMessages } from '../i18n'
@@ -28,7 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [input: { imageFile?: File; code: string; tag: string | null; note: string }]
+  save: [input: Omit<SaveOutfitInput, 'outfit'>]
   addTag: [tag: string]
 }>()
 
@@ -43,6 +45,29 @@ const isSelectionBlocked = computed(() => props.selectionBusy ?? props.busy)
 const previewUrl = ref<string | null>(null)
 const code = ref('')
 const note = ref('')
+const sourceUrl = ref('')
+const sourceError = ref('')
+
+function validateSourceUrl() {
+  const result = parseSourceUrl(sourceUrl.value)
+  sourceError.value =
+    result.error === 'multiple'
+      ? props.messages.sourceMultiple
+      : result.error
+        ? props.messages.sourceInvalid
+        : ''
+  if (result.error) return false
+  sourceUrl.value = result.url
+  return true
+}
+
+function pasteSourceUrl(event: ClipboardEvent) {
+  const text = event.clipboardData?.getData('text/plain')
+  if (!text) return
+  event.preventDefault()
+  sourceUrl.value = text
+  validateSourceUrl()
+}
 const selectedTag = ref<string | null>(null)
 const errorMessage = ref('')
 const isDragging = ref(false)
@@ -75,6 +100,8 @@ async function resetForm() {
   imageFile.value = undefined
   code.value = outfit?.code ?? ''
   note.value = outfit?.note ?? ''
+  sourceUrl.value = outfit?.sourceUrl ?? ''
+  sourceError.value = ''
   selectedTag.value = outfit?.tags[0] ?? null
   errorMessage.value = ''
   isDragging.value = false
@@ -247,11 +274,13 @@ function submit() {
     errorMessage.value = props.messages.imageRequired
     return
   }
+  if (!validateSourceUrl()) return
   emit('save', {
     imageFile: imageFile.value,
     code: code.value,
     tag: selectedTag.value,
-    note: note.value
+    note: note.value,
+    sourceUrl: sourceUrl.value
   })
 }
 
@@ -376,6 +405,28 @@ onBeforeUnmount(() => {
                 autocomplete="off"
                 @input="updateCode"
               />
+
+              <label for="outfit-source-url">{{ messages.sourceLabel }}</label>
+              <input
+                id="outfit-source-url"
+                v-model="sourceUrl"
+                :placeholder="messages.sourcePlaceholder"
+                :disabled="busy"
+                :aria-invalid="Boolean(sourceError)"
+                :aria-describedby="sourceError ? 'outfit-source-error' : undefined"
+                autocomplete="off"
+                inputmode="url"
+                @input="sourceError = ''"
+                @paste="pasteSourceUrl"
+                @blur="validateSourceUrl"
+              />
+              <p
+                v-if="sourceError"
+                id="outfit-source-error"
+                class="outfit-editor-error"
+                role="alert"
+                >{{ sourceError }}</p
+              >
 
               <label for="outfit-note">{{ messages.noteLabel }}</label>
               <input

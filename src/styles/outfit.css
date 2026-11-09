@@ -246,8 +246,6 @@
 .outfit-tag-drag-handle,
 .outfit-delete-tag,
 .outfit-card-actions button,
-.outfit-card-parse,
-.outfit-card-delete,
 .outfit-editor-panel > header button:where(:not(.confirm-dialog-button)) {
   display: grid;
   width: 28px;
@@ -661,15 +659,7 @@
   position: absolute;
   z-index: 6;
   top: 8px;
-  border-color: rgba(255, 255, 255, 0.35);
-  background: rgba(25, 22, 22, 0.48);
-  color: #fff;
   opacity: 0;
-  transition:
-    opacity var(--motion-fast) ease,
-    color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    background var(--motion-fast) ease;
 }
 
 .outfit-card-parse {
@@ -745,38 +735,6 @@
 .outfit-card:hover .outfit-card-delete,
 .outfit-card-delete:focus-visible {
   opacity: 1;
-}
-
-.outfit-card-parse:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.72);
-  background: color-mix(in srgb, var(--pink-deep) 80%, rgba(25, 22, 22, 0.48));
-  color: #fff;
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .outfit-card-parse:hover:not(:disabled) {
-    background: rgba(182.1429, 120.2143, 122, 0.896);
-  }
-
-  :where(:root[data-theme='dark']) .outfit-card-parse:hover:not(:disabled) {
-    background: rgba(216.0714, 159.5, 161.2857, 0.896);
-  }
-}
-
-.outfit-card-delete:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.72);
-  background: color-mix(in srgb, var(--notice-error) 80%, rgba(25, 22, 22, 0.48));
-  color: #fff;
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .outfit-card-delete:hover:not(:disabled) {
-    background: rgba(180.3571, 101.4643, 104.1429, 0.896);
-  }
-
-  :where(:root[data-theme='dark']) .outfit-card-delete:hover:not(:disabled) {
-    background: rgba(216.9643, 139.8571, 142.5357, 0.896);
-  }
 }
 
 .outfit-card-parse:disabled {

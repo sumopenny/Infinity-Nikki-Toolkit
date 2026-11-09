@@ -1,0 +1,116 @@
+/* 图片上的悬浮操作复用照片按钮外观；底部操作栏保留原样。 */
+.card-action {
+  --card-action-color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  width: 27px;
+  height: 27px;
+  min-width: 0;
+  min-height: 0;
+  gap: 4px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 9px;
+  background: rgba(25, 22, 22, 0.34);
+  color: var(--card-action-color);
+  appearance: none;
+  font: inherit;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    opacity var(--motion-fast) ease,
+    background var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    scale var(--motion-fast) ease;
+}
+.card-action-edit {
+  --card-action-color: #e8c76a;
+}
+.card-action-inspect {
+  --card-action-color: #5eb0f5;
+}
+.card-action-delete {
+  --card-action-color: #ffb9bc;
+}
+.card-action > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.card-action:hover:not(:disabled):not([aria-disabled='true']):not(.active) {
+  background: rgba(25, 22, 22, 0.65);
+}
+.card-action:active:not(:disabled):not([aria-disabled='true']) {
+  scale: 0.97;
+}
+.card-action:focus-visible {
+  outline: 2px solid var(--pink-deep);
+  outline-offset: 2px;
+}
+
+.card-action:disabled,
+.card-action[aria-disabled='true'] {
+  cursor: not-allowed;
+  filter: opacity(0.55);
+}
+@media (min-width: 900px) {
+  .thumbnail-size-small .card-action {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+  }
+  .thumbnail-size-small .card-action > svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+@media (max-width: 899px) {
+  .card-action {
+    width: var(--mobile-control-size, 44px);
+    height: var(--mobile-control-size, 44px);
+  }
+  .card-action > svg {
+    width: var(--mobile-icon-size, 18px);
+    height: var(--mobile-icon-size, 18px);
+  }
+  /* 搭配卡片右上角保留紧凑外观，不套用通用触屏控件尺寸。 */
+  .outfit-card .card-share-button {
+    width: 27px;
+    height: 27px;
+  }
+  .outfit-card .card-share-button > svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-action {
+    transition: none;
+  }
+  .card-action:active:not(:disabled):not([aria-disabled='true']) {
+    scale: 1;
+  }
+}
+
+/* 触屏按钮按统一尺寸间隔排布，防止点击区域相互覆盖。 */
+@media (max-width: 899px) {
+  .photo-frame > .photo-note-edit {
+    right: 60px;
+  }
+  .photo-frame > .photo-params-parse {
+    right: 112px;
+  }
+  .photo-frame:has(.favorite-heart) > .card-share-button {
+    top: 60px;
+    right: 8px;
+  }
+
+  .thumbnail-size-small .photo-frame:has(.favorite-heart) > .card-share-button {
+    top: 8px;
+  }
+}

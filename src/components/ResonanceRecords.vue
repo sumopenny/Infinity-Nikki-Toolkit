@@ -384,8 +384,10 @@ defineExpose({ reload })
               <p class="resonance-overall-summary skeleton-summary" data-skeleton-block>&nbsp;</p>
               <p class="resonance-mobile-progress" data-skeleton-block>&nbsp;</p>
             </div>
+            <div class="resonance-set-switch" data-skeleton-block>
+              <button v-for="set in 2" :key="set" type="button">&nbsp;</button>
+            </div>
             <div class="resonance-mobile-details" data-skeleton-block
-              ><div class="resonance-set-switch">&nbsp;</div
               ><p class="resonance-set-summary">&nbsp;</p></div
             >
             <div class="resonance-record-body">
@@ -490,17 +492,18 @@ defineExpose({ reload })
               )
             }}</p>
           </div>
+          <!-- 切换按钮直接相对卡片定位，避免摘要入场的 transform 改变绝对定位参照。 -->
+          <div class="resonance-set-switch" role="group" :aria-label="t.setSelection">
+            <button
+              v-for="set in record.sets"
+              :key="set.setNumber"
+              type="button"
+              :aria-pressed="(selectedSet[record.id] ?? 1) === set.setNumber"
+              @click="selectedSet[record.id] = set.setNumber"
+              >{{ set.setNumber === 1 ? t.setOne : t.setTwo }}</button
+            >
+          </div>
           <div class="resonance-mobile-details" data-load-block>
-            <div class="resonance-set-switch" role="group" :aria-label="t.setSelection">
-              <button
-                v-for="set in record.sets"
-                :key="set.setNumber"
-                type="button"
-                :aria-pressed="(selectedSet[record.id] ?? 1) === set.setNumber"
-                @click="selectedSet[record.id] = set.setNumber"
-                >{{ set.setNumber === 1 ? t.setOne : t.setTwo }}</button
-              >
-            </div>
             <p class="resonance-set-summary" aria-live="polite">
               <span>{{ t.setPulls(setSummary(currentSet(record)).total) }}</span>
               <span>{{ t.knownAverage(setSummary(currentSet(record)).average) }}</span>
@@ -959,6 +962,7 @@ button.resonance-part:focus-visible {
 }
 /* 移动卡片由同一张立绘组成摘要，当前套部件独占整行；桌面同时展示两套。 */
 .resonance-mobile-details,
+.resonance-set-switch,
 .resonance-record-heading .resonance-mobile-progress {
   display: none;
 }

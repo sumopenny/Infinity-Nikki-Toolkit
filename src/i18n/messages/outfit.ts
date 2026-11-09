@@ -41,6 +41,11 @@ export interface OutfitMessages {
   replaceImage: string
   codeLabel: string
   codePlaceholder: string
+  sourceLabel: string
+  sourcePlaceholder: string
+  sourceMultiple: string
+  sourceInvalid: string
+  openSource: string
   noteLabel: string
   notePlaceholder: string
   tagLabel: string
@@ -162,6 +167,11 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     replaceImage: '更换图片',
     codeLabel: '搭配码',
     codePlaceholder: '可以留空，稍后填写',
+    sourceLabel: '来源链接（选填）',
+    sourcePlaceholder: '粘贴原帖或分享链接',
+    sourceMultiple: '检测到多个链接，请只保留一个来源链接',
+    sourceInvalid: '请输入有效的网页链接',
+    openSource: '打开来源链接',
     noteLabel: '备注',
     notePlaceholder: '最多15个字符',
     tagLabel: '标签（单选）',
@@ -271,7 +281,8 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     exportData: 'Export',
     exporting: 'Creating backup',
     duplicateCode: 'This outfit code already exists. Edit the existing outfit.',
-    unreadableRecords: (count) => `Unable to display ${count} outfit record(s). The original records are preserved.`,
+    unreadableRecords: (count) =>
+      `Unable to display ${count} outfit record(s). The original records are preserved.`,
     storageFull: 'Browser storage is full. Free some space and retry. Source files were retained.',
     recordChanged: 'This outfit was changed or deleted in another page. Refresh and retry.',
     operationFailed: 'Unable to read or save outfit data. Please retry.',
@@ -304,6 +315,11 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     replaceImage: 'Replace image',
     codeLabel: 'Outfit code',
     codePlaceholder: 'Optional; you can add it later',
+    sourceLabel: 'Source link (optional)',
+    sourcePlaceholder: 'Paste the original post or share link',
+    sourceMultiple: 'Multiple links detected. Please keep only one source link.',
+    sourceInvalid: 'Please enter a valid web link.',
+    openSource: 'Open source link',
     noteLabel: 'Note',
     notePlaceholder: 'Up to 15 characters',
     tagLabel: 'Tag (single choice)',

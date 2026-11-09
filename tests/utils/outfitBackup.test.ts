@@ -177,3 +177,15 @@ it('rejects image extension and content mismatch before writing', async () => {
   )
   expect((await readOutfitSnapshot()).records).toHaveLength(0)
 })
+
+it('round trips source URLs including repeated and encoded parameters', async () => {
+  const sourceUrl = 'https://example.com/a%2fb?x=1&x=2&q=a+b#part%20one'
+  await saveOutfit({ code: 'SOURCE', tag: null, sourceUrl })
+  let backup!: File
+  await exportOutfitBackup(async (name, blob) => {
+    backup = new File([blob], name)
+  })
+  await resetOutfitDatabase()
+  await importOutfitBackup(backup)
+  expect((await readOutfitSnapshot()).records[0].sourceUrl).toBe(sourceUrl)
+})

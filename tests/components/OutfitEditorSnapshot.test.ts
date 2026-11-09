@@ -265,3 +265,24 @@ it('reports a displayed outfit preview failure without changing the draft', asyn
     capture.mockRestore()
   }
 })
+
+it('extracts pasted source text, blocks multiple links and recovers after clearing', async () => {
+  const wrapper = mount(OutfitEditor, {
+    props: { visible: false, outfit: null, tags: [], busy: false, messages: outfitMessages.zh },
+    global: { stubs: { teleport: true } }
+  })
+  await wrapper.setProps({ visible: true })
+  await wrapper.get('#outfit-code').setValue('SOURCE')
+  const field = wrapper.get('#outfit-source-url')
+  const url = 'https://example.com/a?x=%2f&x=2#part'
+  await field.trigger('paste', { clipboardData: { getData: () => `原帖 ${url} 快来看看` } })
+  expect((field.element as HTMLInputElement).value).toBe(url)
+  await field.trigger('paste', { clipboardData: { getData: () => `${url} https://example.org` } })
+  await wrapper.get('button.primary').trigger('click')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  expect(wrapper.text()).toContain(outfitMessages.zh.sourceMultiple)
+  await field.setValue('')
+  await wrapper.get('button.primary').trigger('click')
+  expect(wrapper.emitted('save')?.[0]?.[0]).toMatchObject({ sourceUrl: '' })
+  wrapper.unmount()
+})

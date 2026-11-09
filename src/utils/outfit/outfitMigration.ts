@@ -342,6 +342,7 @@ async function migrate(album: FileSystemDirectoryHandle): Promise<OutfitMigratio
           if (record.tags.some((tag) => !tags.includes(tag))) throw new Error('outfit_tag_missing')
           const incoming = normalizeOutfitRecord({
             ...record,
+            sourceUrl: record.sourceUrl ?? existing?.sourceUrl,
             id,
             image: `${id}.${image.extension}`,
             imageSize: image.size

@@ -226,6 +226,7 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
         code,
         tags: tag ? [tag] : [],
         note: input.note?.trim() ?? '',
+        sourceUrl: input.sourceUrl === undefined ? previous?.sourceUrl : input.sourceUrl,
         createdAt: previous?.createdAt ?? new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })

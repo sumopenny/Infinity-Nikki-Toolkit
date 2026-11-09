@@ -110,7 +110,8 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
     >
       <div class="date-block-header">
         <h2
-          ><img v-image-skeleton
+          ><img
+            v-image-skeleton
             v-if="group.actionImageUrl"
             class="action-group-image"
             :src="optimizedImageKitUrl(group.actionImageUrl)"
@@ -157,7 +158,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
             </div>
             <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
             <button
-              class="card-share-button"
+              class="card-action card-share-button"
               type="button"
               :title="language === 'en' ? 'Export share image' : '导出分享图'"
               :aria-label="language === 'en' ? 'Export share image' : '导出分享图'"
@@ -167,7 +168,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
               ><Share2 :size="16" aria-hidden="true"
             /></button>
             <button
-              class="photo-params-parse"
+              class="card-action card-action-inspect photo-params-parse"
               type="button"
               :title="messages.parsePhoto"
               :aria-label="messages.parsePhoto"
@@ -176,7 +177,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
               <ScanSearch :size="16" aria-hidden="true" />
             </button>
             <button
-              class="favorite-heart"
+              class="card-action favorite-heart"
               type="button"
               :class="{ active: favoriteIds.has(photo.id) }"
               :aria-label="
@@ -192,7 +193,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
               />
             </button>
             <button
-              class="photo-note-edit"
+              class="card-action card-action-edit photo-note-edit"
               type="button"
               :disabled="readOnly"
               :title="readOnly ? readOnlyHint : messages.editNote"

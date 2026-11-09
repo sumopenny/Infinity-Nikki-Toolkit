@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { vCardReveal } from '../utils/cardReveal'
 import { onBeforeUnmount } from 'vue'
-import { Check, Copy, Edit3, ImagePlus, ScanSearch, Shirt, Trash2, Share2 } from 'lucide-vue-next'
+import {
+  Link,
+  Check,
+  Copy,
+  Edit3,
+  ImagePlus,
+  ScanSearch,
+  Shirt,
+  Trash2,
+  Share2
+} from 'lucide-vue-next'
 import type { OutfitMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 import type { OutfitItem } from '../utils/outfit/outfitFileSystem'
@@ -52,7 +62,10 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
     :class="[`mode-${thumbnailMode}`, `thumbnail-size-${thumbnailSize ?? 'medium'}`]"
   >
     <p v-if="unreadableCount" role="status">{{ messages.unreadableRecords(unreadableCount) }}</p>
-    <div v-if="!outfits.length && (!unreadableCount || totalCount)" class="empty-album inline-empty">
+    <div
+      v-if="!outfits.length && (!unreadableCount || totalCount)"
+      class="empty-album inline-empty"
+    >
       <Shirt :size="30" aria-hidden="true" />
       <h2>{{ messages.emptyTitle }}</h2>
       <p>{{ messages.emptyDescription }}</p>
@@ -99,9 +112,25 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
             >
           </div>
           <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
+          <a
+            v-if="outfit.sourceUrl"
+            class="card-action card-share-button outfit-source-link"
+            :class="{ 'has-share-button': outfit.image && outfit.code }"
+            :href="disabled ? undefined : outfit.sourceUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            :title="messages.openSource"
+            :aria-label="messages.openSource"
+            :aria-disabled="disabled || undefined"
+            :tabindex="disabled ? -1 : 0"
+            @click.stop
+            @dblclick.stop
+            @keydown.stop
+            ><Link :size="16" aria-hidden="true"
+          /></a>
           <button
             v-if="outfit.image && outfit.code"
-            class="card-share-button"
+            class="card-action card-share-button"
             type="button"
             :disabled="disabled"
             :title="language === 'en' ? 'Export share image' : '导出分享图'"
@@ -112,7 +141,7 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
             ><Share2 :size="16" aria-hidden="true"
           /></button>
           <button
-            class="outfit-card-delete desktop-only"
+            class="card-action card-action-delete outfit-card-delete desktop-only"
             type="button"
             :title="messages.delete"
             :aria-label="messages.delete"
@@ -122,7 +151,7 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
             <Trash2 :size="16" aria-hidden="true" />
           </button>
           <button
-            class="outfit-card-parse desktop-only"
+            class="card-action card-action-inspect outfit-card-parse desktop-only"
             type="button"
             :title="messages.parse"
             :aria-label="messages.parse"

@@ -1,3 +1,4 @@
+import { isValidSourceUrl } from './outfitSourceUrl'
 import { STORED_IMAGE_EXTENSIONS } from '../storedImage'
 import type { PhotoDisplayItem } from '../photoGrouping'
 import { createUuid } from '../uuid'
@@ -28,6 +29,7 @@ export interface OutfitRecord {
   createdAt: string
   updatedAt: string
   diyImageModifiedAt?: number
+  sourceUrl?: string
   sourcePlayerId?: string
   gameSourceId?: string
 }
@@ -66,6 +68,7 @@ export interface SaveOutfitInput {
   code: string
   tag: string | null
   note?: string
+  sourceUrl?: string
 }
 export interface OutfitImportResult {
   addedCount: number
@@ -160,6 +163,11 @@ export function normalizeOutfitRecord(value: unknown): OutfitRecord {
     note: raw.note.trim(),
     createdAt: new Date(raw.createdAt).toISOString(),
     updatedAt: new Date(raw.updatedAt).toISOString()
+  }
+  if (raw.sourceUrl !== undefined && raw.sourceUrl !== '') {
+    if (typeof raw.sourceUrl !== 'string' || !isValidSourceUrl(raw.sourceUrl))
+      throw new Error('outfit_source_url_invalid')
+    record.sourceUrl = raw.sourceUrl
   }
   if (raw.imageSize !== undefined) {
     if (!Number.isSafeInteger(raw.imageSize) || raw.imageSize <= 0)

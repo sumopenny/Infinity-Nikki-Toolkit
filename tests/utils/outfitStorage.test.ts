@@ -21,7 +21,7 @@ import {
 import { DuplicateOutfitCodeError } from '../../src/utils/outfit/outfitTypes'
 import { reportPartialFailure } from '../../src/utils/errorReporting/errorReporter'
 vi.mock('../../src/utils/errorReporting/errorReporter', async (original) => ({
-  ...await original<typeof import('../../src/utils/errorReporting/errorReporter')>(),
+  ...(await original<typeof import('../../src/utils/errorReporting/errorReporter')>()),
   reportPartialFailure: vi.fn()
 }))
 setupOutfitDatabaseTests()
@@ -41,7 +41,9 @@ it('lists healthy outfits without changing unreadable records or silently export
   expect(result.outfits.map((item) => item.id)).toEqual([healthy.id])
   expect(result.unreadableCount).toBe(3)
   expect(reportPartialFailure).toHaveBeenCalledWith('outfits', 'read-collection', 3, {
-    invalidRecord: 1, missingTag: 1, missingImage: 1
+    invalidRecord: 1,
+    missingTag: 1,
+    missingImage: 1
   })
   expect(await runStoreRequest(OUTFITS_STORE, 'readonly', (store) => store.count())).toBe(4)
   await expect(readOutfitSnapshot()).rejects.toThrow('outfit_record_invalid')
@@ -210,4 +212,17 @@ it('does not retry other database failures', async () => {
     })
   ).rejects.toThrow('Storage full')
   expect(attempts).toBe(1)
+})
+
+it('persists, preserves and clears source links without requiring an image', async () => {
+  const sourceUrl = 'https://example.com/post?x=%2f&x=2#section'
+  const saved = await saveOutfit({ code: 'SOURCE', tag: null, sourceUrl })
+  expect((await readOutfitCollection()).outfits[0].sourceUrl).toBe(sourceUrl)
+  const edited = await saveOutfit({ outfit: saved, code: saved.code, tag: null, note: '编辑' })
+  expect(edited.sourceUrl).toBe(sourceUrl)
+  const cleared = await saveOutfit({ outfit: edited, code: edited.code, tag: null, sourceUrl: '' })
+  expect(cleared.sourceUrl).toBeUndefined()
+  await expect(saveOutfit({ code: '', tag: null, sourceUrl })).rejects.toThrow(
+    'outfit_image_required'
+  )
 })

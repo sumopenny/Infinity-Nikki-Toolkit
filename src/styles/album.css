@@ -95,22 +95,7 @@
   z-index: 5;
   top: 8px;
   right: 43px;
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  border-radius: 9px;
-  background: rgba(25, 22, 22, 0.34);
-  color: #e8c76a;
-  appearance: none;
-  line-height: 1;
   opacity: 0;
-  transition:
-    opacity var(--motion-fast) ease,
-    background var(--motion-fast) ease,
-    color var(--motion-fast) ease;
 }
 
 .photo-params-parse {
@@ -118,30 +103,13 @@
   z-index: 5;
   top: 8px;
   right: 77px;
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  border-radius: 9px;
-  background: rgba(25, 22, 22, 0.34);
-  color: #5eb0f5;
-  cursor: pointer;
   opacity: 0;
-  transition:
-    opacity 0.18s ease,
-    background 0.18s ease;
 }
 
 .photo-card:hover .photo-params-parse,
 .photo-card:focus-visible .photo-params-parse,
 .photo-params-parse:focus-visible {
   opacity: 1;
-}
-
-.photo-params-parse:hover {
-  background: rgba(25, 22, 22, 0.65);
 }
 
 .photo-card:hover .photo-note-edit,
@@ -158,11 +126,6 @@
   .photo-card:hover .photo-note-edit:disabled {
     opacity: 0.55;
   }
-}
-
-.photo-note-edit:hover:not(:disabled) {
-  background: rgba(25, 22, 22, 0.56);
-  color: #f4d989;
 }
 
 .photo-card.selected .selected-badge {
@@ -372,20 +335,7 @@
   z-index: 6;
   top: 8px;
   right: 112px;
-  display: grid;
-  place-items: center;
-  width: 27px;
-  height: 27px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  border-radius: 9px;
-  background: rgba(25, 22, 22, 0.34);
-  color: #fff;
   opacity: 0;
-  cursor: pointer;
-  transition:
-    opacity var(--motion-fast),
-    background var(--motion-fast);
 }
 .outfit-card .card-share-button {
   right: 80px;
@@ -393,6 +343,7 @@
 @media (max-width: 899px) {
   .outfit-card .card-share-button {
     right: 8px;
+    opacity: 1;
   }
 }
 .photo-card:hover .card-share-button,
@@ -400,15 +351,11 @@
 .photo-card:has(:focus-visible) .card-share-button {
   opacity: 1;
 }
-.card-share-button:hover:not(:disabled) {
-  background: rgba(25, 22, 22, 0.65);
-}
+
 .card-share-button:disabled {
   cursor: default;
 }
-.photo-card:hover .card-share-button:disabled {
-  opacity: 0.5;
-}
+
 @media (hover: none) {
   .photo-card .card-share-button {
     opacity: 1;
@@ -464,5 +411,26 @@
   }
   .thumbnail-size-small .card-share-button {
     right: 90px;
+  }
+}
+
+/* 来源默认占分享按钮的位置；分享按钮显示时才向左让位。 */
+.outfit-card .outfit-source-link {
+  text-decoration: none;
+}
+.outfit-card .outfit-source-link.has-share-button {
+  right: 116px;
+}
+.outfit-card .outfit-source-link[aria-disabled='true'] {
+  pointer-events: none;
+}
+@media (min-width: 900px) {
+  .thumbnail-size-small .outfit-card .outfit-source-link.has-share-button {
+    right: 90px;
+  }
+}
+@media (max-width: 899px) {
+  .outfit-card .outfit-source-link.has-share-button {
+    right: 43px;
   }
 }

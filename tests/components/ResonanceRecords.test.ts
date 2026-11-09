@@ -171,6 +171,44 @@ async function pasteCredentials(panel: HTMLElement) {
 }
 
 describe('ResonanceRecords', () => {
+  it('keeps mobile set controls outside transformed reveal blocks during loading and refresh', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    }))
+    let resolveRecords!: (records: ResonanceRecord[]) => void
+    vi.spyOn(resonanceStorage, 'loadResonanceRecords').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRecords = resolve
+        })
+    )
+    const wrapper = mount(ResonanceRecords)
+    wrappers.push(wrapper)
+    const assertAnchored = (selector: string) => {
+      const controls = wrapper.findAll(`${selector} .resonance-set-switch`)
+      expect(controls.length).toBeGreaterThan(0)
+      controls.forEach((control) => {
+        expect(control.element.parentElement?.classList.contains('resonance-record')).toBe(true)
+        expect(control.element.closest('[data-load-block]')).toBeNull()
+        expect(control.findAll('button')).toHaveLength(2)
+      })
+    }
+    assertAnchored('.content-skeleton-layer')
+    resolveRecords([savedRecord])
+    await flushPromises()
+    assertAnchored('.content-loaded-layer')
+
+    const refreshing = (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
+    await flushPromises()
+    assertAnchored('.content-loaded-layer')
+    resolveRecords([savedRecord])
+    await refreshing
+    await flushPromises()
+    assertAnchored('.content-loaded-layer')
+  })
+
   it.each(['zh', 'en'] as const)(
     'switches mobile set progress and known pulls independently in %s',
     async (language) => {
