@@ -33,4 +33,15 @@ describe('Nuan5 resource manifest', () => {
     expect(resourceImage('light', 'new_light_999')).toBeUndefined()
     expect(resourceImage('pose', 'new_pose_999')).toBeUndefined()
   })
+
+  it.each([
+    ['1340020002', 'T_Icon_Performance_002.png'],
+    ['1340020007', 'T_Icon_Performance_020.png'],
+    ['1340029999', 'T_Icon_Performance_020.png'],
+    ['1090012046', 'T_Icon_S0178_Dance_01.png']
+  ])('resolves atlas-restored pose %s using its original filename', (id, filename) => {
+    expect(resourceImage('pose', id)).toBe(
+      `https://ik.imagekit.io/nikkicube/images/poses/${filename}?tr=f-webp,q-70`
+    )
+  })
 })

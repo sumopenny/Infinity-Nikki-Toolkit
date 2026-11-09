@@ -11,6 +11,22 @@ const ids = (rows: unknown[][]) => [
   ...new Set(rows.flatMap((row) => (Array.isArray(row[0]) ? row[0] : [row[0]])).map(String))
 ]
 afterEach(() => vi.unstubAllGlobals())
+it.each([
+  ['1020100121', 'T_Icon_clothes_S0121H.png'],
+  ['1022300276', 'T_Icon_clothes_S0276T_LV1.png']
+])('uses the restored atlas icon filename for catalog item %s', (id, filename) => {
+  expect(getCatalogImageSource('icon', id)).toBe(
+    `https://ik.imagekit.io/nikkicube/images/IconClothes/${filename}?tr=f-webp,q-70`
+  )
+})
+it.each([
+  ['10029', 'T_showpic_suit_S0029.png'],
+  ['20057', 'T_showpic_suit_SL0057.png']
+])('uses the suit-table image reference for outfit %s', (id, filename) => {
+  expect(getCatalogImageSource('outfit', id)).toBe(
+    `https://ik.imagekit.io/nikkicube/images/outfits/${filename}?tr=f-webp,q-70`
+  )
+})
 it('configures a usable image path for every published outfit, item and makeup', () => {
   for (const id of ids(outfits))
     expect(getCatalogImageSource('outfit', id), id).toMatch(/^https:\/\//)

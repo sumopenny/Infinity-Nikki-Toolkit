@@ -29,7 +29,7 @@ describe('ImageKit resource migration', () => {
       'https://ik.imagekit.io/nikkicube/images/momo-poses/T_Icon_Trends_damiao_002.png?tr=f-webp,q-70'
     )
     expect(resourceImage('pose', 1340020002)).toBe(
-      'https://ik.imagekit.io/nikkicube/images/poses/pose_1340020002.png?tr=f-webp,q-70'
+      'https://ik.imagekit.io/nikkicube/images/poses/T_Icon_Performance_002.png?tr=f-webp,q-70'
     )
   })
   it('normalizes ImageKit delivery quality', () => {
