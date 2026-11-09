@@ -259,10 +259,14 @@ function parseManifest(entries: Map<string, Uint8Array>): BackupManifest {
   return manifest as BackupManifest
 }
 
-export async function prepareHomeSchemeBackup(backupFile: File) {
+async function readHomeSchemeBackup(backupFile: File) {
   const entries = await extractBackup(backupFile)
   const manifest = parseManifest(entries)
-  const prepared: { record: HomeSchemeRecord; image: PreparedHomeSchemeImage | null }[] = []
+  const prepared: {
+    record: HomeSchemeRecord
+    image: PreparedHomeSchemeImage | null
+    path: string | null
+  }[] = []
   let invalidCount = 0
   for (const raw of manifest.homeSchemes) {
     // An invalid image rejects the archive before any database write.
@@ -273,6 +277,7 @@ export async function prepareHomeSchemeBackup(backupFile: File) {
     try {
       const createdAt = normalizeBackupDate(raw.createdAt, new Date().toISOString())
       prepared.push({
+        path: raw.image,
         record: normalizeHomeSchemeRecord({
           ...raw,
           version: 1,
@@ -294,14 +299,52 @@ export async function prepareHomeSchemeBackup(backupFile: File) {
   return { manifest, prepared, invalidCount }
 }
 
-export async function importHomeSchemeBackup(backupFile: File): Promise<{
+type ValidatedHomeBackup = Awaited<ReturnType<typeof readHomeSchemeBackup>>
+export interface PreparedHomeSchemeBackup {
+  readonly apply: () => Promise<HomeSchemeImportResult>
+}
+interface HomeSchemeImportResult {
   addedCount: number
   duplicateCount: number
   failedCount: number
   schemes: HomeSchemeItem[]
   tags: string[]
-}> {
-  const { manifest, prepared, invalidCount } = await prepareHomeSchemeBackup(backupFile)
+}
+
+/** 预览与提交之间只保留已验证元数据，不持有全部解压图片。 */
+export async function prepareHomeSchemeBackup(backupFile: File): Promise<PreparedHomeSchemeBackup> {
+  const { manifest, prepared, invalidCount } = await readHomeSchemeBackup(backupFile)
+  const rows = prepared.map(({ record, image, path }) => {
+    if (!image) return { record, image: null, path }
+    const { blob, ...metadata } = image
+    return { record, path, image: { ...metadata, type: blob.type } }
+  })
+  return Object.freeze({
+    apply: async () => {
+      // 从同一不可变 File 读取字节，每次只解压一个受大小限制的分包。
+      const entries = await extractBackup(backupFile)
+      const hydrated = rows.map(({ record, image, path }) => {
+        if (!image) return { record, image: null, path }
+        const bytes = entries.get(path!)
+        if (!bytes || bytes.byteLength !== image.size)
+          throw new Error('home_scheme_backup_image_missing')
+        const { type, ...metadata } = image
+        return { record, path, image: { ...metadata, blob: new Blob([bytes], { type }) } }
+      })
+      return applyHomeSchemeBackup({ manifest, prepared: hydrated, invalidCount })
+    }
+  })
+}
+
+export async function importHomeSchemeBackup(backupFile: File): Promise<HomeSchemeImportResult> {
+  return applyHomeSchemeBackup(await readHomeSchemeBackup(backupFile))
+}
+
+async function applyHomeSchemeBackup({
+  manifest,
+  prepared,
+  invalidCount
+}: ValidatedHomeBackup): Promise<HomeSchemeImportResult> {
   const counts = await homeTransaction(
     [HOME_SCHEMES_STORE, HOME_IMAGES_STORE, HOME_TAGS_STORE],
     'readwrite',

@@ -5,7 +5,7 @@ import { reportError as captureDiagnosticError } from '../errorReporting/errorRe
 // 相册图片传输：负责批量导入、并发导出、重名分配和可取消进度。
 import type { PhotoItem } from '../photoGrouping'
 import { runWithConcurrency } from '../concurrency'
-
+import { withPhotoWriteLock } from './photoWriteLock'
 
 export const PHOTO_IMPORT_CONCURRENCY = 3
 export const PHOTO_EXPORT_CONCURRENCY = 8
@@ -278,7 +278,9 @@ export function runPhotoTransfer(
   prepared: PreparedPhotoTransfer,
   options: PhotoTransferOptions = {}
 ): Promise<PhotoImportResult | PhotoExportResult> {
-  return prepared.kind === 'import'
-    ? runPhotoImport(directory, prepared, options)
-    : runPhotoExport(directory, prepared, options)
+  return withPhotoWriteLock<PhotoImportResult | PhotoExportResult>(() =>
+    prepared.kind === 'import'
+      ? runPhotoImport(directory, prepared, options)
+      : runPhotoExport(directory, prepared, options)
+  )
 }

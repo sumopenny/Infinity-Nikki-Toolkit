@@ -171,3 +171,38 @@ it('removes only a new empty placeholder when opening a writer fails', async () 
   expect((await runPhotoTransfer(dir, prepared)).succeeded).toBe(0)
   expect(dir.files.size).toBe(0)
 })
+
+it('serializes prepared transfers so concurrent same-name writes cannot both succeed', async () => {
+  const directory = new TestDirectory('album')
+  const [first, second] = await Promise.all([
+    preparePhotoTransfer(directory, { kind: 'import', files: [new File(['first'], 'same.png')] }),
+    preparePhotoTransfer(directory, { kind: 'import', files: [new File(['second'], 'same.png')] })
+  ])
+  const results = await Promise.all([
+    runPhotoTransfer(directory, first),
+    runPhotoTransfer(directory, second)
+  ])
+  expect(results.map((result) => result.succeeded)).toEqual([1, 0])
+  expect(results[1].failedNames).toEqual(['same.png'])
+  const content = await (await directory.files.get('same.png')!.getFile()).text()
+  expect(content).toBe('first')
+})
+
+it('keeps a cancelled queued import from writing and permits the following batch', async () => {
+  const directory = new TestDirectory('album')
+  const prepare = (name: string) =>
+    preparePhotoTransfer(directory, { kind: 'import', files: [new File([name], name)] })
+  const [first, cancelled, last] = await Promise.all([
+    prepare('first.png'),
+    prepare('cancelled.png'),
+    prepare('last.png')
+  ])
+  const controller = new AbortController()
+  const firstRun = runPhotoTransfer(directory, first)
+  const cancelledRun = runPhotoTransfer(directory, cancelled, { signal: controller.signal })
+  controller.abort()
+  expect((await firstRun).succeeded).toBe(1)
+  expect(await cancelledRun).toMatchObject({ cancelled: true, succeeded: 0, completed: 0 })
+  expect((await runPhotoTransfer(directory, last)).succeeded).toBe(1)
+  expect([...directory.files.keys()]).toEqual(['first.png', 'last.png'])
+})

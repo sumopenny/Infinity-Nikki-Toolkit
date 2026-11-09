@@ -6,12 +6,12 @@ import { DB_NAME, HOME_IMAGES_STORE, runStoreRequest } from '../../src/utils/fil
 import { HOME_BACKUP_LIMITS } from '../../src/utils/backup/zipBackup'
 import {
   exportHomeSchemeBackup,
-  importHomeSchemeBackup
+  importHomeSchemeBackup,
+  prepareHomeSchemeBackup
 } from '../../src/utils/homeBuild/homeSchemeBackup'
 import {
   deleteHomeScheme,
   readHomeSchemeSnapshot,
-  releaseHomeSchemeUrls,
   saveHomeScheme,
   saveHomeSchemeTags
 } from '../../src/utils/homeBuild/homeSchemeStorage'
@@ -72,49 +72,53 @@ describe('home scheme ZIP backup', () => {
     ).rejects.toThrow('home_scheme_backup_format_unsupported')
   })
 
-  it('round-trips the existing version-1 format with metadata, timestamps, tags and local images', async () => {
-    await saveHomeSchemeTags(['庭院'])
-    const saved = await saveHomeScheme({
-      ...input(),
-      imageFile: new File(['RIFF0000WEBPcontent'], 'cover.webp', { type: 'image/webp' })
-    })
-    const parts: Blob[] = []
-    expect(
-      await exportHomeSchemeBackup(async (_name, blob) => {
-        parts.push(blob)
+  it.each([false, true])(
+    'round-trips version-1 metadata and image bytes (prepared=%s)',
+    async (prepared) => {
+      await saveHomeSchemeTags(['庭院'])
+      const saved = await saveHomeScheme({
+        ...input(),
+        imageFile: new File(['RIFF0000WEBPcontent'], 'cover.webp', { type: 'image/webp' })
       })
-    ).toMatchObject({ count: 1 })
-    const bytes = new Uint8Array(await parts[0].arrayBuffer())
-    const entries = unzipSync(bytes)
-    const manifest = JSON.parse(strFromU8(entries['manifest.json']))
-    expect(manifest).toMatchObject({
-      format: 'infinity-nikki-home-scheme-backup',
-      version: 1,
-      tags: ['庭院']
-    })
-    expect(manifest.homeSchemes[0]).toMatchObject({
-      id: saved.id,
-      image: `images/${saved.id}.webp`,
-      metadata: saved.metadata,
-      createdAt: saved.createdAt,
-      updatedAt: saved.updatedAt
-    })
-    releaseHomeSchemeUrls([saved])
-    await reset()
-    const restored = await importHomeSchemeBackup(new File([bytes], 'old.zip'))
-    expect(restored).toMatchObject({ addedCount: 1, duplicateCount: 0, failedCount: 0 })
-    expect(restored.schemes[0]).toMatchObject({
-      id: saved.id,
-      code: saved.code,
-      tags: saved.tags,
-      metadata: saved.metadata,
-      createdAt: saved.createdAt,
-      updatedAt: saved.updatedAt
-    })
-    const snapshot = await readHomeSchemeSnapshot()
-    expect(await snapshot.images.get(saved.id)!.blob.text()).toBe('RIFF0000WEBPcontent')
-    releaseHomeSchemeUrls(restored.schemes)
-  })
+      const parts: Blob[] = []
+      expect(
+        await exportHomeSchemeBackup(async (_name, blob) => {
+          parts.push(blob)
+        })
+      ).toMatchObject({ count: 1 })
+      const bytes = new Uint8Array(await parts[0].arrayBuffer())
+      const entries = unzipSync(bytes)
+      const manifest = JSON.parse(strFromU8(entries['manifest.json']))
+      expect(manifest).toMatchObject({
+        format: 'infinity-nikki-home-scheme-backup',
+        version: 1,
+        tags: ['庭院']
+      })
+      expect(manifest.homeSchemes[0]).toMatchObject({
+        id: saved.id,
+        image: `images/${saved.id}.webp`,
+        metadata: saved.metadata,
+        createdAt: saved.createdAt,
+        updatedAt: saved.updatedAt
+      })
+      await reset()
+      const file = new File([bytes], 'old.zip')
+      const restored = prepared
+        ? await (await prepareHomeSchemeBackup(file)).apply()
+        : await importHomeSchemeBackup(file)
+      expect(restored).toMatchObject({ addedCount: 1, duplicateCount: 0, failedCount: 0 })
+      expect(restored.schemes[0]).toMatchObject({
+        id: saved.id,
+        code: saved.code,
+        tags: saved.tags,
+        metadata: saved.metadata,
+        createdAt: saved.createdAt,
+        updatedAt: saved.updatedAt
+      })
+      const snapshot = await readHomeSchemeSnapshot()
+      expect(await snapshot.images.get(saved.id)!.blob.text()).toBe('RIFF0000WEBPcontent')
+    }
+  )
 
   it('keeps same-code records during manual import and allocates new IDs for other codes', async () => {
     const existing = await saveHomeScheme({ ...input(), tags: [], id: 'same' })
@@ -167,7 +171,6 @@ describe('home scheme ZIP backup', () => {
       tags: [],
       imageFile: new File(['RIFF0000WEBPcontent'], 'cover.webp')
     })
-    releaseHomeSchemeUrls([saved])
     await runStoreRequest(HOME_IMAGES_STORE, 'readwrite', (store) => store.delete(saved.id))
     await expect(exportHomeSchemeBackup()).rejects.toThrow('home_scheme_image_missing')
     await deleteHomeScheme(saved)

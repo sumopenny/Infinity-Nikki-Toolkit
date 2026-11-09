@@ -10,8 +10,13 @@ import {
 } from '../photoGrouping'
 import { formatFileSize, releasePhotoUrl } from './photoUrl'
 import { runWithConcurrency } from '../concurrency'
-import { readAlbumMetadata, readTrashNotes, normalizePhotoNote, transferPhotoNote } from './photoMetadata'
-
+import { withPhotoWriteLock } from './photoWriteLock'
+import {
+  readAlbumMetadata,
+  readTrashNotes,
+  normalizePhotoNote,
+  transferPhotoNote
+} from './photoMetadata'
 
 const TRASH_DIRECTORY_NAME = 'trash'
 const TRASH_FILE_PREFIX = 'inam-v1__'
@@ -59,7 +64,7 @@ export async function listRecentlyDeleted(
     fileHandle: FileSystemFileHandle
     metadata: NonNullable<ReturnType<typeof parseTrashFileName>>
   }> = []
-  const notes = albumNotes ?? await readTrashNotes(albumDirectoryHandle)
+  const notes = albumNotes ?? (await readTrashNotes(albumDirectoryHandle))
   for await (const [trashName, handle] of trashDirectoryHandle.entries()) {
     if (handle.kind !== 'file' || !isImageFile(trashName)) continue
     const metadata = parseTrashFileName(trashName)
@@ -246,15 +251,13 @@ async function findAvailableRestoreName(
  * 将最近删除照片恢复到当前相册。
  * 参数：photos 为待恢复照片，albumDirectoryHandle 为当前相册目录。
  * 返回：成功恢复的回收项、新照片状态和失败文件名。
+ * 与导入、导出共用应用内写锁；外部文件系统写入不受此锁控制。
  */
-/** Serialize cooperating tabs; external filesystem writers remain outside Web Locks. */
 export function restoreRecentlyDeletedPhotos(
-  photos: RecentlyDeletedPhoto[], albumDirectoryHandle: FileSystemDirectoryHandle
+  photos: RecentlyDeletedPhoto[],
+  albumDirectoryHandle: FileSystemDirectoryHandle
 ): Promise<RestoreTrashResult> {
-  const restore = () => restorePhotos(photos, albumDirectoryHandle)
-  return navigator.locks?.request
-    ? navigator.locks.request('nikki-photo-restore', restore)
-    : restore()
+  return withPhotoWriteLock(() => restorePhotos(photos, albumDirectoryHandle))
 }
 
 async function restorePhotos(
@@ -301,7 +304,12 @@ async function restorePhotos(
           )
         } catch (error) {
           if (!(error && typeof error === 'object' && 'preserveTarget' in error))
-            await rollbackRestorePlaceholder(albumDirectoryHandle, restoreName, targetHandle, destination)
+            await rollbackRestorePlaceholder(
+              albumDirectoryHandle,
+              restoreName,
+              targetHandle,
+              destination
+            )
           throw error
         }
 
@@ -359,7 +367,7 @@ export async function permanentlyDeleteRecentlyDeleted(
 ): Promise<TrashOperationResult<RecentlyDeletedPhoto>> {
   const succeeded: RecentlyDeletedPhoto[] = []
   const failedNames: string[] = []
-  for (const album of new Set(photos.map(photo => photo.albumDirectoryHandle))) {
+  for (const album of new Set(photos.map((photo) => photo.albumDirectoryHandle))) {
     if (album) await readAlbumMetadata(album)
   }
 
@@ -400,41 +408,13 @@ export async function permanentlyDeleteRecentlyDeleted(
   return { succeeded, failedNames }
 }
 
-/**
- * 清空应用管理的最近删除照片。仅当 trash 内条目与页面目标完全一致时递归删除目录，
- * 遇到未知文件、目录变化或递归删除失败时回退为十并发逐项删除，避免误删用户文件。
- */
+/** 只删除已确认的条目；保留清单之外的新文件和目录。 */
 export async function clearRecentlyDeleted(
   albumDirectoryHandle: FileSystemDirectoryHandle,
   photos: RecentlyDeletedPhoto[]
 ): Promise<TrashOperationResult<RecentlyDeletedPhoto>> {
   if (!photos.length) return { succeeded: [], failedNames: [] }
-
   await readAlbumMetadata(albumDirectoryHandle)
-  try {
-    const trashDirectoryHandle = await albumDirectoryHandle.getDirectoryHandle(TRASH_DIRECTORY_NAME)
-    const expectedNames = new Set(photos.map((photo) => photo.trashName))
-    let entryCount = 0
-    let containsUnknownEntry = false
-    for await (const [name, handle] of trashDirectoryHandle.entries()) {
-      entryCount += 1
-      if (handle.kind !== 'file' || !expectedNames.has(name)) containsUnknownEntry = true
-    }
-    if (!containsUnknownEntry && entryCount === expectedNames.size) {
-      // 旧记录可能引用原名；原名后来被新照片占用时，不能清掉新照片的备注。
-      const noteKeys = photos
-        .map((photo) => photo.noteKey ?? `trash/${photo.trashName}`)
-        .filter((key) => key.startsWith('trash/'))
-      await transferPhotoNote(albumDirectoryHandle, noteKeys, null, '', () =>
-        albumDirectoryHandle.removeEntry(TRASH_DIRECTORY_NAME, { recursive: true })
-      )
-      for (const photo of photos) releasePhotoUrl(photo)
-      return { succeeded: [...photos], failedNames: [] }
-    }
-  } catch {
-    // 目录可能已变化或浏览器拒绝递归删除，下面按单文件安全回退。
-  }
-
   return permanentlyDeleteRecentlyDeleted(photos)
 }
 
@@ -505,13 +485,21 @@ async function rollbackFile(
 }
 
 async function rollbackRestorePlaceholder(
-  directory: FileSystemDirectoryHandle, name: string,
-  expected: FileSystemFileHandle, original: File
+  directory: FileSystemDirectoryHandle,
+  name: string,
+  expected: FileSystemFileHandle,
+  original: File
 ): Promise<void> {
   try {
     const current = await directory.getFileHandle(name)
     const file = await current.getFile()
-    if (await current.isSameEntry(expected) && file.size === 0 && file.lastModified === original.lastModified)
+    if (
+      (await current.isSameEntry(expected)) &&
+      file.size === 0 &&
+      file.lastModified === original.lastModified
+    )
       await directory.removeEntry(name)
-  } catch { /* Keep uncertain targets; the source remains available. */ }
+  } catch {
+    /* Keep uncertain targets; the source remains available. */
+  }
 }

@@ -1,3 +1,4 @@
+import { itemVariant, outfitVariant } from '../wardrobe/wardrobeVariants'
 import { catalogResources, loadCatalogNames } from '../gongeo/catalogResources'
 import { registerCacheReset } from '../cacheLifecycle'
 import type { Language } from '../../i18n'
@@ -70,12 +71,16 @@ export interface OutfitDetail {
 type CompactRow = unknown[]
 type DyeAreaInfo = { primaryCount: number; customOrder: number[] }
 type CatalogSnapshot = {
-  items: CompactRow[]
-  outfits: CompactRow[]
-  outfitItems: CompactRow[]
-  makeupItems: CompactRow[]
-  makeupOutfits: CompactRow[]
-  dyeCatalog: { raw: CompactRow[]; areas: CompactRow[] }
+  items: Map<number, CompactRow>
+  outfits: Map<number, CompactRow>
+  outfitParts: Map<number, number[]>
+  itemOutfits: Map<number, number[]>
+  makeupOutfits: Map<number, number[]>
+  makeupIds: Set<number>
+  outfitOrder: Map<number, number>
+  makeupOutfitOrder: Map<number, number>
+  dyes: Map<number, CompactRow>
+  areas: Map<number, CompactRow>
   outfitNames: Record<string, string>
 }
 
@@ -91,14 +96,34 @@ const loadCatalogSnapshot = async (language: Language): Promise<CatalogSnapshot>
     catalogResources.makeupOutfits(),
     catalogResources.palettes()
   ])
-    .then(([items, outfits, outfitItems, makeupItems, makeupOutfits, dyeCatalog]) => ({
-      items: items as CompactRow[],
-      outfits: outfits as CompactRow[],
-      outfitItems: outfitItems as CompactRow[],
-      makeupItems: makeupItems as CompactRow[],
-      makeupOutfits: makeupOutfits as CompactRow[],
-      dyeCatalog: dyeCatalog as CatalogSnapshot['dyeCatalog']
-    }))
+    .then(([items, outfits, outfitItems, makeupItems, makeupOutfits, dyeCatalog]) => {
+      const outfitIndex = indexRows(outfits as CompactRow[])
+      const outfitRelations = indexRelations(outfitItems as CompactRow[], outfitIndex)
+      const makeupRelations = indexRelations(makeupOutfits as CompactRow[], outfitIndex)
+      const makeupParts = indexRelations(makeupItems as CompactRow[])
+      const makeupIds = new Set([...makeupParts.parts.keys(), ...makeupParts.parents.keys()])
+      const makeupIndex = new Map<number, number[]>()
+      for (const id of makeupIds) {
+        const fullIds = [id, ...(makeupParts.parents.get(id) ?? [])]
+        makeupIndex.set(
+          id,
+          fullIds.flatMap((fullId) => makeupRelations.parents.get(fullId) ?? [])
+        )
+      }
+      const palettes = dyeCatalog as { raw: CompactRow[]; areas: CompactRow[] }
+      return {
+        items: indexRows(items as CompactRow[]),
+        outfits: outfitIndex,
+        outfitParts: outfitRelations.parts,
+        itemOutfits: outfitRelations.parents,
+        outfitOrder: outfitRelations.order,
+        makeupOutfits: makeupIndex,
+        makeupIds,
+        makeupOutfitOrder: makeupRelations.order,
+        dyes: indexRows(palettes.raw),
+        areas: indexRows(palettes.areas)
+      }
+    })
     .catch((error) => {
       catalogSnapshotPromise = null
       throw error
@@ -120,22 +145,56 @@ const idsIn = (value: unknown): number[] =>
 
 const compactIds = (row: CompactRow | undefined): number[] => idsIn(row?.[0])
 
-const findItemRow = (catalog: CatalogSnapshot, itemId: number) =>
-  catalog.items.find((row) => compactIds(row).includes(itemId))
+/** 紧凑 ID 只展开一次；重复 ID 保留首行，维持原 find 语义。 */
+function indexRows(rows: CompactRow[]): Map<number, CompactRow> {
+  const index = new Map<number, CompactRow>()
+  for (const row of rows) for (const id of compactIds(row)) if (!index.has(id)) index.set(id, row)
+  return index
+}
+
+function indexRelations(rows: CompactRow[], validParents?: Map<number, CompactRow>) {
+  const parts = new Map<number, number[]>()
+  const parents = new Map<number, number[]>()
+  const order = new Map<number, number>()
+  for (const [position, row] of rows.entries()) {
+    const id = asId(row[0])
+    if (!id || (validParents && !validParents.has(id))) continue
+    const children = idsIn(row[1])
+    if (!parts.has(id)) {
+      parts.set(id, children)
+      order.set(id, position)
+    }
+    for (const child of children) {
+      const related = parents.get(child) ?? []
+      related.push(id)
+      parents.set(child, related)
+    }
+  }
+  return { parts, parents, order }
+}
+
+/** 家族部件关联不同套装时，保留原目录的优先顺序。 */
+function firstRelated(ids: number[], index: Map<number, number[]>, order: Map<number, number>) {
+  let first: number | null = null
+  for (const id of ids)
+    for (const parent of index.get(id) ?? [])
+      if (first === null || order.get(parent)! < order.get(first)!) first = parent
+  return first
+}
+
+const findItemRow = (catalog: CatalogSnapshot, itemId: number) => catalog.items.get(itemId)
 
 const getItemFamilyIds = (catalog: CatalogSnapshot, itemId: number): number[] => {
   const familyIds = compactIds(findItemRow(catalog, itemId))
   return familyIds.length ? familyIds : [itemId]
 }
 
-const findOutfitRow = (catalog: CatalogSnapshot, outfitId: number) =>
-  catalog.outfits.find((row) => compactIds(row).includes(outfitId))
+const findOutfitRow = (catalog: CatalogSnapshot, outfitId: number) => catalog.outfits.get(outfitId)
 
-const findDyeRow = (catalog: CatalogSnapshot, itemId: number) =>
-  catalog.dyeCatalog.raw.find((row) => compactIds(row).includes(itemId))
+const findDyeRow = (catalog: CatalogSnapshot, itemId: number) => catalog.dyes.get(itemId)
 
 const findDyeArea = (catalog: CatalogSnapshot, itemId: number): DyeAreaInfo | null => {
-  const row = catalog.dyeCatalog.areas.find((entry) => compactIds(entry).includes(itemId))
+  const row = catalog.areas.get(itemId)
   if (!row || typeof row[1] !== 'number' || !Array.isArray(row[2])) return null
   return {
     primaryCount: row[1],
@@ -150,24 +209,22 @@ const getDyeCatalogItemId = (catalog: CatalogSnapshot, itemId: number): number =
   return rootId && findDyeRow(catalog, rootId) ? rootId : itemId
 }
 
-const getVariantIndex = (itemId: number): number => {
-  const prefix = String(itemId).slice(0, 4)
-  if (['1021', '1020', '1029'].includes(prefix)) return 0
-  if (['1022', '1026', '1027', '1028'].includes(prefix)) return 1
-  if (prefix === '1023') return 2
-  if (prefix === '1024') return 3
-  if (prefix === '1025') return 4
-  return 0
-}
+const getVariantIndex = (itemId: number): number => itemVariant(String(itemId))
 
-/** 将原套/变体套装 ID 对齐到当前部件的变体。共鸣录的套装行按该顺序存储变体。 */
+/** 优先保留精确所属关系；缺失中间变体的紧凑行不能按进化下标取值。 */
 const resolveOutfitVariantId = (
   catalog: CatalogSnapshot,
   outfitId: number,
   itemId: number
 ): number => {
+  if (catalog.outfitParts.get(outfitId)?.includes(itemId)) return outfitId
   const variants = compactIds(findOutfitRow(catalog, outfitId))
-  return variants[getVariantIndex(itemId)] ?? outfitId
+  const exact = variants.find((id) => catalog.outfitParts.get(id)?.includes(itemId))
+  return (
+    exact ??
+    variants.find((id) => outfitVariant(String(id)) === getVariantIndex(itemId)) ??
+    outfitId
+  )
 }
 
 const getLocalizedName = (outfitId: number, catalog: CatalogSnapshot) => {
@@ -184,68 +241,22 @@ const findRelatedOutfitId = (
   catalog: CatalogSnapshot,
   itemId: number,
   itemIds: number[]
-): number | null => {
-  // 先用当前变体部件精确匹配，避免家族展开后被原套关系行抢先命中。
-  for (const row of catalog.outfitItems) {
-    const outfitId = asId(row[0])
-    const outfitItems = idsIn(row[1])
-    if (outfitId && outfitItems.includes(itemId) && findOutfitRow(catalog, outfitId))
-      return outfitId
-  }
-  for (const row of catalog.outfitItems) {
-    const outfitId = asId(row[0])
-    const outfitItems = idsIn(row[1])
-    if (
-      outfitId &&
-      itemIds.some((itemId) => outfitItems.includes(itemId)) &&
-      findOutfitRow(catalog, outfitId)
-    ) {
-      return outfitId
-    }
-  }
-  return null
-}
+): number | null =>
+  firstRelated([itemId], catalog.itemOutfits, catalog.outfitOrder) ??
+  firstRelated(itemIds, catalog.itemOutfits, catalog.outfitOrder)
 
-// 妆容部件通过“完整妆容 -> 妆容套装”两级目录关联套装，不能直接套用服装关系表。
-const findRelatedMakeupOutfitId = (catalog: CatalogSnapshot, itemIds: number[]): number | null => {
-  const fullMakeupIds = new Set<number>()
-  for (const [fullMakeupId, componentIds] of catalog.makeupItems) {
-    const fullId = asId(fullMakeupId)
-    if (
-      fullId &&
-      (itemIds.includes(fullId) || idsIn(componentIds).some((id) => itemIds.includes(id)))
-    ) {
-      fullMakeupIds.add(fullId)
-    }
-  }
-  for (const [outfitId, makeupIds] of catalog.makeupOutfits) {
-    const id = asId(outfitId)
-    if (
-      id &&
-      idsIn(makeupIds).some((makeupId) => fullMakeupIds.has(makeupId)) &&
-      findOutfitRow(catalog, id)
-    ) {
-      return id
-    }
-  }
-  return null
-}
+// 妆容部件通过完整妆容关联套装，不使用服装所属关系。
+const findRelatedMakeupOutfitId = (catalog: CatalogSnapshot, itemIds: number[]): number | null =>
+  firstRelated(itemIds, catalog.makeupOutfits, catalog.makeupOutfitOrder)
 
 const isMakeupCatalogItem = (catalog: CatalogSnapshot, itemId: number): boolean =>
-  catalog.makeupItems.some(
-    ([makeupId, componentIds]) => asId(makeupId) === itemId || idsIn(componentIds).includes(itemId)
-  )
+  catalog.makeupIds.has(itemId)
 
 const isOutfitRelatedToItem = (catalog: CatalogSnapshot, outfitId: number, itemIds: number[]) => {
-  const outfitVariants = compactIds(findOutfitRow(catalog, outfitId))
-  const outfitBaseId = outfitVariants[0]
-  return catalog.outfitItems.some((row) => {
-    const relationOutfitId = Number(row[0])
-    const relatedIds = idsIn(row[1])
-    return (
-      (relationOutfitId === outfitId || relationOutfitId === outfitBaseId) &&
-      itemIds.some((itemId) => relatedIds.includes(itemId))
-    )
+  const baseId = compactIds(findOutfitRow(catalog, outfitId))[0]
+  return itemIds.some((id) => {
+    const related = catalog.itemOutfits.get(id)
+    return related?.includes(outfitId) || (baseId !== undefined && related?.includes(baseId))
   })
 }
 
@@ -343,7 +354,7 @@ const createDetail = async (
     ? findOutfitRow(catalog, resolvedCatalogOutfitId)
     : undefined
   const relation = resolvedCatalogOutfitId
-    ? catalog.outfitItems.find((row) => Number(row[0]) === resolvedCatalogOutfitId)
+    ? catalog.outfitParts.get(resolvedCatalogOutfitId)
     : undefined
   const dyeCatalogItemId = getDyeCatalogItemId(catalog, itemId)
   const dyeRow = findDyeRow(catalog, dyeCatalogItemId)
@@ -381,7 +392,7 @@ const createDetail = async (
     outfitName,
     detailImageUrl: getItemDisplayImageUrl(itemId),
     quality: outfitRow && Number.isSafeInteger(Number(outfitRow[1])) ? Number(outfitRow[1]) : null,
-    outfitItemIds: idsIn(relation?.[1]),
+    outfitItemIds: [...(relation ?? [])],
     outfitImageUrl: resolvedOutfitId ? getCatalogImageSource('outfit', resolvedOutfitId) : null,
     evolution: EVOLUTION_LABELS[language][getVariantIndex(itemId)],
     dyeCondition: isMakeup

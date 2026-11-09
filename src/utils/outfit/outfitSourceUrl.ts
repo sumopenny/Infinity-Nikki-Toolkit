@@ -14,7 +14,7 @@ export function isValidSourceUrl(value: string): boolean {
 export function parseSourceUrl(value: string): SourceUrlResult {
   const text = value.trim()
   if (!text) return { url: '' }
-  if (isValidSourceUrl(text)) return { url: text }
+  // URL() 也接受路径后的中文标点和文案，必须先提取边界并检查候选数量。
   const candidates = [...text.matchAll(/https?:\/\/[^\s<>"“”‘’「」『』【】。，！？；]+/gi)]
   if (candidates.length > 1) return { url: '', error: 'multiple' }
   const match = candidates[0]

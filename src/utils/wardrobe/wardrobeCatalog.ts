@@ -1,3 +1,4 @@
+import { itemVariant, outfitVariant } from './wardrobeVariants'
 import { catalogResources, loadCatalogNames } from '../gongeo/catalogResources'
 import { getCatalogImageSource } from '../gongeo/catalogImage'
 import type { Language } from '../../i18n/types'
@@ -84,18 +85,7 @@ function catalogRows(data: unknown, kind: WardrobeKind): CatalogRow[] {
 }
 const ids = (value: unknown): string[] => (Array.isArray(value) ? value : [value]).map(String)
 
-/** ID 编码区分版本；不能按紧凑行下标猜测，因为部分家族缺少中间版本。 */
-export function itemVariant(id: string, root?: string): number {
-  if (id === root) return 0
-  return (
-    (
-      { '1022': 1, '1026': 1, '1027': 1, '1028': 1, '1023': 2, '1024': 3, '1025': 4 } as Record<
-        string,
-        number
-      >
-    )[id.slice(0, 4)] ?? 0
-  )
-}
+export { itemVariant } from './wardrobeVariants'
 let pending: Promise<WardrobeCatalog> | null = null
 export function loadWardrobeCatalog(): Promise<WardrobeCatalog> {
   pending ??= Promise.all([
@@ -142,12 +132,7 @@ export function loadWardrobeCatalog(): Promise<WardrobeCatalog> {
           for (const id of family) {
             const root = String(row.root ?? family[0])
             const parts = kind === 'outfit' ? (outfitMap.get(id) ?? []) : [id]
-            const variant =
-              kind === 'outfit'
-                ? id.length === 7
-                  ? Number(id.slice(-2))
-                  : 0
-                : itemVariant(id, root)
+            const variant = kind === 'outfit' ? outfitVariant(id) : itemVariant(id, root)
             const rawLabels = row.labels
             const rawObtainType = row.obtainType
             const obtainType =

@@ -145,7 +145,6 @@ async function findLatestDiyImage(
 
 interface PlayerProgress {
   timestamp: number
-  sha256: string
 }
 interface GameSourceState {
   id: string
@@ -303,8 +302,7 @@ async function importShared(source: SharedOutfitSource): Promise<SharedOutfitImp
           players: {
             ...current.players,
             [latest.playerId]: {
-              timestamp: latestImage.file.lastModified,
-              sha256: originalImageHash
+              timestamp: latestImage.file.lastModified
             }
           }
         })

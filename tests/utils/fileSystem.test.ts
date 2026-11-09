@@ -1,3 +1,4 @@
+import { preparePhotoTransfer, runPhotoTransfer } from '../../src/utils/file-system/photoTransfer'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { messages } from '../../src/i18n'
 import { readAlbumMetadata, savePhotoNote } from '../../src/utils/file-system/photoMetadata'
@@ -32,7 +33,10 @@ beforeAll(() => {
     value: {
       request: (_name: string, action: () => Promise<void>) => {
         const next = (tails.get(_name) ?? Promise.resolve()).then(action)
-        tails.set(_name, next.catch(() => undefined))
+        tails.set(
+          _name,
+          next.catch(() => undefined)
+        )
         return next
       }
     }
@@ -765,7 +769,7 @@ describe('album refresh and recently deleted filesystem operations', () => {
     expect(removeTracker.peak).toBeLessThanOrEqual(10)
   })
 
-  it('removes the whole trash directory only when it contains no unknown entries', async () => {
+  it('clears only confirmed entries and keeps the trash directory', async () => {
     const album = new MemoryDirectoryHandle('NikkiPhotos_HighQuality')
     const photo = createPhoto(album, '2026_06_26_13_00_00.jpeg')
     const moved = await movePhotosToRecentlyDeleted([photo], new Set())
@@ -775,8 +779,8 @@ describe('album refresh and recently deleted filesystem operations', () => {
       moved.movedPhotos
     )
     expect(cleared.succeeded).toHaveLength(1)
-    expect(album.recursiveRemoveNames).toEqual(['trash'])
-    expect(album.directories.has('trash')).toBe(false)
+    expect(album.recursiveRemoveNames).toEqual([])
+    expect(album.directories.has('trash')).toBe(true)
 
     const nextPhoto = createPhoto(album, '2026_06_26_13_01_00.jpeg')
     const nextMoved = await movePhotosToRecentlyDeleted([nextPhoto], new Set())
@@ -791,6 +795,31 @@ describe('album refresh and recently deleted filesystem operations', () => {
     expect(fallback.succeeded).toHaveLength(1)
     expect(album.recursiveRemoveNames).toEqual([])
     expect(trash.files.has('keep.txt')).toBe(true)
+  })
+
+  it('preserves a file added immediately before a clear deletes its targets', async () => {
+    const album = new MemoryDirectoryHandle('album')
+    const photo = createPhoto(album, '2026_06_26_13_00_00.jpeg')
+    const moved = await movePhotosToRecentlyDeleted([photo], new Set())
+    const trash = album.directories.get('trash')!
+    const addUnconfirmed = () =>
+      trash.files.set('new-unconfirmed.png', new MemoryFileHandle('new-unconfirmed.png'))
+    const removeDirectoryEntry = album.removeEntry.bind(album)
+    const removeTrashEntry = trash.removeEntry.bind(trash)
+    vi.spyOn(album, 'removeEntry').mockImplementation(async (name, options) => {
+      addUnconfirmed()
+      return removeDirectoryEntry(name, options)
+    })
+    vi.spyOn(trash, 'removeEntry').mockImplementation(async (name, options) => {
+      addUnconfirmed()
+      return removeTrashEntry(name, options)
+    })
+    const result = await clearRecentlyDeleted(
+      album as unknown as FileSystemDirectoryHandle,
+      moved.movedPhotos
+    )
+    expect(result.succeeded).toHaveLength(1)
+    expect(album.directories.get('trash')?.files.has('new-unconfirmed.png')).toBe(true)
   })
 
   it('keeps a fallback-timestamp photo visible after moving it to recently deleted', async () => {
@@ -931,7 +960,9 @@ it('preserves a destination created after restore-name allocation', async () => 
   const handle = directory as unknown as FileSystemDirectoryHandle
   const source = new MemoryFileHandle('2026_06_26_11_22_00.jpeg')
   directory.files.set(source.name, source)
-  const { photos: [photo] } = await readAlbumDirectory(handle, { messages: messages.zh.fileSystem })
+  const {
+    photos: [photo]
+  } = await readAlbumDirectory(handle, { messages: messages.zh.fileSystem })
   const moved = await movePhotosToRecentlyDeleted([photo], new Set())
   const original = directory.getFileHandle.bind(directory)
   vi.spyOn(directory, 'getFileHandle').mockImplementation(async (name, options) => {
@@ -947,15 +978,57 @@ it('preserves a destination created after restore-name allocation', async () => 
 it('opens and refreshes a writable album with an empty original and a valid trash-note swap', async () => {
   const album = new MemoryDirectoryHandle('NikkiPhotos_HighQuality')
   const photo = createPhoto(album, '2026_11_03_13_25_08.jpg')
-  album.files.set('album-metadata.json',new MemoryFileHandle('album-metadata.json', new Blob([])))
+  album.files.set('album-metadata.json', new MemoryFileHandle('album-metadata.json', new Blob([])))
   const swap = 'album-metadata.json.crswap'
-  album.files.set(swap,new MemoryFileHandle(swap,new Blob(['{"version":1,"photos":{"trash/example.jpg":{"note":""}}}'])))
-  album.directories.set('trash',new MemoryDirectoryHandle('trash'))
-  const dir=album as unknown as FileSystemDirectoryHandle
-  const opts={messages:messages.zh.fileSystem}
-  const opened=await readAlbumDirectory(dir,opts)
-  expect(opened).toMatchObject({photos:[{name:photo.name}],notes:{blocked:true,previewName:swap}})
-  expect(await refreshAlbumDirectory(dir,opened.photos,opts)).toMatchObject({photos:[{name:photo.name}],recentlyDeleted:[],notes:{blocked:true}})
-  expect((await readAlbumDirectory(dir,opts)).photos[0].source).not.toBe('file')
+  album.files.set(
+    swap,
+    new MemoryFileHandle(
+      swap,
+      new Blob(['{"version":1,"photos":{"trash/example.jpg":{"note":""}}}'])
+    )
+  )
+  album.directories.set('trash', new MemoryDirectoryHandle('trash'))
+  const dir = album as unknown as FileSystemDirectoryHandle
+  const opts = { messages: messages.zh.fileSystem }
+  const opened = await readAlbumDirectory(dir, opts)
+  expect(opened).toMatchObject({
+    photos: [{ name: photo.name }],
+    notes: { blocked: true, previewName: swap }
+  })
+  expect(await refreshAlbumDirectory(dir, opened.photos, opts)).toMatchObject({
+    photos: [{ name: photo.name }],
+    recentlyDeleted: [],
+    notes: { blocked: true }
+  })
+  expect((await readAlbumDirectory(dir, opts)).photos[0].source).not.toBe('file')
   expect(await (await album.files.get('album-metadata.json')!.getFile()).text()).toBe('')
+})
+
+it('coordinates imports and restores while retaining both same-name photos', async () => {
+  const album = new MemoryDirectoryHandle('album')
+  const name = '2026_06_26_13_00_00.jpeg'
+  const original = createPhoto(album, name)
+  const moved = await movePhotosToRecentlyDeleted([original], new Set())
+  const handle = album as unknown as FileSystemDirectoryHandle
+  const prepared = await preparePhotoTransfer(handle, {
+    kind: 'import',
+    files: [new File(['imported'], name)]
+  })
+  const [imported, restored] = await Promise.all([
+    runPhotoTransfer(handle, prepared),
+    restoreRecentlyDeletedPhotos(moved.movedPhotos, handle)
+  ])
+  expect(imported.succeeded).toBe(1)
+  expect(restored.succeeded).toHaveLength(1)
+  expect(restored.restoredPhotos[0].name).toBe('2026_06_26_13_00_00_restored_1.jpeg')
+  expect(await (await album.getFileHandle(name)).getFile().then((file) => file.text())).toBe(
+    'imported'
+  )
+  expect(
+    await (
+      await album.getFileHandle(restored.restoredPhotos[0].name)
+    )
+      .getFile()
+      .then((file) => file.text())
+  ).toBe('photo')
 })

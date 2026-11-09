@@ -18,8 +18,7 @@ import {
 import {
   saveHomeScheme,
   saveHomeSchemeTags,
-  readHomeSchemeSnapshot,
-  releaseHomeSchemeUrls
+  readHomeSchemeSnapshot
 } from '../../src/utils/homeBuild/homeSchemeStorage'
 import {
   saveCameraFavorite,
@@ -35,7 +34,6 @@ import {
 } from '../../src/utils/resonance/resonanceStorage'
 import { runStoreRequest } from '../../src/utils/file-system/database'
 import { CAMERA_BACKUP_LIMITS, OUTFIT_BACKUP_LIMITS } from '../../src/utils/backup/zipBackup'
-import * as homeBackup from '../../src/utils/homeBuild/homeSchemeBackup'
 import {
   emptyWardrobe,
   updateWardrobe,
@@ -90,7 +88,7 @@ async function seed() {
   await saveOutfit(outfit('OUTFIT'))
   await deleteOutfit(await saveOutfit(outfit('IGNORED')))
   await saveHomeSchemeTags(['庭院'])
-  const home = await saveHomeScheme({
+  await saveHomeScheme({
     code: 'HOME',
     name: '家园',
     schemeType: 'home',
@@ -99,7 +97,6 @@ async function seed() {
     metadata: createEmptyHomeSchemeMetadata(),
     imageFile: webp()
   })
-  releaseHomeSchemeUrls([home])
   const cover = webp('cover.webp')
   await saveCameraFavorite({ ...camera(), cover: await coverMetadata(cover, 'cover.webp') }, cover)
   await saveResonanceRecords(
@@ -263,8 +260,9 @@ it('continues other modules and reports an incomplete module without rolling bac
   await seed()
   const file = await exported()
   await resetOutfitDatabase()
-  vi.spyOn(homeBackup, 'importHomeSchemeBackup').mockRejectedValueOnce(new Error('QuotaExceeded'))
-  const results = await applyAllDataBackup(await prepareAllDataBackup(file), async () => ({}))
+  const plan = await prepareAllDataBackup(file)
+  plan.home[0] = { apply: vi.fn().mockRejectedValueOnce(new Error('QuotaExceeded')) }
+  const results = await applyAllDataBackup(plan, async () => ({}))
   expect(results?.find((item) => item.module === 'home')?.error).toBe('QuotaExceeded')
   expect((await readOutfitSnapshot()).records).toHaveLength(1)
   expect((await readCameraFavorites()).records).toHaveLength(1)
@@ -298,8 +296,8 @@ it('collects module parts into one ZIP and merges empty modules without clearing
   const resonance = (await parseResonanceFile({ 77: [['2026-01-01', '1020100347']] })).records
   await saveResonanceRecords(resonance)
   const plan = await prepareAllDataBackup(file)
-  expect(plan.files.get('outfits')).toHaveLength(2)
-  expect(plan.files.get('camera')).toHaveLength(2)
+  expect(plan.outfits).toHaveLength(2)
+  expect(plan.camera.records).toHaveLength(2)
   await applyAllDataBackup(plan, async () => ({}))
   expect((await readOutfitSnapshot()).records).toHaveLength(2)
   expect((await readCameraFavorites()).records).toHaveLength(2)
@@ -526,5 +524,37 @@ it.each([
 it('recognizes backup content despite an incorrect extension and MIME type', async () => {
   const zip = await exported()
   const file = new File([zip], 'renamed.jpg', { type: 'image/jpeg' })
-  expect((await prepareAllDataBackup(file)).files.get('outfits')).toHaveLength(1)
+  expect((await prepareAllDataBackup(file)).outfits).toHaveLength(1)
+})
+
+it('reuses validated images and checks current records when applying a prepared backup', async () => {
+  await seed()
+  const file = await exported()
+  await resetOutfitDatabase()
+  const plan = await prepareAllDataBackup(file)
+  // A local edit after preview must survive the merge.
+  await saveOutfit(outfit('OUTFIT', 'new local note'))
+  await saveHomeScheme({
+    code: 'HOME',
+    name: 'new local home',
+    schemeType: 'home',
+    tags: [],
+    note: '',
+    metadata: createEmptyHomeSchemeMetadata()
+  })
+  vi.mocked(createImageBitmap).mockClear()
+  const result = await applyAllDataBackup(plan, async () => ({}))
+  expect(result?.find((row) => row.module === 'outfits')).toMatchObject({
+    saved: 0,
+    skipped: 1,
+    failed: 0
+  })
+  expect(result?.find((row) => row.module === 'home')).toMatchObject({
+    saved: 0,
+    skipped: 1,
+    failed: 0
+  })
+  expect((await readOutfitSnapshot()).records[0].note).toBe('new local note')
+  expect((await readHomeSchemeSnapshot()).records[0].name).toBe('new local home')
+  expect(createImageBitmap).not.toHaveBeenCalled()
 })

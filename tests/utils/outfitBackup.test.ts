@@ -3,7 +3,11 @@ import { expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { setupOutfitDatabaseTests, webp, resetOutfitDatabase } from '../helpers/outfitDatabase'
 import { saveOutfit, deleteOutfit, readOutfitSnapshot } from '../../src/utils/outfit/outfitStorage'
-import { exportOutfitBackup, importOutfitBackup } from '../../src/utils/outfit/outfitBackup'
+import {
+  exportOutfitBackup,
+  importOutfitBackup,
+  prepareOutfitBackup
+} from '../../src/utils/outfit/outfitBackup'
 import { OUTFIT_BACKUP_LIMITS } from '../../src/utils/backup/zipBackup'
 setupOutfitDatabaseTests()
 const input = (code: string) => ({ imageFile: webp(), code, tag: null, note: '备注' })
@@ -134,42 +138,53 @@ it('exports complete independently importable parts', async () => {
 })
 
 // 多格式往返必须保留字节、类型、扩展名及备注编辑后的图片。
-it.each(['png', 'jpg'])('round-trips original %s after encoding fallback', async (extension) => {
-  const { vi } = await import('vitest')
-  vi.spyOn(console, 'error').mockImplementation(() => {})
-  vi.stubGlobal('document', {
-    createElement: () => ({
-      getContext: () => ({ drawImage() {} }),
-      toBlob: (cb: BlobCallback) => cb(null)
+it.each([
+  ['png', false],
+  ['jpg', false],
+  ['png', true],
+  ['jpg', true]
+] as const)(
+  'round-trips original %s after encoding fallback (prepared=%s)',
+  async (extension, prepared) => {
+    const { vi } = await import('vitest')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('document', {
+      createElement: () => ({
+        getContext: () => ({ drawImage() {} }),
+        toBlob: (cb: BlobCallback) => cb(null)
+      })
     })
-  })
-  const bytes = new Uint8Array(
-    extension === 'png' ? [137, 80, 78, 71, 13, 10, 26, 10, 1] : [255, 216, 255, 224, 1]
-  )
-  const original = new File([bytes], 'wrong.webp', { type: 'image/png' })
-  // 原始名称不能伪装成 WebP；直接使用实际格式名称触发编码。
-  const file = new File([original], 'photo.' + extension, {
-    type: extension === 'jpg' ? 'image/jpeg' : 'image/png'
-  })
-  const saved = await saveOutfit({ ...input(''), imageFile: file })
-  const edited = await saveOutfit({ outfit: saved, code: '', tag: null, note: 'edited' })
-  expect(edited.image).toBe(saved.id + '.' + extension)
-  let backup!: File
-  await exportOutfitBackup(async (name, blob) => {
-    backup = new File([blob], name)
-  })
-  const entries = unzipSync(new Uint8Array(await backup.arrayBuffer()))
-  expect(JSON.parse(strFromU8(entries['manifest.json'])).version).toBe(3)
-  expect(entries['images/' + edited.image]).toEqual(bytes)
-  await resetOutfitDatabase()
-  expect(await importOutfitBackup(backup)).toMatchObject({ addedCount: 1, failedCount: 0 })
-  const snapshot = await readOutfitSnapshot(),
-    record = snapshot.records[0],
-    image = snapshot.images.get(record.id)!
-  expect(record.image).toBe(edited.image)
-  expect(image.blob.type).toBe(file.type)
-  expect(new Uint8Array(await image.blob.arrayBuffer())).toEqual(bytes)
-})
+    const bytes = new Uint8Array(
+      extension === 'png' ? [137, 80, 78, 71, 13, 10, 26, 10, 1] : [255, 216, 255, 224, 1]
+    )
+    const original = new File([bytes], 'wrong.webp', { type: 'image/png' })
+    // 原始名称不能伪装成 WebP；直接使用实际格式名称触发编码。
+    const file = new File([original], 'photo.' + extension, {
+      type: extension === 'jpg' ? 'image/jpeg' : 'image/png'
+    })
+    const saved = await saveOutfit({ ...input(''), imageFile: file })
+    const edited = await saveOutfit({ outfit: saved, code: '', tag: null, note: 'edited' })
+    expect(edited.image).toBe(saved.id + '.' + extension)
+    let backup!: File
+    await exportOutfitBackup(async (name, blob) => {
+      backup = new File([blob], name)
+    })
+    const entries = unzipSync(new Uint8Array(await backup.arrayBuffer()))
+    expect(JSON.parse(strFromU8(entries['manifest.json'])).version).toBe(3)
+    expect(entries['images/' + edited.image]).toEqual(bytes)
+    await resetOutfitDatabase()
+    const result = prepared
+      ? await (await prepareOutfitBackup(backup)).apply()
+      : await importOutfitBackup(backup)
+    expect(result).toMatchObject({ addedCount: 1, failedCount: 0 })
+    const snapshot = await readOutfitSnapshot(),
+      record = snapshot.records[0],
+      image = snapshot.images.get(record.id)!
+    expect(record.image).toBe(edited.image)
+    expect(image.blob.type).toBe(file.type)
+    expect(new Uint8Array(await image.blob.arrayBuffer())).toEqual(bytes)
+  }
+)
 it('rejects image extension and content mismatch before writing', async () => {
   const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
   await expect(importOutfitBackup(archive([raw()], { 'images/one.webp': png }))).rejects.toThrow(

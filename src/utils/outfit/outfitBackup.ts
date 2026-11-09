@@ -265,9 +265,12 @@ async function streamBackupEntries(
   }
 }
 
-export async function inspectOutfitBackup(file: File): Promise<BackupManifest> {
+type PreparedImage = Awaited<ReturnType<typeof prepareOutfitImage>>
+type ImageMetadata = Omit<PreparedImage, 'blob'> & { type: string }
+
+async function inspectBackup(file: File) {
   let manifestBytes: Uint8Array | null = null
-  const images = new Set<string>()
+  const images = new Map<string, ImageMetadata>()
   // Validate every image transiently before any database write, without buffering the whole archive.
   await streamBackupEntries(
     file,
@@ -281,7 +284,8 @@ export async function inspectOutfitBackup(file: File): Promise<BackupManifest> {
       const checked = await prepareOutfitImage(new Blob([content]), 'validation')
       if (!matchesImageExtension(name, checked.extension))
         throw new Error('outfit_image_format_mismatch')
-      images.add(name)
+      const { blob, ...metadata } = checked
+      images.set(name, { ...metadata, type: blob.type })
     },
     IMPORT_CONCURRENCY
   )
@@ -319,11 +323,23 @@ export async function inspectOutfitBackup(file: File): Promise<BackupManifest> {
       ))
   )
     throw new Error('outfit_ignored_codes_invalid')
-  return manifest
+  return { manifest, images }
 }
 
-async function importBackup(backupFile: File): Promise<OutfitImportResult> {
-  const manifest = await inspectOutfitBackup(backupFile)
+export interface PreparedOutfitBackup {
+  readonly apply: () => Promise<OutfitImportResult>
+}
+
+/** 校验结果绑定同一不可变 File，只保留图片元数据；提交时仍读取当前数据库。 */
+export async function prepareOutfitBackup(file: File): Promise<PreparedOutfitBackup> {
+  const inspected = await inspectBackup(file)
+  return Object.freeze({ apply: () => withOutfitImportLock(() => importBackup(file, inspected)) })
+}
+
+async function importBackup(
+  backupFile: File,
+  { manifest, images }: Awaited<ReturnType<typeof inspectBackup>>
+): Promise<OutfitImportResult> {
   let failedCount = 0,
     addedCount = 0,
     duplicateCount = 0,
@@ -444,7 +460,10 @@ async function importBackup(backupFile: File): Promise<OutfitImportResult> {
     (name) => byImage.has(name),
     async (path, bytes) => {
       if (!bytes) return
-      const image = await prepareOutfitImage(new Blob([bytes]), 'prepared', false)
+      const checked = images.get(path)
+      if (!checked || bytes.byteLength !== checked.size) throw new Error('outfit_image_invalid')
+      const { type, ...metadata } = checked
+      const image = { ...metadata, blob: new Blob([bytes], { type }) }
       for (const { record } of byImage.get(path) ?? []) await restore(record, image)
     },
     IMPORT_CONCURRENCY
@@ -459,5 +478,5 @@ async function importBackup(backupFile: File): Promise<OutfitImportResult> {
   }
 }
 export function importOutfitBackup(backupFile: File): Promise<OutfitImportResult> {
-  return withOutfitImportLock(() => importBackup(backupFile))
+  return withOutfitImportLock(async () => importBackup(backupFile, await inspectBackup(backupFile)))
 }

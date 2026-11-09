@@ -102,6 +102,7 @@ onBeforeUnmount(cancelPress)
 /* 只压缩内容，保持触摸范围和滑块测量稳定。 */
 .mobile-navigation button:is(:active, .is-pressed):not(:disabled) {
   scale: 1;
+  background: var(--soft-accent);
   background: color-mix(in srgb, var(--soft-accent) 78%, var(--pink-deep) 22%);
 }
 .mobile-navigation button:is(:active, .is-pressed):not(:disabled) .mobile-navigation-content {

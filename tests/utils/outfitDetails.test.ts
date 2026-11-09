@@ -215,3 +215,14 @@ it('builds complete local details without requesting the remote API', async () =
   expect(detail.loadError).toBe(false)
   expect(fetcher).not.toHaveBeenCalled()
 })
+
+it.each([null, 1011702, 1011703, 1011704])(
+  'keeps exact membership with sparse variants (payload %s)',
+  async (payload) => {
+    const detail = await loadOutfitDetail(1023100117, payload, 'zh', '部件', [])
+    expect(detail.loadError).toBe(false)
+    expect(detail.outfitId).toBe(1011702)
+    expect(detail.outfitItemIds).toContain(1023100117)
+    expect(detail.evolution).toBe('1进')
+  }
+)

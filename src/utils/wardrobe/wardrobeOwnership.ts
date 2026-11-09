@@ -4,7 +4,7 @@ import { isWardrobeItemUnknown } from './wardrobeFilters'
 
 export { hasWardrobeSnapshot } from './wardrobeSchema'
 export function getOwnershipSummary(entry: WardrobeEntry, snapshot: WardrobeSnapshot) {
-  const owned = entry.parts.filter((id) => snapshot.entries[id]?.owned).length
+  const owned = entry.parts.reduce((count, id) => count + (snapshot.entries[id]?.owned ? 1 : 0), 0)
   return {
     owned,
     total: entry.parts.length,

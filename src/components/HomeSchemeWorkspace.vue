@@ -34,7 +34,6 @@ import {
   deleteHomeSchemeTag,
   readHomeSchemeLibrary,
   readHomeSchemeImage,
-  releaseHomeSchemeUrls,
   reorderHomeSchemeTags,
   saveHomeScheme,
   addHomeSchemeTag
@@ -201,11 +200,7 @@ async function loadLibrary() {
     busy.value = true
     try {
       const result = await readHomeSchemeLibrary()
-      if (generation !== loadGeneration) {
-        releaseHomeSchemeUrls(result.schemes)
-        return
-      }
-      releaseHomeSchemeUrls(schemes.value)
+      if (generation !== loadGeneration) return
       schemes.value = result.schemes
       tags.value = result.tags
       selectedSchemeIds.value = new Set()
@@ -532,8 +527,6 @@ async function save() {
         removeImage: removeLocalImage.value
       })
       const next = schemes.value.filter((item) => item.id !== saved.id)
-      const previous = schemes.value.find((item) => item.id === saved.id)
-      if (previous) releaseHomeSchemeUrls([previous])
       schemes.value = [saved, ...next].sort((left, right) =>
         right.createdAt.localeCompare(left.createdAt)
       )
@@ -566,7 +559,6 @@ async function removeScheme(item: HomeSchemeItem) {
     busy.value = true
     try {
       await deleteHomeScheme(item, true)
-      releaseHomeSchemeUrls([item])
       schemes.value = schemes.value.filter((entry) => entry.id !== item.id)
       selectedSchemeIds.value = new Set([...selectedSchemeIds.value].filter((id) => id !== item.id))
       if (previewScheme.value?.id === item.id) closePreview()
@@ -671,7 +663,6 @@ async function deleteSelectedSchemes() {
         return
       for (const item of selected) {
         await deleteHomeScheme(item, true)
-        releaseHomeSchemeUrls([item])
         deletedIds.add(item.id)
       }
       emit('status', props.messages.deleteSucceeded, 'success')
@@ -808,7 +799,6 @@ async function importBackup(event: Event) {
       reportPartialFailure('home-schemes', 'import-backup', result.failedCount, {
         savedCount: result.addedCount
       })
-      releaseHomeSchemeUrls(schemes.value)
       schemes.value = result.schemes
       tags.value = result.tags
       emit('countChange', result.schemes.length)
@@ -875,7 +865,6 @@ onBeforeUnmount(() => {
   editorImageGeneration++
   loadGeneration += 1
   cancelParse()
-  releaseHomeSchemeUrls(schemes.value)
   if (localImageUrl.value && localImageUrl.value !== editing.value?.imageUrl)
     URL.revokeObjectURL(localImageUrl.value)
   window.removeEventListener('paste', handlePaste)

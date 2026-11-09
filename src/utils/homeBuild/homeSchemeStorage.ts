@@ -136,11 +136,6 @@ export async function countHomeSchemes(): Promise<number> {
   return runStoreRequest(HOME_SCHEMES_STORE, 'readonly', (store) => store.count())
 }
 
-export function releaseHomeSchemeUrls(schemes: HomeSchemeItem[]): void {
-  for (const scheme of schemes)
-    if (scheme.image && scheme.imageUrl?.startsWith('blob:')) URL.revokeObjectURL(scheme.imageUrl)
-}
-
 /** 在写入事务中核对编辑基线，防止旧窗口覆盖已保存的记录或标签变更。 */
 export async function saveHomeScheme(input: SaveHomeSchemeInput): Promise<HomeSchemeItem> {
   const prepared =

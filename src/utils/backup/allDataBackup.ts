@@ -12,14 +12,17 @@ import { wardrobeRegionScope, type WardrobeRegionScope } from '../wardrobe/wardr
 import { hasWardrobeSnapshot } from '../wardrobe/wardrobeOwnership'
 import { strToU8, unzip } from 'fflate'
 import { backupPartBlob, downloadBackupBlob, type BackupDownload } from './zipBackup'
-import { exportOutfitBackup, importOutfitBackup, inspectOutfitBackup } from '../outfit/outfitBackup'
+import {
+  exportOutfitBackup,
+  prepareOutfitBackup,
+  type PreparedOutfitBackup
+} from '../outfit/outfitBackup'
 import { hashOutfitBlob } from '../outfit/outfitStorage'
 import {
   exportHomeSchemeBackup,
-  importHomeSchemeBackup,
-  prepareHomeSchemeBackup
+  prepareHomeSchemeBackup,
+  type PreparedHomeSchemeBackup
 } from '../homeBuild/homeSchemeBackup'
-import { releaseHomeSchemeUrls } from '../homeBuild/homeSchemeStorage'
 import { exportCameraBackup, readCameraBackup } from '../photo-params/favoritesBackup'
 import {
   readCameraFavorites,
@@ -51,7 +54,8 @@ interface BundleManifest {
   entries: BundleEntry[]
 }
 export interface AllDataPlan {
-  files: Map<BackupModule, File[]>
+  outfits: PreparedOutfitBackup[]
+  home: PreparedHomeSchemeBackup[]
   camera: FavoriteLibrary
   resonance: ResonanceRecord[]
   wardrobe: WardrobeSnapshot | null
@@ -232,8 +236,10 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
     files.get('wardrobe')!.length > 1
   )
     throw new Error('总备份缺少模块 / Missing backup module')
-  for (const file of files.get('outfits')!) await inspectOutfitBackup(file)
-  for (const file of files.get('home')!) await prepareHomeSchemeBackup(file)
+  const outfits: PreparedOutfitBackup[] = []
+  const home: PreparedHomeSchemeBackup[] = []
+  for (const file of files.get('outfits')!) outfits.push(await prepareOutfitBackup(file))
+  for (const file of files.get('home')!) home.push(await prepareHomeSchemeBackup(file))
   const camera: FavoriteLibrary = { records: [], covers: new Map(), tags: [] }
   const ids = new Set<string>()
   for (const file of files.get('camera')!) {
@@ -251,7 +257,7 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
   ).records
   const wardrobeFile = files.get('wardrobe')![0]
   const wardrobe = wardrobeFile ? parseWardrobeBackup(await wardrobeFile.text()) : null
-  return { files, camera, resonance, wardrobe }
+  return { outfits, home, camera, resonance, wardrobe }
 }
 
 export async function applyAllDataBackup(
@@ -288,8 +294,8 @@ export async function applyAllDataBackup(
     const result: ModuleImportResult = { module, saved: 0, skipped: 0, failed: 0 }
     try {
       if (module === 'outfits') {
-        for (const file of plan.files.get(module)!) {
-          const imported = await importOutfitBackup(file)
+        for (const part of plan.outfits) {
+          const imported = await part.apply()
           result.saved += imported.addedCount
           result.skipped += imported.duplicateCount
           result.failed += imported.failedCount
@@ -297,12 +303,11 @@ export async function applyAllDataBackup(
           releasePhotoUrls(imported.library.outfits)
         }
       } else if (module === 'home') {
-        for (const file of plan.files.get(module)!) {
-          const imported = await importHomeSchemeBackup(file)
+        for (const part of plan.home) {
+          const imported = await part.apply()
           result.saved += imported.addedCount
           result.skipped += imported.duplicateCount
           result.failed += imported.failedCount
-          releaseHomeSchemeUrls(imported.schemes)
         }
       } else if (module === 'camera') {
         result.saved = await applyCameraImport(cameraPlan, choices)

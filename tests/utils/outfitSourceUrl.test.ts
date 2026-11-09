@@ -14,3 +14,15 @@ it('rejects ambiguity and invalid input, and allows clearing', () => {
   expect(parseSourceUrl('javascript:alert(1)')).toEqual({ url: '', error: 'invalid' })
   expect(parseSourceUrl('   ')).toEqual({ url: '' })
 })
+
+it('extracts URL-first share text before validating the candidate', () => {
+  expect(parseSourceUrl('https://example.com/a，快来看')).toEqual({ url: 'https://example.com/a' })
+  expect(parseSourceUrl('https://example.com/a。')).toEqual({ url: 'https://example.com/a' })
+  expect(parseSourceUrl('https://example.com/a，https://example.org/b')).toEqual({
+    url: '',
+    error: 'multiple'
+  })
+  expect(parseSourceUrl('https://example.com/中文路径?q=a%2Cb&x=1#位置')).toEqual({
+    url: 'https://example.com/中文路径?q=a%2Cb&x=1#位置'
+  })
+})

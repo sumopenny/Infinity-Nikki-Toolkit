@@ -291,9 +291,19 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', closeFilter)
 })
 const name = (entry: WardrobeEntry) => entry.name[props.language]
-const ownedCount = (entry: WardrobeEntry) => getOwnershipSummary(entry, snapshot.value).owned
-const complete = (entry: WardrobeEntry) => getOwnershipSummary(entry, snapshot.value).complete
-const unknown = (entry: WardrobeEntry) => getOwnershipSummary(entry, snapshot.value).unknown
+const ownershipSummaries = computed(
+  () =>
+    new Map(
+      (catalog.value?.entries ?? []).map((entry) => [
+        entry.id,
+        getOwnershipSummary(entry, snapshot.value)
+      ])
+    )
+)
+const summary = (entry: WardrobeEntry) => ownershipSummaries.value.get(entry.id)!
+const ownedCount = (entry: WardrobeEntry) => summary(entry).owned
+const complete = (entry: WardrobeEntry) => summary(entry).complete
+const unknown = (entry: WardrobeEntry) => summary(entry).unknown
 const showOwnershipNote = computed(
   () => tab.value === 'item' && hasIncompleteWardrobeOwnership(source.value)
 )
@@ -610,7 +620,10 @@ async function clearRecords() {
     >
       <div id="wardrobe-mobile-filter-target"></div>
     </AdaptiveFilterPanel>
-    <ContentLoadingSurface :loading="!loaded && !loadFailed" :label="text('正在加载衣橱…', 'Loading wardrobe…')">
+    <ContentLoadingSurface
+      :loading="!loaded && !loadFailed"
+      :label="text('正在加载衣橱…', 'Loading wardrobe…')"
+    >
       <template #skeleton>
         <div class="wardrobe-grid" :class="{ 'is-pieces': tab === 'item' }">
           <article v-for="index in 6" :key="index" class="wardrobe-card" data-skeleton-card>
@@ -623,216 +636,203 @@ async function clearRecords() {
           </article>
         </div>
       </template>
-    <div v-if="!loaded" class="wardrobe-empty" role="status">
-      <p>{{
-        loadFailed
-          ? text(
-              '衣橱加载失败或超时，请重试；若仍无法加载，请刷新页面。',
-              'Wardrobe loading failed or timed out. Retry, or refresh the page if it still fails.'
-            )
-          : text('正在加载衣橱…', 'Loading wardrobe…')
-      }}</p>
-      <button v-if="loadFailed" class="primary-button" type="button" @click="reload">
-        {{ text('重新加载', 'Retry') }}
-      </button>
-    </div>
-    <div v-if="loaded && !hasRecords" class="wardrobe-initial">
-      <h3>{{ text('还没有衣橱数据', 'No wardrobe data yet') }}</h3>
-      <p>{{
-        text(
-          '点击右上角“导入数据”，查看你的套装与部件的收集情况。',
-          'Use Import data in the upper right to import your notebook and view your outfit and item collection.'
-        )
-      }}</p>
-      <MobileEmptyScreenshot page="wardrobe" :language="language" />
-    </div>
-    <template v-if="loaded && hasRecords">
-      <Teleport
-        :to="compact ? '#wardrobe-mobile-filter-target' : sidebarTarget || 'body'"
-        :disabled="!compact && !sidebarTarget"
-        defer
-      >
-        <div :class="{ 'wardrobe-sidebar-controls': !compact && sidebarTarget }">
-          <div v-if="!compact" class="wardrobe-toolbar">
-            <nav v-segmented-indicator class="sidebar-mode-switch" :aria-label="text('衣橱分类', 'Wardrobe category')">
-              <button
-                type="button"
-                :aria-pressed="tab === 'outfit'"
-                :class="{ active: tab === 'outfit' }"
-                @click="tab = 'outfit'"
-                >{{ text('套装', 'Outfits') }}</button
-              >
-              <button
-                type="button"
-                :aria-pressed="tab === 'item'"
-                :class="{ active: tab === 'item' }"
-                @click="tab = 'item'"
-                >{{ text('部件', 'Pieces') }}</button
-              >
-            </nav>
-          </div>
-          <p v-if="!compact" class="wardrobe-filter-results" role="status">
-            <span>{{ text('筛选结果', 'Results') }}</span>
-            <span>
-              <strong>{{ filtered.length.toLocaleString(language) }}</strong>
-              {{ tab === 'outfit' ? text('套', 'outfits') : text('件', 'pieces') }}
-            </span>
-          </p>
-          <div class="wardrobe-filters">
-            <div v-for="filter in filterOptions" :key="filter.key" class="wardrobe-filter-field">
-              <span>{{ filter.label }}</span>
-              <div
-                class="action-sort-select-wrap wardrobe-filter-select"
-                @keydown.esc.stop.prevent="
-                  openFilter = ''
-                  ;($event.currentTarget as HTMLElement).querySelector('button')?.focus()
-                "
-                @focusout="leaveFilter"
+      <div v-if="!loaded" class="wardrobe-empty" role="status">
+        <p>{{
+          loadFailed
+            ? text(
+                '衣橱加载失败或超时，请重试；若仍无法加载，请刷新页面。',
+                'Wardrobe loading failed or timed out. Retry, or refresh the page if it still fails.'
+              )
+            : text('正在加载衣橱…', 'Loading wardrobe…')
+        }}</p>
+        <button v-if="loadFailed" class="primary-button" type="button" @click="reload">
+          {{ text('重新加载', 'Retry') }}
+        </button>
+      </div>
+      <div v-if="loaded && !hasRecords" class="wardrobe-initial">
+        <h3>{{ text('还没有衣橱数据', 'No wardrobe data yet') }}</h3>
+        <p>{{
+          text(
+            '点击右上角“导入数据”，查看你的套装与部件的收集情况。',
+            'Use Import data in the upper right to import your notebook and view your outfit and item collection.'
+          )
+        }}</p>
+        <MobileEmptyScreenshot page="wardrobe" :language="language" />
+      </div>
+      <template v-if="loaded && hasRecords">
+        <Teleport
+          :to="compact ? '#wardrobe-mobile-filter-target' : sidebarTarget || 'body'"
+          :disabled="!compact && !sidebarTarget"
+          defer
+        >
+          <div :class="{ 'wardrobe-sidebar-controls': !compact && sidebarTarget }">
+            <div v-if="!compact" class="wardrobe-toolbar">
+              <nav
+                v-segmented-indicator
+                class="sidebar-mode-switch"
+                :aria-label="text('衣橱分类', 'Wardrobe category')"
               >
                 <button
-                  :id="'wardrobe-filter-' + filter.key"
                   type="button"
-                  class="cleanup-account-select action-sort-select"
-                  :class="{ open: openFilter === filter.key }"
-                  :aria-label="
-                    filter.label +
-                    ': ' +
-                    filter.options.find((option) => option.value === filterValues[filter.key].value)
-                      ?.label
-                  "
-                  :title="
-                    filter.options.find((option) => option.value === filterValues[filter.key].value)
-                      ?.label
-                  "
-                  aria-haspopup="menu"
-                  :aria-expanded="openFilter === filter.key"
-                  @click="toggleFilter(filter.key, $event)"
+                  :aria-pressed="tab === 'outfit'"
+                  :class="{ active: tab === 'outfit' }"
+                  @click="tab = 'outfit'"
+                  >{{ text('套装', 'Outfits') }}</button
                 >
-                  <span>{{
-                    filter.options.find((option) => option.value === filterValues[filter.key].value)
-                      ?.label
-                  }}</span
-                  ><ChevronDown :size="14" aria-hidden="true" />
-                </button>
-                <Teleport to="body">
-                  <DesktopMenuTransition>
-                    <div
-                      v-if="openFilter === filter.key"
-                      class="cleanup-account-menu wardrobe-filter-menu"
-                      :id="'wardrobe-menu-' + filter.key"
-                      :style="filterMenuStyle"
-                      @focusout="leaveFilter"
-                      @keydown.esc.stop.prevent="dismissFilter(filter.key)"
-                      role="menu"
-                      :aria-label="filter.label"
-                    >
-                      <div class="wardrobe-filter-menu-scroll">
-                        <button
-                          v-for="option in filter.options"
-                          :key="option.value"
-                          type="button"
-                          role="menuitemradio"
-                          :aria-checked="filterValues[filter.key].value === option.value"
-                          :class="{
-                            active: filterValues[filter.key].value === option.value,
-                            'has-group-separator': option.separatorBefore
-                          }"
-                          @click="selectFilter(filter.key, option.value)"
-                          >{{ option.label }}</button
-                        >
-                      </div>
-                    </div>
-                  </DesktopMenuTransition>
-                </Teleport>
-              </div>
+                <button
+                  type="button"
+                  :aria-pressed="tab === 'item'"
+                  :class="{ active: tab === 'item' }"
+                  @click="tab = 'item'"
+                  >{{ text('部件', 'Pieces') }}</button
+                >
+              </nav>
             </div>
-            <button class="wardrobe-reset-button" type="button" @click="resetFilters">
-              <RotateCcw :size="14" aria-hidden="true" />
-              {{ text('重置筛选', 'Reset filters') }}
-            </button>
-          </div>
-        </div>
-      </Teleport>
-      <aside
-        v-if="ownershipNoticeVisible"
-        ref="ownershipNotice"
-        class="wardrobe-collection-notice"
-        role="note"
-        tabindex="-1"
-        :aria-label="ownershipNoticeText.title"
-      >
-        <Info :size="18" aria-hidden="true" />
-        <p
-          ><strong>{{ ownershipNoticeText.title }}：</strong>{{ ownershipNoticeText.body }}</p
-        >
-        <button
-          type="button"
-          class="wardrobe-collection-notice-close"
-          :aria-label="ownershipNoticeText.close"
-          :title="ownershipNoticeText.close"
-          @click="dismissOwnershipNotice"
-          ><X :size="16" aria-hidden="true"
-        /></button>
-      </aside>
-      <p v-if="showOwnershipNote" class="wardrobe-ownership-note" role="note">{{
-        text(
-          '此来源的拥有信息可能未包含在导入数据中，未识别到的部件显示为未知。',
-          'Ownership information for this source may be missing from the imported data. Unidentified pieces are shown as Unknown.'
-        )
-      }}</p>
-
-      <div v-if="filtered.length" class="wardrobe-grid" :class="{ 'is-pieces': tab === 'item' }">
-        <article
-          v-for="(entry, imageIndex) in (tab === 'outfit' ? displayEntries : displayEntries.slice(0, limit))"
-          :key="merged ? wardrobeFamilyKey(entry) : entry.id"
-          v-card-reveal="`wardrobe:${merged ? wardrobeFamilyKey(entry) : entry.id}`"
-          class="wardrobe-card"
-          :class="{ 'has-forms': merged && hasMultipleForms(entry) }"
-        >
-          <div class="wardrobe-card-media">
-            <button
-              class="wardrobe-card-open"
-              type="button"
-              :disabled="blocked"
-              :aria-label="name(entry) + ' · ' + variants[entry.variant] + ' · ' + status(entry)"
-              @click="openDetail(entry)"
-            >
-              <div class="wardrobe-cover" data-load-block>
-                <CatalogImage
-                  fit="contain"
-                  :language="language"
-                  referrerpolicy="no-referrer"
-                  :src="entry.image"
-                  alt=""
-                  :index="imageIndex"
-                />
-                <span class="wardrobe-variant">{{ variants[entry.variant] }}</span>
+            <p v-if="!compact" class="wardrobe-filter-results" role="status">
+              <span>{{ text('筛选结果', 'Results') }}</span>
+              <span>
+                <strong>{{ filtered.length.toLocaleString(language) }}</strong>
+                {{ tab === 'outfit' ? text('套', 'outfits') : text('件', 'pieces') }}
+              </span>
+            </p>
+            <div class="wardrobe-filters">
+              <div v-for="filter in filterOptions" :key="filter.key" class="wardrobe-filter-field">
+                <span>{{ filter.label }}</span>
+                <div
+                  class="action-sort-select-wrap wardrobe-filter-select"
+                  @keydown.esc.stop.prevent="
+                    openFilter = ''
+                    ;($event.currentTarget as HTMLElement).querySelector('button')?.focus()
+                  "
+                  @focusout="leaveFilter"
+                >
+                  <button
+                    :id="'wardrobe-filter-' + filter.key"
+                    type="button"
+                    class="cleanup-account-select action-sort-select"
+                    :class="{ open: openFilter === filter.key }"
+                    :aria-label="
+                      filter.label +
+                      ': ' +
+                      filter.options.find(
+                        (option) => option.value === filterValues[filter.key].value
+                      )?.label
+                    "
+                    :title="
+                      filter.options.find(
+                        (option) => option.value === filterValues[filter.key].value
+                      )?.label
+                    "
+                    aria-haspopup="menu"
+                    :aria-expanded="openFilter === filter.key"
+                    @click="toggleFilter(filter.key, $event)"
+                  >
+                    <span>{{
+                      filter.options.find(
+                        (option) => option.value === filterValues[filter.key].value
+                      )?.label
+                    }}</span
+                    ><ChevronDown :size="14" aria-hidden="true" />
+                  </button>
+                  <Teleport to="body">
+                    <DesktopMenuTransition>
+                      <div
+                        v-if="openFilter === filter.key"
+                        class="cleanup-account-menu wardrobe-filter-menu"
+                        :id="'wardrobe-menu-' + filter.key"
+                        :style="filterMenuStyle"
+                        @focusout="leaveFilter"
+                        @keydown.esc.stop.prevent="dismissFilter(filter.key)"
+                        role="menu"
+                        :aria-label="filter.label"
+                      >
+                        <div class="wardrobe-filter-menu-scroll">
+                          <button
+                            v-for="option in filter.options"
+                            :key="option.value"
+                            type="button"
+                            role="menuitemradio"
+                            :aria-checked="filterValues[filter.key].value === option.value"
+                            :class="{
+                              active: filterValues[filter.key].value === option.value,
+                              'has-group-separator': option.separatorBefore
+                            }"
+                            @click="selectFilter(filter.key, option.value)"
+                            >{{ option.label }}</button
+                          >
+                        </div>
+                      </div>
+                    </DesktopMenuTransition>
+                  </Teleport>
+                </div>
               </div>
-            </button>
-            <WardrobeFormPopover
-              v-if="compact && merged && hasMultipleForms(entry)"
-              :entry="entry"
-              :catalog="catalog"
-              :snapshot="snapshot"
-              :language="language"
-              :disabled="blocked"
-              :reset-key="formPreviewRevision"
-              @select="openDetail"
-            />
+              <button class="wardrobe-reset-button" type="button" @click="resetFilters">
+                <RotateCcw :size="14" aria-hidden="true" />
+                {{ text('重置筛选', 'Reset filters') }}
+              </button>
+            </div>
           </div>
-          <div class="wardrobe-card-body" @click="!blocked && openDetail(entry)">
-            <div class="wardrobe-card-heading" data-load-block>
+        </Teleport>
+        <aside
+          v-if="ownershipNoticeVisible"
+          ref="ownershipNotice"
+          class="wardrobe-collection-notice"
+          role="note"
+          tabindex="-1"
+          :aria-label="ownershipNoticeText.title"
+        >
+          <Info :size="18" aria-hidden="true" />
+          <p
+            ><strong>{{ ownershipNoticeText.title }}：</strong>{{ ownershipNoticeText.body }}</p
+          >
+          <button
+            type="button"
+            class="wardrobe-collection-notice-close"
+            :aria-label="ownershipNoticeText.close"
+            :title="ownershipNoticeText.close"
+            @click="dismissOwnershipNotice"
+            ><X :size="16" aria-hidden="true"
+          /></button>
+        </aside>
+        <p v-if="showOwnershipNote" class="wardrobe-ownership-note" role="note">{{
+          text(
+            '此来源的拥有信息可能未包含在导入数据中，未识别到的部件显示为未知。',
+            'Ownership information for this source may be missing from the imported data. Unidentified pieces are shown as Unknown.'
+          )
+        }}</p>
+
+        <div v-if="filtered.length" class="wardrobe-grid" :class="{ 'is-pieces': tab === 'item' }">
+          <article
+            v-for="(entry, imageIndex) in tab === 'outfit'
+              ? displayEntries
+              : displayEntries.slice(0, limit)"
+            :key="merged ? wardrobeFamilyKey(entry) : entry.id"
+            v-card-reveal="`wardrobe:${merged ? wardrobeFamilyKey(entry) : entry.id}`"
+            class="wardrobe-card"
+            :class="{ 'has-forms': merged && hasMultipleForms(entry) }"
+          >
+            <div class="wardrobe-card-media">
               <button
-                class="wardrobe-card-name"
+                class="wardrobe-card-open"
                 type="button"
                 :disabled="blocked"
-                :title="name(entry)"
-                @click.stop="openDetail(entry)"
+                :aria-label="name(entry) + ' · ' + variants[entry.variant] + ' · ' + status(entry)"
+                @click="openDetail(entry)"
               >
-                <h3>{{ name(entry) }}</h3>
+                <div class="wardrobe-cover" data-load-block>
+                  <CatalogImage
+                    fit="contain"
+                    :language="language"
+                    referrerpolicy="no-referrer"
+                    :src="entry.image"
+                    alt=""
+                    :index="imageIndex"
+                  />
+                  <span class="wardrobe-variant">{{ variants[entry.variant] }}</span>
+                </div>
               </button>
               <WardrobeFormPopover
-                v-if="!compact && merged && hasMultipleForms(entry)"
+                v-if="compact && merged && hasMultipleForms(entry)"
                 :entry="entry"
                 :catalog="catalog"
                 :snapshot="snapshot"
@@ -842,39 +842,61 @@ async function clearRecords() {
                 @select="openDetail"
               />
             </div>
-            <div class="wardrobe-card-status" data-load-block>
-              <span :class="complete(entry) ? 'wardrobe-owned' : ''">
-                {{ status(entry) }}
-                <small v-if="entry.kind === 'outfit'"
-                  >{{ ownedCount(entry) }}/{{ entry.parts.length }}</small
+            <div class="wardrobe-card-body" @click="!blocked && openDetail(entry)">
+              <div class="wardrobe-card-heading" data-load-block>
+                <button
+                  class="wardrobe-card-name"
+                  type="button"
+                  :disabled="blocked"
+                  :title="name(entry)"
+                  @click.stop="openDetail(entry)"
                 >
-              </span>
-              <small class="wardrobe-card-rarity">{{ entry.quality }} ★</small>
+                  <h3>{{ name(entry) }}</h3>
+                </button>
+                <WardrobeFormPopover
+                  v-if="!compact && merged && hasMultipleForms(entry)"
+                  :entry="entry"
+                  :catalog="catalog"
+                  :snapshot="snapshot"
+                  :language="language"
+                  :disabled="blocked"
+                  :reset-key="formPreviewRevision"
+                  @select="openDetail"
+                />
+              </div>
+              <div class="wardrobe-card-status" data-load-block>
+                <span :class="complete(entry) ? 'wardrobe-owned' : ''">
+                  {{ status(entry) }}
+                  <small v-if="entry.kind === 'outfit'"
+                    >{{ ownedCount(entry) }}/{{ entry.parts.length }}</small
+                  >
+                </span>
+                <small class="wardrobe-card-rarity">{{ entry.quality }} ★</small>
+              </div>
+              <progress
+                data-load-block
+                v-if="entry.kind === 'outfit'"
+                :value="ownedCount(entry)"
+                :max="entry.parts.length || 1"
+                :aria-label="text('收集进度', 'Collection progress')"
+              ></progress>
             </div>
-            <progress data-load-block
-              v-if="entry.kind === 'outfit'"
-              :value="ownedCount(entry)"
-              :max="entry.parts.length || 1"
-              :aria-label="text('收集进度', 'Collection progress')"
-            ></progress>
-          </div>
-        </article>
-      </div>
-      <div v-if="filtered.length === 0" class="wardrobe-empty">
-        <Shirt :size="32" />
-        <p>{{ text('没有符合条件的服装', 'No matching clothes') }}</p>
-        <button class="primary-button" type="button" @click="resetFilters">
-          {{ text('重置筛选', 'Reset filters') }}
-        </button>
-      </div>
-      <div
-        v-if="tab === 'item' && displayEntries.length > limit"
-        ref="loadMoreTarget"
-        class="wardrobe-load-more-target"
-        aria-hidden="true"
-      ></div>
-    </template>
-
+          </article>
+        </div>
+        <div v-if="filtered.length === 0" class="wardrobe-empty">
+          <Shirt :size="32" />
+          <p>{{ text('没有符合条件的服装', 'No matching clothes') }}</p>
+          <button class="primary-button" type="button" @click="resetFilters">
+            {{ text('重置筛选', 'Reset filters') }}
+          </button>
+        </div>
+        <div
+          v-if="tab === 'item' && displayEntries.length > limit"
+          ref="loadMoreTarget"
+          class="wardrobe-load-more-target"
+          aria-hidden="true"
+        ></div>
+      </template>
     </ContentLoadingSurface>
     <WardrobeItemDialog
       :item="itemPreview"
