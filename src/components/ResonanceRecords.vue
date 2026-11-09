@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
@@ -493,7 +494,7 @@ defineExpose({ reload })
             }}</p>
           </div>
           <!-- 切换按钮直接相对卡片定位，避免摘要入场的 transform 改变绝对定位参照。 -->
-          <div class="resonance-set-switch" role="group" :aria-label="t.setSelection">
+          <div v-segmented-indicator class="resonance-set-switch" role="group" :aria-label="t.setSelection">
             <button
               v-for="set in record.sets"
               :key="set.setNumber"
@@ -1067,12 +1068,12 @@ button.resonance-part:focus-visible {
     color: var(--muted);
     font: inherit;
     font-size: 13px;
+    font-weight: 700;
     cursor: pointer;
   }
   .resonance-set-switch button[aria-pressed='true'] {
     background: var(--surface);
     color: var(--pink-deep);
-    font-weight: 700;
     box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
   }
   .resonance-set-switch button:focus-visible {

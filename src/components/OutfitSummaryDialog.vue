@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import {
   computed,
   nextTick,
@@ -299,7 +300,7 @@ const ranked = computed(() => {
                 :class="{ 'has-part-menu': tab !== 'tags' && types.length }"
               >
                 <nav
-                  class="resonance-choice-row ranking-tabs"
+                  v-segmented-indicator class="resonance-choice-row ranking-tabs"
                   :aria-label="t('排行类别', 'Ranking category')"
                 >
                   <button

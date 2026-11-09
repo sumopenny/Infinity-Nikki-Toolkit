@@ -12,6 +12,7 @@ import './styles/outfit.css'
 import './styles/controls.css'
 import './styles/mobile.css'
 import './styles/card-actions.css'
+import './styles/segmented-control.css'
 
 import './styles/scrollbars.css'
 

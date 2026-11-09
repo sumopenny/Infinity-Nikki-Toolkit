@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { computed, ref, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 import type { WardrobeRegionConflict } from '../utils/backup/allDataBackup'
@@ -56,7 +57,7 @@ useModalFocus(visible, panel, () => emit('cancel'))
               {{ t('备份：', 'Backup: ') + label(conflict.incoming) }}</p
             >
             <div
-              class="resonance-choice-row"
+              v-segmented-indicator class="resonance-choice-row"
               role="group"
               :aria-label="t('最终展示区服', 'Final display region')"
             >

@@ -2090,7 +2090,6 @@
   border-color: var(--accent-border-subtle);
   background: var(--surface-strong);
   color: var(--pink-deep);
-  font-weight: 800;
   box-shadow: var(--accent-shadow-sm);
 }
 

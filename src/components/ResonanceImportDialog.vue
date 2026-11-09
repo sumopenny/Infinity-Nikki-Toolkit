@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { ref, watch } from 'vue'
 import { Bookmark, Copy, ExternalLink, FileUp, Info, Terminal, X } from 'lucide-vue-next'
 import type { ResonanceMessages } from '../i18n/messages/resonance'
@@ -82,7 +83,7 @@ const VIDEO_TUTORIALS = [
           </header>
 
           <div class="resonance-import-body">
-            <div class="resonance-choice-row" role="group" :aria-label="t.importMethod">
+            <div v-segmented-indicator class="resonance-choice-row" role="group" :aria-label="t.importMethod">
               <button
                 type="button"
                 class="resonance-choice"
@@ -166,7 +167,7 @@ const VIDEO_TUTORIALS = [
                 ><strong>{{ t.sourceAttributionLabel }}</strong
                 ><span>{{ t.sourceAttribution }}</span></p
               >
-              <div class="resonance-choice-row" role="group" :aria-label="t.cookieMethods">
+              <div v-segmented-indicator class="resonance-choice-row" role="group" :aria-label="t.cookieMethods">
                 <button
                   type="button"
                   class="resonance-choice"

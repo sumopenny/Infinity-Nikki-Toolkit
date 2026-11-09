@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { useAfterArchiveMotion } from '../composables/useAfterArchiveMotion'
 import { ArrowLeftRight } from 'lucide-vue-next'
@@ -241,7 +242,7 @@ const filtered = computed(() => {
     >
       <template #category>
         <nav
-          class="sidebar-mode-switch makeup-category-tabs"
+          v-segmented-indicator class="sidebar-mode-switch makeup-category-tabs"
           :aria-label="text('妆容分类', 'Makeup category')"
         >
           <button

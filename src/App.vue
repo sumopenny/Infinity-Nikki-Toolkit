@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from './utils/segmentedIndicator'
 import SkeletonSweep from './components/SkeletonSweep.vue'
 import { globalSkeletonSweepKey } from './utils/imageSkeleton'
 provide(globalSkeletonSweepKey, true)
@@ -2506,7 +2507,7 @@ function importAllDataFromMenu() {
           :class="{ 'is-wardrobe': activeView === 'wardrobe', 'is-category-closing': archiveToolbarClosing, 'has-category': !archiveToolbarClosing && (activeView === 'wardrobe' || activeView === 'makeup') }"
         >
           <nav
-            class="resonance-choice-row archive-main-tabs"
+            v-segmented-indicator class="resonance-choice-row archive-main-tabs"
             :aria-label="locale.viewNav.resonance"
           >
             <button
@@ -2576,7 +2577,7 @@ function importAllDataFromMenu() {
         <div v-if="activeView === 'favorites'" v-show="!compactLayout" class="favorites-toolbar">
           <nav
             v-if="!compactLayout"
-            class="resonance-choice-row favorites-view-switch"
+            v-segmented-indicator class="resonance-choice-row favorites-view-switch"
             :aria-label="locale.viewNav.favorites"
           >
             <button

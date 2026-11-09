@@ -1,0 +1,62 @@
+/* One moving surface; buttons retain their existing state and keyboard behavior. */
+.segmented-control {
+  position: relative;
+  isolation: isolate;
+  --segment-background: var(--surface-strong);
+  --segment-border: var(--accent-border-subtle);
+  --segment-shadow: var(--accent-shadow-sm);
+}
+.segmented-control::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--segment-width);
+  height: var(--segment-height);
+  box-sizing: border-box;
+  transform: translate(var(--segment-x), var(--segment-y));
+  border: 1px solid var(--segment-border);
+  border-radius: var(--segment-radius);
+  background: var(--segment-background);
+  box-shadow: var(--segment-shadow);
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 0;
+}
+.segmented-control.segmented-ready::before {
+  visibility: visible;
+}
+.segmented-control.segmented-animate::before {
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+.segmented-control > button {
+  position: relative;
+  z-index: 1;
+  transition: color 220ms ease;
+}
+.segmented-control.segmented-ready > button[aria-pressed='true'] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.sidebar-mode-switch.segmented-control {
+  --segment-border: transparent;
+  --segment-shadow: 0 1px 3px rgba(37, 32, 30, 0.12);
+}
+.resonance-set-switch.segmented-control {
+  --segment-background: var(--surface);
+  --segment-border: transparent;
+  --segment-shadow: 0 1px 4px rgb(0 0 0 / 6%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .segmented-control.segmented-animate::before,
+  .segmented-control > button {
+    transition: none;
+  }
+}

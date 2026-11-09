@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   BookHeart,
@@ -634,8 +635,7 @@ function openDonate() {
               ></header>
               <div class="view-toggle-row">
                 <div
-                  class="view-toggle-pill"
-                  :class="{ 'is-second': themeMode === 'dark' }"
+                  v-segmented-indicator class="view-toggle-pill"
                   role="group"
                   :aria-label="messages.themeToggleAria"
                 >
@@ -663,8 +663,7 @@ function openDonate() {
                   </button>
                 </div>
                 <div
-                  class="view-toggle-pill"
-                  :class="{ 'is-second': language === 'en' }"
+                  v-segmented-indicator class="view-toggle-pill"
                   role="group"
                   :aria-label="messages.languageToggleAria"
                 >

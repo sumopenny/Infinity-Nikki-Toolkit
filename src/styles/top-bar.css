@@ -412,23 +412,6 @@
   border-radius: 999px;
   background: var(--surface-soft);
 }
-.view-toggle-pill::before {
-  position: absolute;
-  inset-block: 2px;
-  left: 3px;
-  box-sizing: border-box;
-  width: calc(50% - 4px);
-  border: 1px solid var(--accent-border-subtle);
-  border-radius: 999px;
-  background: var(--surface-strong);
-  box-shadow: var(--accent-shadow-sm);
-  content: '';
-  pointer-events: none;
-  transition: transform 220ms var(--ease-spring);
-}
-.view-toggle-pill.is-second::before {
-  transform: translateX(calc(100% + 2px));
-}
 
 /* 选择器需要写得比 .header-dropdown button 更具体，才能盖掉它的整行按钮样式 */
 .view-dropdown .view-toggle-option {
@@ -461,17 +444,11 @@
   border-color: transparent;
   background: transparent;
   color: var(--pink-deep);
-  font-weight: 800;
 }
 
 .view-dropdown .view-toggle-option.active:hover:not(:disabled) {
   background: transparent;
   color: var(--pink-deep);
-}
-@media (prefers-reduced-motion: reduce) {
-  .view-toggle-pill::before {
-    transition: none;
-  }
 }
 
 .brand-lockup .brand-logo {

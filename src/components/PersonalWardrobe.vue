@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
@@ -653,7 +654,7 @@ async function clearRecords() {
       >
         <div :class="{ 'wardrobe-sidebar-controls': !compact && sidebarTarget }">
           <div v-if="!compact" class="wardrobe-toolbar">
-            <nav class="sidebar-mode-switch" :aria-label="text('衣橱分类', 'Wardrobe category')">
+            <nav v-segmented-indicator class="sidebar-mode-switch" :aria-label="text('衣橱分类', 'Wardrobe category')">
               <button
                 type="button"
                 :aria-pressed="tab === 'outfit'"

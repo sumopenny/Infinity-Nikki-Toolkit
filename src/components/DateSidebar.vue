@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
@@ -116,7 +117,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
 <template>
   <aside class="date-sidebar" :aria-label="messages.aria">
     <div class="sidebar-heading-row">
-      <div class="sidebar-mode-switch" role="group" :aria-label="messages.title">
+      <div v-segmented-indicator class="sidebar-mode-switch" role="group" :aria-label="messages.title">
         <button
           type="button"
           :class="{ active: mode === 'date' }"
