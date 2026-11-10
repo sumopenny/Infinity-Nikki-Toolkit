@@ -2,6 +2,8 @@ import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import 'fake-indexeddb/auto'
 import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
+import { archiveMotionDeadlineKey } from '../../src/composables/useAfterArchiveMotion'
 import PersonalWardrobe from '../../src/components/PersonalWardrobe.vue'
 vi.mock('../../src/components/ArchiveCloudActions.vue', () => ({
   default: { template: '<span />' }
@@ -71,11 +73,14 @@ beforeEach(async () => {
     document.body.append(target)
   }
   wrapper = mount(PersonalWardrobe, { attachTo: document.body, props: { searchQuery: '10347' } })
-  await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
+  await vi.waitFor(() =>
+    expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+  )
   await choose('ownership', '已拥有')
   await wrapper.setProps({ searchQuery: '' })
 })
 afterEach(() => {
+  vi.useRealTimers()
   localStorage.removeItem('nikki-wardrobe-ownership-notice-v1')
   localStorage.removeItem('nikki-wardrobe-show-evolutions')
   wrapper.unmount()
@@ -94,11 +99,17 @@ describe('personal wardrobe interactions', () => {
       removeEventListener() {}
     }))
     let finish!: (value: Awaited<ReturnType<typeof storage.loadWardrobe>>) => void
-    vi.spyOn(storage, 'loadWardrobe').mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    vi.spyOn(storage, 'loadWardrobe').mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    )
     wrapper = mount(PersonalWardrobe, { attachTo: document.body })
     await wrapper.vm.$nextTick()
     const target = document.getElementById('wardrobe-mobile-category-target')!
-    const switchButton = target.querySelector<HTMLButtonElement>('.wardrobe-mobile-category-switch')!
+    const switchButton = target.querySelector<HTMLButtonElement>(
+      '.wardrobe-mobile-category-switch'
+    )!
     expect(switchButton).not.toBeNull()
     expect(switchButton.disabled).toBe(true)
     expect(target.querySelector('.wardrobe-mobile-summary strong')?.textContent).toBe('—')
@@ -231,7 +242,9 @@ describe('personal wardrobe interactions', () => {
       removeEventListener() {}
     }))
     wrapper = mount(PersonalWardrobe, { attachTo: document.body, props: { searchQuery: '10347' } })
-    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() =>
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+    )
     const expandedCount = wrapper.findAll('.wardrobe-card').length
     expect(expandedCount).toBeGreaterThan(1)
     await wrapper.get('input[role="switch"]').setValue(false)
@@ -271,7 +284,9 @@ describe('personal wardrobe interactions', () => {
     }))
     localStorage.setItem('nikki-wardrobe-show-evolutions', 'false')
     wrapper = mount(PersonalWardrobe, { attachTo: document.body, props: { searchQuery: '10347' } })
-    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() =>
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+    )
     const rect = {
       top: window.innerHeight - 200,
       bottom: window.innerHeight - 10,
@@ -333,7 +348,9 @@ describe('personal wardrobe interactions', () => {
     await reload()
     expect(wrapper.text()).toContain('衣橱加载失败或超时')
     await new DOMWrapper(button('重新加载')).trigger('click')
-    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() =>
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+    )
   })
 
   it('times out a stalled load and ignores its late result after retry', async () => {
@@ -368,7 +385,9 @@ describe('personal wardrobe interactions', () => {
     expect(wrapper.find('.wardrobe-collection-notice').exists()).toBe(false)
     wrapper.unmount()
     wrapper = mount(PersonalWardrobe, { attachTo: document.body })
-    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() =>
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+    )
     expect(wrapper.find('.wardrobe-collection-notice').exists()).toBe(false)
     await new DOMWrapper(button('收集状态说明')).trigger('click')
     expect(wrapper.find('.wardrobe-collection-notice').exists()).toBe(true)
@@ -391,7 +410,9 @@ describe('personal wardrobe interactions', () => {
       document.body.append(target)
     }
     wrapper = mount(PersonalWardrobe, { attachTo: document.body })
-    await vi.waitFor(() => expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true))
+    await vi.waitFor(() =>
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+    )
     await flushPromises()
     expect(
       document.querySelector('#wardrobe-mobile-category-target .wardrobe-mobile-category-switch')
@@ -843,8 +864,7 @@ describe('scheme A outfit detail', () => {
   )
 
   it('discards a closed request, uses the new variant/language and renders descriptions as plain text', async () => {
-    const pending: { resolve: (value: OutfitText) => void; signal: AbortSignal; url: string }[] =
-      []
+    const pending: { resolve: (value: OutfitText) => void; signal: AbortSignal; url: string }[] = []
     const fetcher = vi.fn(
       (path: string | number, language: 'zh' | 'en', signal?: AbortSignal) =>
         new Promise<OutfitText>((resolve) => {
@@ -1001,3 +1021,47 @@ it('shows an imported empty wardrobe and returns to the initial view after clear
   await reload()
   expect(wrapper.find('.wardrobe-initial').exists()).toBe(true)
 })
+
+it.each([false, true])(
+  'checks the saved snapshot before showing skeletons, imported=%s',
+  async (imported) => {
+    wrapper.unmount()
+    vi.useFakeTimers()
+    let finish!: (value: storage.WardrobeSnapshot) => void
+    const read = vi.spyOn(storage, 'loadWardrobe').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    const catalog = vi.spyOn(catalogModule, 'loadWardrobeCatalog')
+    wrapper = mount(PersonalWardrobe, {
+      attachTo: document.body,
+      global: { provide: { [archiveMotionDeadlineKey as symbol]: ref(Date.now() + 280) } }
+    })
+    expect(read).toHaveBeenCalledOnce()
+    expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
+    expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
+    finish({ ...storage.emptyWardrobe(), imported })
+    await flushPromises()
+    expect(catalog).not.toHaveBeenCalled()
+    if (!imported) {
+      expect(wrapper.find('.wardrobe-initial').exists()).toBe(true)
+      expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
+    } else {
+      expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
+      expect(wrapper.find('[data-skeleton-card]').exists()).toBe(true)
+    }
+    await vi.advanceTimersByTimeAsync(280)
+    await flushPromises()
+    expect(read).toHaveBeenCalledOnce()
+    if (!imported) {
+      expect(catalog).not.toHaveBeenCalled()
+      expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
+    } else {
+      expect(catalog).toHaveBeenCalledOnce()
+      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+      expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
+    }
+  }
+)

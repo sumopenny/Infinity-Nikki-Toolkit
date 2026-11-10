@@ -121,6 +121,11 @@ const catalog = computed(() =>
     ? wardrobeCatalogForRegion(fullCatalog.value, wardrobeRegionScope(snapshot.value))
     : null
 )
+const snapshotRead = ref(false)
+let finishArchiveMotion!: () => void
+const archiveReady = new Promise<void>((resolve) => {
+  finishArchiveMotion = resolve
+})
 const loaded = ref(false),
   busy = ref(false)
 const loadFailed = ref(false)
@@ -129,6 +134,7 @@ let cancelLoad: (() => void) | undefined
 onBeforeUnmount(() => {
   loadVersion++
   cancelLoad?.()
+  finishArchiveMotion()
 })
 const blocked = computed(() => props.disabled || busy.value || !loaded.value)
 const tab = ref<WardrobeKind>('outfit')
@@ -379,6 +385,7 @@ async function reload(): Promise<boolean> {
   const version = ++loadVersion
   cancelLoad?.()
   loaded.value = false
+  snapshotRead.value = false
   loadFailed.value = false
   let timeout: ReturnType<typeof setTimeout> | undefined
   // 限制等待时间；重试或离开页面后，旧请求不得覆盖当前状态。
@@ -390,10 +397,19 @@ async function reload(): Promise<boolean> {
     }
   })
   try {
-    const [data, saved] = await Promise.race([
-      Promise.all([loadWardrobeCatalog(), loadWardrobe()]),
-      deadline
-    ])
+    // 先读取本地存档；未导入时无需等待图鉴或工具栏动画。
+    const prepare = async () => {
+      const saved = await loadWardrobe()
+      if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
+      snapshot.value = saved
+      snapshotRead.value = true
+      if (!hasWardrobeSnapshot(saved)) return { data: null, saved }
+      await archiveReady
+      if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
+      const data = await loadWardrobeCatalog()
+      return { data, saved }
+    }
+    const { data, saved } = await Promise.race([prepare(), deadline])
     if (version !== loadVersion) return false
     fullCatalog.value = data
     snapshot.value = saved
@@ -409,7 +425,8 @@ async function reload(): Promise<boolean> {
     if (version === loadVersion) cancelLoad = undefined
   }
 }
-useAfterArchiveMotion(reload)
+onMounted(reload)
+useAfterArchiveMotion(finishArchiveMotion)
 defineExpose({ reload })
 
 const dialog = ref<'import' | 'detail' | null>(null)
@@ -625,7 +642,11 @@ async function clearRecords() {
       :label="text('正在加载衣橱…', 'Loading wardrobe…')"
     >
       <template #skeleton>
-        <div class="wardrobe-grid" :class="{ 'is-pieces': tab === 'item' }">
+        <div
+          v-if="snapshotRead && hasRecords"
+          class="wardrobe-grid"
+          :class="{ 'is-pieces': tab === 'item' }"
+        >
           <article v-for="index in 6" :key="index" class="wardrobe-card" data-skeleton-card>
             <div class="wardrobe-cover" data-skeleton-block></div>
             <div class="wardrobe-card-body">

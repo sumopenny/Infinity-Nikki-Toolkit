@@ -731,7 +731,7 @@ function openDonate() {
                   <span class="radio-mark"></span>
                   <span>{{
                     language === 'zh'
-                      ? { opaque: '不透', frosted: '磨砂', glass: '液态玻璃' }[style]
+                      ? { opaque: '实色', frosted: '磨砂', glass: '液态玻璃' }[style]
                       : { opaque: 'Opaque', frosted: 'Frosted', glass: 'Liquid glass' }[style]
                   }}</span>
                 </button>

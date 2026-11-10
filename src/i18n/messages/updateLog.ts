@@ -7,47 +7,77 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.07 更新',
+  currentDate: '2026.11.10 更新',
   currentItems: [
     {
-      title: '全新「妆容图鉴」模块上线！',
-      text: '「暖暖档案」新增「妆容图鉴」，支持查看游戏中的完整妆容及各类妆容部件。可按全妆、底妆、眉妆、睫毛、美瞳、唇妆分类浏览，并根据游戏版本、获取来源、星级等条件筛选，也支持通过名称或 ID 搜索，查找喜欢的妆容更加方便。'
+      title: '搭配码新增来源链接，随时回看原帖。',
+      text: '新建或编辑搭配时，可粘贴原帖分享链接，自动提取网址。保存后，点击卡片上的链接按钮即可打开原帖。'
     },
     {
-      title: '妆容详情全面开放，支持关联跳转。',
-      text: '点击妆容卡片即可查看大图、名称、星级、所属版本、获取来源及组成部件。支持切换不同进化形态，查看相关全妆和套装，并可点击对应部件或套装进一步查看详情，让妆容之间的关系更加清晰。'
+      title: '美鸭梨数据导入新增用户脚本方式。',
+      text: '在「导入数据 → 从美鸭梨导入 → 脚本法」中按指引安装，即可在美鸭梨页面右下角获取 Cookie，复制后返回工具粘贴。支持有脚本功能的手机浏览器（推荐via、x浏览器）及已安装油猴等扩展的电脑浏览器。'
     },
     {
-      title: '共鸣记录、个人衣橱及搭配解析新增妆容入口。',
-      text: '共鸣记录中，有对应妆容的套装新增「查看妆容」入口；个人衣橱的套装详情也可直接查看关联妆容。搭配码解析时，点击妆容部件查看详情，还能看到对应的全妆名称并跳转查看。多个模块之间可以直接切换，查找妆容、套装与部件更加便捷。'
+      title: '顶栏与导航新增三种材质选择。',
+      text: '在「视图 → 风格」中选择「实色」「磨砂」「液态玻璃」，调整界面风格。'
     },
     {
-      title: '新增背景图自由切换功能。',
-      text: '「暖暖档案」新增背景图切换功能，提供云绸、纱衣、闪烁、幻彩等 9 款不同风格的背景图。可在「视图」菜单中自由选择喜欢的背景，切换后立即生效，并自动记住你的选择，让共鸣记录和个人衣橱的展示更加个性化。'
+      title: '手机底部导航新增悬浮胶囊布局。',
+      text: '在「视图 → 导航栏样式」中切换「贴底」或「悬浮胶囊」，可自由搭配材质风格。'
     },
     {
-      title: '优化图片资源与图鉴数据。',
-      text: '重新整理服装、套装、妆容及拍照相关素材，优化图片加载与展示。补充妆容名称、套装介绍及部分拍照资源，完善中英文资料，并改善部分图片缺失、资源加载失败及图鉴信息显示异常的情况。'
+      title: '优化导航交互与界面展示。',
+      text: '多处分类栏新增滑动选中效果，手机导航增加按压反馈。统一卡片悬浮按钮样式，优化搭配总结布局及备份、安装窗口动画。'
     },
     {
-      title: '全新骨架加载与扫光动画。',
-      text: '相册、搭配码、家园方案、相机参数收藏、共鸣记录、个人衣橱及妆容图鉴等页面的图片加载体验全面优化。新增与内容布局相匹配的骨架占位、柔和扫光效果和加载完成后的渐入动画，减少加载时的空白与突兀感，让浏览过程更加自然。'
-    },
-    {
-      title: '优化页面切换与卡片动画。',
-      text: '进一步调整卡片出现、加载完成及模块切换时的过渡效果。优化手机端「共鸣记录」「个人衣橱」「妆容图鉴」之间的切换动画和顶部分类栏显示，让页面衔接更加流畅、操作反馈更加自然。'
-    },
-    {
-      title: '优化界面布局与视觉细节。',
-      text: '调整妆容图鉴、套装详情、筛选菜单和部件详情窗口的排版，优化图片比例、圆角、背景、按钮及悬停效果。同步改善电脑端与手机端布局，让不同页面的视觉风格更加统一。'
-    },
-    {
-      title: '多项功能修复与稳定性优化。',
-      text: ''
+      title: '衣橱浏览与部分功能修复。',
+      text: '其中衣橱套装默认显示全部拥有状态。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.6',
+      date: '2026.11.07',
+      items: [
+        {
+          title: '全新「妆容图鉴」模块上线！',
+          text: '「暖暖档案」新增「妆容图鉴」，支持查看游戏中的完整妆容及各类妆容部件。可按全妆、底妆、眉妆、睫毛、美瞳、唇妆分类浏览，并根据游戏版本、获取来源、星级等条件筛选，也支持通过名称或 ID 搜索，查找喜欢的妆容更加方便。'
+        },
+        {
+          title: '妆容详情全面开放，支持关联跳转。',
+          text: '点击妆容卡片即可查看大图、名称、星级、所属版本、获取来源及组成部件。支持切换不同进化形态，查看相关全妆和套装，并可点击对应部件或套装进一步查看详情，让妆容之间的关系更加清晰。'
+        },
+        {
+          title: '共鸣记录、个人衣橱及搭配解析新增妆容入口。',
+          text: '共鸣记录中，有对应妆容的套装新增「查看妆容」入口；个人衣橱的套装详情也可直接查看关联妆容。搭配码解析时，点击妆容部件查看详情，还能看到对应的全妆名称并跳转查看。多个模块之间可以直接切换，查找妆容、套装与部件更加便捷。'
+        },
+        {
+          title: '新增背景图自由切换功能。',
+          text: '「暖暖档案」新增背景图切换功能，提供云绸、纱衣、闪烁、幻彩等 9 款不同风格的背景图。可在「视图」菜单中自由选择喜欢的背景，切换后立即生效，并自动记住你的选择，让共鸣记录和个人衣橱的展示更加个性化。'
+        },
+        {
+          title: '优化图片资源与图鉴数据。',
+          text: '重新整理服装、套装、妆容及拍照相关素材，优化图片加载与展示。补充妆容名称、套装介绍及部分拍照资源，完善中英文资料，并改善部分图片缺失、资源加载失败及图鉴信息显示异常的情况。'
+        },
+        {
+          title: '全新骨架加载与扫光动画。',
+          text: '相册、搭配码、家园方案、相机参数收藏、共鸣记录、个人衣橱及妆容图鉴等页面的图片加载体验全面优化。新增与内容布局相匹配的骨架占位、柔和扫光效果和加载完成后的渐入动画，减少加载时的空白与突兀感，让浏览过程更加自然。'
+        },
+        {
+          title: '优化页面切换与卡片动画。',
+          text: '进一步调整卡片出现、加载完成及模块切换时的过渡效果。优化手机端「共鸣记录」「个人衣橱」「妆容图鉴」之间的切换动画和顶部分类栏显示，让页面衔接更加流畅、操作反馈更加自然。'
+        },
+        {
+          title: '优化界面布局与视觉细节。',
+          text: '调整妆容图鉴、套装详情、筛选菜单和部件详情窗口的排版，优化图片比例、圆角、背景、按钮及悬停效果。同步改善电脑端与手机端布局，让不同页面的视觉风格更加统一。'
+        },
+        {
+          title: '多项功能修复与稳定性优化。',
+          text: ''
+        }
+      ]
+    },
     {
       version: 'v2.5.1',
       date: '2026.11.04',
@@ -768,47 +798,77 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.07',
+  currentDate: 'Updated 2026.11.10',
   currentItems: [
     {
-      title: 'Introducing the new Makeup Catalog!',
-      text: 'A new Makeup Catalog is available under Nikki Archive, where you can browse full makeup looks and individual makeup pieces. Explore full looks, base makeup, eyebrows, eyelashes, contact lenses, and lips. Filter by game version, source, or rarity, and search by name or ID to find your favorites.'
+      title: 'Source links for outfit codes: revisit the original post.',
+      text: 'When creating or editing an outfit, paste a shared post link to extract its URL. After saving, select the link button on the card to open the original post.'
     },
     {
-      title: 'Explore makeup details and related looks.',
-      text: 'Select a makeup card to see its full image, name, rarity, release version, source, and included pieces. Switch between evolution forms, explore related full looks and outfits, and open linked pieces or outfit details to see how everything connects.'
+      title: 'New userscript option for Pear-Pal imports.',
+      text: 'Follow the instructions under Import data → Import from Pear-Pal → Userscript to install the script. Select Get Cookie at the bottom right of the Pear-Pal page, then return to the toolkit and paste it. Supports mobile browsers with userscript functionality (Via and XBrowser recommended) and desktop browsers with extensions such as Tampermonkey installed.'
     },
     {
-      title: 'Makeup shortcuts in Resonance, Wardrobe, and outfit decoding.',
-      text: 'Resonance records now include a View makeup shortcut for outfits with matching makeup, and Wardrobe outfit details link to their related makeup. When inspecting a makeup piece in outfit decoding, you can also see and open its matching full makeup look. Navigate between outfits, pieces, and makeup more easily.'
+      title: 'Three material styles for the header and navigation.',
+      text: 'Choose Opaque, Frosted, or Liquid glass under View → Material style to customize the appearance.'
     },
     {
-      title: 'New customizable background styles.',
-      text: 'Nikki Archive now offers nine background styles, including Cloud Silk, Rose Gauze, Shimmer, and Iridescence. Choose your favorite from the View menu and see it applied immediately. Your selection is remembered automatically, bringing a more personal touch to Resonance records and your Wardrobe.'
+      title: 'New floating capsule layout for mobile bottom navigation.',
+      text: 'Switch between Docked and Floating capsule under View → Navigation style, and combine either layout with your preferred material style.'
     },
     {
-      title: 'Improved image resources and catalog data.',
-      text: 'Reorganized clothing, outfit, makeup, and photography assets to improve image loading and display. Added makeup names, outfit descriptions, and selected photo resources, expanded Chinese and English catalog information, and improved handling of missing images, resource loading errors, and inconsistent catalog details.'
+      title: 'Improved navigation interactions and interface presentation.',
+      text: 'Added sliding selection indicators to multiple category controls and press feedback to mobile navigation. Unified floating card buttons and refined the Outfit summary layout and animations for backup and app installation windows.'
     },
     {
-      title: 'New skeleton placeholders and shimmer animations.',
-      text: 'Image loading is smoother across the Album, outfit codes, home schemes, camera parameter favorites, Resonance, Wardrobe, and Makeup Catalog. Layout-matched skeleton placeholders, subtle shimmer effects, and fade-in transitions reduce empty spaces and abrupt changes as content appears.'
-    },
-    {
-      title: 'Smoother page transitions and card animations.',
-      text: 'Refined the way cards appear, content finishes loading, and modules transition. Mobile transitions between Resonance, Wardrobe, and Makeup Catalog are smoother, with improved top category controls and more natural interaction feedback.'
-    },
-    {
-      title: 'Refined layouts and visual details.',
-      text: 'Updated the Makeup Catalog, outfit details, filter menus, and piece detail windows. Improved image sizing, rounded corners, backgrounds, buttons, and hover states, with more consistent desktop and mobile styling.'
-    },
-    {
-      title: 'Bug fixes and stability improvements.',
-      text: ''
+      title: 'Wardrobe browsing improvements and bug fixes.',
+      text: 'Wardrobe outfits now show all ownership statuses by default.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.6',
+      date: '2026.11.07',
+      items: [
+        {
+          title: 'Introducing the new Makeup Catalog!',
+          text: 'A new Makeup Catalog is available under Nikki Archive, where you can browse full makeup looks and individual makeup pieces. Explore full looks, base makeup, eyebrows, eyelashes, contact lenses, and lips. Filter by game version, source, or rarity, and search by name or ID to find your favorites.'
+        },
+        {
+          title: 'Explore makeup details and related looks.',
+          text: 'Select a makeup card to see its full image, name, rarity, release version, source, and included pieces. Switch between evolution forms, explore related full looks and outfits, and open linked pieces or outfit details to see how everything connects.'
+        },
+        {
+          title: 'Makeup shortcuts in Resonance, Wardrobe, and outfit decoding.',
+          text: 'Resonance records now include a View makeup shortcut for outfits with matching makeup, and Wardrobe outfit details link to their related makeup. When inspecting a makeup piece in outfit decoding, you can also see and open its matching full makeup look. Navigate between outfits, pieces, and makeup more easily.'
+        },
+        {
+          title: 'New customizable background styles.',
+          text: 'Nikki Archive now offers nine background styles, including Cloud Silk, Rose Gauze, Shimmer, and Iridescence. Choose your favorite from the View menu and see it applied immediately. Your selection is remembered automatically, bringing a more personal touch to Resonance records and your Wardrobe.'
+        },
+        {
+          title: 'Improved image resources and catalog data.',
+          text: 'Reorganized clothing, outfit, makeup, and photography assets to improve image loading and display. Added makeup names, outfit descriptions, and selected photo resources, expanded Chinese and English catalog information, and improved handling of missing images, resource loading errors, and inconsistent catalog details.'
+        },
+        {
+          title: 'New skeleton placeholders and shimmer animations.',
+          text: 'Image loading is smoother across the Album, outfit codes, home schemes, camera parameter favorites, Resonance, Wardrobe, and Makeup Catalog. Layout-matched skeleton placeholders, subtle shimmer effects, and fade-in transitions reduce empty spaces and abrupt changes as content appears.'
+        },
+        {
+          title: 'Smoother page transitions and card animations.',
+          text: 'Refined the way cards appear, content finishes loading, and modules transition. Mobile transitions between Resonance, Wardrobe, and Makeup Catalog are smoother, with improved top category controls and more natural interaction feedback.'
+        },
+        {
+          title: 'Refined layouts and visual details.',
+          text: 'Updated the Makeup Catalog, outfit details, filter menus, and piece detail windows. Improved image sizing, rounded corners, backgrounds, buttons, and hover states, with more consistent desktop and mobile styling.'
+        },
+        {
+          title: 'Bug fixes and stability improvements.',
+          text: ''
+        }
+      ]
+    },
     {
       version: 'v2.5.1',
       date: '2026.11.04',

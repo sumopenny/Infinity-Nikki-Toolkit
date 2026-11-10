@@ -14,7 +14,7 @@ const trackOperation = useModuleOperation('resonance')
 import ResonanceDataActions from './ResonanceDataActions.vue'
 import DataImportWindow from './DataImportWindow.vue'
 import ArchiveCloudActions from './ArchiveCloudActions.vue'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useAfterArchiveMotion } from '../composables/useAfterArchiveMotion'
 import ConfirmDialog from './ConfirmDialog.vue'
 import WardrobeOutfitDialog from './WardrobeOutfitDialog.vue'
@@ -196,7 +196,12 @@ async function openPreview(id: string, kind: 'outfit' | 'item') {
   }
 }
 const records = ref<ResonanceRecord[]>([])
-const recordsLoaded = ref(false)
+const recordsRead = ref(false)
+const motionReady = ref(false)
+// 先确认是否有数据：空记录不等待工具栏动画，也不展示卡片骨架。
+const recordsLoaded = computed(
+  () => recordsRead.value && (!records.value.length || motionReady.value)
+)
 const recordsLoadFailed = ref(false)
 const selectedSet = ref<Record<string, 1 | 2>>({})
 const compactLayout = useCompactLayout()
@@ -322,10 +327,12 @@ async function reload(): Promise<boolean> {
     try {
       expandedRecordId.value = null
       records.value = await loadResonanceRecords()
-      void loadFormContext()
-      void loadMakeupRelations()
       selectedSet.value = {}
-      recordsLoaded.value = true
+      recordsRead.value = true
+      if (records.value.length && motionReady.value) {
+        void loadFormContext()
+        void loadMakeupRelations()
+      }
       return true
     } catch (error) {
       recordsLoadFailed.value = true
@@ -341,7 +348,15 @@ async function reload(): Promise<boolean> {
     }
   })
 }
-useAfterArchiveMotion(reload)
+// 本地读取立即开始，非空记录及后续图鉴准备仍避开手机工具栏入场动画。
+onMounted(reload)
+useAfterArchiveMotion(() => {
+  motionReady.value = true
+  if (recordsRead.value && records.value.length) {
+    void loadFormContext()
+    void loadMakeupRelations()
+  }
+})
 defineExpose({ reload })
 </script>
 
@@ -376,7 +391,7 @@ defineExpose({ reload })
       :label="language === 'zh' ? '正在加载共鸣记录…' : 'Loading resonance records…'"
     >
       <template #skeleton>
-        <div class="resonance-list">
+        <div v-if="records.length" class="resonance-list">
           <article v-for="index in 2" :key="index" class="resonance-record" data-skeleton-card>
             <div class="resonance-record-heading" data-load-block>
               <div class="resonance-record-title-row"
@@ -494,7 +509,12 @@ defineExpose({ reload })
             }}</p>
           </div>
           <!-- 切换按钮直接相对卡片定位，避免摘要入场的 transform 改变绝对定位参照。 -->
-          <div v-segmented-indicator class="resonance-set-switch" role="group" :aria-label="t.setSelection">
+          <div
+            v-segmented-indicator
+            class="resonance-set-switch"
+            role="group"
+            :aria-label="t.setSelection"
+          >
             <button
               v-for="set in record.sets"
               :key="set.setNumber"

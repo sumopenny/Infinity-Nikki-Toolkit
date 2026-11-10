@@ -361,7 +361,7 @@ describe('Pearpal import', () => {
 
 describe('credential helpers', () => {
   async function runBookmark(
-    text: string,
+    text: string | string[],
     fetchMock: ReturnType<typeof vi.fn>,
     hostname = 'myl.nuanpaper.com'
   ) {
@@ -374,7 +374,11 @@ describe('credential helpers', () => {
       'alert',
       'return ' + resonanceBookmarkScript('Wrong site').slice('javascript:'.length)
     )(
-      { body: { innerText: text }, cookie: 'momoToken=t; momoNid=i' },
+      {
+        querySelectorAll: () =>
+          (Array.isArray(text) ? text : [text]).map((textContent) => ({ textContent })),
+        cookie: 'momoToken=t; momoNid=i'
+      },
       { hostname },
       fetchMock,
       prompt,
@@ -383,44 +387,20 @@ describe('credential helpers', () => {
     return prompt.mock.calls.length ? JSON.parse(prompt.mock.calls[0]![1]) : undefined
   }
 
-  it.each(['UID: 123456', ' UID：\n123456 ', 'Name\nUID:\n123456\nProfile'])(
-    'reads UID from desktop and mobile text: %s',
-    async (text) => {
-      const fetchMock = vi.fn()
-      expect(await runBookmark(text, fetchMock)).toEqual({ roleid: '123456', token: 't', id: 'i' })
-      expect(fetchMock).not.toHaveBeenCalled()
-    }
-  )
-  it('retrieves a missing page UID from the official role response', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ code: 0, data: { role: { uid: 123456, zone_id: 1 } } })
-    })
-    expect((await runBookmark('Profile', fetchMock)).roleid).toBe('123456')
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://myl-api.nuanpaper.com/v1/strategy/user/info/get',
-      expect.objectContaining({
-        body: JSON.stringify({ client_id: 1106, token: 't', openid: 'i' })
-      })
-    )
+  it.each([
+    { text: ['UID: 123456'] },
+    { text: [' UID：\n123456 '] },
+    { text: ['Name', 'UID:\n123456', 'Profile'] },
+    { text: ['Article UID: 999999', 'UID: 999999 Profile', 'UID: 123456'] }
+  ])('reads a complete UID node from desktop and mobile text: %j', async ({ text }) => {
+    const fetchMock = vi.fn()
+    expect(await runBookmark(text, fetchMock)).toEqual({ roleid: '123456', token: 't', id: 'i' })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
-  it('keeps credentials available for manual UID entry if role lookup fails', async () => {
-    expect(await runBookmark('Profile', vi.fn().mockRejectedValue(new Error('network')))).toEqual({
-      roleid: '',
-      token: 't',
-      id: 'i'
-    })
-    expect(
-      (
-        await runBookmark(
-          'Profile',
-          vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({ code: 0, data: { role: { uid: 123456, zone_id: 6 } } })
-          })
-        )
-      ).roleid
-    ).toBe('')
+  it('leaves a missing UID empty without making a role request', async () => {
+    const fetchMock = vi.fn()
+    expect(await runBookmark('Profile', fetchMock)).toEqual({ roleid: '', token: 't', id: 'i' })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('builds the two copy flows and parses pasted JSON with either quote style', () => {
@@ -440,26 +420,15 @@ describe('credential helpers', () => {
     expect(() => parseResonanceCookie('{"token":"t"}')).toThrow()
   })
 
-  it.each([4, 6, 2, 8])(
-    'gets global UID through the matching official API for zone %s',
-    async (zone) => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ code: 0, data: { role: { uid: 123456, zone_id: zone } } })
-      })
-      expect(await runBookmark('Profile', fetchMock, 'pearpal.infoldgames.com')).toEqual({
-        roleid: '123456',
-        token: 't',
-        id: 'i'
-      })
-      expect(fetchMock).toHaveBeenCalledWith(
-        'https://pearpal-api.infoldgames.com/v1/strategy/user/info/get',
-        expect.objectContaining({
-          body: JSON.stringify({ client_id: 1116, token: 't', openid: 'i' })
-        })
-      )
-    }
-  )
+  it('reads global UID from the page without an API request', async () => {
+    const fetchMock = vi.fn()
+    expect(await runBookmark('UID: 123456', fetchMock, 'pearpal.infoldgames.com')).toEqual({
+      roleid: '123456',
+      token: 't',
+      id: 'i'
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 
   it.each(['pearpal.infoldgames.com.evil.test', 'example.com', '__proto__'])(
     'does not read or transmit credentials on an unlisted host: %s',

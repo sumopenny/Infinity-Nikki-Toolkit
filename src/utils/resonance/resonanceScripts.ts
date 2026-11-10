@@ -1,9 +1,13 @@
 // 共鸣导入用的取 Cookie 脚本：书签脚本（拖到书签栏）与控制台脚本，内容参照上游共鸣录。
 import { PEARPAL_REGIONS } from './pearpalRegions'
 
-/** 手机页面可能拆分标签、使用全角冒号或换行；只提取明确标注为 UID 的数字。 */
+const PEARPAL_HOSTS = [
+  ...new Set(Object.values(PEARPAL_REGIONS).map((config) => new URL(config.site).hostname))
+]
+
+/** 完整匹配节点中的 UID；textContent 可读取隐藏浮层，也支持拆分标签、全角冒号和换行。 */
 const UID_SNIPPET =
-  "(document.body.innerText||document.body.textContent||'').match(/\\bUID\\s*[:：]\\s*(\\d+)\\b/i)?.[1]||''"
+  "(()=>{for(const el of document.querySelectorAll('div')){const uid=el.textContent?.trim().match(/^UID\\s*[:：]\\s*(\\d+)$/i)?.[1];if(uid)return uid}return ''})()"
 /** 从 Cookie 中取 momoToken（对应 Momo Token 字段）。 */
 const TOKEN_SNIPPET = 'document.cookie.match(/momoToken=([^;]+)/)?.[1]'
 /** 从 Cookie 中取 momoNid（对应 Momo ID 字段）。 */
@@ -18,23 +22,10 @@ export const resonanceConsoleScript =
  * 非美鸭梨站点会弹窗提示，避免在别的网站误用。
  */
 export function resonanceBookmarkScript(invalidSiteMessage: string): string {
-  // 书签可跨区服复用，只向当前官方站点对应的接口发送凭据。
-  const sites = Object.fromEntries(
-    Object.values(PEARPAL_REGIONS).map((config) => [
-      new URL(config.site).hostname,
-      {
-        api: config.api,
-        clientId: config.clientId,
-        zones: Object.values(PEARPAL_REGIONS)
-          .filter((entry) => entry.site === config.site)
-          .map((entry) => entry.zoneId)
-      }
-    ])
-  )
   return (
-    'javascript:(async function(){const sites=' +
-    JSON.stringify(sites) +
-    ';const config=Object.hasOwn(sites,location.hostname)?sites[location.hostname]:null;if(!config){alert(' +
+    'javascript:(function(){if(!' +
+    JSON.stringify(PEARPAL_HOSTS) +
+    '.includes(location.hostname)){alert(' +
     JSON.stringify(invalidSiteMessage) +
     ');return}const credentials={roleid:' +
     UID_SNIPPET +
@@ -42,14 +33,7 @@ export function resonanceBookmarkScript(invalidSiteMessage: string): string {
     TOKEN_SNIPPET +
     ',id:' +
     ID_SNIPPET +
-    '};if(!credentials.roleid&&credentials.token&&credentials.id){try{' +
-    'const response=await fetch(config.api+"/v1/strategy/user/info/get",{' +
-    'method:"POST",headers:{"content-type":"application/json"},cache:"no-store",' +
-    'body:JSON.stringify({client_id:config.clientId,token:credentials.token,openid:credentials.id})});' +
-    'if(response.ok){const payload=await response.json();const role=payload.data?.role;' +
-    'if(payload.code===0&&role&&((role.zone_id===undefined&&config.clientId===1106)||config.zones.includes(Number(role.zone_id)))&&/^\\d+$/.test(String(role.uid??"")))' +
-    'credentials.roleid=String(role.uid);}}catch{}}' +
-    'prompt("Cookie:",JSON.stringify(credentials));})();'
+    '};prompt("Cookie:",JSON.stringify(credentials));})();'
   )
 }
 
@@ -69,108 +53,13 @@ export function parseResonanceCookie(text: string): { roleid: string; token: str
   return { roleid, token, id }
 }
 
-/** 用户脚本专用：校验官方登录状态后交给复制逻辑处理。 */
-function userscriptCredentialScript(invalidSiteMessage: string, output: string): string {
-  // 只向当前官方站点对应的接口发送凭据。
-  const sites = Object.fromEntries(
-    Object.values(PEARPAL_REGIONS).map((config) => [
-      new URL(config.site).hostname,
-      {
-        api: config.api,
-        clientId: config.clientId,
-        zones: Object.values(PEARPAL_REGIONS)
-          .filter((entry) => entry.site === config.site)
-          .map((entry) => entry.zoneId)
-      }
-    ])
-  )
-  return `(async function () {
-  const sites = ${JSON.stringify(sites, null, 2).replaceAll('\n', '\n  ')};
-  const config = Object.hasOwn(sites, location.hostname) ? sites[location.hostname] : null;
-  if (!config) {
-    alert(${JSON.stringify(invalidSiteMessage)});
-    return;
-  }
-
-  const credentials = {
-    roleid: ${UID_SNIPPET},
-    token: ${TOKEN_SNIPPET},
-    id: ${ID_SNIPPET}
-  };
-
-  let verification = 'missing';
-  // 用户脚本始终校验官方登录状态，不信任退出后残留的 Cookie 或页面 UID。
-  if (credentials.token && credentials.id) {
-    verification = 'network';
-    try {
-      const response = await fetch(config.api + '/v1/strategy/user/info/get', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify({
-          client_id: config.clientId,
-          token: credentials.token,
-          openid: credentials.id
-        })
-      });
-      if (response.ok) {
-        const payload = await response.json();
-        const role = payload.data?.role;
-        verification = 'auth';
-        if (
-          payload.code === 0 && role &&
-          ((role.zone_id === undefined && config.clientId === 1106) ||
-            config.zones.includes(Number(role.zone_id))) &&
-          /^\\d+$/.test(String(role.uid ?? ''))
-        ) {
-          credentials.roleid = String(role.uid);
-          verification = 'valid';
-        }
-      }
-    } catch {
-      // 网络或解析失败交给后续验证提示处理。
-    }
-  }
-
-  ${output.replaceAll('\n', '\n  ')}
-})();`
-}
-
 export const PEARPAL_USERSCRIPT_PATH = '/scripts/pearpal-cookie.user.js'
 
-/** 仅在官方页面添加按钮；用户点击后才读取和复制凭据，不自动向工具回传。 */
+/** 仅在官方页面添加按钮；点击后从页面读取并复制凭据，不请求接口。 */
 export function resonanceUserscript(): string {
-  const run = userscriptCredentialScript(
-    '请在美鸭梨或 Pear-Pal 网站使用此脚本。 / Open Pear-Pal to use this script.',
-    `if (verification === 'network') {
-  button.textContent = zh ? '验证失败，请重试' : 'Verification failed';
-  alert(zh ? '无法验证登录状态，请检查网络后重试。' : 'Could not verify sign-in. Check your connection and try again.');
-  return;
-}
-if (verification !== 'valid') {
-  button.textContent = zh ? '请先登录' : 'Sign in first';
-  alert(zh
-    ? '当前未登录、登录已失效或未获取到角色，请在当前美鸭梨 / Pear-Pal 页面重新登录并确认角色后，再次点击“获取 Cookie”。'
-    : 'Sign-in is missing or expired, or no role was found. Sign in again on Pear-Pal and confirm your role, then tap “Get Cookie” again.');
-  return;
-}
-
-const value = JSON.stringify(credentials);
-try {
-  if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
-  await navigator.clipboard.writeText(value);
-  button.textContent = zh ? '已复制，返回工具粘贴' : 'Copied — paste in the toolkit';
-} catch {
-  prompt(
-    zh
-      ? '请完整复制下方 JSON，包含 roleid、token、id 三项及外层大括号、双引号，然后返回工具粘贴：'
-      : 'Copy the complete JSON below, including roleid, token, id, braces and double quotes, then paste it in the toolkit:',
-    value
-  );
-}`
-  )
   return `// ==UserScript==
 // @name         美鸭梨 / Pear-Pal Cookie 助手
+// @author       素茉penny
 // @namespace    infinity-nikki-toolkit
 // @homepageURL  https://nikki3.pages.dev/
 // @version      1.0.0
@@ -185,7 +74,7 @@ try {
   'use strict';
   if (
     window.top !== window.self ||
-    !['myl.nuanpaper.com', 'pearpal.infoldgames.com'].includes(location.hostname)
+    !${JSON.stringify(PEARPAL_HOSTS)}.includes(location.hostname)
   ) return;
   if (document.getElementById('nikki-pearpal-cookie-button')) return;
   const zh = (navigator.language || '').toLowerCase().startsWith('zh');
@@ -209,11 +98,153 @@ try {
     maxWidth: 'calc(100vw - 32px)',
     cursor: 'pointer'
   });
+  // 每次面板持有一份快照；再次复制不重读页面，关闭时移除完整数据。
+  function showResult(credentials) {
+    const value = JSON.stringify(credentials);
+    const host = document.createElement('div');
+    host.id = 'nikki-pearpal-cookie-result';
+    Object.assign(host.style, {
+      position: 'fixed',
+      right: 'max(16px, env(safe-area-inset-right, 0px))',
+      bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+      width: '360px',
+      maxWidth: 'calc(100vw - 32px)',
+      zIndex: '2147483647'
+    });
+    // 隔离官方网页样式；完整 JSON 仅在用户主动展开时写入文本框。
+    const root = host.attachShadow({ mode: 'open' });
+    const style = document.createElement('style');
+    style.textContent = [
+      ':host { color-scheme: light; text-align: left; }',
+      '* { box-sizing: border-box; }',
+      'section { padding: 20px; border-radius: 16px; background: #fff; color: #302b2e; box-shadow: 0 8px 32px #0003; font: 14px/1.6 system-ui, sans-serif; max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px); overflow-y: auto; overflow-wrap: anywhere; }',
+      'h2 { margin: 0 0 16px; font-size: 17px; line-height: 1.4; }',
+      'dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; margin: 0 0 16px; }',
+      'dt { color: #655960; } dd { margin: 0; font-variant-numeric: tabular-nums; }',
+      'p { margin: 0 0 12px; } .privacy { font-size: 12px; color: #655960; }',
+      '.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }',
+      'button { min-height: 44px; padding: 8px 12px; border: 1px solid #d8ccd2; border-radius: 8px; background: #fff; color: #302b2e; font: inherit; cursor: pointer; }',
+      'button:hover { background: #f5eff2; } button:disabled { opacity: .6; cursor: wait; }',
+      'button:focus-visible, textarea:focus-visible { outline: 2px solid #79546b; outline-offset: 2px; }',
+      'textarea { display: block; width: 100%; margin-top: 12px; padding: 10px; border: 1px solid #d8ccd2; border-radius: 8px; background: #faf7f9; color: #302b2e; font: 13px/1.6 monospace; resize: vertical; }',
+      '[hidden] { display: none; }'
+    ].join(' ');
+    root.appendChild(style);
+    const panel = document.createElement('section');
+    panel.setAttribute('role', 'region');
+    panel.setAttribute('aria-label', zh ? '复制的登录凭据' : 'Copied sign-in credentials');
+    const title = document.createElement('h2');
+    title.setAttribute('role', 'status');
+    title.setAttribute('aria-live', 'polite');
+    title.textContent = zh ? '正在复制登录凭据…' : 'Copying sign-in credentials…';
+    panel.appendChild(title);
+    const fields = document.createElement('dl');
+    for (const [key, name] of [
+      ['roleid', zh ? '游戏 UID' : 'Game UID'],
+      ['id', zh ? '账号 ID' : 'Account ID'],
+      ['token', zh ? '登录令牌' : 'Sign-in token']
+    ]) {
+      const term = document.createElement('dt');
+      term.textContent = name;
+      const description = document.createElement('dd');
+      description.textContent = (credentials[key].length > 5 ? credentials[key].slice(0, 5) : '') + '••••';
+      fields.append(term, description);
+    }
+    panel.appendChild(fields);
+    const privacy = document.createElement('p');
+    privacy.className = 'privacy';
+    privacy.textContent = zh ? '三个字段均已遮挡，保护隐私。' : 'All three fields are masked for privacy.';
+    const detail = document.createElement('p');
+    const nextStep = document.createElement('p');
+    nextStep.textContent = zh
+      ? '返回暖立方，粘贴到“导入数据”的凭据输入框。'
+      : 'Return to Nikki Toolkit and paste into the credentials field in “Import data”.';
+    panel.append(privacy, detail, nextStep);
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = zh ? '再次复制' : 'Copy again';
+    const reveal = document.createElement('button');
+    reveal.type = 'button';
+    reveal.textContent = zh ? '查看完整 JSON' : 'View full JSON';
+    reveal.setAttribute('aria-expanded', 'false');
+    reveal.setAttribute('aria-controls', 'credentials-json');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = zh ? '关闭' : 'Close';
+    actions.append(retry, reveal, close);
+    const full = document.createElement('textarea');
+    full.id = 'credentials-json';
+    full.readOnly = true;
+    full.rows = 5;
+    full.hidden = true;
+    full.spellcheck = false;
+    full.setAttribute('aria-label', zh ? '完整登录凭据 JSON' : 'Complete sign-in credentials JSON');
+    reveal.addEventListener('click', () => {
+      full.hidden = !full.hidden;
+      full.value = full.hidden ? '' : value;
+      reveal.setAttribute('aria-expanded', String(!full.hidden));
+      reveal.textContent = full.hidden
+        ? (zh ? '查看完整 JSON' : 'View full JSON')
+        : (zh ? '收起完整 JSON' : 'Hide full JSON');
+      if (!full.hidden) { full.focus(); full.select(); }
+    });
+    function dismiss() {
+      full.value = '';
+      host.remove();
+      button.focus({ preventScroll: true });
+    }
+    close.addEventListener('click', dismiss);
+    panel.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.stopPropagation(); dismiss(); }
+    });
+    async function copy() {
+      retry.disabled = true;
+      title.textContent = zh ? '正在复制登录凭据…' : 'Copying sign-in credentials…';
+      detail.textContent = '';
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+        await navigator.clipboard.writeText(value);
+        if (!host.isConnected) return;
+        title.textContent = zh ? '✓ 登录凭据已复制' : '✓ Sign-in credentials copied';
+        detail.textContent = zh
+          ? '剪贴板中是包含 roleid、token、id 三项的完整 JSON。'
+          : 'The clipboard contains the complete JSON with roleid, token and id.';
+      } catch {
+        if (!host.isConnected) return;
+        title.textContent = zh ? '未能自动复制' : 'Could not copy automatically';
+        detail.textContent = zh
+          ? '点击“查看完整 JSON”，手动复制全部内容；也可以点击“再次复制”重试。'
+          : 'Choose “View full JSON” to copy all the text manually, or choose “Copy again” to retry.';
+      } finally {
+        retry.disabled = false;
+      }
+    }
+    retry.addEventListener('click', () => { void copy(); });
+    panel.append(actions, full);
+    root.appendChild(panel);
+    document.body.appendChild(host);
+    return copy();
+  }
   button.addEventListener('click', async () => {
+    document.getElementById('nikki-pearpal-cookie-result')?.remove();
     button.disabled = true;
     button.textContent = label;
     try {
-      await ${run.replaceAll('\n', '\n      ')}
+      const credentials = {
+        roleid: ${UID_SNIPPET},
+        token: ${TOKEN_SNIPPET},
+        id: ${ID_SNIPPET}
+      };
+      if (!credentials.roleid || !credentials.token || !credentials.id) {
+        button.textContent = zh ? '请先登录并确认角色' : 'Sign in and confirm your role';
+        alert(zh
+          ? '未读取到完整凭据，请登录并确认页面角色后重试。'
+          : 'Complete credentials were not found. Sign in and confirm your role, then try again.');
+        return;
+      }
+      await showResult(credentials);
     } catch {
       alert(zh ? '获取失败，请刷新页面后重试。' : 'Could not get credentials. Refresh and try again.');
     } finally {

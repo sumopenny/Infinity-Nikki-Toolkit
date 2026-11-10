@@ -6,6 +6,8 @@ import * as resonanceStorage from '../../src/utils/resonance/resonanceStorage'
 import 'fake-indexeddb/auto'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { ref } from 'vue'
+import { archiveMotionDeadlineKey } from '../../src/composables/useAfterArchiveMotion'
 import ResonanceRecords from '../../src/components/ResonanceRecords.vue'
 vi.mock('../../src/components/ArchiveCloudActions.vue', () => ({
   default: { template: '<span />' }
@@ -71,6 +73,7 @@ const savedRecord: ResonanceRecord = {
 }
 
 afterEach(async () => {
+  vi.useRealTimers()
   wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -184,7 +187,10 @@ describe('ResonanceRecords', () => {
           resolveRecords = resolve
         })
     )
-    const wrapper = mount(ResonanceRecords)
+    vi.useFakeTimers()
+    const wrapper = mount(ResonanceRecords, {
+      global: { provide: { [archiveMotionDeadlineKey as symbol]: ref(Date.now() + 280) } }
+    })
     wrappers.push(wrapper)
     const assertAnchored = (selector: string) => {
       const controls = wrapper.findAll(`${selector} .resonance-set-switch`)
@@ -195,9 +201,13 @@ describe('ResonanceRecords', () => {
         expect(control.findAll('button')).toHaveLength(2)
       })
     }
-    assertAnchored('.content-skeleton-layer')
+    expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
     resolveRecords([savedRecord])
     await flushPromises()
+    assertAnchored('.content-skeleton-layer')
+    await vi.advanceTimersByTimeAsync(280)
+    await flushPromises()
+    vi.useRealTimers()
     assertAnchored('.content-loaded-layer')
 
     const refreshing = (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
@@ -467,7 +477,7 @@ describe('ResonanceRecords', () => {
       panel.querySelector('.data-import-region .cleanup-account-select')?.textContent
     ).toContain('国服')
     expect(panel.querySelector('.data-import-region select')).toBeNull()
-    expect(panel.querySelectorAll('.resonance-choice')).toHaveLength(4)
+    expect(panel.querySelectorAll('.resonance-choice')).toHaveLength(5)
     expect(panel.querySelector('input[type="file"]')).toBeNull()
     expect(panel.textContent).toContain('从文件导入')
     expect(panel.textContent).not.toContain('从游戏导入')
@@ -1068,4 +1078,30 @@ it('does not expose forms for unmatched outfit records', async () => {
   await flushPromises()
   await vi.waitFor(() => expect(wrapper.findAll('button.resonance-outfit-image')).toHaveLength(1))
   expect(wrapper.findComponent({ name: 'WardrobeFormPopover' }).exists()).toBe(false)
+})
+
+it('reads immediately and shows empty state without skeletons even during archive motion', async () => {
+  vi.useFakeTimers()
+  let complete!: (records: ResonanceRecord[]) => void
+  const read = vi.spyOn(resonanceStorage, 'loadResonanceRecords').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve
+      })
+  )
+  const wrapper = mount(ResonanceRecords, {
+    global: { provide: { [archiveMotionDeadlineKey as symbol]: ref(Date.now() + 280) } }
+  })
+  wrappers.push(wrapper)
+  expect(read).toHaveBeenCalledOnce()
+  expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
+  expect(wrapper.find('.resonance-empty').exists()).toBe(false)
+  complete([])
+  await flushPromises()
+  expect(wrapper.find('.resonance-empty').exists()).toBe(true)
+  expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
+  await vi.advanceTimersByTimeAsync(280)
+  await flushPromises()
+  expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
+  expect(read).toHaveBeenCalledOnce()
 })
