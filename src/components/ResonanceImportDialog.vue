@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { ref, watch } from 'vue'
+import { useCompactLayout } from '../composables/useCompactLayout'
+const compact = useCompactLayout()
+import { PEARPAL_USERSCRIPT_PATH } from '../utils/resonance/resonanceScripts'
+const userscriptUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}${PEARPAL_USERSCRIPT_PATH}`
 import { Bookmark, Copy, ExternalLink, FileUp, Info, Terminal, X } from 'lucide-vue-next'
 import type { ResonanceMessages } from '../i18n/messages/resonance'
 // 共享共鸣现有窗口的呈现；解析、预览数据与持久化仍由所属模块负责。
@@ -9,7 +13,7 @@ defineProps<{
   t: ResonanceMessages
   titleId: string
   importMethod: 'pearpal' | 'file'
-  cookieMethod: 'bookmark' | 'console'
+  cookieMethod: 'bookmark' | 'console' | 'userscript'
   showMobileCredentialTip?: boolean
   fileName?: string
   bookmarkScript: string
@@ -31,7 +35,7 @@ const emit = defineEmits<{
   panel: [value: HTMLElement | null]
   fileInput: [value: HTMLInputElement | null]
   selectMethod: [value: 'pearpal' | 'file']
-  selectCookieMethod: [value: 'bookmark' | 'console']
+  selectCookieMethod: [value: 'bookmark' | 'console' | 'userscript']
   selectFile: [event: Event]
   copyScript: [kind: 'bookmark' | 'console']
   preview: []
@@ -83,7 +87,12 @@ const VIDEO_TUTORIALS = [
           </header>
 
           <div class="resonance-import-body">
-            <div v-segmented-indicator class="resonance-choice-row" role="group" :aria-label="t.importMethod">
+            <div
+              v-segmented-indicator
+              class="resonance-choice-row resonance-import-methods"
+              role="group"
+              :aria-label="t.importMethod"
+            >
               <button
                 type="button"
                 class="resonance-choice"
@@ -167,13 +176,30 @@ const VIDEO_TUTORIALS = [
                 ><strong>{{ t.sourceAttributionLabel }}</strong
                 ><span>{{ t.sourceAttribution }}</span></p
               >
-              <div v-segmented-indicator class="resonance-choice-row" role="group" :aria-label="t.cookieMethods">
+              <div
+                v-segmented-indicator
+                class="resonance-choice-row"
+                :class="{ 'resonance-mobile-cookie-methods': showMobileCredentialTip }"
+                role="group"
+                :aria-label="t.cookieMethods"
+              >
                 <button
                   type="button"
                   class="resonance-choice"
                   :aria-pressed="cookieMethod === 'bookmark'"
                   @click="emit('selectCookieMethod', 'bookmark')"
-                  ><Bookmark :size="14" aria-hidden="true" />{{ t.bookmarkMethod }}</button
+                  ><Bookmark :size="14" aria-hidden="true" />{{
+                    compact ? t.mobileBookmarkMethod : t.bookmarkMethod
+                  }}</button
+                >
+                <button
+                  type="button"
+                  class="resonance-choice resonance-userscript-choice"
+                  :aria-pressed="cookieMethod === 'userscript'"
+                  @click="emit('selectCookieMethod', 'userscript')"
+                  ><FileUp :size="14" aria-hidden="true" />{{
+                    compact ? t.mobileUserscriptMethod : t.userscriptMethod
+                  }}</button
                 >
                 <button
                   type="button"
@@ -187,8 +213,32 @@ const VIDEO_TUTORIALS = [
 
               <div class="parse-tools-section resonance-cookie-guide">
                 <h4>{{ t.cookieStepsTitle }}</h4>
+                <div v-if="cookieMethod === 'userscript'" class="resonance-via-script">
+                  <p class="resonance-script-intro">
+                    {{ compact ? t.userscriptMobileIntro : t.userscriptDesktopIntro }}
+                    <a
+                      class="resonance-inline-action resonance-script-install"
+                      :href="userscriptUrl"
+                      rel="noopener noreferrer"
+                    >
+                      <FileUp :size="14" aria-hidden="true" />{{ t.userscriptInstall }}
+                      <ExternalLink :size="14" aria-hidden="true" />
+                    </a>
+                  </p>
+                  <ol class="resonance-steps">
+                    <li
+                      v-for="step in compact ? t.userscriptMobileSteps : t.userscriptDesktopSteps"
+                      :key="step"
+                      >{{ step }}</li
+                    >
+                  </ol>
+                  <ul class="resonance-steps resonance-hint">
+                    <li v-for="tip in t.userscriptTroubleshooting" :key="tip">{{ tip }}</li>
+                  </ul>
+                </div>
+
                 <ol
-                  v-if="showMobileCredentialTip"
+                  v-if="showMobileCredentialTip && cookieMethod === 'bookmark'"
                   class="resonance-steps resonance-mobile-bookmark-steps"
                 >
                   <li
@@ -257,15 +307,15 @@ const VIDEO_TUTORIALS = [
                     t.bookmarkTip.emphasis
                   }}</strong>
                 </p>
-                <p class="resonance-security-note">{{ t.securityNote }}</p>
 
+                <p class="resonance-json-guide">{{ t.cookieJsonGuide }}</p>
                 <label class="photo-params-paste resonance-paste">
                   <span>{{ t.pasteHere }}</span>
                   <textarea
                     v-model="cookieInput"
                     rows="3"
                     spellcheck="false"
-                    placeholder='{"roleid":"123456","token":"...","id":"654321"}'
+                    placeholder='{"roleid":"123456789","token":"…","id":"987654321"}'
                   ></textarea>
                 </label>
 
@@ -316,13 +366,41 @@ const VIDEO_TUTORIALS = [
   </Teleport>
 </template>
 <style scoped>
-.resonance-video-tutorials {
+.resonance-choice-row.resonance-import-methods {
+  margin: 0;
+}
+.resonance-via-script {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
+}
+.resonance-via-script .resonance-script-install {
+  max-width: 100%;
+  margin-left: 8px;
+  vertical-align: middle;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.resonance-script-install svg {
+  flex-shrink: 0;
+}
+.resonance-video-tutorials {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
 }
 .resonance-video-tutorials h4 {
+  flex-shrink: 0;
   margin: 0;
+}
+.resonance-video-tutorials .resonance-video-links {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.resonance-video-tutorials .resonance-video-links a {
+  white-space: nowrap;
 }
 .resonance-video-links {
   display: flex;
@@ -334,8 +412,8 @@ const VIDEO_TUTORIALS = [
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 44px;
-  padding: 8px 12px;
+  min-height: 32px;
+  padding: 4px 10px;
   border: 1px solid var(--accent-border-subtle);
   border-radius: 10px;
   color: var(--pink-deep);
@@ -378,6 +456,45 @@ const VIDEO_TUTORIALS = [
   display: none;
 }
 @media (max-width: 899px) {
+  .resonance-video-tutorials {
+    gap: 8px;
+  }
+  .resonance-video-tutorials h4 {
+    flex-shrink: 1;
+    min-width: 0;
+    font-size: 12px;
+  }
+  .resonance-video-tutorials .resonance-video-links {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .resonance-video-tutorials .resonance-video-links a {
+    gap: 3px;
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+  .resonance-video-tutorials .resonance-video-links svg {
+    width: 12px;
+    height: 12px;
+  }
+  .resonance-mobile-cookie-methods {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .resonance-mobile-cookie-methods > .resonance-choice {
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+    padding: 8px 6px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+  }
+  .resonance-userscript-choice {
+    order: -1;
+  }
   .resonance-mobile-browsers {
     display: block;
     margin: 8px 0;

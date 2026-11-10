@@ -418,3 +418,59 @@ it('reports a Pearpal credential failure at the UI boundary without changing its
   expect(wrapper.emitted('notice')?.at(-1)?.[0]).toContain('请前往美鸭梨网站重新登录并获取新凭据')
   expect(wrapper.emitted('imported')).toBeUndefined()
 })
+
+it('offers a generic userscript link and desktop tutorials in both languages', async () => {
+  expect(document.querySelector('.resonance-via-script')).toBeNull()
+  const scriptTab = [...document.querySelectorAll<HTMLButtonElement>('.resonance-choice')].find(
+    (button) => button.textContent?.includes('脚本法（油猴推荐）')
+  )!
+  scriptTab.click()
+  await flushPromises()
+  expect(scriptTab.getAttribute('aria-pressed')).toBe('true')
+  expect(document.querySelector('.resonance-mobile-bookmark-steps')).toBeNull()
+  const link = () => document.querySelector<HTMLAnchorElement>('.resonance-via-script a')!
+  expect(link().getAttribute('href')).toBe('/scripts/pearpal-cookie.user.js')
+  expect(link().textContent).toContain('安装获取 Cookie 脚本')
+  expect(document.querySelector('.resonance-via-script')!.textContent).toContain(
+    '油猴（Tampermonkey）'
+  )
+  expect(document.querySelector('.resonance-via-script')!.textContent).not.toContain('强烈推荐 Via')
+  expect(document.querySelectorAll('.resonance-via-script ol li')).toHaveLength(5)
+  await wrapper.setProps({ language: 'en' })
+  expect(link().textContent).toContain('Install Cookie userscript')
+  expect(document.querySelector('.resonance-via-script')!.textContent).toContain(
+    'userscript manager extension'
+  )
+})
+
+it('defaults to userscript on mobile each time the import window opens', async () => {
+  wrapper.unmount()
+  vi.stubGlobal('matchMedia', () => ({
+    matches: true,
+    addEventListener() {},
+    removeEventListener() {}
+  }))
+  wrapper = mount(DataImportWindow, { props: { visible: true }, attachTo: document.body })
+  const scriptTab = () =>
+    [...document.querySelectorAll<HTMLButtonElement>('.resonance-choice')].find((button) =>
+      button.textContent?.includes('脚本法（推荐）')
+    )!
+  expect(scriptTab().getAttribute('aria-pressed')).toBe('true')
+  expect(document.querySelector('.resonance-via-script')!.textContent).toContain(
+    '强烈推荐 Via、X 浏览器'
+  )
+  expect(document.querySelector('.resonance-via-script')!.textContent).not.toContain('Tampermonkey')
+  expect(document.querySelectorAll('.resonance-via-script ol li')).toHaveLength(5)
+  await wrapper.setProps({ language: 'en' })
+  expect(document.querySelector('.resonance-via-script')!.textContent).toContain('Via and XBrowser')
+  await wrapper.setProps({ language: 'zh' })
+  const bookmarkTab = [...document.querySelectorAll<HTMLButtonElement>('.resonance-choice')].find(
+    (button) => button.textContent?.includes('书签法')
+  )!
+  bookmarkTab.click()
+  await flushPromises()
+  expect(scriptTab().getAttribute('aria-pressed')).toBe('false')
+  await wrapper.setProps({ visible: false })
+  await wrapper.setProps({ visible: true })
+  expect(scriptTab().getAttribute('aria-pressed')).toBe('true')
+})

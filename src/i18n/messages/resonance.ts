@@ -37,6 +37,13 @@ export interface ResonanceMessages {
   loginPearpal: string
   loginPearpalDesc: string
   pearpalSite: string
+  userscriptInstall: string
+  userscriptMobileIntro: string
+  userscriptDesktopIntro: string
+  userscriptMobileSteps: string[]
+  userscriptDesktopSteps: string[]
+  userscriptTroubleshooting: string[]
+  cookieJsonGuide: string
   getCookie: string
   videoTutorials: string
   desktopVideoTutorial: string
@@ -50,7 +57,10 @@ export interface ResonanceMessages {
   mobileBookmarkStep2: string
   mobileBookmarkStep3: string
   mobileBookmarkStep5: string
+  userscriptMethod: string
+  mobileUserscriptMethod: string
   bookmarkMethod: string
+  mobileBookmarkMethod: string
   consoleMethod: string
   sourceAttributionLabel: string
   sourceAttribution: string
@@ -69,7 +79,6 @@ export interface ResonanceMessages {
   copyCode: string
   copyCodeSuccess: string
   pasteHere: string
-  securityNote: string
   pasteSuccess: string
   pasteSuccessNoUid: string
   pasteFailed: string
@@ -148,6 +157,31 @@ export const resonanceZh: ResonanceMessages = {
   loginPearpal: '登录美鸭梨网站',
   loginPearpalDesc: '在新标签页打开美鸭梨并登录叠纸账号。登录后返回此窗口获取凭据。',
   pearpalSite: '打开美鸭梨',
+  userscriptInstall: '安装获取 Cookie 脚本',
+  userscriptMobileIntro:
+    '请使用支持用户脚本功能的手机浏览器。强烈推荐 Via、X 浏览器作为首选：轻便、快捷、纯净，也很适合作为日常主力浏览器使用。',
+  userscriptDesktopIntro: '已安装油猴（Tampermonkey）等用户脚本管理扩展的用户，可以安装此脚本。',
+  userscriptMobileSteps: [
+    '使用支持用户脚本的浏览器打开本站，首选 Via、X 浏览器。',
+    '点击“安装获取 Cookie 脚本”，按浏览器提示确认安装并启用。',
+    '点击上方“打开美鸭梨”，在同一浏览器中登录对应区服账号，并确认当前角色。',
+    '若美鸭梨页面之前已经打开，请刷新页面，找到右下角“获取 Cookie”按钮。',
+    '点击“获取 Cookie”复制完整凭据，返回本站，在下方输入框粘贴。'
+  ],
+  userscriptDesktopSteps: [
+    '确认浏览器已安装并启用油猴（Tampermonkey）等用户脚本管理扩展。',
+    '点击“安装获取 Cookie 脚本”，在扩展打开的安装页面确认安装。',
+    '在同一浏览器中点击上方“打开美鸭梨”，登录对应区服账号并确认当前角色。',
+    '打开或刷新美鸭梨页面，点击右下角“获取 Cookie”按钮。',
+    '返回本站，在下方输入框粘贴完整凭据。'
+  ],
+  userscriptTroubleshooting: [
+    '点击安装链接后若只显示源码，可在浏览器或扩展的脚本管理中通过此链接添加。',
+    '页面没有出现按钮时，请检查脚本是否启用，再刷新美鸭梨页面。',
+    '提示登录失效时，请重新登录并确认角色后再次获取。'
+  ],
+  cookieJsonGuide:
+    '获取登录凭据后，返回此窗口粘贴完整 JSON。格式应为 {"roleid":"你的UID","token":"登录令牌","id":"账号ID"}，必须同时包含 roleid、token、id 三项，且值均不能为空。请勿只复制某个字段，或遗漏大括号、双引号。',
   getCookie: '获取登录凭据',
   videoTutorials: '小红书视频教程',
   desktopVideoTutorial: '电脑端',
@@ -162,10 +196,13 @@ export const resonanceZh: ResonanceMessages = {
   mobileBookmarkStep3:
     '编辑该书签，将网址（URL）替换为刚复制的完整代码，确认开头保留 javascript:，然后保存。',
   mobileBookmarkStep5: '在美鸭梨页面运行书签。书签可从书签列表打开。',
-  bookmarkMethod: '书签方法',
+  userscriptMethod: '脚本法（油猴推荐）',
+  mobileUserscriptMethod: '脚本法（推荐）',
+  bookmarkMethod: '书签法（推荐）',
+  mobileBookmarkMethod: '书签法',
   consoleMethod: '控制台方法',
   sourceAttributionLabel: '方法来源',
-  sourceAttribution: '以下获取登录凭据的方法来自暖暖共鸣录。',
+  sourceAttribution: '以下书签法、控制台法获取登录凭据的方法来自暖暖共鸣录。',
   cookieStepsTitle: '获取凭据后粘贴到下方：',
   bookmarkStep1: '将「美鸭梨 Cookie」书签拖到书签栏（仅需设置一次）：',
   bookmarkStep2: '切换到已登录的美鸭梨页面。',
@@ -188,7 +225,6 @@ export const resonanceZh: ResonanceMessages = {
   copyCode: '复制代码',
   copyCodeSuccess: '代码已复制',
   pasteHere: '粘贴书签或控制台输出',
-  securityNote: '凭据只用于本次验证和同步，不会保存到本地。请勿与他人分享。',
   pasteSuccess: '数据粘贴成功！',
   pasteSuccessNoUid: '请填写游戏内 UID',
   pasteFailed: '解析输入数据失败，请确认格式正确。',
@@ -272,6 +308,32 @@ export const resonanceEn: ResonanceMessages = {
   loginPearpalDesc:
     'Open Pear-Pal in a new tab and sign in with your Infold account. Return here to get your credentials.',
   pearpalSite: 'Open Pear-Pal',
+  userscriptInstall: 'Install Cookie userscript',
+  userscriptMobileIntro:
+    'Use a mobile browser with userscript support. Via and XBrowser are our top recommendations: lightweight, fast and clean, and well suited for everyday browsing.',
+  userscriptDesktopIntro:
+    'If you have a userscript manager extension such as Tampermonkey installed, you can install this script.',
+  userscriptMobileSteps: [
+    'Open this site in a browser with userscript support, preferably Via or XBrowser.',
+    'Tap “Install Cookie userscript”, then confirm installation and enable the script.',
+    'Tap “Open Pear-Pal” above. Sign in to the account for your selected server in the same browser and confirm your current role.',
+    'If Pear-Pal was already open, refresh it. Find the “Get Cookie” button at the bottom right.',
+    'Tap “Get Cookie” to copy the complete credentials, then return here and paste them in the field below.'
+  ],
+  userscriptDesktopSteps: [
+    'Make sure a userscript manager extension such as Tampermonkey is installed and enabled.',
+    'Click “Install Cookie userscript” and confirm installation on the page opened by the extension.',
+    'Click “Open Pear-Pal” above in the same browser, sign in to the account for your selected server and confirm your current role.',
+    'Open or refresh Pear-Pal, then click “Get Cookie” at the bottom right.',
+    'Return here and paste the complete credentials in the field below.'
+  ],
+  userscriptTroubleshooting: [
+    'If the installation link only shows source code, add the link through your browser or extension’s script manager.',
+    'If the button does not appear, check that the script is enabled, then refresh Pear-Pal.',
+    'If sign-in has expired, sign in again and confirm your role before trying again.'
+  ],
+  cookieJsonGuide:
+    'After getting your sign-in credentials, return here and paste the complete JSON, such as {"roleid":"your UID","token":"sign-in token","id":"account ID"}. All three fields — roleid, token and id — must be present with non-empty values. Copy the entire object, including braces and double quotes, rather than an individual field.',
   getCookie: 'Get sign-in credentials',
   videoTutorials: 'Xiaohongshu video tutorials',
   desktopVideoTutorial: 'Desktop',
@@ -288,11 +350,14 @@ export const resonanceEn: ResonanceMessages = {
     'Edit the bookmark and replace its URL with the copied code. Keep the javascript: prefix, then save.',
   mobileBookmarkStep5:
     'Run the bookmark on the Pear-Pal page. You can open it from your bookmarks list.',
-  bookmarkMethod: 'Bookmark',
+  userscriptMethod: 'Userscript (Tampermonkey recommended)',
+  mobileUserscriptMethod: 'Userscript (recommended)',
+  bookmarkMethod: 'Bookmark (recommended)',
+  mobileBookmarkMethod: 'Bookmark',
   consoleMethod: 'Console',
   sourceAttributionLabel: 'Method source',
   sourceAttribution:
-    'The methods below for getting sign-in credentials come from Resonance Recorder.',
+    'The bookmark and console methods below for getting sign-in credentials come from Resonance Recorder.',
   cookieStepsTitle: 'Paste the copied credentials below:',
   bookmarkStep1: 'Drag the "Pear-Pal Cookie" bookmark to your bookmarks bar (once only):',
   bookmarkStep2: 'Switch to a signed-in Pear-Pal page.',
@@ -316,8 +381,6 @@ export const resonanceEn: ResonanceMessages = {
   copyCode: 'Copy code',
   copyCodeSuccess: 'Code copied',
   pasteHere: 'Paste bookmark or console output',
-  securityNote:
-    'Credentials are used only for this verification and sync. They are not saved locally. Never share them.',
   pasteSuccess: 'Data pasted successfully!',
   pasteSuccessNoUid: 'Enter your in-game UID',
   pasteFailed: 'Could not parse the input. Check that it uses the expected format.',

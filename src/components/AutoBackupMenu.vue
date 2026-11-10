@@ -1513,7 +1513,16 @@ onBeforeUnmount(() => {
 }
 @media (prefers-reduced-motion: no-preference) {
   .auto-backup-panel {
-    animation: auto-backup-in var(--motion-base) ease-out;
+    transform-origin: top right;
+    animation: auto-backup-in 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .auto-backup-button {
+    transition: scale 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .auto-backup-button:active:not(:disabled) {
+    scale: 0.94;
+    transition-duration: 100ms;
+    transition-timing-function: ease-out;
   }
   .auto-backup-spinning {
     animation: auto-backup-spin 1s linear infinite;
@@ -1522,11 +1531,11 @@ onBeforeUnmount(() => {
 @keyframes auto-backup-in {
   from {
     opacity: 0;
-    translate: 0 -5px;
+    transform: scale(0.8);
   }
   to {
     opacity: 1;
-    translate: 0 0;
+    transform: scale(1);
   }
 }
 @keyframes auto-backup-spin {

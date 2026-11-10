@@ -11,6 +11,7 @@ import ResonanceImportDialog from './ResonanceImportDialog.vue'
 import PearpalRegionPicker from './PearpalRegionPicker.vue'
 import { messages } from '../i18n'
 import type { Language } from '../i18n/types'
+import { useCompactLayout } from '../composables/useCompactLayout'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import { useModuleOperation } from '../composables/useOperationCoordinator'
 import { useModalFocus } from '../composables/useModalFocus'
@@ -72,8 +73,9 @@ const t = computed(() => ({
     'Accepts raw notebook JSON, resonance JSON and wardrobe backups (up to 10 MB). Choose which records to import after previewing; unavailable data types are disabled.'
   )
 }))
+const compact = useCompactLayout()
 const method = ref<'pearpal' | 'file'>('pearpal'),
-  cookieMethod = ref<'bookmark' | 'console'>('bookmark')
+  cookieMethod = ref<'bookmark' | 'console' | 'userscript'>('bookmark')
 const cookieInput = ref(''),
   roleid = ref(''),
   token = ref(''),
@@ -161,7 +163,7 @@ function reset() {
   fileBytes = null
 
   method.value = 'pearpal'
-  cookieMethod.value = 'bookmark'
+  cookieMethod.value = compact.value ? 'userscript' : 'bookmark'
   selectedResonance.value = selectedWardrobe.value = true
 }
 watch(visible, () => reset(), { immediate: true })
@@ -425,22 +427,24 @@ async function copyScript(kind: 'bookmark' | 'console') {
     @confirm="confirm"
   >
     <template #import-options>
-      <PearpalRegionPicker
-        v-model="region"
-        :language="language"
-        :disabled="confirming || disabled"
-      />
-      <p class="data-import-region-hint">{{
-        method === 'file'
-          ? text(
-              '原始手账 JSON 使用所选区服；衣橱备份优先使用备份内的区服，旧备份未记录区服时使用此选择。切换后需重新预览。',
-              'Raw notebook JSON uses the selected server. Wardrobe backups use their saved region first; legacy backups without a region use this selection. Preview again after switching.'
-            )
-          : text(
-              '国服与国际服共用一份数据。切换服务器后，需重新获取凭据和预览。',
-              'All servers share one data set. After switching servers, get fresh credentials and preview again.'
-            )
-      }}</p>
+      <div class="data-import-region-row">
+        <PearpalRegionPicker
+          v-model="region"
+          :language="language"
+          :disabled="confirming || disabled"
+        />
+        <p class="data-import-region-hint">{{
+          method === 'file'
+            ? text(
+                '原始手账 JSON 使用所选区服；衣橱备份优先使用备份内的区服，旧备份未记录区服时使用此选择。切换后需重新预览。',
+                'Raw notebook JSON uses the selected server. Wardrobe backups use their saved region first; legacy backups without a region use this selection. Preview again after switching.'
+              )
+            : text(
+                '国服与国际服共用一份数据。切换服务器后，需重新获取凭据和预览。',
+                'All servers share one data set. After switching servers, get fresh credentials and preview again.'
+              )
+        }}</p>
+      </div>
     </template>
     <section
       v-if="progress"
@@ -670,13 +674,35 @@ async function copyScript(kind: 'bookmark' | 'console') {
 .data-import-warning {
   color: var(--notice-warning);
 }
-/* 区服说明作为选择框辅助文字，与下方登录步骤保持清晰间距。 */
+/* 避免区服控件的外边距与正文间距叠加。 */
+.data-import-region-row :deep(.data-import-region) {
+  margin: 0;
+}
+.data-import-region-row {
+  margin: 0;
+}
 .data-import-region-hint {
-  margin: 0 0 20px;
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: 12px;
   font-weight: 400;
   line-height: 1.65;
   overflow-wrap: anywhere;
+}
+@media (min-width: 900px) {
+  .data-import-region-row {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: end;
+    gap: 16px;
+    margin: 0;
+  }
+  .data-import-region-row :deep(.data-import-region) {
+    margin: 0;
+  }
+  .data-import-region-row .data-import-region-hint {
+    margin: 0;
+    padding-bottom: 8px;
+  }
 }
 </style>

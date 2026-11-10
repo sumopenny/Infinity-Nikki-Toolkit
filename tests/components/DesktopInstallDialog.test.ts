@@ -47,3 +47,35 @@ it('shows manual steps immediately, respects dismissal, and disables reopening a
 })
 
 
+
+it('keeps the native dialog open until the exit animation finishes, including Escape', async () => {
+  vi.useFakeTimers()
+  vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: no-preference)' }))
+  const wrapper = mount(DesktopInstallDialog, { props: { language: 'zh' }, attachTo: document.body })
+  try {
+    const dialog = document.body.querySelector('dialog')!
+    dialog.showModal = () => { dialog.open = true }
+    dialog.close = () => { dialog.open = false }
+    await wrapper.vm.open()
+    const cancel = new Event('cancel', { cancelable: true })
+    dialog.dispatchEvent(cancel)
+    expect(cancel.defaultPrevented).toBe(true)
+    expect(dialog.open).toBe(true)
+    expect(dialog.classList.contains('is-closing')).toBe(true)
+    await vi.advanceTimersByTimeAsync(199)
+    expect(dialog.open).toBe(true)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(dialog.open).toBe(false)
+    await wrapper.vm.open()
+    expect(dialog.open).toBe(true)
+    expect(dialog.classList.contains('is-closing')).toBe(false)
+    new DOMWrapper(dialog).get('.desktop-install-close').element.dispatchEvent(new MouseEvent('click'))
+    await wrapper.vm.open()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(dialog.open).toBe(true)
+  } finally {
+    wrapper.unmount()
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  }
+})

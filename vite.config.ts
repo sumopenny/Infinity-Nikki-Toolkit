@@ -1,3 +1,7 @@
+import {
+  PEARPAL_USERSCRIPT_PATH,
+  resonanceUserscript
+} from './src/utils/resonance/resonanceScripts'
 import { onRequestGet as shareImageRequest } from './functions/api/share-image'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -5,6 +9,28 @@ import { assertDiagnosticsBuild } from './scripts/error-build-policy.mjs'
 import { errorBuildInfo } from './scripts/error-build'
 import { resonanceCloudProxy } from './scripts/resonance-cloud-proxy'
 import { onRequestPost as forwardPearpalRequest } from './functions/api/resonance/pearpal'
+
+/** 开发与生产发布同一份可安装脚本，直接返回 JS，避免落入 SPA 页面。 */
+function pearpalUserscript(): Plugin {
+  return {
+    name: 'pearpal-userscript',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] !== PEARPAL_USERSCRIPT_PATH) return next()
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-cache')
+        res.end(resonanceUserscript())
+      })
+    },
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: PEARPAL_USERSCRIPT_PATH.slice(1),
+        source: resonanceUserscript()
+      })
+    }
+  }
+}
 
 /** 本地开发复用 Pages Function：只接受固定 POST 动作，并沿用凭据校验、超时与禁缓存响应。 */
 function localPearpalApi(): Plugin {
@@ -128,7 +154,7 @@ export default defineConfig(({ mode, command }) => {
       }
 
   return {
-    plugins: [vue(), localPearpalApi()],
+    plugins: [vue(), localPearpalApi(), pearpalUserscript()],
     define: { __ERROR_BUILD__: JSON.stringify(diagnosticBuild) },
     build: { sourcemap: false },
     server: {

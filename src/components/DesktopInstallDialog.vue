@@ -47,11 +47,30 @@ function available(event: Event) {
   // 不取消浏览器原生的自动安装提示，只保存事件供备用入口尝试调用。
   nativePrompt.value = event as InstallEvent
 }
-function close() { dialog.value?.close() }
+let closeTimer: ReturnType<typeof setTimeout> | undefined
+function finishClose() {
+  clearTimeout(closeTimer)
+  closeTimer = undefined
+  dialog.value?.close()
+  dialog.value?.classList.remove('is-closing')
+}
+/** 保留原生模态层，待退场动画结束后再关闭，避免遮罩和面板突然消失。 */
+function close() {
+  if (!dialog.value?.open || closeTimer !== undefined) return
+  if (!window.matchMedia?.('(prefers-reduced-motion: no-preference)').matches) {
+    finishClose()
+    return
+  }
+  dialog.value.classList.add('is-closing')
+  closeTimer = setTimeout(finishClose, 200)
+}
 function onInstalled() { installed.value = true; nativePrompt.value = null; close() }
 async function open() {
   if (installed.value) return
   await nextTick()
+  clearTimeout(closeTimer)
+  closeTimer = undefined
+  dialog.value?.classList.remove('is-closing')
   if (!dialog.value?.open) dialog.value?.showModal()
 }
 async function add() {
@@ -73,6 +92,7 @@ onMounted(() => {
   window.addEventListener('appinstalled', onInstalled)
 })
 onBeforeUnmount(() => {
+  finishClose()
   window.removeEventListener('beforeinstallprompt', available)
   window.removeEventListener('appinstalled', onInstalled)
 })
@@ -81,7 +101,7 @@ defineExpose({ open, installed })
 
 <template>
   <Teleport to="body">
-    <dialog ref="dialog" class="desktop-install-dialog" aria-labelledby="desktop-install-title">
+    <dialog ref="dialog" class="desktop-install-dialog" aria-labelledby="desktop-install-title" @cancel.prevent="close">
       <div class="desktop-install-body">
         <header>
           <img src="/pwa-192.png" width="52" height="52" alt="" />
@@ -140,20 +160,38 @@ defineExpose({ open, installed })
 <style scoped>
 .desktop-install-content .install-file-warning { color: #bc2531; color: light-dark(#a51d27, #ff929a); font-weight: 700; }
 .desktop-install-dialog { position: fixed; inset: 0; width: min(720px, calc(100vw - 28px)); max-height: 85vh; max-height: 85dvh; overflow: hidden; margin: auto; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-strong); color: var(--text); box-shadow: var(--dialog-shadow); }
-.desktop-install-dialog::backdrop { background: var(--overlay-bg); }
+/* 与通用弹窗保持相同的缩放回弹、退场节奏及遮罩模糊。 */
+.desktop-install-dialog::backdrop {
+  background: rgb(0 0 0 / 48%);
+  backdrop-filter: blur(8px);
+}
 @media (prefers-reduced-motion: no-preference) {
-  .desktop-install-dialog,
-  .desktop-install-dialog::backdrop {
-    opacity: 0;
-    transition: opacity 180ms ease, display 180ms allow-discrete, overlay 180ms allow-discrete;
+  .desktop-install-dialog[open] {
+    animation: install-dialog-enter 260ms cubic-bezier(.34, 1.56, .64, 1) both;
   }
-  .desktop-install-dialog[open],
-  .desktop-install-dialog[open]::backdrop { opacity: 1; }
-  @starting-style {
-    .desktop-install-dialog[open],
-    .desktop-install-dialog[open]::backdrop { opacity: 0; }
+  .desktop-install-dialog[open]::backdrop {
+    animation: install-backdrop-enter 260ms ease both;
+  }
+  .desktop-install-dialog[open].is-closing {
+    animation: install-dialog-leave 200ms ease-in both;
+  }
+  .desktop-install-dialog[open].is-closing::backdrop {
+    animation: install-backdrop-enter 200ms ease reverse both;
   }
 }
+@keyframes install-dialog-enter {
+  from { transform: scale(.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes install-dialog-leave {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(.9); opacity: 0; }
+}
+@keyframes install-backdrop-enter {
+  from { background-color: transparent; backdrop-filter: blur(0); }
+  to { background-color: rgb(0 0 0 / 48%); backdrop-filter: blur(8px); }
+}
+
 .desktop-install-body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: inherit; font-size: 13px; line-height: 1.7; }
 .desktop-install-body header { padding: 16px 22px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 12px; }
 .desktop-install-body header img { border-radius: 12px; flex: none; }
