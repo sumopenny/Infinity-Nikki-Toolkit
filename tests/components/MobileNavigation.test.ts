@@ -91,3 +91,23 @@ it('follows archive subpages and parent selection and respects disabled navigati
   expect(wrapper.emitted('changeView')).toHaveLength(1)
   wrapper.unmount()
 })
+
+it.each([
+  ['Mozilla/5.0 Chrome/142.0.0.0 Safari/537.36', true],
+  ['Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Version/18.0 Safari/604.1', false],
+  ['Mozilla/5.0 Firefox/140.0', false]
+])('keeps navigation usable with the optical enhancement on %s', (userAgent, refracts) => {
+  const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent)
+  const wrapper = mount(MobileNavigation, { props })
+  try {
+    expect(wrapper.findAll('button')).toHaveLength(4)
+    expect(wrapper.find('svg.nav-glass-definitions').exists()).toBe(refracts)
+    if (refracts) {
+      expect(wrapper.get('feDisplacementMap').attributes('in')).toBe('SourceGraphic')
+      expect(wrapper.get('nav').attributes('data-refraction')).toBe('true')
+    }
+  } finally {
+    wrapper.unmount()
+    ua.mockRestore()
+  }
+})

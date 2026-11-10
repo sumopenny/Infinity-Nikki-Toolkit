@@ -171,3 +171,53 @@ it('remembers camera sizes independently across devices and reloads', () => {
   expect(reloaded.preferences.thumbnailSizes.value.camera).toBe('large')
   reloaded.wrapper.unmount()
 })
+
+it.each(['docked', 'capsule'] as const)(
+  'applies and restores mobile navigation style %s',
+  async (style) => {
+    const { preferences, compact, wrapper } = setup()
+    preferences.setMobileNavStyle(style)
+    await nextTick()
+    expect(document.documentElement.dataset.mobileNavStyle).toBe(style)
+    expect(localStorage.getItem('infinity-nikki-mobile-nav-style')).toBe(style)
+    compact.value = true
+    expect(preferences.mobileNavStyle.value).toBe(style)
+    wrapper.unmount()
+    const restored = setup()
+    expect(restored.preferences.mobileNavStyle.value).toBe(style)
+    restored.wrapper.unmount()
+  }
+)
+
+it('rejects invalid navigation styles and respects suspended persistence', async () => {
+  localStorage.setItem('infinity-nikki-mobile-nav-style', 'invalid')
+  const { preferences, wrapper, pause } = setup()
+  expect(preferences.mobileNavStyle.value).toBe('docked')
+  pause()
+  preferences.setMobileNavStyle('capsule')
+  await nextTick()
+  expect(document.documentElement.dataset.mobileNavStyle).toBe('capsule')
+  expect(localStorage.getItem('infinity-nikki-mobile-nav-style')).toBe('docked')
+  wrapper.unmount()
+})
+
+it.each(['opaque', 'frosted', 'glass'] as const)(
+  'saves material %s independently from navigation layout',
+  async (material) => {
+    const { preferences, wrapper } = setup()
+    preferences.setMobileNavStyle('capsule')
+    preferences.setSurfaceStyle(material)
+    await nextTick()
+    expect(document.documentElement.dataset.surfaceStyle).toBe(material)
+    expect(preferences.mobileNavStyle.value).toBe('capsule')
+    expect(localStorage.getItem('infinity-nikki-surface-style')).toBe(material)
+    preferences.setMobileNavStyle('docked')
+    await nextTick()
+    expect(preferences.surfaceStyle.value).toBe(material)
+    wrapper.unmount()
+    const restored = setup()
+    expect(restored.preferences.surfaceStyle.value).toBe(material)
+    expect(restored.preferences.mobileNavStyle.value).toBe('docked')
+    restored.wrapper.unmount()
+  }
+)

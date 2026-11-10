@@ -1,3 +1,9 @@
+import {
+  isMobileNavStyle,
+  type MobileNavStyle,
+  isSurfaceStyle,
+  type SurfaceStyle
+} from '../types/mobileNavigation'
 import { readLocalStorage, writeLocalStorage } from '../utils/localStorage'
 import { computed, ref, watch, onBeforeUnmount, type Ref } from 'vue'
 import { DEFAULT_LANGUAGE, messages, type Language } from '../i18n'
@@ -14,6 +20,8 @@ import type { StatusState } from './useOperationNotice'
 const THUMBNAIL_STORAGE_KEY = 'infinity-nikki-thumbnail-mode'
 const OUTFIT_THUMBNAIL_STORAGE_KEY = 'infinity-nikki-outfit-thumbnail-mode'
 const HOME_THUMBNAIL_STORAGE_KEY = 'infinity-nikki-home-thumbnail-mode'
+const SURFACE_STYLE_KEY = 'infinity-nikki-surface-style'
+const MOBILE_NAV_STYLE_KEY = 'infinity-nikki-mobile-nav-style'
 const THEME_STORAGE_KEY = 'infinity-nikki-theme-mode'
 const LANGUAGE_STORAGE_KEY = 'infinity-nikki-language'
 const AUTO_PARSE_ACTIONS_STORAGE_KEY = 'infinity-nikki-auto-parse-actions'
@@ -32,6 +40,28 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
   const storedThumbnailMode = readLocalStorage(THUMBNAIL_STORAGE_KEY)
   const storedOutfitThumbnailMode = readLocalStorage(OUTFIT_THUMBNAIL_STORAGE_KEY)
   const storedHomeThumbnailMode = readLocalStorage(HOME_THUMBNAIL_STORAGE_KEY)
+  const storedSurface = readLocalStorage(SURFACE_STYLE_KEY)
+  const surfaceStyle = ref<SurfaceStyle>(isSurfaceStyle(storedSurface) ? storedSurface : 'frosted')
+  watch(
+    surfaceStyle,
+    (value) => {
+      document.documentElement.dataset.surfaceStyle = value
+      if (canPersist()) writeLocalStorage(SURFACE_STYLE_KEY, value)
+    },
+    { immediate: true }
+  )
+  const storedNavStyle = readLocalStorage(MOBILE_NAV_STYLE_KEY)
+  const mobileNavStyle = ref<MobileNavStyle>(
+    isMobileNavStyle(storedNavStyle) ? storedNavStyle : 'docked'
+  )
+  watch(
+    mobileNavStyle,
+    (value) => {
+      document.documentElement.dataset.mobileNavStyle = value
+      if (canPersist()) writeLocalStorage(MOBILE_NAV_STYLE_KEY, value)
+    },
+    { immediate: true }
+  )
   const storedThemeMode = readLocalStorage(THEME_STORAGE_KEY)
   const storedLanguage = readLocalStorage(LANGUAGE_STORAGE_KEY)
   const storedAutoParseActions = readLocalStorage(AUTO_PARSE_ACTIONS_STORAGE_KEY)
@@ -164,6 +194,14 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
     return applyPreference('theme')
   }
 
+  function setSurfaceStyle(style: SurfaceStyle) {
+    if (isSurfaceStyle(style)) surfaceStyle.value = style
+  }
+
+  function setMobileNavStyle(style: MobileNavStyle) {
+    if (isMobileNavStyle(style)) mobileNavStyle.value = style
+  }
+
   function saveThumbnailMode(kind: ThumbnailRatioKind, mode: ThumbnailMode) {
     if (!isThumbnailMode(mode)) return
     modeStates[kind].value = mode
@@ -174,6 +212,10 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
     document.documentElement.classList.remove('is-theme-switching')
   })
   return {
+    surfaceStyle,
+    setSurfaceStyle,
+    mobileNavStyle,
+    setMobileNavStyle,
     language,
     locale,
     themeMode,

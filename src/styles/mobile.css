@@ -1032,12 +1032,24 @@
     animation: archive-category-exit 120ms ease both;
   }
   @keyframes archive-category-exit {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(4px); }
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(4px);
+    }
   }
   @keyframes archive-category-enter {
-    from { opacity: 0; transform: translateX(4px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .archive-category-slot,
@@ -1785,7 +1797,7 @@
     border: 0;
     border-radius: 10px;
     background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
-  background-color: var(--surface);
+    background-color: var(--surface);
   }
   :where(:root[data-theme='dark'])
     body
@@ -1836,5 +1848,29 @@
   body .outfit-detail-panel .wardrobe-detail-scroll > .outfit-detail-content {
     overflow: visible;
     border-left: 0;
+  }
+}
+
+/* 悬浮导航的占位同时驱动页面留白和批量操作栏，避免底部内容被遮挡。 */
+@media (max-width: 899px) {
+  :root[data-mobile-nav-style='capsule'] {
+    --mobile-nav-height: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  :root[data-mobile-nav-style='capsule'] .mobile-navigation {
+    left: max(64px, env(safe-area-inset-left, 0px));
+    right: max(64px, env(safe-area-inset-right, 0px));
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    height: 60px;
+    max-width: 280px;
+    margin-inline: auto;
+    padding: 5px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: 0 8px 28px rgb(0 0 0 / 16%);
+    isolation: isolate;
+  }
+  :root[data-mobile-nav-style='capsule'] .mobile-navigation button {
+    border-radius: 999px;
+    font-size: 10px;
   }
 }

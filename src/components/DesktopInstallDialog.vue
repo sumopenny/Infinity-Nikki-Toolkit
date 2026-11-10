@@ -51,7 +51,7 @@ let closeTimer: ReturnType<typeof setTimeout> | undefined
 function finishClose() {
   clearTimeout(closeTimer)
   closeTimer = undefined
-  dialog.value?.close()
+  if (dialog.value?.open) dialog.value.close()
   dialog.value?.classList.remove('is-closing')
 }
 /** 保留原生模态层，待退场动画结束后再关闭，避免遮罩和面板突然消失。 */

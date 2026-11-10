@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Camera, House, Shirt, Sparkles } from 'lucide-vue-next'
 import { onBeforeUnmount, ref, watch } from 'vue'
+import GlassSurfaceFilter from './GlassSurfaceFilter.vue'
+import { useGlassSurface } from '../composables/useGlassSurface'
+const { glassFilterId, refractsBackdrop } = useGlassSurface()
 import type { AlbumView } from './AlbumViewSwitcher.vue'
 import type { LocaleMessages } from '../i18n'
 const props = defineProps<{
@@ -51,7 +54,13 @@ onBeforeUnmount(cancelPress)
 </script>
 
 <template>
-  <nav class="mobile-navigation mobile-only" :aria-label="messages.aria">
+  <nav
+    class="mobile-navigation mobile-only material-surface"
+    :aria-label="messages.aria"
+    :data-refraction="refractsBackdrop || undefined"
+    :style="{ '--nav-glass-filter': `url(#${glassFilterId})` }"
+  >
+    <GlassSurfaceFilter v-if="refractsBackdrop" :filter-id="glassFilterId" />
     <button
       v-for="entry in [
         { view: 'outfits' as const, label: outfitLabel, icon: Shirt },

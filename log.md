@@ -1469,3 +1469,17 @@
 - 备份取舍：预览校验与数据库冲突检查是两种不同边界。准备结果绑定同一不可变 File，只保留图片元数据；提交时逐包读取字节，复用解码、格式和哈希结果，同时继续在事务中读取当前记录。保留必要的第二次解压以限制展开图片驻留，不以缓存所有图片换取更少读取；搭配总备份移除重复的整包预检查。
 - 可删除状态：本地家园封面已由 StoredImage 和编辑器各自管理 URL，移除旧列表批量释放函数及调用；删除搭配导入进度中只写不读的 sha256，但保留源文件变化校验使用的哈希。来源链接先判定分享文本边界再验证 URL，避免 URL 构造器把尾随中文文案当合法路径。
 - 验证：全量 Vitest 1448 项通过、1 项跳过，独立启动、资源网络与构建策略测试 31 项通过；生产构建、本次改动文件的 Prettier 检查与差异检查通过。回归覆盖新增文件保留、同名并发写入、导入与恢复协调、排队取消、稀疏变体、来源链接，以及备份准备后本地变更与图片字节往返。保留既有大包体积警告；未提交、未部署。
+
+
+## 2026-11-10 液态玻璃导航材质
+
+- 原因：高不透明度底色叠加大半径模糊更接近磨砂背景，缺少边缘折射与方向性高光。
+- 实现：独立生成胶囊边缘法线位移图（中间保持中性），在 Chromium 使用 SVG 背景位移滤镜；其他引擎使用小半径模糊、透光底、明暗边缘及高光。文字图标不进入位移处理。没有持续绘制循环或第三方运行时依赖。
+- 边界：UA 判断仅作为增强开关，不保证所有 Chromium WebView 均能执行 SVG 背景滤镜；iOS 与 Firefox 保留 CSS 材质。减少透明度或提高对比度时禁用背景滤镜。遵循用户要求，本轮不操作浏览器，未实测光学显示效果。
+- 研究参考：[Apple Materials](https://developer.apple.com/design/human-interface-guidelines/materials)、[Chrome Labs 示例](https://github.com/GoogleChromeLabs/css-web-ui-demos/tree/main/html-in-canvas/public/assets/liquid_glass_reference)、[nordify 技术说明](https://github.com/nordify/css-liquid-glass/blob/main/HOW-IT-WORKS.md)、[MDN backdrop-filter](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/backdrop-filter)。参考实现原理，未复制第三方源码。
+
+
+### 折射实现回退
+
+- 最终按用户要求，电脑顶栏、手机顶栏与底部导航统一恢复原始胶囊 PNG 位移图、百分比滤镜尺寸及强度 14，折射后使用 2px 模糊与 145% 饱和度。
+- 顶栏专用动态位移图、尺寸观察和内嵌图处理已撤销；保留风格与导航布局独立设置，以及其余底色、高光和阴影调整。未操作浏览器，实际折射效果未做本轮目视验收。

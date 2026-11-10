@@ -1,4 +1,13 @@
 <script setup lang="ts">
+import GlassSurfaceFilter from './GlassSurfaceFilter.vue'
+import { useGlassSurface } from '../composables/useGlassSurface'
+const { glassFilterId, refractsBackdrop } = useGlassSurface()
+import {
+  MOBILE_NAV_STYLES,
+  type MobileNavStyle,
+  SURFACE_STYLES,
+  type SurfaceStyle
+} from '../types/mobileNavigation'
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
@@ -65,6 +74,8 @@ const props = defineProps<{
   thumbnailSize?: ThumbnailSize
   thumbnailSizeDisabled?: boolean
   thumbnailModeOptions: Array<{ value: ThumbnailMode; label: string }>
+  surfaceStyle?: SurfaceStyle
+  mobileNavStyle?: MobileNavStyle
   themeMode: ThemeMode
   language: Language
   messages: LocaleMessages['topBar']
@@ -88,6 +99,8 @@ const emit = defineEmits<{
   refreshBackupAvailability: []
   toggleLanguage: []
   toggleTheme: []
+  changeSurfaceStyle: [style: SurfaceStyle]
+  changeMobileNavStyle: [style: MobileNavStyle]
   changeThumbnailMode: [mode: ThumbnailMode]
   changeThumbnailSize: [size: ThumbnailSize]
   openUpdateLog: []
@@ -100,7 +113,9 @@ const emit = defineEmits<{
 const FEEDBACK_URL = 'https://v.wjx.cn/vm/tUM7gga.aspx'
 
 const compact = useCompactLayout()
-const isArchiveView = computed(() => ['resonance', 'wardrobe', 'makeup'].includes(props.activeView ?? ''))
+const isArchiveView = computed(() =>
+  ['resonance', 'wardrobe', 'makeup'].includes(props.activeView ?? '')
+)
 const { selectedBackground, selectBackground } = useArchiveBackground()
 const mobileLikeTarget = inject('mobileLikeTarget', ref<HTMLElement | null>(null))
 const mobileSearchOpen = ref(false)
@@ -378,7 +393,13 @@ function openDonate() {
 </script>
 
 <template>
-  <header ref="headerRef" class="app-header">
+  <header
+    ref="headerRef"
+    class="app-header material-surface"
+    :data-refraction="refractsBackdrop || undefined"
+    :style="{ '--nav-glass-filter': `url(#${glassFilterId})` }"
+  >
+    <GlassSurfaceFilter v-if="refractsBackdrop" :filter-id="glassFilterId" />
     <div class="brand-lockup">
       <img class="brand-icon" :src="brandIcon" :alt="messages.brandName" />
       <div class="brand-copy">
@@ -635,7 +656,8 @@ function openDonate() {
               ></header>
               <div class="view-toggle-row">
                 <div
-                  v-segmented-indicator class="view-toggle-pill"
+                  v-segmented-indicator
+                  class="view-toggle-pill"
                   role="group"
                   :aria-label="messages.themeToggleAria"
                 >
@@ -663,7 +685,8 @@ function openDonate() {
                   </button>
                 </div>
                 <div
-                  v-segmented-indicator class="view-toggle-pill"
+                  v-segmented-indicator
+                  class="view-toggle-pill"
                   role="group"
                   :aria-label="messages.languageToggleAria"
                 >
@@ -687,8 +710,64 @@ function openDonate() {
                   </button>
                 </div>
               </div>
+              <div class="menu-section-label">{{
+                language === 'zh' ? '风格' : 'Material style'
+              }}</div>
+              <div
+                class="thumbnail-size-options surface-style-options"
+                role="group"
+                :aria-label="language === 'zh' ? '风格' : 'Material style'"
+              >
+                <button
+                  v-for="style in SURFACE_STYLES"
+                  :key="style"
+                  type="button"
+                  class="menu-radio"
+                  role="menuitemradio"
+                  :aria-checked="(surfaceStyle ?? 'frosted') === style"
+                  :class="{ active: (surfaceStyle ?? 'frosted') === style }"
+                  @click="runMenuAction(() => emit('changeSurfaceStyle', style))"
+                >
+                  <span class="radio-mark"></span>
+                  <span>{{
+                    language === 'zh'
+                      ? { opaque: '不透', frosted: '磨砂', glass: '液态玻璃' }[style]
+                      : { opaque: 'Opaque', frosted: 'Frosted', glass: 'Liquid glass' }[style]
+                  }}</span>
+                </button>
+              </div>
+              <template v-if="compact">
+                <div class="menu-section-label">{{
+                  language === 'zh' ? '导航栏样式' : 'Navigation style'
+                }}</div>
+                <div
+                  class="thumbnail-options mobile-nav-style-options"
+                  role="group"
+                  :aria-label="language === 'zh' ? '导航栏样式' : 'Navigation style'"
+                >
+                  <button
+                    v-for="style in MOBILE_NAV_STYLES"
+                    :key="style"
+                    type="button"
+                    class="menu-radio"
+                    role="menuitemradio"
+                    :aria-checked="(mobileNavStyle ?? 'docked') === style"
+                    :class="{ active: (mobileNavStyle ?? 'docked') === style }"
+                    @click="runMenuAction(() => emit('changeMobileNavStyle', style))"
+                  >
+                    <span class="radio-mark"></span>
+                    <span>{{
+                      language === 'zh'
+                        ? { docked: '贴底', capsule: '悬浮胶囊' }[style]
+                        : { docked: 'Docked', capsule: 'Floating capsule' }[style]
+                    }}</span>
+                  </button>
+                </div>
+              </template>
               <template v-if="isArchiveView && activeView !== 'makeup'">
-                <div class="menu-section-label">{{ language === 'zh' ? '背景图风格' : 'Background style' }}</div>
+                <div class="menu-section-label">{{
+                  language === 'zh' ? '背景图风格' : 'Background style'
+                }}</div>
                 <div class="archive-background-options">
                   <button
                     v-for="background in archiveBackgrounds"
@@ -700,50 +779,58 @@ function openDonate() {
                     :aria-checked="selectedBackground === background.id"
                     @click="selectBackground(background.id)"
                   >
-                    <span class="archive-background-preview" :style="{ '--archive-preview-source': `url('${background.url}')` }">
-                      <span v-if="selectedBackground === background.id" class="archive-background-check" aria-hidden="true">✓</span>
+                    <span
+                      class="archive-background-preview"
+                      :style="{ '--archive-preview-source': `url('${background.url}')` }"
+                    >
+                      <span
+                        v-if="selectedBackground === background.id"
+                        class="archive-background-check"
+                        aria-hidden="true"
+                        >✓</span
+                      >
                     </span>
                     <span>{{ language === 'zh' ? background.label : background.en }}</span>
                   </button>
                 </div>
               </template>
               <template v-else-if="!isArchiveView">
-              <div class="menu-section-label">{{ messages.thumbnailSize }}</div>
-              <div class="thumbnail-size-options">
-                <button
-                  v-for="size in THUMBNAIL_SIZES"
-                  :key="size"
-                  class="menu-radio"
-                  :class="{ active: size === (thumbnailSize ?? 'medium') }"
-                  type="button"
-                  role="menuitemradio"
-                  :disabled="thumbnailSizeDisabled"
-                  :aria-checked="size === (thumbnailSize ?? 'medium')"
-                  @click="runMenuAction(() => emit('changeThumbnailSize', size))"
-                >
-                  <span class="radio-mark"></span>
-                  <span>{{ messages.thumbnailSizes[size] }}</span>
-                </button>
-              </div>
-              <template v-if="!thumbnailModeDisabled">
-              <div class="menu-section-label">{{ messages.thumbnailRatio }}</div>
-              <div class="thumbnail-options">
-                <button
-                  v-for="option in thumbnailModeOptions"
-                  :key="option.value"
-                  class="menu-radio"
-                  :class="{ active: option.value === thumbnailMode }"
-                  type="button"
-                  role="menuitemradio"
-                  :disabled="thumbnailModeDisabled"
-                  :aria-checked="option.value === thumbnailMode"
-                  @click="runMenuAction(() => emit('changeThumbnailMode', option.value))"
-                >
-                  <span class="radio-mark"></span>
-                  <span>{{ option.label }}</span>
-                </button>
-              </div>
-              </template>
+                <div class="menu-section-label">{{ messages.thumbnailSize }}</div>
+                <div class="thumbnail-size-options">
+                  <button
+                    v-for="size in THUMBNAIL_SIZES"
+                    :key="size"
+                    class="menu-radio"
+                    :class="{ active: size === (thumbnailSize ?? 'medium') }"
+                    type="button"
+                    role="menuitemradio"
+                    :disabled="thumbnailSizeDisabled"
+                    :aria-checked="size === (thumbnailSize ?? 'medium')"
+                    @click="runMenuAction(() => emit('changeThumbnailSize', size))"
+                  >
+                    <span class="radio-mark"></span>
+                    <span>{{ messages.thumbnailSizes[size] }}</span>
+                  </button>
+                </div>
+                <template v-if="!thumbnailModeDisabled">
+                  <div class="menu-section-label">{{ messages.thumbnailRatio }}</div>
+                  <div class="thumbnail-options">
+                    <button
+                      v-for="option in thumbnailModeOptions"
+                      :key="option.value"
+                      class="menu-radio"
+                      :class="{ active: option.value === thumbnailMode }"
+                      type="button"
+                      role="menuitemradio"
+                      :disabled="thumbnailModeDisabled"
+                      :aria-checked="option.value === thumbnailMode"
+                      @click="runMenuAction(() => emit('changeThumbnailMode', option.value))"
+                    >
+                      <span class="radio-mark"></span>
+                      <span>{{ option.label }}</span>
+                    </button>
+                  </div>
+                </template>
               </template>
             </div>
           </Transition>

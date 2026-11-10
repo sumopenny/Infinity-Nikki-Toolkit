@@ -4,7 +4,10 @@ import SkeletonSweep from './components/SkeletonSweep.vue'
 import { globalSkeletonSweepKey } from './utils/imageSkeleton'
 provide(globalSkeletonSweepKey, true)
 import AlbumNoteNotice from './components/AlbumNoteNotice.vue'
-import { archiveMotionDeadlineKey, archiveMotionLoadDelay } from './composables/useAfterArchiveMotion'
+import {
+  archiveMotionDeadlineKey,
+  archiveMotionLoadDelay
+} from './composables/useAfterArchiveMotion'
 import {
   inspectAlbumNotes,
   recoverAlbumNotes,
@@ -289,6 +292,10 @@ retainDialogAfterOpen('FortuneTimeDialog', isFortuneTimeVisible)
 const compactLayout = useCompactLayout()
 useVisualViewport()
 const {
+  mobileNavStyle,
+  setMobileNavStyle,
+  surfaceStyle,
+  setSurfaceStyle,
   language,
   locale,
   themeMode,
@@ -1632,14 +1639,18 @@ function changeAlbumView(view: AlbumView, afterArchiveExit = false) {
   archiveToolbarExitTimer = undefined
   archiveToolbarClosing.value = false
   if (!afterArchiveExit) {
-    const animateArchive = compactLayout.value && view !== activeView.value &&
+    const animateArchive =
+      compactLayout.value &&
+      view !== activeView.value &&
       ['resonance', 'wardrobe', 'makeup'].includes(view) &&
       !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     archiveToolbarMotionDeadline.value = animateArchive ? Date.now() + archiveMotionLoadDelay : 0
   }
   // Keep the source module mounted until its teleported controls have faded out.
   if (
-    !afterArchiveExit && compactLayout.value && view === 'resonance' &&
+    !afterArchiveExit &&
+    compactLayout.value &&
+    view === 'resonance' &&
     (activeView.value === 'wardrobe' || activeView.value === 'makeup') &&
     !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   ) {
@@ -2292,6 +2303,10 @@ function importAllDataFromMenu() {
       :thumbnail-size-disabled="isThumbnailSizeDisabled"
       :thumbnail-mode-options="thumbnailModeOptions"
       :theme-mode="themeMode"
+      :mobile-nav-style="mobileNavStyle"
+      :surface-style="surfaceStyle"
+      @change-surface-style="setSurfaceStyle"
+      @change-mobile-nav-style="setMobileNavStyle"
       :language="language"
       :messages="
         activeView === 'wardrobe'
@@ -2504,10 +2519,16 @@ function importAllDataFromMenu() {
         <div
           v-if="compactLayout && isArchiveView"
           class="archive-main-toolbar"
-          :class="{ 'is-wardrobe': activeView === 'wardrobe', 'is-category-closing': archiveToolbarClosing, 'has-category': !archiveToolbarClosing && (activeView === 'wardrobe' || activeView === 'makeup') }"
+          :class="{
+            'is-wardrobe': activeView === 'wardrobe',
+            'is-category-closing': archiveToolbarClosing,
+            'has-category':
+              !archiveToolbarClosing && (activeView === 'wardrobe' || activeView === 'makeup')
+          }"
         >
           <nav
-            v-segmented-indicator class="resonance-choice-row archive-main-tabs"
+            v-segmented-indicator
+            class="resonance-choice-row archive-main-tabs"
             :aria-label="locale.viewNav.resonance"
           >
             <button
@@ -2577,7 +2598,8 @@ function importAllDataFromMenu() {
         <div v-if="activeView === 'favorites'" v-show="!compactLayout" class="favorites-toolbar">
           <nav
             v-if="!compactLayout"
-            v-segmented-indicator class="resonance-choice-row favorites-view-switch"
+            v-segmented-indicator
+            class="resonance-choice-row favorites-view-switch"
             :aria-label="locale.viewNav.favorites"
           >
             <button

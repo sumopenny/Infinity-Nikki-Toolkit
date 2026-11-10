@@ -98,3 +98,91 @@ it('opens desktop menus on mouse hover and keeps the menu open across the gap', 
     wrapper.unmount()
   }
 })
+
+it.each(['zh', 'en'] as const)(
+  'offers all navigation styles only on mobile (%s)',
+  async (language) => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener() {},
+      removeEventListener() {}
+    }))
+    const wrapper = mount(TopBar, {
+      props: {
+        directoryName: '',
+        isLoading: false,
+        isDeleting: false,
+        hasAlbumDirectory: false,
+        hasX6GameAuthorization: false,
+        thumbnailMode: 'default',
+        thumbnailModeOptions: [],
+        themeMode: 'light',
+        language,
+        messages: messages[language].topBar,
+        mobileNavStyle: 'docked'
+      },
+      global: { stubs: { Teleport: true, Transition: true, LikeCounter: true } }
+    })
+    try {
+      await wrapper.get('.view-menu-button').trigger('click')
+      await flushPromises()
+      const buttons = wrapper.findAll('.mobile-nav-style-options button')
+      expect(buttons).toHaveLength(2)
+      expect(buttons[0].attributes('aria-checked')).toBe('true')
+      expect(buttons[1].attributes('role')).toBe('menuitemradio')
+      expect(buttons.every((button) => button.find('.radio-mark').exists())).toBe(true)
+      await buttons[1].trigger('click')
+      expect(wrapper.find('.mobile-nav-style-options').exists()).toBe(false)
+      expect(wrapper.get('.view-menu-button').attributes('aria-expanded')).toBe('false')
+      expect(wrapper.emitted('changeMobileNavStyle')?.at(-1)).toEqual(['capsule'])
+      await wrapper.setProps({ mobileNavStyle: 'capsule' })
+      await wrapper.get('.view-menu-button').trigger('click')
+      await flushPromises()
+      expect(
+        wrapper.findAll('.mobile-nav-style-options button')[1].attributes('aria-checked')
+      ).toBe('true')
+      expect(
+        wrapper.findAll('.mobile-nav-style-options button')[0].attributes('aria-checked')
+      ).toBe('false')
+    } finally {
+      wrapper.unmount()
+    }
+  }
+)
+
+it.each([false, true])('offers material styles on desktop/mobile: compact=%s', async (compact) => {
+  vi.stubGlobal('matchMedia', () => ({
+    matches: compact,
+    addEventListener() {},
+    removeEventListener() {}
+  }))
+  const wrapper = mount(TopBar, {
+    props: {
+      directoryName: '',
+      isLoading: false,
+      isDeleting: false,
+      hasAlbumDirectory: false,
+      hasX6GameAuthorization: false,
+      thumbnailMode: 'default',
+      thumbnailModeOptions: [],
+      themeMode: 'light',
+      language: 'en',
+      messages: messages.en.topBar,
+      surfaceStyle: 'frosted'
+    },
+    global: { stubs: { Teleport: true, Transition: true, LikeCounter: true } }
+  })
+  try {
+    await wrapper.get('.view-menu-button').trigger('click')
+    await flushPromises()
+    const choices = wrapper.findAll('.surface-style-options button')
+    expect(choices.map((button) => button.text())).toEqual(['Opaque', 'Frosted', 'Liquid glass'])
+    expect(choices[1].attributes('aria-checked')).toBe('true')
+    expect(wrapper.find('.mobile-nav-style-options').exists()).toBe(compact)
+    await choices[2].trigger('click')
+    expect(wrapper.emitted('changeSurfaceStyle')?.at(-1)).toEqual(['glass'])
+    expect(wrapper.get('.view-menu-button').attributes('aria-expanded')).toBe('false')
+  } finally {
+    wrapper.unmount()
+  }
+})

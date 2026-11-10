@@ -1,0 +1,248 @@
+/* 材质与布局独立：桌面顶栏、手机顶栏及导航共用风格。 */
+:root[data-surface-style='opaque'] .material-surface {
+  background: var(--surface-strong);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-surface-style='frosted'] .material-surface {
+  background: var(--top-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+/* 玻璃由透光底、方向性高光和弧面明暗组成，文字始终在光学层上方。 */
+:root[data-surface-style='glass'] .material-surface {
+  --glass-tint: rgb(255 255 255 / 26%);
+  --glass-ink: #433538;
+  --glass-edge: rgb(255 255 255 / 72%);
+  --glass-selected: rgb(255 255 255 / 36%);
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    0 10px 28px rgb(36 25 30 / 18%),
+    0 2px 5px rgb(36 25 30 / 8%),
+    inset 0 1px 1px rgb(255 255 255 / 90%),
+    inset 0 -1px 2px rgb(80 60 70 / 18%);
+}
+:root[data-theme='dark'][data-surface-style='glass'] .material-surface {
+  --glass-tint: rgb(30 27 34 / 38%);
+  --glass-ink: #fff4f7;
+  --glass-edge: rgb(255 255 255 / 28%);
+  --glass-selected: rgb(255 255 255 / 14%);
+  box-shadow:
+    0 12px 32px rgb(0 0 0 / 34%),
+    0 2px 5px rgb(0 0 0 / 18%),
+    inset 0 1px 1px rgb(255 255 255 / 42%),
+    inset 0 -1px 2px rgb(0 0 0 / 40%);
+}
+:root[data-surface-style='glass'] .material-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgb(255 255 255 / 44%),
+    transparent 24% 72%,
+    rgb(255 255 255 / 20%)
+  );
+  box-shadow:
+    inset 1px 0 1px rgb(255 255 255 / 48%),
+    inset -1px 0 1px rgb(255 255 255 / 28%);
+}
+:root[data-surface-style='glass'] .mobile-navigation > button {
+  position: relative;
+  color: var(--glass-ink);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--surface-strong) 80%, transparent);
+}
+:root[data-surface-style='glass'] .mobile-navigation button[aria-current='page'] {
+  background: var(--glass-selected);
+  color: var(--heading);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 68%),
+    inset 0 -1px 1px rgb(40 25 35 / 12%),
+    0 2px 6px rgb(40 25 35 / 7%);
+}
+@supports ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  :root[data-surface-style='glass'] .material-surface {
+    background: var(--glass-tint);
+    -webkit-backdrop-filter: blur(8px) saturate(160%);
+    backdrop-filter: blur(8px) saturate(160%);
+  }
+  :root[data-surface-style='glass'] .material-surface[data-refraction='true'] {
+    backdrop-filter: var(--nav-glass-filter) blur(2px) saturate(145%);
+  }
+}
+/* 全宽电脑顶栏单独减轻雾面，反光只留在上下边缘；手机胶囊参数不变。 */
+@media (min-width: 900px) {
+  :root[data-surface-style='glass'] .app-header :is(.like-counter, .header-search input) {
+    background: var(--glass-selected);
+    border-color: var(--glass-edge);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 38%);
+  }
+  :root[data-surface-style='glass'] .app-header .like-counter:hover {
+    background: color-mix(in srgb, var(--glass-selected) 80%, var(--pink-deep) 8%);
+    border-color: var(--pink-deep);
+  }
+  :root[data-surface-style='glass'] .app-header .header-search input:is(:focus, :focus-visible) {
+    background: var(--glass-selected);
+    border-color: var(--pink-deep);
+    box-shadow: var(--input-focus-shadow);
+  }
+  :root[data-surface-style='glass'] .app-header .official-site-link::after {
+    background: color-mix(in srgb, var(--glass-selected) 85%, #e8a35c 10%);
+  }
+  :root[data-surface-style='glass'] .app-header .official-site-link:hover::after {
+    background: color-mix(in srgb, var(--glass-selected) 85%, #e8a35c 16%);
+  }
+  :root[data-surface-style='glass']
+    .app-header
+    :is(.header-menu-button, .header-icon-button):is(
+      :hover,
+      :active,
+      [aria-expanded='true'],
+      [aria-pressed='true']
+    ):not(:disabled):not([aria-disabled='true']) {
+    background: var(--glass-selected);
+    border-color: var(--glass-edge);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 42%),
+      0 2px 5px rgb(36 25 30 / 7%);
+  }
+  :root[data-surface-style='glass'] .app-header {
+    --glass-tint: rgb(255 255 255 / 14%);
+    border-color: rgb(255 255 255 / 42%);
+    box-shadow:
+      0 4px 14px rgb(36 25 30 / 9%),
+      inset 0 1px 0 rgb(255 255 255 / 65%),
+      inset 0 -1px 0 rgb(80 60 70 / 12%);
+  }
+  :root[data-theme='dark'][data-surface-style='glass'] .app-header {
+    --glass-tint: rgb(24 22 28 / 24%);
+    border-color: rgb(255 255 255 / 20%);
+    box-shadow:
+      0 4px 16px rgb(0 0 0 / 24%),
+      inset 0 1px 0 rgb(255 255 255 / 24%),
+      inset 0 -1px 0 rgb(0 0 0 / 28%);
+  }
+  :root[data-surface-style='glass'] .app-header::before {
+    background: linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 22%) 0,
+      transparent 3px,
+      transparent calc(100% - 2px),
+      rgb(255 255 255 / 10%) 100%
+    );
+    box-shadow: none;
+  }
+  :root[data-theme='dark'][data-surface-style='glass'] .app-header::before {
+    background: linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 12%) 0,
+      transparent 3px,
+      transparent calc(100% - 2px),
+      rgb(255 255 255 / 5%) 100%
+    );
+  }
+  @supports ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    :root[data-surface-style='glass'] .app-header {
+      -webkit-backdrop-filter: blur(2px) saturate(125%);
+      backdrop-filter: blur(2px) saturate(125%);
+    }
+    :root[data-surface-style='glass'] .app-header[data-refraction='true'] {
+      backdrop-filter: var(--nav-glass-filter) blur(2px) saturate(145%);
+    }
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root[data-surface-style='glass'] .material-surface,
+  :root[data-surface-style='glass'] .material-surface[data-refraction='true'] {
+    background: var(--surface-strong);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  :root[data-surface-style='glass'] .material-surface::before {
+    display: none;
+  }
+  :root[data-surface-style='glass'] .mobile-navigation button[aria-current='page'] {
+    background: var(--soft-accent);
+  }
+}
+:root[data-surface-style='glass'] .app-header {
+  border-width: 0 0 1px;
+  isolation: isolate;
+}
+:root[data-surface-style='glass'] .app-header::before {
+  z-index: -1;
+}
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  :root[data-surface-style='frosted'] .material-surface {
+    background: var(--surface-strong);
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root[data-surface-style] .material-surface {
+    background: var(--surface-strong);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (min-width: 900px) and (prefers-reduced-transparency: reduce),
+  (min-width: 900px) and (prefers-contrast: more) {
+  :root[data-surface-style='glass'] .app-header :is(.like-counter, .header-search input),
+  :root[data-surface-style='glass'] .app-header .official-site-link::after,
+  :root[data-surface-style='glass'] .app-header .official-site-link:hover::after {
+    background: var(--surface-strong);
+  }
+}
+
+/* 磨砂模式下，官网、点赞和搜索框保留各自色彩，底色改为透光磨砂。 */
+@media (min-width: 900px) {
+  :root[data-surface-style='frosted']
+    .app-header
+    :is(.view-menu-button, .tools-menu-button, .more-menu-button, .auto-backup-button):is(
+      :hover,
+      [aria-expanded='true']
+    ):not(:disabled) {
+    background: color-mix(in srgb, var(--surface-strong) 50%, transparent);
+  }
+
+  :root[data-surface-style='frosted'] .app-header {
+    --frost-control-bg: rgb(255 255 255 / 46%);
+    --frost-control-hover: rgb(255 255 255 / 62%);
+    --frost-site-bg: rgb(255 241 220 / 48%);
+    --frost-site-hover: rgb(255 235 208 / 62%);
+  }
+  :root[data-theme='dark'][data-surface-style='frosted'] .app-header {
+    --frost-control-bg: rgb(30 27 34 / 46%);
+    --frost-control-hover: rgb(30 27 34 / 62%);
+    --frost-site-bg: rgb(48 36 28 / 48%);
+    --frost-site-hover: rgb(54 39 30 / 62%);
+  }
+  :root[data-surface-style='frosted'] .app-header :is(.like-counter, .header-search input) {
+    background: var(--frost-control-bg);
+  }
+  :root[data-surface-style='frosted'] .app-header .like-counter:hover,
+  :root[data-surface-style='frosted'] .app-header .header-search input:is(:focus, :focus-visible) {
+    background: var(--frost-control-hover);
+  }
+  :root[data-surface-style='frosted'] .app-header .official-site-link::after {
+    background: var(--frost-site-bg);
+  }
+  :root[data-surface-style='frosted'] .app-header .official-site-link:hover::after {
+    background: var(--frost-site-hover);
+  }
+}
+@media (min-width: 900px) and (prefers-reduced-transparency: reduce),
+  (min-width: 900px) and (prefers-contrast: more) {
+  :root[data-surface-style='frosted'] .app-header :is(.like-counter, .header-search input),
+  :root[data-surface-style='frosted'] .app-header .like-counter:hover,
+  :root[data-surface-style='frosted'] .app-header .header-search input:is(:focus, :focus-visible),
+  :root[data-surface-style='frosted'] .app-header .official-site-link::after,
+  :root[data-surface-style='frosted'] .app-header .official-site-link:hover::after {
+    background: var(--surface-strong);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
