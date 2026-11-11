@@ -327,7 +327,33 @@ const mobileCollectionPicker = computed(
 const topBarRef = ref<InstanceType<typeof TopBar> | null>(null)
 // 筛选栏提供当前位置，顶栏保留唯一点赞实例。
 provide('mobileLikeTarget', ref<HTMLElement | null>(null))
-const activeView = ref<AlbumView>(compactLayout.value && !directorySupported ? 'outfits' : 'all')
+const ACTIVE_VIEW_STORAGE_KEY = 'infinity-nikki-active-view'
+function isAlbumView(value: string | null): value is AlbumView {
+  return (
+    value !== null &&
+    ['all', 'outfits', 'home', 'resonance', 'wardrobe', 'makeup', 'favorites', 'trash'].includes(
+      value
+    )
+  )
+}
+const linkedView = new URLSearchParams(window.location.search).get('view')
+const storedView = readLocalStorage(ACTIVE_VIEW_STORAGE_KEY)
+const activeView = ref<AlbumView>(
+  isAlbumView(linkedView)
+    ? linkedView
+    : isAlbumView(storedView)
+      ? storedView
+      : compactLayout.value && !directorySupported
+        ? 'outfits'
+        : 'all'
+)
+watch(
+  activeView,
+  (view) => {
+    if (!suppressLocalPersistence) writeLocalStorage(ACTIVE_VIEW_STORAGE_KEY, view)
+  },
+  { immediate: true, flush: 'sync' }
+)
 const isArchiveView = computed(() => ['resonance', 'wardrobe', 'makeup'].includes(activeView.value))
 const archiveToolbarClosing = ref(false)
 const archiveToolbarMotionDeadline = ref(0)

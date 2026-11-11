@@ -135,6 +135,52 @@ describe('App lifecycle coordination', () => {
     document.body.innerHTML = ''
   })
 
+  it.each(['outfits', 'home', 'resonance', 'wardrobe', 'makeup', 'favorites'])(
+    'restores the saved module %s after mounting',
+    async (view) => {
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+      localStorage.setItem('infinity-nikki-active-view', view)
+      const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+      await flushPromises()
+      expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe(view)
+    }
+  )
+
+  it('persists navigation and restores it on a fresh app mount', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    wrapper.getComponent({ name: 'TopBar' }).vm.$emit('changeView', 'home')
+    await nextTick()
+    expect(localStorage.getItem('infinity-nikki-active-view')).toBe('home')
+    wrapper.unmount()
+    const reloaded = mount(App, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    expect(reloaded.getComponent({ name: 'TopBar' }).props('activeView')).toBe('home')
+  })
+
+  it('uses the default module when the saved module no longer exists', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    localStorage.setItem('infinity-nikki-active-view', 'removed-module')
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('all')
+  })
+
+  it('prioritizes an explicit module link over the saved module', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    localStorage.setItem('infinity-nikki-active-view', 'wardrobe')
+    const previousUrl = window.location.href
+    try {
+      window.history.replaceState(null, '', '?view=home')
+      const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+      await flushPromises()
+      expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('home')
+    } finally {
+      window.history.replaceState(null, '', previousUrl)
+    }
+  })
+
   it.each([false, true])(
     'queues the reminder after updates and persists dismissal=%s',
     async (dismissed) => {
