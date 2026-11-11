@@ -288,11 +288,6 @@
   transform: translateY(0) scale(0.97);
 }
 
-/* 备份菜单按钮需要固定鼠标命中区域，防止底边悬停时上下跳动。 */
-.header-icon-button.auto-backup-button:is(:hover, [aria-expanded='true'], :active) {
-  transform: none;
-}
-
 .header-star-hint {
   max-width: min(37vw, 400px);
   height: auto;

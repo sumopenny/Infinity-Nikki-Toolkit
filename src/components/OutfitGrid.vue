@@ -1,17 +1,9 @@
 <script setup lang="ts">
+import { vSelectableCard } from '../utils/selectableCard'
+import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vCardReveal } from '../utils/cardReveal'
 import { onBeforeUnmount } from 'vue'
-import {
-  Link,
-  Check,
-  Copy,
-  Edit3,
-  ImagePlus,
-  ScanSearch,
-  Shirt,
-  Trash2,
-  Share2
-} from 'lucide-vue-next'
+import { Link, Copy, Edit3, ImagePlus, ScanSearch, Shirt, Trash2, Share2 } from 'lucide-vue-next'
 import type { OutfitMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 import type { OutfitItem } from '../utils/outfit/outfitFileSystem'
@@ -48,12 +40,6 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
 function toggleOutfit(outfitId: string) {
   if (!props.disabled) emit('toggleOutfit', outfitId)
 }
-
-function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
-  if (event.target !== event.currentTarget || event.key !== 'Enter') return
-  event.preventDefault()
-  toggleOutfit(outfitId)
-}
 </script>
 
 <template>
@@ -81,15 +67,19 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
         v-for="outfit in outfits"
         :key="outfit.id"
         v-card-reveal="`outfit:${outfit.id}`"
-        class="photo-card outfit-card"
+        class="photo-card selectable-card outfit-card"
+        v-selectable-card="{
+          selected: selectedIds.has(outfit.id),
+          selectionMode: selectedIds.size > 0,
+          disabled: disabled,
+          toggle: () => toggleOutfit(outfit.id),
+          preview: () => outfit.image && emit('openPreview', outfit)
+        }"
         :class="{ selected: selectedIds.has(outfit.id) }"
         :aria-label="outfit.code || messages.pending"
         :aria-checked="selectedIds.has(outfit.id)"
         role="checkbox"
         tabindex="0"
-        @click="toggleOutfit(outfit.id)"
-        @dblclick.stop="outfit.image && $emit('openPreview', outfit)"
-        @keydown="handleCardKeydown($event, outfit.id)"
       >
         <div class="photo-frame">
           <LazyPhotoImage
@@ -111,7 +101,11 @@ function handleCardKeydown(event: KeyboardEvent, outfitId: string) {
               ></span
             >
           </div>
-          <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
+          <PhotoSelectionBadge
+            :selected="selectedIds.has(outfit.id)"
+            :language="language"
+            :disabled="disabled"
+          />
           <a
             v-if="outfit.sourceUrl"
             class="card-action card-share-button outfit-source-link"

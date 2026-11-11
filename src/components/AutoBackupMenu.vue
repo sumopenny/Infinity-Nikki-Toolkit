@@ -1516,14 +1516,6 @@ onBeforeUnmount(() => {
     transform-origin: top right;
     animation: auto-backup-in 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
-  .auto-backup-button {
-    transition: scale 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .auto-backup-button:active:not(:disabled) {
-    scale: 0.94;
-    transition-duration: 100ms;
-    transition-timing-function: ease-out;
-  }
   .auto-backup-spinning {
     animation: auto-backup-spin 1s linear infinite;
   }

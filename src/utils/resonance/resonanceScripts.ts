@@ -55,14 +55,14 @@ export function parseResonanceCookie(text: string): { roleid: string; token: str
 
 export const PEARPAL_USERSCRIPT_PATH = '/scripts/pearpal-cookie.user.js'
 
-/** 仅在官方页面添加按钮；点击后从页面读取并复制凭据，不请求接口。 */
+/** 仅在官方页面添加按钮；缺少 UID 时尝试展开菜单，从页面读取并复制凭据。 */
 export function resonanceUserscript(): string {
   return `// ==UserScript==
 // @name         美鸭梨 / Pear-Pal Cookie 助手
 // @author       素茉penny
 // @namespace    infinity-nikki-toolkit
 // @homepageURL  https://nikki3.pages.dev/
-// @version      1.0.0
+// @version      1.0.2
 // @description  点击按钮复制登录凭据，返回 Infinity Nikki Toolkit 粘贴导入。工具网址：https://infinity-nikki-album-manager.pages.dev/
 // @match        https://myl.nuanpaper.com/*
 // @match        https://pearpal.infoldgames.com/*
@@ -227,7 +227,35 @@ export function resonanceUserscript(): string {
     document.body.appendChild(host);
     return copy();
   }
+  // 手机侧边栏可能在展开时才挂载 UID；先监听再点击，兼容同步和延迟渲染。
+  function openMenuAndReadUid() {
+    const selector = '[class*="TopBar_tab-menu-icon__"]';
+    const target = document.evaluate(
+      '//*[@id="__next"]/div[1]/div/div[1]/div[1]/div[1]',
+      document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+    ).singleNodeValue;
+    const menu = target instanceof HTMLElement && target.matches(selector)
+      ? target : document.querySelector(selector);
+    if (!(menu instanceof HTMLElement) || getComputedStyle(menu).display === 'none') {
+      return Promise.resolve('');
+    }
+    button.textContent = zh ? '正在展开菜单并读取 UID…' : 'Opening menu to read UID…';
+    return new Promise((resolve, reject) => {
+      const observer = new MutationObserver(check);
+      const timer = setTimeout(() => finish(''), 5000);
+      function cleanup() { observer.disconnect(); clearTimeout(timer); }
+      function finish(uid) { cleanup(); resolve(uid); }
+      function check() {
+        const uid = ${UID_SNIPPET};
+        if (uid) finish(uid);
+      }
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      try { menu.click(); check(); }
+      catch (error) { cleanup(); reject(error); }
+    });
+  }
   button.addEventListener('click', async () => {
+    if (button.disabled) return;
     document.getElementById('nikki-pearpal-cookie-result')?.remove();
     button.disabled = true;
     button.textContent = label;
@@ -237,13 +265,20 @@ export function resonanceUserscript(): string {
         token: ${TOKEN_SNIPPET},
         id: ${ID_SNIPPET}
       };
+      if (!credentials.roleid && credentials.token && credentials.id) {
+        credentials.roleid = await openMenuAndReadUid();
+        // 等待期间登录状态可能变化，最终复制前重新读取 Cookie。
+        credentials.token = ${TOKEN_SNIPPET};
+        credentials.id = ${ID_SNIPPET};
+      }
       if (!credentials.roleid || !credentials.token || !credentials.id) {
         button.textContent = zh ? '请先登录并确认角色' : 'Sign in and confirm your role';
         alert(zh
-          ? '未读取到完整凭据，请登录并确认页面角色后重试。'
-          : 'Complete credentials were not found. Sign in and confirm your role, then try again.');
+          ? '未读取到完整凭据，请确认已登录；若已登录，请手动展开左上角菜单，显示账号 UID 后重试。'
+          : 'Complete credentials were not found. Confirm you are signed in; if already signed in, open the top-left menu to show your account UID and try again.');
         return;
       }
+      button.textContent = label;
       await showResult(credentials);
     } catch {
       alert(zh ? '获取失败，请刷新页面后重试。' : 'Could not get credentials. Refresh and try again.');

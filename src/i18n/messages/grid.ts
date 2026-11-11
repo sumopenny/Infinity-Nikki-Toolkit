@@ -5,7 +5,7 @@ export const gridZh: LocaleMessages['grid'] = {
   emptyTitle: '开始整理你的暖暖摄影作品',
   emptyDescription: '选择高画质相册文件夹后，照片会按拍摄日期自动整理。',
   emptyFavoritesTitle: '收藏夹还是空的',
-  emptyFavoritesDescription: '点击照片时间前的爱心，就能把喜欢的图片加入收藏夹。',
+  emptyFavoritesDescription: '点击照片右上角的爱心，即可加入收藏夹。',
   recommendedPath:
     '推荐文件路径：\\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\你的id\\NikkiPhotos_HighQuality',
   hiddenFolderTip: '如果找不到 GamePlayPhotos，在文件夹上方栏点击“查看”→显示→隐藏的项目→点击勾选',
@@ -42,7 +42,7 @@ export const gridEn: LocaleMessages['grid'] = {
   emptyDescription:
     'Choose the high-quality album folder to organize photos automatically by capture date.',
   emptyFavoritesTitle: 'No favorites yet',
-  emptyFavoritesDescription: 'Click the heart before a photo time to add that image to Favorites.',
+  emptyFavoritesDescription: 'Click the heart at the top right of a photo to add it to Favorites.',
   recommendedPath:
     'Recommended path: \\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\Your ID\\NikkiPhotos_HighQuality',
   hiddenFolderTip:

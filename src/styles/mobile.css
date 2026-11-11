@@ -821,6 +821,10 @@
     background: transparent;
     color: var(--muted);
     font-size: 11px;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease;
   }
   .mobile-navigation button[aria-current='page'] {
     background: var(--soft-accent);
@@ -1214,25 +1218,38 @@
     width: max-content;
     max-width: calc(100vw - 16px);
     margin: 0 auto;
-    padding: 6px;
+    min-height: 0;
+    padding: 4px 6px;
+    border-radius: 999px;
     overflow-x: auto;
   }
   .selection-bar > strong {
     flex: 0 0 auto;
-    padding-left: 8px;
+    padding-left: 6px;
   }
   .selection-bar .selection-divider {
     flex-shrink: 0;
+    margin: 0 2px;
   }
   .selection-bar > button {
     flex: 0 0 auto;
-    min-height: var(--mobile-control-size);
-    padding: 6px 8px;
+    min-height: 36px;
+    height: 36px;
+    padding: 4px 6px;
     gap: 4px;
     white-space: nowrap;
   }
   .selection-bar .selection-close {
-    width: var(--mobile-control-size);
+    width: 36px;
+    padding: 0;
+  }
+  .selection-bar button:not(.selection-danger) + .selection-danger,
+  .selection-bar .selection-close {
+    margin-left: 4px;
+  }
+  .selection-bar button:not(.selection-danger) + .selection-danger::before,
+  .selection-bar .selection-close::before {
+    left: -4px;
   }
   /* 共享可视高度与安全区，避免菜单、筛选和编辑弹窗分别维护同一套外壳尺寸。 */
   .dialog-overlay,
@@ -1421,14 +1438,29 @@
     flex: 0 1 auto;
     min-width: 0;
     max-width: 100%;
-    border-radius: var(--mobile-dialog-radius);
+    padding: 4px;
+    --lightbox-toolbar-radius: 999px;
   }
-  .lightbox-toolbar button,
-  .lightbox-zoom-controls button,
   .lightbox-close,
   .lightbox-nav-button {
     min-width: var(--mobile-control-size);
     min-height: var(--mobile-control-size);
+  }
+  .lightbox-toolbar button {
+    min-width: 36px;
+    min-height: 36px;
+    height: 36px;
+    padding: 0;
+  }
+  .lightbox-toolbar .lightbox-zoom-controls {
+    padding-right: 2px;
+    margin-right: 2px;
+  }
+  .lightbox-toolbar .lightbox-zoom-controls button:nth-child(2) {
+    min-width: 48px;
+  }
+  .lightbox-toolbar-divider {
+    margin: 0 2px;
   }
   /* 解析分享与相邻的关闭按钮共用紧凑尺寸。 */
   .outfit-parse-panel > header > .outfit-share-button,
@@ -1600,7 +1632,6 @@
   :is(
       .mobile-header-row,
       .mobile-header-search,
-      .mobile-navigation,
       .collection-filter-bar,
       .mobile-filter-panel,
       .mobile-menu-sheet,
@@ -1617,7 +1648,6 @@
   :is(
       .mobile-header-row,
       .mobile-header-search,
-      .mobile-navigation,
       .collection-filter-bar,
       .mobile-filter-panel,
       .mobile-menu-sheet,
@@ -1631,12 +1661,7 @@
   .collection-filter-bar .primary-button:active:not(:disabled) {
     transform: none;
   }
-  :is(
-      .mobile-header-row,
-      .mobile-header-search,
-      .mobile-navigation,
-      .photo-card .outfit-card-actions
-    )
+  :is(.mobile-header-row, .mobile-header-search, .photo-card .outfit-card-actions)
     button:active:not(:disabled),
   .collection-action-trigger:active:not(:disabled) {
     background: var(--soft-accent);
@@ -1646,7 +1671,6 @@
     :is(
         .mobile-header-row,
         .mobile-header-search,
-        .mobile-navigation,
         .collection-filter-bar,
         .mobile-filter-panel,
         .mobile-menu-sheet,
@@ -1857,11 +1881,11 @@
     --mobile-nav-height: calc(76px + env(safe-area-inset-bottom, 0px));
   }
   :root[data-mobile-nav-style='capsule'] .mobile-navigation {
-    left: max(64px, env(safe-area-inset-left, 0px));
-    right: max(64px, env(safe-area-inset-right, 0px));
+    left: max(48px, env(safe-area-inset-left, 0px));
+    right: max(48px, env(safe-area-inset-right, 0px));
     bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     height: 60px;
-    max-width: 280px;
+    max-width: 320px;
     margin-inline: auto;
     padding: 5px;
     border: 1px solid var(--line);

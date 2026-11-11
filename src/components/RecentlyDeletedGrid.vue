@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { vSelectableCard } from '../utils/selectableCard'
+import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vCardReveal } from '../utils/cardReveal'
 import { computed, onBeforeUnmount } from 'vue'
-import { Check, Trash2 } from 'lucide-vue-next'
+import { Trash2 } from 'lucide-vue-next'
 import type { Language, LocaleMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 import type { RecentlyDeletedPhoto } from '../utils/photoGrouping'
@@ -18,12 +20,16 @@ const props = defineProps<{
   messages: LocaleMessages['trash']
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   togglePhoto: [photoId: string]
   openPreview: [photo: RecentlyDeletedPhoto]
 }>()
 
-const batches = computed(() => Array.from({ length: Math.ceil(props.photos.length / 36) }, (_, i) => props.photos.slice(i * 36, (i + 1) * 36)))
+const batches = computed(() =>
+  Array.from({ length: Math.ceil(props.photos.length / 36) }, (_, i) =>
+    props.photos.slice(i * 36, (i + 1) * 36)
+  )
+)
 const photoLoadQueue = createPhotoLoadQueue(3)
 
 /** 按当前语言格式化删除时间。参数：deletedAt 为删除时间戳。 */
@@ -51,30 +57,38 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
       <p>{{ messages.emptyDescription }}</p>
     </div>
     <div v-else>
-      <WindowedPhotoBatch v-for="(batch, index) in batches" :key="index" :count="batch.length" class="trash-photo-grid">
-      <article
-        v-for="photo in batch"
-        :key="photo.id"
-        v-card-reveal="`trash:${photo.id}`"
-        class="photo-card trash-photo-card"
-        :class="{ selected: selectedIds.has(photo.id) }"
-        tabindex="0"
-        @click="$emit('togglePhoto', photo.id)"
-        @dblclick.stop="$emit('openPreview', photo)"
-        @keydown.enter="$emit('togglePhoto', photo.id)"
+      <WindowedPhotoBatch
+        v-for="(batch, index) in batches"
+        :key="index"
+        :count="batch.length"
+        class="trash-photo-grid"
       >
-        <div class="photo-frame">
-          <LazyPhotoImage
-            :photo="photo"
-            :load-photo="photoLoadQueue.load"
-            :failure-text="messages.imageLoadFailed"
-          />
-          <div class="photo-overlay"
-            ><span>{{ messages.deletedAt(formatDeletedAt(photo.deletedAt)) }}</span></div
-          >
-          <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
-        </div>
-      </article>
+        <article
+          v-for="photo in batch"
+          :key="photo.id"
+          v-card-reveal="`trash:${photo.id}`"
+          class="photo-card selectable-card trash-photo-card"
+          v-selectable-card="{
+            selected: selectedIds.has(photo.id),
+            selectionMode: selectedIds.size > 0,
+            toggle: () => emit('togglePhoto', photo.id),
+            preview: () => emit('openPreview', photo)
+          }"
+          :class="{ selected: selectedIds.has(photo.id) }"
+          tabindex="0"
+        >
+          <div class="photo-frame">
+            <LazyPhotoImage
+              :photo="photo"
+              :load-photo="photoLoadQueue.load"
+              :failure-text="messages.imageLoadFailed"
+            />
+            <div class="photo-overlay"
+              ><span>{{ messages.deletedAt(formatDeletedAt(photo.deletedAt)) }}</span></div
+            >
+            <PhotoSelectionBadge :selected="selectedIds.has(photo.id)" :language="language" />
+          </div>
+        </article>
       </WindowedPhotoBatch>
     </div>
   </div>

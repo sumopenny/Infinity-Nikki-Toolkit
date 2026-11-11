@@ -1,13 +1,21 @@
-/* 材质与布局独立：桌面顶栏、手机顶栏及导航共用风格。 */
+/* 材质与布局独立：顶栏、导航、大图控件及照片选择工具栏共用风格。 */
 :root[data-surface-style='opaque'] .material-surface {
   background: var(--surface-strong);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 :root[data-surface-style='frosted'] .material-surface {
-  background: var(--top-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
+  background: var(--frost-surface-bg, var(--top-bg));
+  -webkit-backdrop-filter: var(--frost-surface-filter, blur(18px) saturate(160%));
+  backdrop-filter: var(--frost-surface-filter, blur(18px) saturate(160%));
+}
+/* 大图控件和照片选择工具栏使用更轻的磨砂，顶栏及手机导航保持原参数。 */
+:root[data-surface-style='frosted'] :is(.preview-material, .selection-bar) {
+  --frost-surface-bg: rgb(255 255 255 / 75%);
+  --frost-surface-filter: blur(10px) saturate(135%);
+}
+:root[data-theme='dark'][data-surface-style='frosted'] :is(.preview-material, .selection-bar) {
+  --frost-surface-bg: rgb(15 15 18 / 70%);
 }
 /* 玻璃由透光底、方向性高光和弧面明暗组成，文字始终在光学层上方。 */
 :root[data-surface-style='glass'] .material-surface {
@@ -244,5 +252,50 @@
     background: var(--surface-strong);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+
+/* 悬浮控件建立独立层叠上下文，让玻璃高光留在文字和图标下方。 */
+.preview-material {
+  position: relative;
+}
+.preview-material,
+.selection-bar.material-surface {
+  isolation: isolate;
+}
+:root[data-surface-style='glass'] :is(.preview-material, .selection-bar)::before {
+  z-index: -1;
+}
+
+/* 照片可能极亮或极暗，悬浮玻璃加深底色以保证文字和操作图标清晰。 */
+:root[data-surface-style='glass'] :is(.preview-material, .selection-bar) {
+  --glass-tint: rgb(255 255 255 / 68%);
+  --text: var(--glass-ink);
+  --muted: var(--glass-ink);
+}
+:root[data-theme='dark'][data-surface-style='glass'] :is(.preview-material, .selection-bar) {
+  --glass-tint: rgb(30 27 34 / 68%);
+}
+/* 材质背景由全局规则管理，独立按钮通过亮度反馈悬停，避免覆盖材质。 */
+:root[data-surface-style] :is(.lightbox-close, .lightbox-nav-button):hover {
+  filter: brightness(0.92);
+}
+:root[data-theme='dark'][data-surface-style] :is(.lightbox-close, .lightbox-nav-button):hover {
+  filter: brightness(1.2);
+}
+
+/* 玻璃操作栏的按钮悬停沿用透光选中色，避免普通按钮的实色背景遮住材质。 */
+:root[data-surface-style='glass']
+  :is(.lightbox-toolbar, .selection-bar)
+  button:hover:not(:disabled) {
+  background: var(--glass-selected);
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root[data-surface-style='glass']
+    :is(.lightbox-toolbar, .selection-bar)
+    button:hover:not(:disabled) {
+    background: var(--interactive-hover-bg);
+    box-shadow: none;
   }
 }

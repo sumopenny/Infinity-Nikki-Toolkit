@@ -640,18 +640,9 @@
   padding: 8px;
 }
 
-/* 搭配标签共用柔和渐变，保持文字本身清晰。 */
+/* 搭配标签沿用照片公共渐变，仅为操作按钮预留空间。 */
 .outfit-overlay {
   padding-right: 80px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 0, 0, 0.02) 20%,
-    rgba(0, 0, 0, 0.08) 40%,
-    rgba(0, 0, 0, 0.18) 60%,
-    rgba(0, 0, 0, 0.34) 80%,
-    rgba(0, 0, 0, 0.55) 100%
-  );
 }
 
 .outfit-card-parse,

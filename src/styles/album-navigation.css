@@ -855,7 +855,15 @@
   min-height: 72px;
   align-items: flex-end;
   padding: 18px 9px 8px;
-  background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.78));
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.04) 20%,
+    rgba(0, 0, 0, 0.14) 40%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0.48) 80%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
   color: #fff;
   opacity: 0;
   pointer-events: none;
@@ -918,25 +926,50 @@
   }
 }
 
+/* 选中徽章统一贴在图片右下角，避开顶部图片操作。 */
 .selected-badge {
   position: absolute;
   z-index: 5;
-  top: 8px;
-  left: 8px;
+  right: 8px;
+  bottom: 8px;
   display: grid;
-  width: 25px;
-  height: 25px;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
   place-items: center;
-  border-radius: 9px;
-  background: var(--pink-deep);
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  background: rgba(25, 22, 22, 0.34);
   color: #fff;
-  font-size: 12px;
-  font-weight: 900;
+  box-shadow: 0 2px 5px rgba(25, 22, 22, 0.18);
+  pointer-events: none;
+  visibility: hidden;
   opacity: 0;
-  transform: scale(0.75);
+  transform: scale(0.88);
   transition:
-    opacity var(--motion-base) ease,
-    transform var(--motion-base) var(--ease-spring);
+    opacity 120ms ease-in,
+    transform 120ms ease-in,
+    background-color 120ms ease-out,
+    color 120ms ease-out,
+    visibility 0s linear 120ms;
+}
+:root[data-theme='dark'] .photo-card.selected .selected-badge {
+  color: #38242b;
+}
+/* 底部照片信息为选中徽章留位，避免文字与标志重叠。 */
+.photo-card.selected .photo-overlay,
+.selectable-card.selection-mode .photo-overlay,
+.selectable-card:focus-visible .photo-overlay,
+.selectable-card:has(.selected-badge:focus-visible) .photo-overlay {
+  padding-right: 44px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .selectable-card:hover .photo-overlay {
+    padding-right: 44px;
+  }
 }
 
 .trash-photo-grid {

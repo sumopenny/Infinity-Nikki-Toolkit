@@ -178,7 +178,9 @@ export const resonanceZh: ResonanceMessages = {
   userscriptTroubleshooting: [
     '点击安装链接后若只显示源码，可在浏览器或扩展的脚本管理中通过此链接添加。',
     '页面没有出现按钮时，请检查脚本是否启用，再刷新美鸭梨页面。',
-    '提示登录失效时，请重新登录并确认角色后再次获取。'
+    '提示登录失效时，请重新登录并确认角色后再次获取。',
+    '未读取到 UID 时，请展开美鸭梨左上角菜单，显示账号 UID 后重试。',
+    '自动复制失败时，点击“查看完整 JSON”手动复制全部内容，或点击“再次复制”。'
   ],
   cookieJsonGuide:
     '获取登录凭据后，返回此窗口粘贴完整 JSON。格式应为 {"roleid":"你的UID","token":"登录令牌","id":"账号ID"}，必须同时包含 roleid、token、id 三项，且值均不能为空。请勿只复制某个字段，或遗漏大括号、双引号。',
@@ -224,7 +226,7 @@ export const resonanceZh: ResonanceMessages = {
   consoleStep6: '复制控制台输出的凭据数据，返回本页粘贴。',
   copyCode: '复制代码',
   copyCodeSuccess: '代码已复制',
-  pasteHere: '粘贴书签或控制台输出',
+  pasteHere: '粘贴完整登录凭据 JSON',
   pasteSuccess: '数据粘贴成功！',
   pasteSuccessNoUid: '请填写游戏内 UID',
   pasteFailed: '解析输入数据失败，请确认格式正确。',
@@ -330,7 +332,9 @@ export const resonanceEn: ResonanceMessages = {
   userscriptTroubleshooting: [
     'If the installation link only shows source code, add the link through your browser or extension’s script manager.',
     'If the button does not appear, check that the script is enabled, then refresh Pear-Pal.',
-    'If sign-in has expired, sign in again and confirm your role before trying again.'
+    'If sign-in has expired, sign in again and confirm your role before trying again.',
+    'If no UID is found, open the top-left Pear-Pal menu to show your account UID, then retry.',
+    'If automatic copying fails, choose “View full JSON” and copy all the text, or choose “Copy again”.'
   ],
   cookieJsonGuide:
     'After getting your sign-in credentials, return here and paste the complete JSON, such as {"roleid":"your UID","token":"sign-in token","id":"account ID"}. All three fields — roleid, token and id — must be present with non-empty values. Copy the entire object, including braces and double quotes, rather than an individual field.',
@@ -380,7 +384,7 @@ export const resonanceEn: ResonanceMessages = {
   consoleStep6: 'Copy the credentials printed in the console and paste them here.',
   copyCode: 'Copy code',
   copyCodeSuccess: 'Code copied',
-  pasteHere: 'Paste bookmark or console output',
+  pasteHere: 'Paste the complete sign-in credentials JSON',
   pasteSuccess: 'Data pasted successfully!',
   pasteSuccessNoUid: 'Enter your in-game UID',
   pasteFailed: 'Could not parse the input. Check that it uses the expected format.',

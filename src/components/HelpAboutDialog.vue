@@ -2,6 +2,12 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import {
   Archive,
+  Images,
+  Camera,
+  Shirt,
+  Paintbrush,
+  SlidersHorizontal,
+  Search,
   BookOpen,
   Hand,
   House,
@@ -23,15 +29,17 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 const panelRef = ref<HTMLElement | null>(null)
 const featureIcons = {
-  images: Info,
-  outfit: BookOpen,
+  images: Images,
+  outfit: Shirt,
   home: House,
-  camera: ShieldCheck,
+  camera: Camera,
   resonance: Sparkles,
   backup: Archive,
   cleanup: ShieldCheck,
-  search: Keyboard,
-  tools: BookOpen
+  wardrobe: Shirt,
+  makeup: Paintbrush,
+  search: Search,
+  tools: SlidersHorizontal
 }
 const operationIcons = { mouse: MousePointer2, keyboard: Keyboard, touch: Hand }
 // 跟随 App 的统一布局状态，不另行判断设备；窗口打开期间也可切换两端教程。

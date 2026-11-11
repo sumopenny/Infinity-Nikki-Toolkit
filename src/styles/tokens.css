@@ -31,8 +31,6 @@
     linear-gradient(135deg, #fffdf9 0%, #fbf6f1 48%, #f7efe9 100%);
   --surface: rgba(255, 255, 255, 0.94);
   --surface-strong: var(--share-surface);
-  /* 大图工具栏：对应强背景色的 75% 不透明度。 */
-  --lightbox-toolbar-bg: rgba(255, 255, 255, 0.84);
   --surface-soft: rgba(253, 250, 250, 0.82);
   --soft-accent: rgba(255, 239, 237, 0.92);
   --soft-accent-bottom: #fff6d9;
@@ -53,7 +51,7 @@
   --focus-ring-color: rgba(201, 132, 134, 0.45);
   --menu-selected-bg: rgba(255, 239, 237, 0.7544);
   /* 菜单、形态控件、信息底色及强调边框使用固定主题色。 */
-  --menu-bg: rgba(255, 255, 255, 0.90);
+  --menu-bg: rgba(255, 255, 255, 0.9);
   --form-control-bg: rgba(255, 255, 255, 0.6204);
   --form-control-border: #f9f4f0;
   --surface-accent-subtle: var(--share-soft);
@@ -106,9 +104,6 @@
   /* 动效时长统一为两档 */
   --motion-fast: 0.15s;
   --motion-base: 0.2s;
-  /* 大图两侧切换按钮的半透明底色，主题无关 */
-  --lightbox-nav-bg: rgba(18, 18, 22, 0.38);
-  --lightbox-nav-bg-hover: rgba(18, 18, 22, 0.56);
   /* 统一的弹性缓动与主按钮纯色背景 */
   --ease-spring: ease-out;
   --primary-button-bg: #e4a6a8;
@@ -144,7 +139,6 @@
     linear-gradient(135deg, #0d0d0f 0%, #121216 52%, #0a0a0c 100%);
   --surface: rgba(23, 23, 27, 0.95);
   --surface-strong: #1b1b1f;
-  --lightbox-toolbar-bg: rgba(27, 27, 31, 0.75);
   --surface-soft: rgba(32, 32, 37, 0.86);
   --soft-accent: rgba(74, 70, 70, 0.7);
   --soft-accent-bottom: rgba(74, 70, 70, 0.7);
@@ -187,7 +181,7 @@
   --heading: #fff8f4;
   --muted: #b7aaa5;
   --shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
-  --top-bg: rgba(15, 15, 18, 0.82);
+  --top-bg: rgba(15, 15, 18, 0.75);
   --top-border: rgba(255, 255, 255, 0.08);
   --frame-bg: #4d4749;
   --overlay-bg: rgba(0, 0, 0, 0.76);

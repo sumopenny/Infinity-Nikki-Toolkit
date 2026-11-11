@@ -7,19 +7,23 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.10 更新',
+  currentDate: '2026.11.11 更新',
   currentItems: [
+    {
+      title: '图片浏览与多选操作调整。',
+      text: '相册、搭配码、家园方案、相机收藏及最近删除中的图片，改为单击查看大图。点击图片右下角圆圈可多选，手机端也可长按图片选择。'
+    },
     {
       title: '搭配码新增来源链接，随时回看原帖。',
       text: '新建或编辑搭配时，可粘贴原帖分享链接，自动提取网址。保存后，点击卡片上的链接按钮即可打开原帖。'
     },
     {
       title: '美鸭梨数据导入新增用户脚本方式。',
-      text: '在「导入数据 → 从美鸭梨导入 → 脚本法」中按指引安装，即可在美鸭梨页面右下角获取 Cookie，复制后返回工具粘贴。支持有脚本功能的手机浏览器（推荐via、x浏览器）及已安装油猴等扩展的电脑浏览器。'
+      text: '在「导入数据 → 从美鸭梨导入 → 脚本法」中按指引安装，即可在美鸭梨页面右下角获取 Cookie，复制后返回工具粘贴。支持有脚本功能的手机浏览器（推荐 Via、X 浏览器）及已安装油猴等类似扩展的电脑浏览器。'
     },
     {
-      title: '顶栏与导航新增三种材质选择。',
-      text: '在「视图 → 风格」中选择「实色」「磨砂」「液态玻璃」，调整界面风格。'
+      title: '新增三种材质风格，更多控件统一显示。',
+      text: '在「视图 → 风格」中选择「实色」「磨砂」「液态玻璃」，应用于顶栏、手机底部导航、大图预览控件及批量操作栏。'
     },
     {
       title: '手机底部导航新增悬浮胶囊布局。',
@@ -27,11 +31,11 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
     },
     {
       title: '优化导航交互与界面展示。',
-      text: '多处分类栏新增滑动选中效果，手机导航增加按压反馈。统一卡片悬浮按钮样式，优化搭配总结布局及备份、安装窗口动画。'
+      text: '多处分类栏新增滑动选中效果，手机导航增加按压反馈。统一卡片悬浮按钮样式，优化搭配总结布局、手机底部操作栏及安装窗口动画。'
     },
     {
-      title: '衣橱浏览与部分功能修复。',
-      text: '其中衣橱套装默认显示全部拥有状态。'
+      title: '优化衣橱浏览。',
+      text: '衣橱套装默认显示全部拥有状态，方便查看已收集和未收集的套装。'
     }
   ],
   historyTitle: '历史版本记录',
@@ -798,19 +802,23 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.10',
+  currentDate: 'Updated 2026.11.11',
   currentItems: [
+    {
+      title: 'Updated image browsing and multiple selection.',
+      text: 'Single-click images in the Album, outfit codes, home schemes, camera favorites, and Recently deleted to preview them. Select multiple items using the circles at the bottom right of images; on mobile, you can also long-press images to select them.'
+    },
     {
       title: 'Source links for outfit codes: revisit the original post.',
       text: 'When creating or editing an outfit, paste a shared post link to extract its URL. After saving, select the link button on the card to open the original post.'
     },
     {
       title: 'New userscript option for Pear-Pal imports.',
-      text: 'Follow the instructions under Import data → Import from Pear-Pal → Userscript to install the script. Select Get Cookie at the bottom right of the Pear-Pal page, then return to the toolkit and paste it. Supports mobile browsers with userscript functionality (Via and XBrowser recommended) and desktop browsers with extensions such as Tampermonkey installed.'
+      text: 'Follow the instructions under Import data → Import from Pear-Pal → Userscript to install the script. Select Get Cookie at the bottom right of the Pear-Pal page, then return to the toolkit and paste it. Supports mobile browsers with userscript functionality (Via and XBrowser recommended) and desktop browsers with Tampermonkey or similar extensions installed.'
     },
     {
-      title: 'Three material styles for the header and navigation.',
-      text: 'Choose Opaque, Frosted, or Liquid glass under View → Material style to customize the appearance.'
+      title: 'Three material styles with a consistent look across more controls.',
+      text: 'Choose Opaque, Frosted, or Liquid glass under View → Material style. Your choice applies to the header, mobile bottom navigation, image preview controls, and batch action toolbar.'
     },
     {
       title: 'New floating capsule layout for mobile bottom navigation.',
@@ -818,11 +826,11 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
     },
     {
       title: 'Improved navigation interactions and interface presentation.',
-      text: 'Added sliding selection indicators to multiple category controls and press feedback to mobile navigation. Unified floating card buttons and refined the Outfit summary layout and animations for backup and app installation windows.'
+      text: 'Added sliding selection indicators to multiple category controls and press feedback to mobile navigation. Unified floating card buttons and refined the Outfit summary layout, mobile bottom action toolbar, and app installation window animations.'
     },
     {
-      title: 'Wardrobe browsing improvements and bug fixes.',
-      text: 'Wardrobe outfits now show all ownership statuses by default.'
+      title: 'Improved Wardrobe browsing.',
+      text: 'Wardrobe outfits now show all ownership statuses by default, making it easier to browse both collected and uncollected outfits.'
     }
   ],
   historyTitle: 'Previous releases',

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { vSelectableCard } from '../utils/selectableCard'
+import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
@@ -16,7 +18,7 @@ const imageSelectionError = ref('')
 import { useModuleOperation } from '../composables/useOperationCoordinator'
 const trackOperation = useModuleOperation('home')
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { Check, Copy, Download, Edit3, ImagePlus, Plus, Trash2, Upload, X } from 'lucide-vue-next'
+import { Copy, Download, Edit3, ImagePlus, Plus, Trash2, Upload, X } from 'lucide-vue-next'
 import { messages as localeMessages, type LocaleMessages } from '../i18n'
 import OutfitSidebar from './OutfitSidebar.vue'
 import CollectionFilterBar from './CollectionFilterBar.vue'
@@ -583,17 +585,16 @@ async function copyCode(item: HomeSchemeItem) {
     )
 }
 
+watch(visibleSchemes, (items) => {
+  const visible = new Set(items.map((item) => item.id))
+  selectedSchemeIds.value = new Set([...selectedSchemeIds.value].filter((id) => visible.has(id)))
+})
+
 function toggleScheme(id: string) {
   if (isBusy.value) return
   const next = new Set(selectedSchemeIds.value)
   next.has(id) ? next.delete(id) : next.add(id)
   selectedSchemeIds.value = next
-}
-
-function handleSchemeKeydown(event: KeyboardEvent, id: string) {
-  if (event.target !== event.currentTarget || event.key !== 'Enter') return
-  event.preventDefault()
-  toggleScheme(id)
 }
 
 function toggleAllSchemes() {
@@ -1030,15 +1031,19 @@ function handleAddTag(value: string) {
             v-for="item in visibleSchemes"
             :key="item.id"
             v-card-reveal="`home:${item.id}`"
-            class="photo-card outfit-card home-scheme-card"
+            class="photo-card selectable-card outfit-card home-scheme-card"
+            v-selectable-card="{
+              selected: selectedSchemeIds.has(item.id),
+              selectionMode: selectedSchemeIds.size > 0,
+              disabled: isBusy,
+              toggle: () => toggleScheme(item.id),
+              preview: () => openPreview(item)
+            }"
             :class="{ selected: selectedSchemeIds.has(item.id) }"
             :aria-label="item.name || item.code"
             :aria-checked="selectedSchemeIds.has(item.id)"
             role="checkbox"
             tabindex="0"
-            @click="toggleScheme(item.id)"
-            @dblclick.stop="openPreview(item)"
-            @keydown="handleSchemeKeydown($event, item.id)"
           >
             <div class="photo-frame home-scheme-card-image">
               <StoredImage
@@ -1057,7 +1062,11 @@ function handleAddTag(value: string) {
               <div v-else class="scheme-card-no-image"
                 ><ImagePlus :size="22" aria-hidden="true"
               /></div>
-              <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
+              <PhotoSelectionBadge
+                :selected="selectedSchemeIds.has(item.id)"
+                :language="language"
+                :disabled="isBusy"
+              />
               <button
                 class="card-action card-action-delete outfit-card-delete home-scheme-card-delete desktop-only"
                 type="button"

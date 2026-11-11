@@ -97,7 +97,8 @@ it('confirms and deletes only visible selected schemes, keeping the confirmed ta
   })
   try {
     await vi.waitFor(() => expect(wrapper.findAll('.home-scheme-card')).toHaveLength(2))
-    for (const card of wrapper.findAll('.home-scheme-card')) await card.trigger('click')
+    for (const card of wrapper.findAll('.home-scheme-card'))
+      await card.get('.selected-badge').trigger('click')
     await wrapper.setProps({ searchQuery: 'Alpha' })
     expect(wrapper.findComponent(SelectionBar).props('selectedCount')).toBe(1)
     wrapper.findComponent(SelectionBar).vm.$emit('delete')
@@ -112,7 +113,7 @@ it('confirms and deletes only visible selected schemes, keeping the confirmed ta
         'Beta'
       ])
     )
-    expect(wrapper.findComponent(SelectionBar).props('selectedCount')).toBe(1)
+    expect(wrapper.findComponent(SelectionBar).props('selectedCount')).toBe(0)
   } finally {
     wrapper.unmount()
   }
@@ -153,7 +154,8 @@ it.each([false, true])(
     })
     try {
       await vi.waitFor(() => expect(wrapper.findAll('.home-scheme-card')).toHaveLength(2))
-      for (const card of wrapper.findAll('.home-scheme-card')) await card.trigger('click')
+      for (const card of wrapper.findAll('.home-scheme-card'))
+        await card.get('.selected-badge').trigger('click')
       wrapper.findComponent(SelectionBar).vm.$emit('delete')
       await flushPromises()
       const count = partialFailure ? 1 : 2
@@ -356,7 +358,7 @@ it('does not release an in-flight deletion merely because the component unmounts
     global: { provide: { [operationCoordinatorKey as symbol]: coordinator } }
   })
   await vi.waitFor(() => expect(wrapper.findAll('.home-scheme-card')).toHaveLength(1))
-  await wrapper.get('.home-scheme-card').trigger('click')
+  await wrapper.get('.home-scheme-card .selected-badge').trigger('click')
   wrapper.findComponent(SelectionBar).vm.$emit('delete')
   await vi.waitFor(() => expect(deletion).toHaveBeenCalled())
   wrapper.unmount()

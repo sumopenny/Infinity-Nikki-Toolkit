@@ -129,8 +129,74 @@
 }
 
 .photo-card.selected .selected-badge {
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+  transition-timing-function: ease-out;
   opacity: 1;
   transform: scale(1);
+  background: var(--pink-deep);
+}
+.selected-badge svg {
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity var(--motion-fast) ease-out,
+    transform var(--motion-fast) var(--ease-spring);
+}
+.photo-card.selected .selected-badge svg {
+  opacity: 1;
+  transform: scale(1);
+}
+/* 选择模式由选中集合驱动，最后一项取消后自动恢复浏览状态。 */
+.selectable-card.selection-mode .selected-badge,
+.selectable-card:focus-visible .selected-badge,
+.selectable-card:has(.selected-badge:focus-visible) .selected-badge {
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+  transition-timing-function: ease-out;
+  opacity: 1;
+  transform: scale(1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .selectable-card:hover .selected-badge {
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+    transition-timing-function: ease-out;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* 缩放图片容器，不改动卡片文字、操作栏或网格占位。 */
+.selectable-card :is(.photo-frame, .camera-cover) {
+  transform: scale(1);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* 缩略图由外层处理手势，避免浏览器直接命中图片并唤起保存/识图菜单。 */
+.selectable-card :is(.photo-frame, .camera-cover) img {
+  pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.selectable-card.selected :is(.photo-frame, .camera-cover) {
+  transform: scale(0.96);
+}
+.selectable-card.is-pressing :is(.photo-frame, .camera-cover) {
+  transform: scale(0.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  .selected-badge,
+  .selected-badge svg,
+  .selectable-card :is(.photo-frame, .camera-cover) {
+    transition: none;
+  }
 }
 
 .favorite-heart svg {
@@ -162,11 +228,9 @@
   margin: 0 auto;
   padding: 5px 6px 5px 14px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--lightbox-toolbar-bg);
+  border-radius: 20px;
+  background: var(--surface-strong);
   box-shadow: 0 14px 38px rgba(37, 32, 30, 0.22);
-  backdrop-filter: blur(14px) saturate(1.35);
-  -webkit-backdrop-filter: blur(14px) saturate(1.35);
 }
 
 .selection-bar strong {

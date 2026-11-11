@@ -14,6 +14,8 @@ import {
   ZoomIn,
   ZoomOut
 } from 'lucide-vue-next'
+import GlassSurfaceFilter from './GlassSurfaceFilter.vue'
+import { useGlassSurface } from '../composables/useGlassSurface'
 import type { LocaleMessages } from '../i18n'
 import type { OutfitMessages } from '../i18n'
 import { isAlbumPhoto, type PhotoDisplayItem, type PhotoItem } from '../utils/photoGrouping'
@@ -22,6 +24,12 @@ import type { HomeSchemeItem } from '../utils/homeBuild/homeSchemeTypes'
 import type { HomeSchemeMessages } from '../i18n/messages/homeScheme'
 import { loadImageUrlWithSize, loadPhotoWithRetryAndSize } from '../utils/photoLoader'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
+
+const { glassFilterId, refractsBackdrop } = useGlassSurface()
+const glassSurfaceAttributes = {
+  'data-refraction': refractsBackdrop || undefined,
+  style: { '--nav-glass-filter': `url(#${glassFilterId})` }
+}
 
 type PreviewPhoto = PhotoDisplayItem
 
@@ -262,8 +270,12 @@ onUnmounted(() => {
         aria-modal="true"
         @click.self="emit('close')"
       >
+        <GlassSurfaceFilter v-if="refractsBackdrop" :filter-id="glassFilterId" />
         <div class="lightbox-header">
-          <div class="lightbox-caption">
+          <div
+            class="lightbox-caption material-surface preview-material"
+            v-bind="glassSurfaceAttributes"
+          >
             <strong
               >{{ dateMessages.displayDate(displayedPhoto.dateKey) }}
               {{ displayedPhoto.timeText }}</strong
@@ -272,7 +284,8 @@ onUnmounted(() => {
             <span v-if="mode === 'album' && displayedPhoto.note">{{ displayedPhoto.note }}</span>
           </div>
           <button
-            class="lightbox-close"
+            class="lightbox-close material-surface preview-material"
+            v-bind="glassSurfaceAttributes"
             type="button"
             :title="messages.closeAria"
             :aria-label="messages.closeAria"
@@ -304,7 +317,8 @@ onUnmounted(() => {
         <div class="lightbox-nav-zone lightbox-nav-zone--prev">
           <button
             v-if="hasPrevious"
-            class="lightbox-nav-button"
+            class="lightbox-nav-button material-surface preview-material"
+            v-bind="glassSurfaceAttributes"
             type="button"
             :title="messages.previousAria"
             :aria-label="messages.previousAria"
@@ -317,7 +331,8 @@ onUnmounted(() => {
         <div class="lightbox-nav-zone lightbox-nav-zone--next">
           <button
             v-if="hasNext"
-            class="lightbox-nav-button"
+            class="lightbox-nav-button material-surface preview-material"
+            v-bind="glassSurfaceAttributes"
             type="button"
             :title="messages.nextAria"
             :aria-label="messages.nextAria"
@@ -336,7 +351,10 @@ onUnmounted(() => {
           @focusin="showControls"
           @focusout="showControls"
         >
-          <div class="lightbox-toolbar">
+          <div
+            class="lightbox-toolbar material-surface preview-material"
+            v-bind="glassSurfaceAttributes"
+          >
             <div v-if="mode === 'outfit' && outfit && outfitMessages" class="lightbox-outfit-meta">
               <span
                 ><strong>{{ outfitMessages.tagsTitle }}：</strong

@@ -208,7 +208,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     detailColor: '颜色',
     parseItemCount: (count) => `${count} 个部件`,
     emptyTitle: '还没有搭配方案',
-    emptyDescription: '添加搭配方案，或在游戏中生成搭配码后返回页面自动导入。',
+    emptyDescription: '添加搭配方案；授权游戏目录后，也可读取游戏中新增的搭配。',
     imageRequired: '请填写搭配码或选择一张搭配图片。',
     imageReading: '正在读取图片…',
     imageLoadFailed: '图片读取或预览失败，可能是格式不支持或文件损坏，请重新选择',
@@ -359,7 +359,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     parseItemCount: (count) => `${count} item${count === 1 ? '' : 's'}`,
     emptyTitle: 'No outfit plans yet',
     emptyDescription:
-      'Add an outfit, or generate a code in the game and return to automatically import it.',
+      'Add an outfit, or authorize the game directory to read newly shared in-game outfits.',
     imageRequired: 'Enter an outfit code or choose an image.',
     imageReading: 'Reading image…',
     imageLoadFailed:

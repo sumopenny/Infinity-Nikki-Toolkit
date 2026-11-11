@@ -7,6 +7,7 @@ import {
 const run = () => new Function(resonanceUserscript())()
 const result = () => document.getElementById('nikki-pearpal-cookie-result')!.shadowRoot!
 afterEach(() => {
+  vi.useRealTimers()
   document.body.innerHTML = ''
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -219,7 +220,9 @@ it('does not fetch a missing UID and allows retrying after the page role appears
   run()
   const button = document.querySelector('button')!
   button.click()
-  expect(alert).toHaveBeenCalledWith(expect.stringContaining('未读取到完整凭据'))
+  await vi.waitFor(() =>
+    expect(alert).toHaveBeenCalledWith(expect.stringContaining('未读取到完整凭据'))
+  )
   expect(writeText).not.toHaveBeenCalled()
   expect(fetchMock).not.toHaveBeenCalled()
   expect(button.disabled).toBe(false)
@@ -234,3 +237,81 @@ it('does not fetch a missing UID and allows retrying after the page role appears
   expect(fetchMock).not.toHaveBeenCalled()
   await vi.waitFor(() => expect(button.disabled).toBe(false))
 })
+
+it.each([false, true])('opens the mobile menu once and reads a %s delayed UID', async (delayed) => {
+  vi.stubGlobal('location', { hostname: 'myl.nuanpaper.com' })
+  const cookie = vi.spyOn(document, 'cookie', 'get').mockReturnValue('momoToken=t; momoNid=i')
+  document.body.innerHTML =
+    '<div id="__next"><div><div><div><div><div class="TopBar_tab-menu-icon__newHash"></div></div></div></div></div></div>'
+  const menu = document.querySelector('[class]') as HTMLElement
+  const open = vi.fn(() => {
+    const mount = () => {
+      cookie.mockReturnValue('momoToken=fresh; momoNid=new-id')
+      document.body.insertAdjacentHTML('beforeend', '<div>UID:<!-- -->123456</div>')
+    }
+    if (delayed) setTimeout(mount, 10)
+    else mount()
+  })
+  menu.addEventListener('click', open)
+  const writeText = vi.fn().mockResolvedValue(undefined)
+  vi.stubGlobal('navigator', { language: 'zh-CN', clipboard: { writeText } })
+  const fetchMock = vi.fn()
+  vi.stubGlobal('fetch', fetchMock)
+  const disconnect = vi.spyOn(MutationObserver.prototype, 'disconnect')
+  run()
+  const trigger = document.getElementById('nikki-pearpal-cookie-button') as HTMLButtonElement
+  trigger.click()
+  trigger.click()
+  await vi.waitFor(() =>
+    expect(writeText).toHaveBeenCalledWith(
+      JSON.stringify({ roleid: '123456', token: 'fresh', id: 'new-id' })
+    )
+  )
+  expect(open).toHaveBeenCalledTimes(1)
+  expect(disconnect).toHaveBeenCalledTimes(1)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it('times out and disconnects without copying incomplete mobile credentials', async () => {
+  vi.useFakeTimers()
+  vi.stubGlobal('location', { hostname: 'myl.nuanpaper.com' })
+  vi.spyOn(document, 'cookie', 'get').mockReturnValue('momoToken=t; momoNid=i')
+  document.body.innerHTML = '<div class="TopBar_tab-menu-icon__otherHash"></div>'
+  const open = vi.fn()
+  document.querySelector('div')!.addEventListener('click', open)
+  const writeText = vi.fn()
+  const alert = vi.fn()
+  vi.stubGlobal('navigator', { language: 'en', clipboard: { writeText } })
+  vi.stubGlobal('alert', alert)
+  const disconnect = vi.spyOn(MutationObserver.prototype, 'disconnect')
+  run()
+  const trigger = document.getElementById('nikki-pearpal-cookie-button') as HTMLButtonElement
+  trigger.click()
+  expect(trigger.disabled).toBe(true)
+  await vi.advanceTimersByTimeAsync(5000)
+  expect(open).toHaveBeenCalledTimes(1)
+  expect(disconnect).toHaveBeenCalledTimes(1)
+  expect(writeText).not.toHaveBeenCalled()
+  expect(alert).toHaveBeenCalledWith(expect.stringContaining('top-left menu'))
+  expect(trigger.disabled).toBe(false)
+})
+
+it.each(['UID: 123', ''])(
+  'leaves the menu alone when UID exists or cookies are missing: %s',
+  async (uid) => {
+    vi.stubGlobal('location', { hostname: 'myl.nuanpaper.com' })
+    vi.spyOn(document, 'cookie', 'get').mockReturnValue(uid ? 'momoToken=t; momoNid=i' : '')
+    document.body.innerHTML = '<div class="TopBar_tab-menu-icon__hash"></div><div>' + uid + '</div>'
+    const open = vi.fn()
+    document.querySelector('div')!.addEventListener('click', open)
+    vi.stubGlobal('navigator', {
+      language: 'zh-CN',
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) }
+    })
+    vi.stubGlobal('alert', vi.fn())
+    run()
+    document.getElementById('nikki-pearpal-cookie-button')!.click()
+    await Promise.resolve()
+    expect(open).not.toHaveBeenCalled()
+  }
+)

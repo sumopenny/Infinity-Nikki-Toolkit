@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { vSelectableCard } from '../utils/selectableCard'
+import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
@@ -21,7 +23,6 @@ const trackOperation = useModuleOperation('camera')
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue'
 import {
   Camera,
-  Check,
   Copy,
   Download,
   Edit3,
@@ -406,11 +407,7 @@ function toggleSelected(id: string) {
   else next.add(id)
   selectedIds.value = next
 }
-function cardKeydown(event: KeyboardEvent, id: string) {
-  if (event.target !== event.currentTarget || ![' ', 'Enter'].includes(event.key)) return
-  event.preventDefault()
-  toggleSelected(id)
-}
+
 function toggleAll() {
   selectedIds.value = allSelected.value
     ? new Set()
@@ -1029,16 +1026,20 @@ function handleImportChoices(value: typeof choices.value) {
         v-for="item in visibleRecords"
         :key="item.id"
         v-card-reveal="`camera:${item.id}`"
-        class="photo-card camera-favorite-card"
+        class="photo-card selectable-card camera-favorite-card"
+        v-selectable-card="{
+          selected: selectedIds.has(item.id),
+          selectionMode: selectedIds.size > 0,
+          disabled: busy,
+          toggle: () => toggleSelected(item.id),
+          preview: () => openPreview(item)
+        }"
         :class="{ selected: selectedIds.has(item.id) }"
         role="checkbox"
         :aria-checked="selectedIds.has(item.id)"
         :aria-label="item.name"
         :aria-disabled="busy"
         tabindex="0"
-        @click="toggleSelected(item.id)"
-        @dblclick.stop="openPreview(item)"
-        @keydown="cardKeydown($event, item.id)"
       >
         <div class="camera-cover">
           <StoredImage
@@ -1071,7 +1072,11 @@ function handleImportChoices(value: typeof choices.value) {
           </div>
           <Camera v-else :size="34" class="camera-placeholder" aria-hidden="true" />
           <!-- 标记常驻，通过公共选中样式切换，保留淡入与缩放动画。 -->
-          <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
+          <PhotoSelectionBadge
+            :selected="selectedIds.has(item.id)"
+            :language="language"
+            :disabled="busy"
+          />
           <button
             class="card-action card-action-delete outfit-card-delete camera-card-delete desktop-only"
             type="button"

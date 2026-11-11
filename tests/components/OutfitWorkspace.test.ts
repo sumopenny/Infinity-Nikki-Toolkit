@@ -237,14 +237,14 @@ describe('outfit workspace components', () => {
     expect(status.element.tagName).toBe('SPAN')
     await status.trigger('click')
     expect(wrapper.emitted('edit')).toBeUndefined()
-    expect(wrapper.emitted('toggleOutfit')).toEqual([[pending.id]])
+    expect(wrapper.emitted('toggleOutfit')).toBeUndefined()
 
     const editButton = wrapper.get(
       `.outfit-card-actions button[title="${getOutfitMessages('zh').edit}"]`
     )
     await editButton.trigger('click')
     expect(wrapper.emitted('edit')).toEqual([[pending]])
-    expect(wrapper.emitted('toggleOutfit')).toHaveLength(1)
+    expect(wrapper.emitted('toggleOutfit')).toBeUndefined()
 
     await wrapper.setProps({ disabled: true })
     expect((editButton.element as HTMLButtonElement).disabled).toBe(true)
@@ -271,7 +271,7 @@ describe('outfit workspace components', () => {
     expect(wrapper.emitted('toggleOutfit')).toBeUndefined()
   })
 
-  it('selects an outfit card by single click without triggering card actions', async () => {
+  it('selects an outfit through its circle without triggering card actions', async () => {
     const item = outfit('1', 'ABC-123', ['甜美'])
     const wrapper = mount(OutfitGrid, {
       props: {
@@ -284,7 +284,7 @@ describe('outfit workspace components', () => {
       global: { stubs: { LazyPhotoImage: true } }
     })
 
-    await wrapper.get('.outfit-card').trigger('click')
+    await wrapper.get('.outfit-card .selected-badge').trigger('click')
     expect(wrapper.emitted('toggleOutfit')).toEqual([[item.id]])
     await wrapper.get('[title="复制搭配码"]').trigger('click')
     expect(wrapper.emitted('copy')).toEqual([[item]])
@@ -341,7 +341,7 @@ describe('outfit workspace components', () => {
     await buttons[0]!.trigger('dblclick')
     expect(wrapper.emitted('toggleOutfit')).toBeUndefined()
     expect(wrapper.emitted('openPreview')).toBeUndefined()
-    await wrapper.get('.outfit-card').trigger('dblclick')
+    await wrapper.get('.outfit-card .photo-frame').trigger('click')
     expect(wrapper.emitted('openPreview')).toEqual([[item]])
     await wrapper.setProps({ outfits: [outfit('1', '')] })
     expect(buttons[0]!.attributes('disabled')).toBeDefined()

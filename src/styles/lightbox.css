@@ -118,12 +118,7 @@
 }
 .lightbox-header .lightbox-close {
   pointer-events: auto;
-  background: rgba(30, 27, 28, 0.62);
-  color: #fff;
-  backdrop-filter: blur(8px);
-}
-.lightbox-header .lightbox-close:hover {
-  background: rgba(30, 27, 28, 0.82);
+  color: var(--text);
 }
 /* 切图按钮固定在整个预览区域两侧，独立于图片和工具栏常驻显示。 */
 .lightbox-nav-zone {
@@ -144,18 +139,12 @@
   width: 44px;
   height: 44px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--lightbox-nav-bg);
-  color: #fff;
-  backdrop-filter: blur(4px);
+  color: var(--text);
   pointer-events: auto;
   cursor: pointer;
   transition: background var(--motion-fast) ease;
-}
-
-.lightbox-nav-button:hover {
-  background: var(--lightbox-nav-bg-hover);
 }
 
 .lightbox-zoom-controls {
@@ -182,6 +171,10 @@
     background var(--motion-fast) ease,
     color var(--motion-fast) ease,
     transform var(--motion-fast) ease;
+}
+
+.lightbox-toolbar button {
+  border-radius: 14px;
 }
 
 .lightbox-close {
@@ -277,16 +270,15 @@
   gap: 4px 12px;
   padding: 9px 14px;
   border-radius: 20px;
-  background: rgba(30, 27, 28, 0.62);
-  backdrop-filter: blur(8px);
-  color: #fff;
+  color: var(--text);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 .lightbox-caption span {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text);
 }
 .lightbox-toolbar {
+  --lightbox-toolbar-radius: 20px;
   pointer-events: auto;
   min-width: 0;
   max-width: 100%;
@@ -299,10 +291,9 @@
   gap: 2px;
   padding: 5px;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius);
-  background: var(--lightbox-toolbar-bg);
+  border-radius: var(--lightbox-toolbar-radius);
+  background: var(--surface-strong);
   box-shadow: 0 10px 30px rgba(25, 22, 22, 0.22);
-  backdrop-filter: blur(6px);
 }
 
 .lightbox-outfit-meta {

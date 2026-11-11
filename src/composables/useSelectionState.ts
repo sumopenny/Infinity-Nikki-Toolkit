@@ -1,6 +1,6 @@
 // 选择状态管理：处理照片、搭配和回收站项目的选择、全选及收藏联动。
 import type { AlbumView } from '../components/AlbumViewSwitcher.vue'
-import { computed, type Ref } from 'vue'
+import { computed, watch, type Ref } from 'vue'
 import type { PhotoItem, RecentlyDeletedPhoto } from '../utils/photoGrouping'
 import type { OutfitItem } from '../utils/outfit/outfitTypes'
 
@@ -38,6 +38,21 @@ export function useSelectionState(options: {
     recentlyDeleted,
     activeView
   } = options
+  // 筛选或刷新后剔除不可操作项目，避免列表无勾选却仍留在选择模式。
+  for (const [items, selection] of [
+    [visiblePhotos, selectedIds],
+    [visibleOutfits, selectedOutfitIds],
+    [recentlyDeleted, trashSelectedIds]
+  ] as const) {
+    watch(
+      () => items.value.map((item) => item.id),
+      (ids) => {
+        const visible = new Set(ids)
+        const next = new Set([...selection.value].filter((id) => visible.has(id)))
+        if (next.size !== selection.value.size) selection.value = next
+      }
+    )
+  }
   const scopedSelectedPhotos = computed(() =>
     visiblePhotos.value.filter((photo) => selectedIds.value.has(photo.id))
   )

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { vSelectableCard } from '../utils/selectableCard'
+import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 import { vCardReveal } from '../utils/cardReveal'
@@ -140,12 +142,15 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
           v-for="photo in batch"
           :key="photo.id"
           v-card-reveal="`album:${photo.id}`"
-          class="photo-card"
+          class="photo-card selectable-card"
+          v-selectable-card="{
+            selected: selectedIds.has(photo.id),
+            selectionMode: selectedIds.size > 0,
+            toggle: () => emit('togglePhoto', photo.id),
+            preview: () => emit('openPreview', photo)
+          }"
           :class="{ selected: selectedIds.has(photo.id), favorited: favoriteIds.has(photo.id) }"
           tabindex="0"
-          @click="$emit('togglePhoto', photo.id)"
-          @dblclick.stop="$emit('openPreview', photo)"
-          @keydown.enter="$emit('togglePhoto', photo.id)"
         >
           <div class="photo-frame">
             <LazyPhotoImage
@@ -156,7 +161,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
             <div class="photo-overlay">
               <span>{{ getPhotoMeta(photo) }}</span>
             </div>
-            <span class="selected-badge"><Check :size="15" aria-hidden="true" /></span>
+            <PhotoSelectionBadge :selected="selectedIds.has(photo.id)" :language="language" />
             <button
               class="card-action card-share-button"
               type="button"

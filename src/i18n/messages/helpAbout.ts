@@ -25,28 +25,42 @@ const desktopZh: HelpAboutDeviceContent = {
     {
       icon: 'images',
       title: '相册管理',
-      text: '按日期或动作整理游戏照片，支持大图、收藏、备注、参数解析和最近删除。'
+      text: '按日期或动作浏览游戏照片，支持大图预览、收藏、备注、参数解析和最近删除。'
     },
     {
       icon: 'outfit',
       title: '搭配码',
-      text: '保存搭配图片、搭配码和标签；授权游戏目录后可读取游戏内新增搭配。'
+      text: '保存搭配图片、搭配码、标签与来源链接；授权游戏目录后可读取新增搭配。'
     },
-    { icon: 'home', title: '家园方案', text: '管理家园码和组合码，保存名称、封面、备注和标签。' },
+    {
+      icon: 'home',
+      title: '家园方案',
+      text: '管理家园码和组合码，保存名称、封面、备注与标签。'
+    },
     {
       icon: 'camera',
       title: '相机参数',
-      text: '解析参数码或原始照片，查看解析结果并保存相机参数收藏。'
+      text: '解析参数码或游戏原图，查看拍摄参数与穿搭，并收藏喜欢的相机参数。'
     },
     {
       icon: 'resonance',
       title: '共鸣记录',
-      text: '导入、预览和保存记录，查看两套抽数；支持账号登录和共鸣记录跨设备云同步。'
+      text: '导入抽卡记录，查看套装与部件获取情况，支持手动云同步。'
+    },
+    {
+      icon: 'wardrobe',
+      title: '个人衣橱',
+      text: '查看套装与部件的收集进度，支持筛选、进化形态展示及手动云同步。'
+    },
+    {
+      icon: 'makeup',
+      title: '妆容图鉴',
+      text: '浏览全妆与妆容部件，按名称、版本或来源筛选，查看详情与关联套装。'
     },
     {
       icon: 'backup',
       title: '数据备份',
-      text: '各模块可导入导出；顶部“更多”提供全部数据 ZIP，便于跨设备迁移。'
+      text: '支持各模块及全部数据导入导出；电脑端还可自动备份到本地文件夹。'
     },
     {
       icon: 'cleanup',
@@ -55,8 +69,8 @@ const desktopZh: HelpAboutDeviceContent = {
     },
     {
       icon: 'tools',
-      title: '搜索与工具',
-      text: '搜索当前模块，在视图菜单调整显示、主题和语言，在工具菜单打开参数解析或抽卡吉时。'
+      title: '外观与工具',
+      text: '自选材质风格与手机导航布局，提供当前模块搜索、参数解析及抽卡吉时。'
     }
   ],
   tutorialSections: [
@@ -72,7 +86,7 @@ const desktopZh: HelpAboutDeviceContent = {
       title: '照片浏览与操作',
       items: [
         '选择相册后，使用左侧日期或动作索引定位照片，也可进入照片收藏和最近删除。',
-        '单击卡片选择照片，双击打开大图；照片卡片和大图工具栏提供收藏、备注及参数解析。',
+        '单击图片打开大图，点击图片右下角圆圈选择；照片卡片和大图工具栏提供收藏、备注及参数解析。',
         '大图支持切换、缩放和拖动；普通删除进入最近删除，可恢复，永久删除和专项清理会修改真实文件。'
       ]
     },
@@ -80,7 +94,7 @@ const desktopZh: HelpAboutDeviceContent = {
       title: '搭配码管理',
       items: [
         '点击“添加方案”，填写搭配码或添加图片即可保存，也可以两项都填。仅有图片的方案会归入待填写。',
-        '卡片底部提供复制和编辑；悬停卡片可使用右上角删除及解析按钮，无搭配码时复制和解析不可用。双击卡片可看大图。',
+        '卡片底部提供复制和编辑；悬停卡片可使用右上角删除及解析按钮，无搭配码时复制和解析不可用。有图片的卡片可单击图片查看大图，点击右下角圆圈选择。',
         '在左侧选择标签，用添加按钮创建标签，拖动手柄调整顺序；顶部提供本模块 ZIP 导入导出，授权 X6Game 后可更新游戏搭配。'
       ]
     },
@@ -88,7 +102,7 @@ const desktopZh: HelpAboutDeviceContent = {
       title: '家园方案管理',
       items: [
         '点击“添加方案”，输入家园码或组合码，按解析结果填写名称、封面、备注和标签后保存。',
-        '左侧可按家园码、组合码、未分类或标签筛选；卡片提供复制、编辑和删除，双击可打开大图。',
+        '左侧可按家园码、组合码、未分类或标签筛选；卡片提供复制、编辑和删除，有封面的卡片可单击图片查看大图，点击右下角圆圈选择。',
         '顶部导入导出本模块 ZIP 备份；删除标签只移除分类，不会删除方案本身。'
       ]
     },
@@ -105,7 +119,44 @@ const desktopZh: HelpAboutDeviceContent = {
       items: [
         '点击“导入数据”，选择奇想手账凭据导入或本地 JSON 文件，先核对预览，再确认保存。',
         '左侧“排序与筛选”可设置最新/最早卡池优先，以及全部、五星或四星；点击套装索引定位对应记录。',
-        '记录卡片可切换第一套/第二套部件抽数；操作行提供 JSON 导出、清空本地记录及注册、登录。登录后可上传云端、从云端同步、删除云端存档及退出。'
+        '电脑端同时展示第一套和第二套部件抽数；操作行提供 JSON 导出、清空本地记录及注册、登录。登录后可上传云端、从云端同步、删除云端存档及退出。'
+      ]
+    },
+    {
+      title: '个人衣橱',
+      items: [
+        '在“暖暖档案”中进入“个人衣橱”，点击“导入数据”导入美鸭梨记录或受支持的 JSON 文件，预览后保存。',
+        '切换套装或部件，按名称、拥有状态等条件筛选；默认展示全部拥有状态。点击卡片查看详情，用“显示进化形态”控制是否分开展示各形态。',
+        '共鸣与衣橱共用云同步窗口，上传或下载前勾选所需模块并核对区服。'
+      ]
+    },
+    {
+      title: '妆容图鉴',
+      items: [
+        '在“暖暖档案”中进入“妆容图鉴”，无需导入个人数据即可浏览。',
+        '按全妆、底妆等分类浏览，支持名称或 ID 搜索，以及版本、来源、星级筛选。点击卡片查看详情、进化形态和关联套装。'
+      ]
+    },
+    {
+      title: '搭配来源链接',
+      items: [
+        '新建或编辑搭配时，可选填原帖链接，也可粘贴含单个网址的分享文案。',
+        '保存后点击卡片上的链接按钮打开来源；来源链接随搭配备份保存。'
+      ]
+    },
+    {
+      title: '外观与导航设置',
+      items: [
+        '在“视图 → 风格”中选择实色、磨砂或液态玻璃，应用于顶栏、导航、大图控件和批量操作栏。',
+        '手机端可在“视图 → 导航栏样式”中选择贴底或悬浮胶囊；材质和布局可分别设置，并自动记住选择。'
+      ]
+    },
+    {
+      title: '电脑自动备份',
+      items: [
+        '点击顶部“自动备份”，选择电脑文件夹，按需开启搭配码、家园方案和相机收藏的备份。数据变化后自动更新电脑副本，不上传云端。',
+        '自动备份只保留最新状态，不是历史版本。复制备份文件夹前先暂停写盘，完成后恢复自动备份。',
+        '“从目录恢复”会完整替换所选模块的浏览器数据，不是合并；恢复后这些模块的自动备份暂停，请确认后再开启。'
       ]
     },
     {
@@ -134,7 +185,7 @@ const desktopZh: HelpAboutDeviceContent = {
       icon: 'mouse',
       title: '鼠标操作',
       items: [
-        '单击卡片选择，点击操作按钮执行对应功能；搭配、家园及照片卡片可双击打开大图。',
+        '单击图片查看大图，点击右下角圆圈选择；悬停图片可显示圆圈，操作按钮不会改变选择。',
         '悬停可显示卡片的附加操作和信息；标签顺序通过拖拽手柄调整。',
         '大图可用鼠标滚轮缩放，放大后拖动查看细节。'
       ]
@@ -145,7 +196,7 @@ const desktopZh: HelpAboutDeviceContent = {
       items: [
         '大图预览中用左右方向键切换，Esc 关闭当前菜单、弹窗或预览。',
         '照片大图中按 Delete 触发删除，最近删除中的照片会触发永久删除；均需按提示确认。',
-        '在搭配编辑窗口的非文本输入区域按 Ctrl+V 可粘贴图片。'
+        '聚焦图片卡片后，Enter 查看大图，空格切换选择；搭配编辑窗口的非文本输入区域可按 Ctrl+V 粘贴图片。'
       ]
     }
   ]
@@ -156,32 +207,42 @@ const mobileZh: HelpAboutDeviceContent = {
     {
       icon: 'outfit',
       title: '搭配码',
-      text: '保存搭配图片、搭配码和标签，通过卡片底部图标复制、编辑、删除或解析。'
+      text: '保存搭配图片、搭配码、标签与来源链接；授权游戏目录后可读取新增搭配。'
     },
     {
       icon: 'home',
       title: '家园方案',
-      text: '保存家园码或组合码，在底部图标栏复制、编辑和删除方案。'
+      text: '管理家园码和组合码，保存名称、封面、备注与标签。'
     },
     {
       icon: 'camera',
       title: '相机参数',
-      text: '添加、解析及收藏参数码，随时复制参数或查看完整解析结果。'
+      text: '解析参数码或游戏原图，查看拍摄参数与穿搭，并收藏喜欢的相机参数。'
     },
     {
       icon: 'resonance',
       title: '共鸣记录',
-      text: '用凭据或 JSON 导入记录，查看两套抽数；登录后可手动上传或从云端同步。'
+      text: '导入抽卡记录，查看套装与部件获取情况，支持手动云同步。'
+    },
+    {
+      icon: 'wardrobe',
+      title: '个人衣橱',
+      text: '查看套装与部件的收集进度，支持筛选、进化形态展示及手动云同步。'
+    },
+    {
+      icon: 'makeup',
+      title: '妆容图鉴',
+      text: '浏览全妆与妆容部件，按名称、版本或来源筛选，查看详情与关联套装。'
     },
     {
       icon: 'backup',
-      title: '备份迁移',
-      text: '可导入电脑导出的全部数据 ZIP，也可在手机上备份自己的方案和记录。'
+      title: '数据备份',
+      text: '支持各模块及全部数据导入导出；电脑端还可自动备份到本地文件夹。'
     },
     {
       icon: 'tools',
-      title: '搜索与显示',
-      text: '顶部放大镜打开独立搜索浮层，实时搜索当前模块；关闭保留关键词，清除取消筛选；视图设置显示、主题和语言，“更多”提供解析工具、抽卡吉时及帮助。'
+      title: '外观与工具',
+      text: '自选材质风格与手机导航布局，提供当前模块搜索、参数解析及抽卡吉时。'
     }
   ],
   tutorialSections: [
@@ -206,7 +267,7 @@ const mobileZh: HelpAboutDeviceContent = {
       items: [
         '点页面“+”，填写搭配码或选择图片即可保存，以后可以编辑补充。',
         '卡片底部从左到右是复制、编辑、删除、解析图标；没有搭配码时复制和解析置灰，删除会先要求确认。',
-        '点卡片可选中并显示批量操作栏；双击搭配卡片可打开大图。本模块 ZIP 导入导出位于页面“⋯”菜单。'
+        '长按图片或点右下角圆圈选择并显示批量操作栏；点图片打开大图。本模块 ZIP 导入导出位于页面“⋯”菜单。'
       ]
     },
     {
@@ -214,7 +275,7 @@ const mobileZh: HelpAboutDeviceContent = {
       items: [
         '点页面“+”，输入家园码或组合码，按解析结果保存名称、封面、备注和标签。',
         '卡片底部从左到右是复制、编辑、删除三个图标；家园方案没有解析操作按钮，删除保留确认。',
-        '可按家园码、组合码或标签筛选，双击卡片查看大图；本模块备份在页面“⋯”中导入导出。'
+        '可按家园码、组合码或标签筛选，点图片查看大图，长按图片或点圆圈选择；本模块备份在页面“⋯”中导入导出。'
       ]
     },
     {
@@ -222,15 +283,44 @@ const mobileZh: HelpAboutDeviceContent = {
       items: [
         '点页面“+”添加参数码，成功解析后填写名称并保存；也可添加封面和标签。',
         '卡片底部从左到右是复制、编辑、删除、详情图标；详情展示已经保存的解析结果，复制得到的参数码可在游戏相机中导入。',
-        '点卡片选择，使用批量操作栏管理选中项；页面“⋯”提供 ZIP 导入导出。需要直接解析参数码或照片时，从顶部“更多”打开参数解析。'
+        '长按图片或点圆圈选择，使用批量操作栏管理选中项；页面“⋯”提供 ZIP 导入导出。需要直接解析参数码或照片时，从顶部“更多”打开参数解析。'
       ]
     },
     {
       title: '共鸣筛选与导入',
       items: [
-        '点页面“+”，按提示输入奇想手账凭据或选择 JSON 文件，核对预览后确认保存；需要在电脑获取凭据时，可安全地发送到自己的手机使用。',
+        '点页面“+”，选择美鸭梨导入或 JSON 文件，预览后确认保存。支持脚本的手机浏览器可按“脚本法”直接获取凭据，也可在电脑获取后传到自己的手机。',
         '点“全部星级”或当前星级打开居中筛选窗口，直接选择卡池排序、星级或套装索引；清除星级筛选会恢复全部星级，保留排序。',
         '记录卡片可切换第一套/第二套抽数；页面“⋯”提供导出、清空本地记录及注册、登录。登录后菜单提供上传云端、从云端同步、删除云端存档及退出。'
+      ]
+    },
+    {
+      title: '个人衣橱',
+      items: [
+        '在“暖暖档案”中进入“个人衣橱”，点击“导入数据”导入美鸭梨记录或受支持的 JSON 文件，预览后保存。',
+        '切换套装或部件，按名称、拥有状态等条件筛选；默认展示全部拥有状态。点击卡片查看详情，用“显示进化形态”控制是否分开展示各形态。',
+        '共鸣与衣橱共用云同步窗口，上传或下载前勾选所需模块并核对区服。'
+      ]
+    },
+    {
+      title: '妆容图鉴',
+      items: [
+        '在“暖暖档案”中进入“妆容图鉴”，无需导入个人数据即可浏览。',
+        '按全妆、底妆等分类浏览，支持名称或 ID 搜索，以及版本、来源、星级筛选。点击卡片查看详情、进化形态和关联套装。'
+      ]
+    },
+    {
+      title: '搭配来源链接',
+      items: [
+        '新建或编辑搭配时，可选填原帖链接，也可粘贴含单个网址的分享文案。',
+        '保存后点击卡片上的链接按钮打开来源；来源链接随搭配备份保存。'
+      ]
+    },
+    {
+      title: '外观与导航设置',
+      items: [
+        '在“视图 → 风格”中选择实色、磨砂或液态玻璃，应用于顶栏、导航、大图控件和批量操作栏。',
+        '手机端可在“视图 → 导航栏样式”中选择贴底或悬浮胶囊；材质和布局可分别设置，并自动记住选择。'
       ]
     },
     {
@@ -252,7 +342,7 @@ const mobileZh: HelpAboutDeviceContent = {
       icon: 'touch',
       title: '触摸操作',
       items: [
-        '点按卡片选择，点底部图标执行操作；搭配和家园卡片可双击打开大图。操作按钮不会改变卡片选中状态。',
+        '有图片或封面的卡片可点图查看大图，长按图片或点右下角圆圈选择，点底部图标执行操作。取消最后一项后退出选择模式，操作按钮不会改变卡片选中状态。',
         '大图中可左右滑动切换、双指缩放，放大后用单指拖动查看细节。',
         '长列表和窗口内容可上下滚动；编辑后使用窗口底部的保存或取消按钮。'
       ]
@@ -265,12 +355,12 @@ const desktopEn: HelpAboutDeviceContent = {
     {
       icon: 'images',
       title: 'Album management',
-      text: 'Browse game photos by date or action, with previews, favorites, notes, parameter decoding and Recently Deleted.'
+      text: 'Browse game photos by date or action, with previews, favorites, notes, parameter decoding and Recently deleted.'
     },
     {
       icon: 'outfit',
       title: 'Outfit codes',
-      text: 'Save outfit images, codes and tags. Authorize the game directory to read newly shared in-game outfits.'
+      text: 'Save outfit images, codes, tags and source links. Authorize the game directory to read newly shared outfits.'
     },
     {
       icon: 'home',
@@ -280,17 +370,27 @@ const desktopEn: HelpAboutDeviceContent = {
     {
       icon: 'camera',
       title: 'Camera parameters',
-      text: 'Decode parameter codes or original photos, inspect the results and save camera favorites.'
+      text: 'Decode parameter codes or original game photos, inspect camera settings and outfits, and save your favorite camera parameters.'
     },
     {
       icon: 'resonance',
       title: 'Resonance records',
-      text: 'Import, preview and save records, inspect both sets, and use account-based cloud sync across devices.'
+      text: 'Import pull records, track outfit and piece acquisition, and sync manually with the cloud.'
+    },
+    {
+      icon: 'wardrobe',
+      title: 'Personal wardrobe',
+      text: 'Track outfit and piece collection progress, with filters, evolution forms and manual cloud sync.'
+    },
+    {
+      icon: 'makeup',
+      title: 'Makeup catalog',
+      text: 'Browse full looks and makeup pieces, filter by name, version or source, and explore details and related outfits.'
     },
     {
       icon: 'backup',
       title: 'Data backups',
-      text: 'Each collection supports import and export. More provides a full-data ZIP for migration between devices.'
+      text: 'Import and export individual collections or all data. Desktop users can also back up automatically to a local folder.'
     },
     {
       icon: 'cleanup',
@@ -299,8 +399,8 @@ const desktopEn: HelpAboutDeviceContent = {
     },
     {
       icon: 'tools',
-      title: 'Search and utilities',
-      text: 'Search the current module, adjust display, theme and language in View, or open parsing tools and lucky pull times in Tools.'
+      title: 'Appearance and tools',
+      text: 'Choose material styles and mobile navigation layouts, search the current module, decode parameters and check lucky pull times.'
     }
   ],
   tutorialSections: [
@@ -316,7 +416,7 @@ const desktopEn: HelpAboutDeviceContent = {
       title: 'Browse and manage photos',
       items: [
         'After choosing an album, use date or action indexes to locate photos, or open Photo favorites and Recently Deleted.',
-        'Click a card to select it; double-click for a preview. Cards and the preview toolbar provide favorite, note and parameter actions.',
+        'Click an image to preview it; use its bottom-right circle to select it. Cards and the preview toolbar provide favorite, note and parameter actions.',
         'Previews support navigation, zoom and panning. Ordinary deletion moves photos to Recently Deleted for restoration; permanent deletion and cleanup modify real files.'
       ]
     },
@@ -324,7 +424,7 @@ const desktopEn: HelpAboutDeviceContent = {
       title: 'Manage outfit codes',
       items: [
         'Choose Add outfit and enter a code, add an image, or do both. Image-only outfits appear under Pending.',
-        'Copy and Edit are at the bottom of each card. Hover to reveal Delete and Parse at the top right. Copy and Parse are disabled without a code; double-click for a preview.',
+        'Copy and Edit are at the bottom of each card. Hover to reveal Delete and Parse at the top right. Copy and Parse are disabled without a code. For cards with an image, click it to preview; use the bottom-right circle to select it.',
         'Choose tags in the sidebar, add them with the plus button and drag their handles to reorder. Import or export this collection as a ZIP; authorize X6Game for in-game outfit updates.'
       ]
     },
@@ -332,7 +432,7 @@ const desktopEn: HelpAboutDeviceContent = {
       title: 'Manage home schemes',
       items: [
         'Choose Add scheme, enter a home or combination code and save its parsed name, cover, note and tag.',
-        'Filter by home codes, combination codes, uncategorized items or tags. Cards provide Copy, Edit and Delete; double-click to preview.',
+        'Filter by home codes, combination codes, uncategorized items or tags. Cards provide Copy, Edit and Delete. For cards with a cover, click the image to preview it; use the bottom-right circle to select it.',
         'Import or export this collection as a ZIP from the page actions. Removing a tag removes its classification, not the scheme itself.'
       ]
     },
@@ -349,7 +449,44 @@ const desktopEn: HelpAboutDeviceContent = {
       items: [
         'Choose Add data, select Pear-Pal credentials or a local JSON file, review the preview and confirm saving.',
         'Sort and filter in the sidebar provides newest/oldest banner order and all, 5-star or 4-star records. Select an outfit index to jump to its record.',
-        'Switch between first- and second-set pulls. The action row provides JSON export, Clear local records, Register and Log in. After login, use Upload to cloud, Sync from cloud, Delete cloud save or Log out.'
+        'Desktop cards show both sets of pulls together. The action row provides JSON export, Clear local records, Register and Log in. After login, use Upload to cloud, Sync from cloud, Delete cloud save or Log out.'
+      ]
+    },
+    {
+      title: 'Personal wardrobe',
+      items: [
+        'Open Personal wardrobe in Nikki Archive. Use Import data to import Pear-Pal records or a supported JSON file, review the preview and save.',
+        'Browse outfits or pieces and filter by name, ownership and other conditions. All ownership statuses are shown by default. Open cards for details; Show evolution forms controls whether forms appear separately.',
+        'Resonance and wardrobe share a cloud sync dialog. Select the modules and check the server before uploading or downloading.'
+      ]
+    },
+    {
+      title: 'Makeup catalog',
+      items: [
+        'Open Makeup catalog in Nikki Archive to browse without importing personal data.',
+        'Browse full looks and makeup categories, search by name or ID, and filter by version, source or rarity. Open a card for details, evolution forms and related outfits.'
+      ]
+    },
+    {
+      title: 'Outfit source links',
+      items: [
+        'When creating or editing an outfit, optionally add the original post link or paste share text containing one URL.',
+        'After saving, use the link button on the card to open the source. Source links are included in outfit backups.'
+      ]
+    },
+    {
+      title: 'Appearance and navigation',
+      items: [
+        'Choose Opaque, Frosted or Liquid glass under View → Material style for the header, navigation, preview controls and batch action toolbar.',
+        'On mobile, choose Docked or Floating capsule under View → Navigation style. Material and layout are independent, and your choices are remembered.'
+      ]
+    },
+    {
+      title: 'Automatic backups on desktop',
+      items: [
+        'Open Auto backup at the top, choose a folder and enable backups for outfits, home schemes or camera favorites. Changes update the local copy without uploading to the cloud.',
+        'Automatic backups keep the latest state, not version history. Pause writing before copying the backup folder, then resume it afterward.',
+        'Restore from folder replaces browser data for the selected modules rather than merging it. Their automatic backups are paused after restoration; review before enabling them again.'
       ]
     },
     {
@@ -378,7 +515,7 @@ const desktopEn: HelpAboutDeviceContent = {
       icon: 'mouse',
       title: 'Mouse controls',
       items: [
-        'Click a card to select it, or use its action buttons. Double-click outfit, home and photo cards to preview them.',
+        'Click an image to preview it. Hover to reveal its bottom-right selection circle. Card actions keep the selection unchanged.',
         'Hover reveals additional card actions and information. Drag tag handles to change their order.',
         'Use the mouse wheel to zoom a preview, then drag to inspect details.'
       ]
@@ -389,7 +526,7 @@ const desktopEn: HelpAboutDeviceContent = {
       items: [
         'In a preview, use Left and Right to navigate. Esc closes the current menu, dialog or preview.',
         'Delete in a photo preview requests deletion; in Recently Deleted it requests permanent deletion. Follow the confirmation prompts.',
-        'Press Ctrl+V outside text inputs in the outfit editor to paste an image.'
+        'With an image card focused, Enter opens its preview and Space toggles selection. In the outfit editor, press Ctrl+V outside text inputs to paste an image.'
       ]
     }
   ]
@@ -400,32 +537,42 @@ const mobileEn: HelpAboutDeviceContent = {
     {
       icon: 'outfit',
       title: 'Outfit codes',
-      text: 'Save outfit images, codes and tags; use the bottom icons to copy, edit, delete or parse.'
+      text: 'Save outfit images, codes, tags and source links. Authorize the game directory to read newly shared outfits.'
     },
     {
       icon: 'home',
       title: 'Home schemes',
-      text: 'Save home or combination codes; use the bottom icons to copy, edit and delete.'
+      text: 'Manage home and combination codes with names, covers, notes and tags.'
     },
     {
       icon: 'camera',
       title: 'Camera parameters',
-      text: 'Add, parse and save parameter codes, then copy them or inspect the complete saved results.'
+      text: 'Decode parameter codes or original game photos, inspect camera settings and outfits, and save your favorite camera parameters.'
     },
     {
       icon: 'resonance',
       title: 'Resonance records',
-      text: 'Import with credentials or JSON, inspect both sets, and sign in to manually upload or download cloud records.'
+      text: 'Import pull records, track outfit and piece acquisition, and sync manually with the cloud.'
+    },
+    {
+      icon: 'wardrobe',
+      title: 'Personal wardrobe',
+      text: 'Track outfit and piece collection progress, with filters, evolution forms and manual cloud sync.'
+    },
+    {
+      icon: 'makeup',
+      title: 'Makeup catalog',
+      text: 'Browse full looks and makeup pieces, filter by name, version or source, and explore details and related outfits.'
     },
     {
       icon: 'backup',
-      title: 'Backup migration',
-      text: 'Import a full-data ZIP from your computer, or back up your own schemes and records on the phone.'
+      title: 'Data backups',
+      text: 'Import and export individual collections or all data. Desktop users can also back up automatically to a local folder.'
     },
     {
       icon: 'tools',
-      title: 'Search and display',
-      text: 'The top magnifying glass opens a separate search popover for the current module. Close keeps the query; Clear removes the filter. View changes display, theme and language; More provides parsing tools, lucky pull times and help.'
+      title: 'Appearance and tools',
+      text: 'Choose material styles and mobile navigation layouts, search the current module, decode parameters and check lucky pull times.'
     }
   ],
   tutorialSections: [
@@ -450,7 +597,7 @@ const mobileEn: HelpAboutDeviceContent = {
       items: [
         'Tap the plus button and enter a code or choose an image. You can add the other later.',
         'Bottom icons, from left to right, are Copy, Edit, Delete and Parse. Copy and Parse are disabled without a code; deletion requires confirmation.',
-        'Tap a card to select it and reveal batch actions; double-tap an outfit card for a preview. The page ellipsis contains ZIP import and export.'
+        'Long-press an image or tap its circle to select it and reveal batch actions; tap the image to preview it. The page ellipsis contains ZIP import and export.'
       ]
     },
     {
@@ -458,7 +605,7 @@ const mobileEn: HelpAboutDeviceContent = {
       items: [
         'Tap the page plus, enter a home or combination code and save the parsed name, cover, note and tag.',
         'Bottom icons are Copy, Edit and Delete, from left to right. Home cards have no Parse action; deletion still requires confirmation.',
-        'Filter by home codes, combination codes or tags and double-tap a card to preview it. Use the page ellipsis to import or export this collection.'
+        'Filter by home codes, combination codes or tags. Tap an image to preview it; long-press or tap its circle to select it. Use the page ellipsis to import or export this collection.'
       ]
     },
     {
@@ -466,21 +613,50 @@ const mobileEn: HelpAboutDeviceContent = {
       items: [
         'Tap the page plus, enter a parameter code and parse it successfully before naming and saving it. Covers and tags are optional.',
         'Bottom icons are Copy, Edit, Delete and Details, from left to right. Details shows the saved parse result; paste a copied code into the game camera parameter import.',
-        'Tap cards to select them for batch actions. The page ellipsis provides ZIP import and export. For direct code or photo decoding, open parsing tools from top More.'
+        'Long-press images or tap their circles to select them for batch actions. The page ellipsis provides ZIP import and export. For direct code or photo decoding, open parsing tools from top More.'
       ]
     },
     {
       title: 'Resonance filtering and import',
       items: [
-        'Tap the page plus, supply Pear-Pal credentials or a JSON file, review the preview and confirm saving. If credentials must be obtained on a computer, transfer them securely to your own phone.',
+        'Tap the page plus to import from Pear-Pal or a JSON file, review the preview and save. In a mobile browser with userscript support, follow the Userscript instructions to get credentials directly, or transfer them from your own computer.',
         'Tap All rarities or the active rarity for the centered picker. Choose banner order, rarity or an outfit index; clearing rarity restores all records while keeping the order.',
         'Switch between first- and second-set pulls. The ellipsis provides export, Clear local records, Register and Log in. After login, the menu offers Upload to cloud, Sync from cloud, Delete cloud save and Log out.'
       ]
     },
     {
+      title: 'Personal wardrobe',
+      items: [
+        'Open Personal wardrobe in Nikki Archive. Use Import data to import Pear-Pal records or a supported JSON file, review the preview and save.',
+        'Browse outfits or pieces and filter by name, ownership and other conditions. All ownership statuses are shown by default. Open cards for details; Show evolution forms controls whether forms appear separately.',
+        'Resonance and wardrobe share a cloud sync dialog. Select the modules and check the server before uploading or downloading.'
+      ]
+    },
+    {
+      title: 'Makeup catalog',
+      items: [
+        'Open Makeup catalog in Nikki Archive to browse without importing personal data.',
+        'Browse full looks and makeup categories, search by name or ID, and filter by version, source or rarity. Open a card for details, evolution forms and related outfits.'
+      ]
+    },
+    {
+      title: 'Outfit source links',
+      items: [
+        'When creating or editing an outfit, optionally add the original post link or paste share text containing one URL.',
+        'After saving, use the link button on the card to open the source. Source links are included in outfit backups.'
+      ]
+    },
+    {
+      title: 'Appearance and navigation',
+      items: [
+        'Choose Opaque, Frosted or Liquid glass under View → Material style for the header, navigation, preview controls and batch action toolbar.',
+        'On mobile, choose Docked or Floating capsule under View → Navigation style. Material and layout are independent, and your choices are remembered.'
+      ]
+    },
+    {
       title: 'Backups and desktop capabilities',
       items: [
-        'Sign in to the same account to manually upload and download resonance records across devices. Transfer outfits, home schemes and camera favorites using the full-data ZIP in More. Back up important data regularly.',
+        'Sign in to the same account to manually upload and download resonance and wardrobe records across devices. Transfer outfits, home schemes and camera favorites using the full-data ZIP in More. Back up important data regularly.',
         'Check the backup source and contents, and follow conflict prompts when importing. Save original game album photos separately.',
         'Album folder management, automatic game-directory updates and targeted cleanup require a supported desktop browser. For photo decoding on a phone, supply the original photo and enter the matching account UID if prompted.'
       ]
@@ -496,7 +672,7 @@ const mobileEn: HelpAboutDeviceContent = {
       icon: 'touch',
       title: 'Touch controls',
       items: [
-        'Tap a card to select it and its bottom icons for actions. Double-tap outfit and home cards to preview them. Action buttons keep the selection unchanged.',
+        'Tap a card image or cover to preview it; long-press images or tap their circles to select them. Deselecting the last item exits selection mode. Bottom action buttons keep the selection unchanged.',
         'Swipe horizontally in a preview to navigate, pinch to zoom and drag with one finger after zooming in.',
         'Scroll long lists and dialog contents vertically. Use Save or Cancel at the bottom of an editor when finished.'
       ]

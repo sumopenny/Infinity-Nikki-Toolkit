@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Heart, HeartOff, RotateCcw, Trash2, Upload, X } from 'lucide-vue-next'
+import GlassSurfaceFilter from './GlassSurfaceFilter.vue'
+import { useGlassSurface } from '../composables/useGlassSurface'
 import type { LocaleMessages } from '../i18n'
+
+const { glassFilterId, refractsBackdrop } = useGlassSurface()
+const glassSurfaceAttributes = {
+  'data-refraction': refractsBackdrop || undefined,
+  style: { '--nav-glass-filter': `url(#${glassFilterId})` }
+}
 
 export type SelectionBarMode = 'album' | 'favorites' | 'trash' | 'outfit'
 
@@ -33,10 +41,12 @@ defineEmits<{
   <Transition name="selection-bar">
     <div
       v-if="selectedCount"
-      class="selection-bar"
+      class="selection-bar material-surface"
+      v-bind="glassSurfaceAttributes"
       role="toolbar"
       :aria-label="messages.selected(selectedCount)"
     >
+      <GlassSurfaceFilter v-if="refractsBackdrop" :filter-id="glassFilterId" />
       <strong>{{ messages.selected(selectedCount) }}</strong>
       <span class="selection-divider"></span>
       <button type="button" :disabled="isBusy" @click="$emit('toggleAll')">
@@ -82,7 +92,12 @@ defineEmits<{
         </button>
       </template>
       <template v-else-if="mode === 'trash'">
-        <button type="button" :disabled="isBusy || readOnly" :title="readOnly ? readOnlyHint : undefined" @click="!readOnly && $emit('restore')">
+        <button
+          type="button"
+          :disabled="isBusy || readOnly"
+          :title="readOnly ? readOnlyHint : undefined"
+          @click="!readOnly && $emit('restore')"
+        >
           <RotateCcw :size="16" aria-hidden="true" />
           <span>{{ messages.restore }}</span>
         </button>

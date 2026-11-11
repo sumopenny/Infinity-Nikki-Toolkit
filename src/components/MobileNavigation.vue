@@ -108,17 +108,13 @@ onBeforeUnmount(cancelPress)
   transform-origin: center 65%;
   transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-/* 只压缩内容，保持触摸范围和滑块测量稳定。 */
-.mobile-navigation button:is(:active, .is-pressed):not(:disabled) {
-  scale: 1;
-  background: var(--soft-accent);
-  background: color-mix(in srgb, var(--soft-accent) 78%, var(--pink-deep) 22%);
-}
+/* 按压只缩放内容，背景由材质和选中态管理，保持玻璃与触摸范围稳定。 */
 .mobile-navigation button:is(:active, .is-pressed):not(:disabled) .mobile-navigation-content {
-  transform: translateY(1px) scale(0.9);
+  transform: translateY(1px) scale(0.94);
   transition: transform 80ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
+  .mobile-navigation button,
   .mobile-navigation button .mobile-navigation-content {
     transition: none;
   }
