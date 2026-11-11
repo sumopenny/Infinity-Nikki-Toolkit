@@ -57,6 +57,10 @@ const VIDEO_TUTORIALS = [
   {
     label: 'iosVideoTutorial',
     href: 'https://www.xiaohongshu.com/discovery/item/6ad606ad00000000260146cb?source=webshare&xhsshare=pc_web&xsec_token=ABJuRIb-ZNqYvm2g_gBWAoQHWbKjYcP5DBvJKo6uiqKpc=&xsec_source=pc_share'
+  },
+  {
+    label: 'userscriptVideoTutorial',
+    href: 'https://www.xiaohongshu.com/discovery/item/6af45d80000000002b019183?source=webshare&xhsshare=pc_web&xsec_token=YBoFt-Yd5PUb5VkYHFgKhrnKyL1ibb9LcX_tvDKJoQfiI=&xsec_source=pc_share'
   }
 ] as const
 </script>
@@ -482,18 +486,26 @@ const VIDEO_TUTORIALS = [
 }
 @media (max-width: 899px) {
   .resonance-video-tutorials {
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
+    min-width: 0;
   }
   .resonance-video-tutorials h4 {
-    flex-shrink: 1;
-    min-width: 0;
+    flex-shrink: 0;
     font-size: 12px;
+    white-space: nowrap;
   }
   .resonance-video-tutorials .resonance-video-links {
+    flex-wrap: nowrap;
     gap: 4px;
-    flex-shrink: 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
   }
   .resonance-video-tutorials .resonance-video-links a {
+    flex-shrink: 0;
     gap: 3px;
     padding: 3px 6px;
     font-size: 11px;

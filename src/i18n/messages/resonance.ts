@@ -49,6 +49,7 @@ export interface ResonanceMessages {
   desktopVideoTutorial: string
   androidVideoTutorial: string
   iosVideoTutorial: string
+  userscriptVideoTutorial: string
   mobileAndroidBrowsers: string
   mobileIosBrowsers: string
   mobileCredentialTip: string
@@ -189,6 +190,7 @@ export const resonanceZh: ResonanceMessages = {
   desktopVideoTutorial: '电脑端',
   androidVideoTutorial: '安卓端',
   iosVideoTutorial: '苹果端',
+  userscriptVideoTutorial: '脚本法手机端',
   mobileCredentialTip: '建议使用电脑端获取登录凭据，操作更加方便。获取后可复制到手机端继续导入。',
   mobileAndroidBrowsers: '安卓建议浏览器：Chrome（谷歌）、Firefox（火狐）。',
   mobileIosBrowsers: 'iOS 建议浏览器：Chrome（谷歌）、Firefox（火狐）、Safari。',
@@ -343,6 +345,7 @@ export const resonanceEn: ResonanceMessages = {
   desktopVideoTutorial: 'Desktop',
   androidVideoTutorial: 'Android',
   iosVideoTutorial: 'iOS',
+  userscriptVideoTutorial: 'Userscript (mobile)',
   mobileCredentialTip:
     'We recommend obtaining sign-in credentials on a computer for easier access. You can then copy them to your phone to continue importing.',
   mobileAndroidBrowsers: 'Recommended browsers for Android: Chrome and Firefox.',
