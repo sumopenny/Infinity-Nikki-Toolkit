@@ -33,17 +33,34 @@ describe('outfit-code Pages Function', () => {
     await expect(response.text()).resolves.toBe('{"clothes":[]}')
   })
 
-  it.each(['12345678901234567', '1234567890123456789', 'not-an-id'])(
-    'rejects an invalid object path %s without fetching',
+  it.each(['', 'not-an-id', '../123', '123.json', '-123'])(
+    'leaves object existence to the upstream for %s',
     async (id) => {
-      const fetchMock = vi.fn()
+      const fetchMock = vi.fn().mockResolvedValue(new Response('not found', { status: 404 }))
       vi.stubGlobal('fetch', fetchMock)
 
       const response = await onRequestGet(makeContext(id))
 
-      expect(response.status).toBe(400)
-      await expect(response.json()).resolves.toEqual({ error: 'invalid_path_id' })
-      expect(fetchMock).not.toHaveBeenCalled()
+      expect(response.status).toBe(404)
+      await expect(response.json()).resolves.toEqual({ error: 'upstream_rejected' })
+      expect(fetchMock).toHaveBeenCalledWith(
+        `https://x6cn-clothdiydata.nuanpaper.com/default/${encodeURIComponent(id)}.json`,
+        expect.any(Object)
+      )
+    }
+  )
+
+  it.each(['81919035101291850', '1234567890123456789'])(
+    'accepts numeric object id %s without a fixed length limit',
+    async (id) => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response('{"clothes":[]}'))
+      vi.stubGlobal('fetch', fetchMock)
+      const response = await onRequestGet(makeContext(id))
+      expect(response.status).toBe(200)
+      expect(fetchMock).toHaveBeenCalledWith(
+        `https://x6cn-clothdiydata.nuanpaper.com/default/${id}.json`,
+        expect.any(Object)
+      )
     }
   )
 

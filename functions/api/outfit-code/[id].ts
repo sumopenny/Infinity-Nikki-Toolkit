@@ -32,7 +32,7 @@ async function fetchSnapshot(id: string, controller: AbortController): Promise<S
   let result: Snapshot
   try {
     controller.signal.throwIfAborted()
-    const upstream = await fetch(UPSTREAM_BASE_URL + id + '.json', {
+    const upstream = await fetch(UPSTREAM_BASE_URL + encodeURIComponent(id) + '.json', {
       signal: controller.signal,
       // workerd 不支持 error 模式；manual 不跟随跳转，下面统一拒绝非 200 响应。
       redirect: 'manual'
@@ -108,14 +108,11 @@ async function consumeFlight(flight: Flight, signal: AbortSignal): Promise<Snaps
 /** 浏览器保持禁缓存，Cloudflare 独立内部响应缓存一小时；缓存故障降级为回源。 */
 export async function onRequestGet(context: OutfitCodeFunctionContext): Promise<Response> {
   const id = context.params.id ?? ''
-  if (!/^\d{18}$/.test(id))
-    return Response.json(
-      { error: 'invalid_path_id' },
-      { status: 400, headers: { ...JSON_HEADERS, 'cache-control': 'no-store' } }
-    )
   const started = Date.now()
   // 版本化内部键不携带用户 Cookie、查询参数或其他请求头。
-  const key = new Request(new URL(`/api/outfit-code/${id}?edge-cache=v1`, context.request.url))
+  const key = new Request(
+    new URL(`/api/outfit-code/${encodeURIComponent(id)}?edge-cache=v1`, context.request.url)
+  )
   const cache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default
   try {
     context.request.signal.throwIfAborted()

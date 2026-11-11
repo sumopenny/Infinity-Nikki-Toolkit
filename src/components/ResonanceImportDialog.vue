@@ -223,6 +223,7 @@ const VIDEO_TUTORIALS = [
                     <a
                       class="resonance-inline-action resonance-script-install"
                       :href="userscriptUrl"
+                      target="_blank"
                       rel="noopener noreferrer"
                     >
                       <FileUp :size="14" aria-hidden="true" />{{ t.userscriptInstall }}

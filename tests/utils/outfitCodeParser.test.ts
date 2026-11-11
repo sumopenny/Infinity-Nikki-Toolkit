@@ -66,6 +66,18 @@ describe('normalizeLookbookCode', () => {
 describe('parseOutfitCode', () => {
   afterEach(clearOutfitCodeParseCache)
 
+  it('requests the reported code using its 17-digit id and parses the response', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ Content: { Content: { wearingClothes: [1020100001] } } }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(parseOutfitCode('1sawf3K6YcO#')).resolves.toMatchObject({
+      code: '1sawf3K6YcO#',
+      wearingClothes: [{ itemId: 1020100001, clothType: 10, outfitId: null }]
+    })
+    expect(fetchMock).toHaveBeenCalledWith('/api/outfit-code/81919035101291850', expect.any(Object))
+  })
+
   it('持久化缓存命中不请求任何线路，旧结果按统一规则展示', async () => {
     vi.spyOn(directoryStorage, 'getSavedOutfitParseResult').mockResolvedValue({
       code: normalizedCode,
@@ -282,10 +294,10 @@ describe('parseOutfitCode', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('字符不属于原生 Base62 字母表时不请求接口', async () => {
+  it('包含非字母数字字符时不请求接口', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    await expect(parseOutfitCode('a1B2c3D4e5F')).rejects.toMatchObject({ kind: 'invalid' })
+    await expect(parseOutfitCode('a1B2c3D4e5!#')).rejects.toMatchObject({ kind: 'invalid' })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -362,12 +374,16 @@ describe('parseOutfitCode', () => {
 })
 
 describe('lookbook share code protocol', () => {
-  it('WASM 将真实分享码解码为对象路径编号', async () => {
+  it('decodes the reported valid code to its unpadded 17-digit object id', async () => {
+    await expect(decodeLookbookShareCodePathId('1sawf3K6YcO#')).resolves.toBe('81919035101291850')
+  })
+
+  it('将真实分享码解码为对象路径编号', async () => {
     await expect(decodeLookbookShareCodePathId(normalizedCode)).resolves.toBe('488547348102388135')
   })
 
-  it.each(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C'])(
-    'WASM 忽略原生分享码标记 %s',
+  it.each('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split(''))(
+    '忽略原生分享码标记 %s',
     async (marker) => {
       await expect(decodeLookbookShareCodePathId(marker + validCode.slice(1) + '#')).resolves.toBe(
         '488547348102388135'
@@ -375,12 +391,9 @@ describe('lookbook share code protocol', () => {
     }
   )
 
-  it.each(['a' + validCode.slice(1) + '#', '1I43NTCbOn!#', validCode])(
-    'WASM 拒绝不支持的分享码格式 %s',
-    async (code) => {
-      await expect(decodeLookbookShareCodePathId(code)).resolves.toBeNull()
-    }
-  )
+  it.each(['1I43NTCbOn!#', validCode])('拒绝不支持的分享码格式 %s', async (code) => {
+    await expect(decodeLookbookShareCodePathId(code)).resolves.toBeNull()
+  })
 })
 
 describe('lookbook WASM native output', () => {

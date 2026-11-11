@@ -157,7 +157,7 @@ async function requestLookbookParse(code: string): Promise<LookbookDecodeResult>
   } catch (error) {
     throw new OutfitCodeParseError(
       'unavailable',
-      'Lookbook WASM share-code decoding failed: ' +
+      'Lookbook share-code decoding failed: ' +
         (error instanceof Error ? error.message : String(error))
     )
   }

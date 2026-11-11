@@ -8,7 +8,6 @@ interface LookbookWasmExports extends WebAssembly.Exports {
   __pin(pointer: number): number
   __unpin(pointer: number): void
   decodeOutfitPayload(codePointer: number, payloadPointer: number): number
-  decodeShareCodePathId(codePointer: number): number
 }
 
 export type LookbookWasmResult<T> = { ok: true; value: T } | { ok: false; errorCode: string }
@@ -53,16 +52,19 @@ export async function decodeLookbookPayload<T>(
   }
 }
 
-/** 使用 WASM 还原分享码对应的固定对象路径编号；不支持的格式返回 null。 */
+// 与原生分享码使用相同的自定义 Base62 字母表。
+const SHARE_CODE_ALPHABET = 'qT9aL4sXhR7wKdN2gFjZP5zYm8bEv1W0xU3oIc6tOrJukGpSfViHnDlBQMeyCA'
+
+/** 还原分享码对应的对象编号；编号不定长，不能按旧 WASM 的 18 位限制校验。 */
 export async function decodeLookbookShareCodePathId(code: string): Promise<string | null> {
-  const wasm = await getExports()
-  const pointer = wasm.__pin(wasm.__newString(code))
-  try {
-    const pathId = wasm.__getString(wasm.decodeShareCodePathId(pointer))
-    return /^\d{18}$/.test(pathId) ? pathId : null
-  } finally {
-    wasm.__unpin(pointer)
+  if (!/^[A-Za-z0-9]{11}#$/.test(code)) return null
+  let id = 0n
+  for (const character of code.slice(1, -1)) {
+    const digit = SHARE_CODE_ALPHABET.indexOf(character)
+    // 编号可能超过 Number 的精确整数范围，必须全程使用 BigInt。
+    id = id * 62n + BigInt(digit)
   }
+  return id.toString()
 }
 
 /** 进入解析工具时预热，失败由正式解析继续重试，不向用户显示预热错误。 */
