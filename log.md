@@ -1500,3 +1500,4 @@
 - 根因/边界：线上脚本返回 200 和完整 UserScript 元数据，但 Content-Type 为 `application/javascript`，未声明 UTF-8；用户截图显示浏览器直接展示源码且中文乱码。源码展示说明安装流程未被脚本管理器接管，不能仅据此认定脚本格式无效，也不能把编码修复等同于自动安装修复。
 - 方法：在 `public/_headers` 为该脚本指定 `application/javascript; charset=utf-8`，让 Pages 静态资源响应与本地开发中间件保持一致。Vite 的开发响应头不会自动成为生产静态资源响应头。
 - 验证边界：检查生产构建中 `_headers` 与脚本产物；线上效果需部署后复核。安装未被接管时，可在脚本管理器中通过 URL 安装。
+- 缓存与兼容性补充：用户确认强制刷新后可识别，普通点击原地址仍显示旧乱码。按用户要求参照 LinkSwift，将开发和 Pages 静态响应统一改为 `text/plain; charset=utf-8`，脚本版本为 `1.0.4`；安装链接按后续要求保持不带查询参数的 `.user.js` 直链。Tampermonkey 官方 FAQ Q102 说明 `.user.js` 链接和顶部元数据的安装方式，未找到其明确要求必须使用 `text/plain` 的说明；该 MIME 调整属于兼容性尝试，自动安装效果仍需部署后实测。

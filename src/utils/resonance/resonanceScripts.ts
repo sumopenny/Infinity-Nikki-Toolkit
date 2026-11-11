@@ -62,7 +62,7 @@ export function resonanceUserscript(): string {
 // @author       素茉penny
 // @namespace    infinity-nikki-toolkit
 // @homepageURL  https://nikki3.pages.dev/
-// @version      1.0.2
+// @version      1.0.4
 // @description  点击按钮复制登录凭据，返回 Infinity Nikki Toolkit 粘贴导入。工具网址：https://infinity-nikki-album-manager.pages.dev/
 // @match        https://myl.nuanpaper.com/*
 // @match        https://pearpal.infoldgames.com/*
