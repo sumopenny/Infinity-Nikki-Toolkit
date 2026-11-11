@@ -1,0 +1,100 @@
+{
+  "date": "2026-11-11T06:31:14.253Z",
+  "scenario": "600 synthetic 3840x2160 JPEG photos, one date, Edge headless 1280x800; 36 scroll steps, 250ms per step; development build",
+  "runs": [
+    {
+      "baseline": true,
+      "initial": {
+        "loaded": 72,
+        "urls": 72
+      },
+      "peakCards": 180,
+      "peakUrls": 249,
+      "peakBlobBytes": 50739228,
+      "finalUrls": 276,
+      "originalUrls": 276,
+      "longTasks": 5,
+      "totalLongTaskMs": 1188,
+      "maxLongTaskMs": 873,
+      "errors": [
+        "ResizeObserver loop completed with undelivered notifications."
+      ],
+      "displayedDimensions": [
+        [
+          3840,
+          2160
+        ],
+        [
+          3840,
+          2160
+        ],
+        [
+          3840,
+          2160
+        ]
+      ],
+      "returned": {
+        "loaded": 108,
+        "failed": 0
+      },
+      "unmountedUrls": 292
+    },
+    {
+      "baseline": false,
+      "initial": {
+        "loaded": 49,
+        "urls": 49
+      },
+      "peakCards": 180,
+      "peakUrls": 150,
+      "peakBlobBytes": 1802400,
+      "finalUrls": 150,
+      "originalUrls": 0,
+      "longTasks": 8,
+      "totalLongTaskMs": 484,
+      "maxLongTaskMs": 73,
+      "errors": [],
+      "displayedDimensions": [
+        [
+          768,
+          432
+        ],
+        [
+          768,
+          432
+        ],
+        [
+          768,
+          432
+        ]
+      ],
+      "returned": {
+        "loaded": 69,
+        "failed": 0
+      },
+      "additionalChecks": {
+        "mobile": {
+          "failed": 0,
+          "selected": true,
+          "imageSize": [
+            512,
+            288
+          ],
+          "height": 97112
+        },
+        "grouped": {
+          "groups": 100,
+          "cards": 12,
+          "failed": 0
+        },
+        "replaced": {
+          "groups": 1,
+          "failed": 0,
+          "urls": 20,
+          "errors": []
+        }
+      },
+      "unmountedUrls": 0
+    }
+  ]
+}

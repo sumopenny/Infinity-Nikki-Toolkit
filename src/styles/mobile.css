@@ -1398,6 +1398,9 @@
     aspect-ratio: auto;
     gap: 0;
   }
+  .thumbnail-size-small.photo-grid-wrap {
+    --photo-batch-extra-height: var(--mobile-card-action-size);
+  }
   .thumbnail-size-small .photo-frame:has(.favorite-heart) .lazy-photo-image {
     grid-column: 1 / -1;
     height: auto;

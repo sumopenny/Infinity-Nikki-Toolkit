@@ -3,17 +3,28 @@ import { vImageSkeleton } from '../utils/imageSkeleton'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PhotoDisplayItem } from '../utils/photoGrouping'
 
-const props = defineProps<{
-  photo: PhotoDisplayItem
-  loadPhoto: (photo: PhotoDisplayItem, signal?: AbortSignal) => Promise<string>
-  failureText: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    photo: PhotoDisplayItem
+    loadPhoto: (photo: PhotoDisplayItem, signal?: AbortSignal) => Promise<string>
+    failureText: string
+    useSourceUrl?: boolean
+  }>(),
+  { useSourceUrl: true }
+)
 
 const rootRef = ref<HTMLElement | null>(null)
-const displayedUrl = ref<string | null>(props.photo.url)
-const loadState = ref<'idle' | 'loading' | 'loaded' | 'failed'>(props.photo.url ? 'loaded' : 'idle')
+const sourceUrl = () => (props.useSourceUrl === false ? null : props.photo.url)
+const displayedUrl = ref<string | null>(sourceUrl())
+const loadState = ref<'idle' | 'loading' | 'loaded' | 'failed'>(sourceUrl() ? 'loaded' : 'idle')
 let abortController = new AbortController()
 let observer: IntersectionObserver | null = null
+function retryLoading() {
+  abortController.abort()
+  abortController = new AbortController()
+  loadState.value = 'idle'
+  void startLoading()
+}
 
 /**
  * 请求加载当前照片，并在组件仍然有效时更新显示状态。
@@ -41,16 +52,13 @@ async function startLoading(): Promise<void> {
   }
 }
 
-watch(
-  () => props.photo,
-  (photo) => {
-    abortController.abort()
-    abortController = new AbortController()
-    displayedUrl.value = photo.url
-    loadState.value = photo.url ? 'loaded' : 'idle'
-    if (!observer && !photo.url) void startLoading()
-  }
-)
+watch([() => props.photo, () => props.loadPhoto, () => props.useSourceUrl], () => {
+  abortController.abort()
+  abortController = new AbortController()
+  displayedUrl.value = sourceUrl()
+  loadState.value = displayedUrl.value ? 'loaded' : 'idle'
+  if (!observer && !displayedUrl.value) void startLoading()
+})
 
 onMounted(() => {
   if (!rootRef.value || !('IntersectionObserver' in window)) {
@@ -89,12 +97,21 @@ onBeforeUnmount(() => {
     <div
       v-else-if="loadState === 'failed'"
       class="photo-load-failed"
-      role="img"
+      role="group"
       :aria-label="failureText"
       :title="failureText"
     >
       <span aria-hidden="true">×</span>
+      <button type="button" :aria-label="failureText" @click.stop="retryLoading">↻</button>
     </div>
-    <img v-image-skeleton v-else-if="displayedUrl" :src="displayedUrl" :alt="photo.name" loading="lazy" />
+    <img
+      v-image-skeleton
+      v-else-if="displayedUrl"
+      :src="displayedUrl"
+      :alt="photo.name"
+      loading="lazy"
+      decoding="async"
+      @error="loadState = 'failed'"
+    />
   </div>
 </template>

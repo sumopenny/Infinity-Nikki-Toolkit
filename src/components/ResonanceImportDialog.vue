@@ -214,6 +214,10 @@ const VIDEO_TUTORIALS = [
               <div class="parse-tools-section resonance-cookie-guide">
                 <h4>{{ t.cookieStepsTitle }}</h4>
                 <div v-if="cookieMethod === 'userscript'" class="resonance-via-script">
+                  <p v-if="!compact" class="resonance-script-install-tip">
+                    <Info :size="18" aria-hidden="true" />
+                    <strong>{{ t.userscriptTroubleshooting[0] }}</strong>
+                  </p>
                   <p class="resonance-script-intro">
                     {{ compact ? t.userscriptMobileIntro : t.userscriptDesktopIntro }}
                     <a
@@ -233,7 +237,9 @@ const VIDEO_TUTORIALS = [
                     >
                   </ol>
                   <ul class="resonance-steps resonance-hint">
-                    <li v-for="tip in t.userscriptTroubleshooting" :key="tip">{{ tip }}</li>
+                    <li v-for="tip in t.userscriptTroubleshooting.slice(1)" :key="tip">{{
+                      tip
+                    }}</li>
                   </ul>
                 </div>
 
@@ -373,6 +379,24 @@ const VIDEO_TUTORIALS = [
   display: grid;
   gap: 12px;
   min-width: 0;
+}
+.resonance-script-install-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--pink-deep);
+  border-radius: 16px;
+  background: var(--surface-soft);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.resonance-script-install-tip svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--pink-deep);
 }
 .resonance-via-script .resonance-script-install {
   max-width: 100%;

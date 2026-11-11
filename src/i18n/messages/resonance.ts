@@ -176,7 +176,7 @@ export const resonanceZh: ResonanceMessages = {
     '返回本站，在下方输入框粘贴完整凭据。'
   ],
   userscriptTroubleshooting: [
-    '点击安装链接后若只显示源码，可在浏览器或扩展的脚本管理中通过此链接添加。',
+    '点击安装链接后若只显示源码，可打开油猴“管理面板 → 设置”，将“配置模式”选为“高级”，滚动到底部，在“用户脚本”模块中将“脚本 URL 检测”改为“Legacy”，点击“保存”，再重新点击安装链接；也可在浏览器或扩展的脚本管理中通过此链接添加。',
     '页面没有出现按钮时，请检查脚本是否启用，再刷新美鸭梨页面。',
     '提示登录失效时，请重新登录并确认角色后再次获取。',
     '未读取到 UID 时，请展开美鸭梨左上角菜单，显示账号 UID 后重试。',
@@ -330,7 +330,7 @@ export const resonanceEn: ResonanceMessages = {
     'Return here and paste the complete credentials in the field below.'
   ],
   userscriptTroubleshooting: [
-    'If the installation link only shows source code, add the link through your browser or extension’s script manager.',
+    'If the installation link only shows source code, open Tampermonkey’s Dashboard → Settings, set Config mode to Advanced, then scroll to the bottom. In the Userscripts section, change Userscript URL detection to Legacy, click Save, and click the installation link again. You can also add the link through your browser or extension’s script manager.',
     'If the button does not appear, check that the script is enabled, then refresh Pear-Pal.',
     'If sign-in has expired, sign in again and confirm your role before trying again.',
     'If no UID is found, open the top-left Pear-Pal menu to show your account UID, then retry.',

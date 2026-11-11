@@ -4,12 +4,12 @@ import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 import { vCardReveal } from '../utils/cardReveal'
-import { computed, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 import { Check, Edit3, Heart, ScanSearch, Share2 } from 'lucide-vue-next'
 import type { LocaleMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
-import type { ActionGroup, DateGroup, PhotoItem } from '../utils/photoGrouping'
-import { createPhotoLoadQueue } from '../utils/photoLoader'
+import type { ActionGroup, DateGroup, PhotoItem, PhotoDisplayItem } from '../utils/photoGrouping'
+import { createPhotoThumbnailCache } from '../utils/photoThumbnail'
 import LazyPhotoImage from './LazyPhotoImage.vue'
 import WindowedPhotoBatch from './WindowedPhotoBatch.vue'
 const batches = (photos: PhotoItem[]) =>
@@ -43,7 +43,12 @@ const emit = defineEmits<{
   sharePhoto: [photo: PhotoItem]
 }>()
 
-const photoLoadQueue = createPhotoLoadQueue(3)
+const thumbnailCache = createPhotoThumbnailCache()
+const loadThumbnail = computed(() => {
+  const size = props.thumbnailSize === 'small' ? 512 : props.thumbnailSize === 'large' ? 1024 : 768
+  return (photo: PhotoDisplayItem, signal?: AbortSignal) =>
+    thumbnailCache.load(photo, signal!, size)
+})
 
 const renderGroups = computed(() =>
   (props.groupingMode ?? 'date') === 'action'
@@ -63,9 +68,26 @@ const renderGroups = computed(() =>
       }))
 )
 
-function isGroupSelected(photos: PhotoItem[]): boolean {
-  return photos.length > 0 && photos.every((photo) => props.selectedIds.has(photo.id))
-}
+const batchedGroups = computed(() =>
+  renderGroups.value.map((group) => ({ ...group, batches: batches(group.photos) }))
+)
+const selectedGroups = computed(
+  () =>
+    new Set(
+      renderGroups.value
+        .filter(
+          (group) =>
+            group.photos.length > 0 &&
+            group.photos.every((photo) => props.selectedIds.has(photo.id))
+        )
+        .map((group) => group.key)
+    )
+)
+watch(
+  renderGroups,
+  (groups) => thumbnailCache.retainPhotos(new Set(groups.flatMap((group) => group.photos))),
+  { flush: 'post' }
+)
 
 function toggleGroup(group: { key: string; photos: PhotoItem[]; isAction: boolean }) {
   if (group.isAction)
@@ -89,7 +111,7 @@ function handleFavoriteClick(photoId: string, event: MouseEvent) {
   ;(event.currentTarget as HTMLButtonElement).blur()
 }
 
-onBeforeUnmount(() => photoLoadQueue.cancel())
+onBeforeUnmount(() => thumbnailCache.dispose())
 </script>
 
 <template>
@@ -104,7 +126,7 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
     </div>
 
     <section
-      v-for="group in renderGroups"
+      v-for="group in batchedGroups"
       :id="`${group.isAction ? 'action' : 'date'}-${group.key}`"
       :key="group.key"
       class="date-block"
@@ -123,8 +145,8 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
         <button
           class="date-select-button"
           type="button"
-          :class="{ active: isGroupSelected(group.photos) }"
-          :aria-pressed="isGroupSelected(group.photos)"
+          :class="{ active: selectedGroups.has(group.key) }"
+          :aria-pressed="selectedGroups.has(group.key)"
           :title="messages.selectDay"
           :aria-label="messages.selectDay"
           @click="toggleGroup(group)"
@@ -134,9 +156,19 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
       </div>
 
       <WindowedPhotoBatch
-        v-for="(batch, index) in batches(group.photos)"
+        v-for="(batch, index) in group.batches"
         :key="index"
         :count="batch.length"
+        :layout-key="`${thumbnailMode}:${thumbnailSize}`"
+        :aspect-ratio="
+          {
+            default: 1,
+            wide: 16 / 9,
+            standard: 4 / 3,
+            'portrait-wide': 9 / 16,
+            'portrait-standard': 3 / 4
+          }[thumbnailMode]
+        "
       >
         <article
           v-for="photo in batch"
@@ -155,7 +187,8 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
           <div class="photo-frame">
             <LazyPhotoImage
               :photo="photo"
-              :load-photo="photoLoadQueue.load"
+              :load-photo="loadThumbnail"
+              :use-source-url="false"
               :failure-text="messages.imageLoadFailed"
             />
             <div class="photo-overlay">
