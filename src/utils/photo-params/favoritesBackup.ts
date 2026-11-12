@@ -67,6 +67,12 @@ export async function readCameraBackup(file: Blob): Promise<FavoriteLibrary> {
         {
           filter: (entry) => {
             if (entry.name === 'backup.json') otherBackup = true
+            // ZIP tools may include a separate empty directory record.
+            if (entry.name === 'covers/' && entry.originalSize === 0) {
+              if (names.has(entry.name)) invalid = true
+              names.add(entry.name)
+              return false
+            }
             if (
               names.has(entry.name) ||
               !/^(favorites\.json|covers\/[a-zA-Z0-9-]{1,100})$/.test(entry.name)

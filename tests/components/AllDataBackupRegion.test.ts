@@ -4,6 +4,11 @@ import AllDataBackup from '../../src/components/AllDataBackup.vue'
 import type { ResolveWardrobeRegion } from '../../src/utils/backup/allDataBackup'
 
 const { apply, selected } = vi.hoisted(() => ({ apply: vi.fn(), selected: vi.fn() }))
+// The region dialog tests supply a stub file; actual ZIP recognition is tested separately.
+vi.mock('../../src/utils/backup/backupDetector', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/utils/backup/backupDetector')>()),
+  assertBackupKind: vi.fn(async () => undefined)
+}))
 vi.mock('../../src/utils/backup/backupAvailability', () => ({
   hasAllBackupData: async () => false
 }))

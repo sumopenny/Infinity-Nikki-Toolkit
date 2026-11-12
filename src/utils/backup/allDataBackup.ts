@@ -11,6 +11,7 @@ import {
 import { wardrobeRegionScope, type WardrobeRegionScope } from '../wardrobe/wardrobeRegion'
 import { hasWardrobeSnapshot } from '../wardrobe/wardrobeOwnership'
 import { strToU8, unzip } from 'fflate'
+import { BackupInputError } from './backupDetector'
 import { backupPartBlob, downloadBackupBlob, type BackupDownload } from './zipBackup'
 import {
   exportOutfitBackup,
@@ -137,8 +138,9 @@ async function readBundle(file: File): Promise<Map<string, Blob>> {
     header[1] !== 0x4b ||
     !((header[2] === 3 && header[3] === 4) || (header[2] === 5 && header[3] === 6))
   )
-    throw new Error('backup_file_not_zip')
+    throw new BackupInputError('not_zip')
   const names = new Set<string>()
+  const fileNames = new Set<string>()
   let expanded = 0,
     failure: Error | null = null
   const input = new Uint8Array(await file.arrayBuffer())
@@ -147,37 +149,40 @@ async function readBundle(file: File): Promise<Map<string, Blob>> {
       input,
       {
         filter: (entry) => {
+          const directory = /^(outfits|home|camera|resonance|wardrobe)\/$/.test(entry.name)
+          const allowedFile = /^(backup\.json|(outfits|home|camera)\/[1-9]\d*\.zip|(resonance|wardrobe)\/1\.json)$/.test(
+            entry.name
+          )
           const limit = entry.name === 'backup.json' ? MAX_MANIFEST : 1024 ** 3
-          if (
-            names.has(entry.name) ||
-            names.size >= 10000 ||
-            !/^(backup\.json|(outfits|home|camera)\/[1-9]\d*\.zip|(resonance|wardrobe)\/1\.json)$/.test(
-              entry.name
-            )
-          ) {
-            failure = new Error('总备份包含重复或不支持的文件 / Invalid backup entry')
-          }
+          if (names.has(entry.name)) failure ??= new BackupInputError('duplicate_entry')
+          else if (names.size >= 10000) failure ??= new BackupInputError('too_many_entries')
+          else if (!directory && !allowedFile) failure ??= new BackupInputError('unsupported_entry')
           names.add(entry.name)
-          expanded += entry.originalSize
           if (
             !Number.isSafeInteger(entry.originalSize) ||
             entry.originalSize < 0 ||
-            entry.originalSize > limit ||
-            expanded > MAX_BYTES
+            (directory && entry.originalSize !== 0)
           )
-            failure = new Error('解压后的备份过大 / Expanded backup too large')
-          return !failure
+            failure ??= new BackupInputError('unsupported_entry')
+          if (!directory) {
+            fileNames.add(entry.name)
+            expanded += entry.originalSize
+            if (entry.originalSize > limit || expanded > MAX_BYTES)
+              failure ??= new BackupInputError('expanded_too_large')
+          }
+          // ZIP directory records contain no data and are not part of the manifest.
+          return !failure && !directory
         }
       },
       (error, files) =>
         error
-          ? reject(new Error('无法读取总 ZIP / Unable to read backup ZIP', { cause: error }))
+          ? reject(new BackupInputError('unreadable_zip', undefined, { cause: error }))
           : resolve(files)
     )
   })
   if (failure) throw failure
-  if (Object.keys(entries).length !== names.size)
-    throw new Error('总备份不完整 / Incomplete backup')
+  if (Object.keys(entries).length !== fileNames.size)
+    throw new BackupInputError('incomplete')
   const files = new Map<string, Blob>()
   let actualSize = 0
   for (const [name, bytes] of Object.entries(entries)) {
@@ -199,7 +204,7 @@ async function readBundle(file: File): Promise<Map<string, Blob>> {
 export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
   const blobs = await readBundle(file),
     manifestBlob = blobs.get('backup.json')
-  if (!manifestBlob) throw new Error('缺少总备份清单 / Missing backup manifest')
+  if (!manifestBlob) throw new BackupInputError('missing_manifest')
   const manifest = JSON.parse(await manifestBlob.text()) as BundleManifest
   if (
     !manifest ||
@@ -208,7 +213,7 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
     !Array.isArray(manifest.entries) ||
     manifest.entries.length !== blobs.size - 1
   )
-    throw new Error('不支持此总备份格式 / Unsupported backup format')
+    throw new BackupInputError('unsupported_format')
   const files = new Map<BackupModule, File[]>(MODULES.map((module) => [module, []]))
   const used = new Set<string>()
   for (const entry of manifest.entries) {
@@ -221,10 +226,10 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
       !Number.isSafeInteger(entry.size) ||
       !/^[a-f0-9]{64}$/.test(entry.sha256)
     )
-      throw new Error('总备份清单损坏 / Invalid backup manifest')
+      throw new BackupInputError('invalid_manifest')
     const blob = blobs.get(entry.path)
     if (!blob || blob.size !== entry.size || (await hashOutfitBlob(blob)) !== entry.sha256)
-      throw new Error('总备份文件缺失或校验失败 / Backup file verification failed')
+      throw new BackupInputError('verification_failed')
     used.add(entry.path)
     files.get(entry.module)!.push(new File([blob], entry.path, { type: blob.type }))
   }
@@ -235,7 +240,7 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
     files.get('resonance')!.length !== 1 ||
     files.get('wardrobe')!.length > 1
   )
-    throw new Error('总备份缺少模块 / Missing backup module')
+    throw new BackupInputError('incomplete')
   const outfits: PreparedOutfitBackup[] = []
   const home: PreparedHomeSchemeBackup[] = []
   for (const file of files.get('outfits')!) outfits.push(await prepareOutfitBackup(file))

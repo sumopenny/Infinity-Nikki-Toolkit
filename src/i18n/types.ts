@@ -34,6 +34,7 @@ export interface FullLocaleMessages {
     restorePathFailedStatus: string
     readFailedStatus: string
     databaseDisconnected: string
+    databaseVersionMismatch: string
     clearedStatus: string
     operationNoticeTitle: string
     copySucceeded: string

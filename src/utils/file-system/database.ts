@@ -2,6 +2,23 @@ import { monitored } from '../directory-backup/monitoredStores'
 // 所有本地数据共用升级入口，避免先打开不同模块时漏建存储。
 export const DB_NAME = 'infinity-nikki-album-manager'
 export const DB_VERSION = 10
+/** Higher-version databases must never be reset or silently downgraded. */
+const versionMismatchListeners = new Set<() => void>()
+let versionMismatchDetected = false
+export function isDatabaseVersionMismatch(error: unknown): boolean {
+  return error instanceof Error &&
+    (error.name === 'VersionError' || error.message === 'DATABASE_VERSION_MISMATCH')
+}
+export function subscribeDatabaseVersionMismatch(notify: () => void): () => void {
+  versionMismatchListeners.add(notify)
+  if (versionMismatchDetected) notify()
+  return () => versionMismatchListeners.delete(notify)
+}
+function notifyVersionMismatch(): void {
+  if (versionMismatchDetected) return
+  versionMismatchDetected = true
+  for (const notify of versionMismatchListeners) notify()
+}
 export const OUTFITS_STORE = 'outfits'
 export const OUTFIT_IMAGES_STORE = 'outfit-images'
 export const OUTFIT_TAGS_STORE = 'outfit-tags'
@@ -91,7 +108,12 @@ export function openDb(): Promise<IDBDatabase> {
       db.onversionchange = () => db.close()
       resolve(db)
     }
-    request.onerror = () => reject(request.error)
+    request.onerror = () => {
+      if (request.error?.name === 'VersionError') {
+        notifyVersionMismatch()
+        reject(new Error('DATABASE_VERSION_MISMATCH', { cause: request.error }))
+      } else reject(request.error)
+    }
     request.onblocked = () => {
       reject(new Error('数据库升级被其他页面占用，请关闭本站其他标签页后重试。'))
       // 阻塞解除后请求可能仍成功，关闭无人使用的连接。

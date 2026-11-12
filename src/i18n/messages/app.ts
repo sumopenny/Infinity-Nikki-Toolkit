@@ -14,6 +14,8 @@ export const appZh: LocaleMessages['app'] = {
   readFailedStatus: '读取相册失败，请重试。',
   databaseDisconnected:
     '浏览器本地数据库连接已中断，本次操作未能完成。请先保存其他未完成的编辑，再刷新页面重试。',
+  databaseVersionMismatch:
+    '本地数据库版本高于当前网页，已停止不兼容的数据操作。请刷新页面获取最新版，不要清除网站数据。',
   clearedStatus: '已清除记住的相册路径。需要继续管理相册时，请重新选择文件夹。',
   operationNoticeTitle: '操作提示',
   copySucceeded: '复制成功。',
@@ -142,6 +144,8 @@ export const appEn: LocaleMessages['app'] = {
   readFailedStatus: 'Failed to read the album. Please try again.',
   databaseDisconnected:
     'The connection to local browser storage was lost and this operation could not finish. Save any other unsaved edits, then reload the page and retry.',
+  databaseVersionMismatch:
+    'The local database is newer than this page. Refresh to get the latest version; do not clear site data.',
   clearedStatus:
     'The remembered album folder has been cleared. Choose a folder again to continue managing your album.',
   operationNoticeTitle: 'Operation update',

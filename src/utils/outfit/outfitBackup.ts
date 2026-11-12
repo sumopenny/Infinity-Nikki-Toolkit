@@ -155,6 +155,13 @@ async function streamBackupEntries(
       seenEntries.add(entry.name)
       entryCount += 1
       if (entryCount > MAX_BACKUP_ENTRIES) throw new Error('Backup contains too many files')
+      if (entry.name === 'images/' && entry.originalSize === 0) {
+        entry.ondata = (error, chunk) => {
+          if (error || chunk?.length) extractionError = new Error('Backup contains an unsupported file')
+        }
+        entry.start()
+        return
+      }
       if (!isSafeOutfitArchivePath(entry.name)) throw new Error('Backup contains an unsafe path')
       if (
         entry.name !== 'manifest.json' &&

@@ -53,6 +53,11 @@ vi.mock('../src/utils/file-system/directoryStorage', async (importOriginal) => {
   return { ...actual, getSavedX6GameDirectoryHandle: vi.fn() }
 })
 
+// App integration tests mock ZIP import, so recognition is covered independently.
+vi.mock('../src/utils/backup/backupDetector', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/utils/backup/backupDetector')>()),
+  assertBackupKind: vi.fn(async () => undefined)
+}))
 vi.mock('../src/utils/outfit/outfitBackup', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/utils/outfit/outfitBackup')>()
   return { ...actual, importOutfitBackup: vi.fn() }

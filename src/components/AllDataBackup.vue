@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
+import {
+  assertBackupKind,
+  backupInputMessage,
+  isBackupInputError
+} from '../utils/backup/backupDetector'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import CameraImportConflictDialog from './CameraImportConflictDialog.vue'
@@ -61,6 +66,18 @@ function setBusy(value: boolean) {
   emit('busy', value)
 }
 function report(error: unknown, action: string, file?: File) {
+  const known = backupInputMessage(error, props.language, 'all')
+  if (known && isBackupInputError(error)) {
+    if (!['type_mismatch', 'not_zip', 'unsupported_format'].includes(error.reason))
+      captureDiagnosticError(error, {
+        module: 'backup',
+        action,
+        code: error.reason,
+        context: file ? { fileSize: file.size, fileType: file.type } : {}
+      })
+    emit('status', known, 'warning')
+    return
+  }
   if (error instanceof Error && error.message === 'backup_file_not_zip') {
     emit(
       'status',
@@ -164,6 +181,7 @@ async function importData(event: Event) {
     const { prepareAllDataBackup, applyAllDataBackup } =
       await import('../utils/backup/allDataBackup')
     if (disposed) return
+    await assertBackupKind(file, 'all')
     const plan = await prepareAllDataBackup(file)
     if (disposed) return
     const results = await applyAllDataBackup(

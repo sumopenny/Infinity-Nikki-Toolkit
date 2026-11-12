@@ -156,8 +156,15 @@ async function extractBackup(file: File): Promise<Map<string, Uint8Array>> {
   const unzip = new Unzip((entry) => {
     try {
       count += 1
-      if (count > MAX_ENTRIES || !isSafePath(entry.name))
-        throw new Error('home_scheme_backup_path_invalid')
+      if (count > MAX_ENTRIES) throw new Error('home_scheme_backup_path_invalid')
+      if (entry.name === 'images/' && entry.originalSize === 0) {
+        entry.ondata = (error, chunk) => {
+          if (error || chunk?.length) failure = new Error('home_scheme_backup_entry_invalid')
+        }
+        entry.start()
+        return
+      }
+      if (!isSafePath(entry.name)) throw new Error('home_scheme_backup_path_invalid')
       const manifest = entry.name === 'manifest.json'
       if (!manifest && !/^images\/[^/]+\.(webp|png|jpe?g|gif|bmp|avif)$/i.test(entry.name))
         throw new Error('home_scheme_backup_entry_invalid')

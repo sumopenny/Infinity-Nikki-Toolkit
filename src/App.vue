@@ -50,7 +50,10 @@ provide(archiveCloudKey, archiveCloud)
 import { useDirectoryBackupLifecycle } from './composables/useDirectoryBackup'
 useDirectoryBackupLifecycle()
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
-import { clearAllBrowserData } from './utils/file-system/database'
+import {
+  clearAllBrowserData,
+  subscribeDatabaseVersionMismatch
+} from './utils/file-system/database'
 import {
   pendingEnabledBackups,
   flushBackupsBeforeReset,
@@ -611,6 +614,18 @@ function handleBackupNotice(event: Event) {
     if (message) showStatus({ message, tone: tone ?? 'success', source })
   }
 }
+// A single top notice protects users when an old site build meets a newer local database.
+const databaseVersionNotice = () =>
+  showStatus({
+    message: locale.value.app.databaseVersionMismatch,
+    tone: 'error',
+    source: 'database-version'
+  })
+let stopDatabaseVersionNotice: (() => void) | undefined
+onMounted(() => {
+  stopDatabaseVersionNotice = subscribeDatabaseVersionMismatch(databaseVersionNotice)
+})
+onBeforeUnmount(() => stopDatabaseVersionNotice?.())
 onMounted(() => window.addEventListener('nuan-backup-notice', handleBackupNotice))
 onBeforeUnmount(() => window.removeEventListener('nuan-backup-notice', handleBackupNotice))
 // 云端进度复用一条顶部通知，结束、失败或关闭后立即撤下。

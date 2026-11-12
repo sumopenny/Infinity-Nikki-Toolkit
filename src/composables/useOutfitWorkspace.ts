@@ -1,6 +1,11 @@
 import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { reportPartialFailure } from '../utils/errorReporting/errorReporter'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
+import {
+  assertBackupKind,
+  backupInputMessage,
+  isBackupInputError
+} from '../utils/backup/backupDetector'
 import type { Ref, ComputedRef } from 'vue'
 import type { LocaleMessages, OutfitMessages } from '../i18n'
 import type { PhotoDisplayItem } from '../utils/photoGrouping'
@@ -300,6 +305,7 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
     activeOperation.value = 'importing-outfits'
     showOutfitStatus(outfitLocale.value.importing, 'info', true)
     try {
+      await assertBackupKind(file, 'outfits')
       const { importOutfitBackup } = await import('../utils/outfit/outfitBackup')
       const result = await importOutfitBackup(file)
       applyOutfitLibraryResult(result.library)
@@ -319,7 +325,9 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
         savedCount: result.addedCount
       })
     } catch (error) {
-      showOutfitStorageError(error)
+      if (isBackupInputError(error))
+        showOutfitStatus(backupInputMessage(error, options.language?.value ?? 'zh', 'outfits')!, 'warning')
+      else showOutfitStorageError(error)
     } finally {
       if (activeOperation.value === 'importing-outfits') activeOperation.value = null
     }

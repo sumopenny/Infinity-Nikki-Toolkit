@@ -4,6 +4,11 @@ import AllDataBackup from '../../src/components/AllDataBackup.vue'
 
 const state = vi.hoisted(() => ({ conflict: 'camera' }))
 vi.mock('../../src/utils/errorReporting/errorReporter', () => ({ reportError: vi.fn() }))
+// These tests exercise conflict cancellation; ZIP type detection has its own unit tests.
+vi.mock('../../src/utils/backup/backupDetector', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/utils/backup/backupDetector')>()),
+  assertBackupKind: vi.fn(async () => undefined)
+}))
 vi.mock('../../src/utils/backup/backupAvailability', () => ({
   hasAllBackupData: async () => false
 }))

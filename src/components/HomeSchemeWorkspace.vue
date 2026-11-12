@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { assertBackupKind, backupInputMessage, isBackupInputError } from '../utils/backup/backupDetector'
 import { vSelectableCard } from '../utils/selectableCard'
 import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
@@ -796,6 +797,7 @@ async function importBackup(event: Event) {
     if (!file || isBusy.value) return
     busy.value = true
     try {
+      await assertBackupKind(file, 'home')
       const result = await importHomeSchemeBackup(file)
       reportPartialFailure('home-schemes', 'import-backup', result.failedCount, {
         savedCount: result.addedCount
@@ -813,7 +815,15 @@ async function importBackup(event: Event) {
         result.failedCount ? 'warning' : 'success'
       )
     } catch (error) {
-      emit('status', operationError(error, 'importBackup'), 'error')
+      const mismatch = backupInputMessage(error, props.language ?? 'zh', 'home')
+      if (mismatch) {
+        // Preserve diagnostics for genuine parser failures, not wrong-type picks.
+        if (!isBackupInputError(error))
+          captureDiagnosticError(error, { module: 'home-schemes', action: 'importBackup' })
+        emit('status', mismatch, 'warning')
+      } else {
+        emit('status', operationError(error, 'importBackup'), 'error')
+      }
     } finally {
       busy.value = false
     }

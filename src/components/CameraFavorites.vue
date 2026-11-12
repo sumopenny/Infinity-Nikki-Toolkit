@@ -15,6 +15,11 @@ import Lightbox from './Lightbox.vue'
 
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
+import {
+  assertBackupKind,
+  backupInputMessage,
+  isBackupInputError
+} from '../utils/backup/backupDetector'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
 import { validateSelectedImage } from '../utils/imageSelection'
 import { createUuid } from '../utils/uuid'
@@ -807,6 +812,7 @@ async function importBackup(event: Event) {
     busy.value = true
     error.value = ''
     try {
+      await assertBackupKind(file, 'camera')
       const { readCameraBackup } = await import('../utils/photo-params/favoritesBackup')
       const incoming = await readCameraBackup(file)
       const local = await readCameraFavorites()
@@ -815,7 +821,9 @@ async function importBackup(event: Event) {
       importPlan.value = plan
       if (!plan.conflicts.length) await finishImport()
     } catch (caught) {
-      report(caught, 'importBackup')
+      if (isBackupInputError(caught))
+        emit('status', backupInputMessage(caught, props.language, 'camera')!, 'warning')
+      else report(caught, 'importBackup')
     } finally {
       busy.value = false
     }

@@ -167,6 +167,20 @@ it.each([false, true])(
       expect((await prepareAllDataBackup(await exported())).camera.records).toHaveLength(1)
   }
 )
+it('accepts a valid all-data backup with explicit empty ZIP directory records', async () => {
+  await seed()
+  const original = await exported()
+  const withDirectories = await repack(original, (files) => {
+    for (const directory of ['outfits/', 'home/', 'camera/', 'resonance/', 'wardrobe/'])
+      files[directory] = new Uint8Array()
+  })
+  const plan = await prepareAllDataBackup(withDirectories)
+  expect(plan.outfits).toHaveLength(1)
+  expect(plan.home).toHaveLength(1)
+  expect(plan.camera.records).toHaveLength(1)
+  expect(plan.wardrobe).not.toBeNull()
+})
+
 it('regenerates colliding outfit and home IDs on network HTTP', async () => {
   await seed()
   const file = await exported()
