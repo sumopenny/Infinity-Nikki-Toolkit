@@ -926,7 +926,7 @@ function handleImportChoices(value: typeof choices.value) {
 </script>
 
 <template>
-  <Teleport v-if="active" :to="sidebarTarget || 'body'" :disabled="!sidebarTarget">
+  <Teleport v-if="active" :to="sidebarTarget || 'body'" :disabled="!sidebarTarget" defer>
     <OutfitSidebar
       :language="language"
       ref="sidebar"
@@ -967,7 +967,7 @@ function handleImportChoices(value: typeof choices.value) {
       <button type="button" @click="releaseBackupDownloads">{{ t('关闭', 'Close') }}</button>
     </div>
     <!-- 操作按钮移至收藏夹标签行，保持组件内的原有事件和状态。 -->
-    <Teleport v-if="active" :to="actionsTarget || 'body'" :disabled="!actionsTarget">
+    <Teleport v-if="active" :to="actionsTarget || 'body'" :disabled="!actionsTarget" defer>
       <CollectionActions
         mobile-target="#camera-tag-actions"
         :label="t('收藏操作', 'Favorite actions')"

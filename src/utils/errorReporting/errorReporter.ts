@@ -8,6 +8,7 @@ import {
   diagnosticText,
   fingerprintInput,
   isExpectedError,
+  isOutfitParse504,
   isDiagnosticWarning,
   serializeError,
   validateErrorPayload,
@@ -237,7 +238,11 @@ export function createErrorReporter(options: ReporterOptions) {
     if (now() < pauseUntil) return skip('backoff')
     counts.captured++
     try {
-      if (isExpectedError(error) || (metadata.code && isExpectedError(metadata.code))) {
+      if (
+        isExpectedError(error) ||
+        (metadata.code && isExpectedError(metadata.code)) ||
+        isOutfitParse504(metadata.module, metadata.action, error instanceof Error ? error.message : error)
+      ) {
         counts.filtered++
         return skip('expected-error')
       }

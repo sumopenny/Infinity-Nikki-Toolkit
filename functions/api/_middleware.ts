@@ -26,7 +26,7 @@ export async function onRequest(context: Context): Promise<Response> {
       { status: 500, headers: { 'cache-control': 'no-store' } }
     )
   }
-  if (response.status >= 500) {
+  if (response.status >= 500 && !(route === '/api/outfit-code/:key' && response.status === 504)) {
     const detail = context.data.diagnosticFailure as
       | {
           error?: unknown

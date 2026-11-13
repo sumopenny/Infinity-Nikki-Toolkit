@@ -53,6 +53,14 @@ function setup(statuses = [201], enabled = true) {
 }
 afterEach(() => vi.useRealTimers())
 describe('in-memory error reporter', () => {
+  it('skips outfit parse 504 reports while retaining other response errors', async () => {
+    const { reporter, payloads } = setup()
+    const metadata = { module: 'outfits', action: 'parse' }
+    expect(reporter.report(new Error('Lookbook object request failed with 504'), metadata)).toBeNull()
+    reporter.report(new Error('Lookbook object request failed with 502'), metadata)
+    await reporter.flush()
+    expect(payloads.map((event) => event.error.message)).toEqual(['Lookbook object request failed with 502'])
+  })
   it('does nothing when disabled', async () => {
     const { reporter, transport } = setup([], false)
     expect(reporter.report(new Error('x'), { module: 'test', action: 'save' })).toBeNull()

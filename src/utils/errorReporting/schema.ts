@@ -195,6 +195,10 @@ function isExpectedMessage(message: string): boolean {
     expectedDirectoryPrefixes.some((prefix) => message.startsWith(prefix))
   )
 }
+export function isOutfitParse504(module: unknown, action: unknown, message: unknown): boolean {
+  return module === 'outfits' && action === 'parse' && message === 'Lookbook object request failed with 504'
+}
+
 export function isExpectedError(value: unknown): boolean {
   if (!value || typeof value !== 'object')
     return typeof value === 'string' && isExpectedMessage(value)

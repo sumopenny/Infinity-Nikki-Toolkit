@@ -894,7 +894,7 @@ function handleAddTag(value: string) {
 
 <template>
   <section class="home-scheme-workspace">
-    <Teleport to="#album-sidebar-column">
+    <Teleport to="#album-sidebar-column" defer>
       <OutfitSidebar
         ref="homeSidebarRef"
         :language="language"

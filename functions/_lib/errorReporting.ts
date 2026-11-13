@@ -4,6 +4,7 @@ import {
   diagnosticObject,
   diagnosticText,
   fingerprintInput,
+  isOutfitParse504,
   serializeError,
   validateErrorPayload,
   type ErrorEventPayload
@@ -193,6 +194,8 @@ export async function handleErrorReport(request: Request, env: ErrorEnv): Promis
       throw new ReportError(400, 'INVALID_REPORT')
     }
     if (event.type === 'server') throw new ReportError(400, 'INVALID_REPORT')
+    if (isOutfitParse504(event.module, event.action, event.error.message))
+      return json({ accepted: true, eventId: event.eventId, filtered: true }, 200)
     if (byteLength(JSON.stringify(event)) > MAX_ERROR_BYTES)
       throw new ReportError(413, 'REPORT_TOO_LARGE')
     const now = Date.now()

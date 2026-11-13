@@ -151,6 +151,17 @@ describe('App lifecycle coordination', () => {
     }
   )
 
+  it.each(['home', 'favorites'])('mounts the restored %s controls into the page', async (view) => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    localStorage.setItem('infinity-nikki-active-view', view)
+    const wrapper = mount(App, { attachTo: document.body })
+    await flushPromises()
+    expect(wrapper.find('#album-sidebar-column .outfit-sidebar').exists()).toBe(true)
+    if (view === 'favorites') {
+      expect(wrapper.find('#favorites-camera-actions .collection-actions').exists()).toBe(true)
+    }
+  })
+
   it('persists navigation and restores it on a fresh app mount', async () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
@@ -446,7 +457,7 @@ describe('App lifecycle coordination', () => {
     }
     vi.stubGlobal(
       'matchMedia',
-      vi.fn(() => query)
+      vi.fn((media: string) => (media === '(max-width: 899px)' ? query : { matches: false }))
     )
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const keys = [
@@ -619,7 +630,7 @@ describe('App lifecycle coordination', () => {
     }
     vi.stubGlobal(
       'matchMedia',
-      vi.fn(() => query)
+      vi.fn((media: string) => (media === '(max-width: 899px)' ? query : { matches: false }))
     )
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const wrapper = mount(App, {

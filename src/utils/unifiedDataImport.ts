@@ -1,7 +1,7 @@
 import { openDb } from './file-system/database'
 import { parsePearpalResonance, PEARPAL_NO_RECORDS } from './resonance/resonanceImport'
 import { parseResonanceFile } from './resonance/resonanceFile'
-import type { ResonanceRecord } from './resonance/resonanceTypes'
+import { cloneResonanceRecords, type ResonanceRecord } from './resonance/resonanceTypes'
 import { loadWardrobeCatalog } from './wardrobe/wardrobeCatalog'
 import { parseWardrobePearpal } from './wardrobe/wardrobeImport'
 import type { WardrobeRegionScope } from './wardrobe/wardrobeRegion'
@@ -121,7 +121,7 @@ export async function saveDataImport(
       store: 'resonance-records',
       key: 'current-profile',
       expected: base.resonance,
-      value: structuredClone(resonance),
+      value: cloneResonanceRecords(resonance),
       empty: []
     })
   if (wardrobe !== null)

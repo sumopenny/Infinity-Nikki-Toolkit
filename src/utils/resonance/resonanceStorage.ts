@@ -1,4 +1,4 @@
-import type { ResonanceRecord } from './resonanceTypes'
+import { cloneResonanceRecords, type ResonanceRecord } from './resonanceTypes'
 
 import { openDb, runStoreRequest } from '../file-system/database'
 const STORE_NAME = 'resonance-records'
@@ -20,7 +20,7 @@ export async function loadResonanceRecords(): Promise<ResonanceRecord[]> {
 
 /** 整批替换全部共鸣记录，固定输入快照并等待事务提交；失败时原数据不变。 */
 export async function saveResonanceRecords(records: ResonanceRecord[]): Promise<void> {
-  const snapshot = structuredClone(records)
+  const snapshot = cloneResonanceRecords(records)
   await transact('readwrite', (store) => store.put(snapshot, RECORDS_KEY))
 }
 
@@ -29,7 +29,7 @@ export async function mergeResonanceRecords(
   incoming: ResonanceRecord[]
 ): Promise<ResonanceRecord[]> {
   // 等待数据库连接前固定本次输入，避免调用方在等待期间改动导入内容。
-  const imported = structuredClone(incoming)
+  const imported = cloneResonanceRecords(incoming)
   const db = await openDb()
   return new Promise((resolve, reject) => {
     let tx: IDBTransaction

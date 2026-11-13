@@ -46,6 +46,19 @@ const record: ResonanceRecord = {
 }
 
 describe('resonanceStorage', () => {
+  it('snapshots nested import data when structuredClone is unavailable', async () => {
+    const input = structuredClone(record)
+    vi.stubGlobal('structuredClone', undefined)
+    let pending: Promise<ResonanceRecord[]>
+    try {
+      pending = mergeResonanceRecords([input])
+      input.sets[0].parts[0]!.name.en = 'changed after import started'
+    } finally {
+      vi.unstubAllGlobals()
+    }
+    await expect(pending).resolves.toEqual([record])
+    await expect(loadResonanceRecords()).resolves.toEqual([record])
+  })
   it('adds the resonance store to the shared database without replacing the album handle store', async () => {
     const albumDb = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(dbName, 3)

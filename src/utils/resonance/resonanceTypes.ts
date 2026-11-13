@@ -34,6 +34,13 @@ export interface ResonanceRecord {
   sets: [ResonanceSet, ResonanceSet]
 }
 
+/** 共鸣记录是可导出为 JSON 的数据；旧浏览器也需要在异步写入前固定快照。 */
+export function cloneResonanceRecords(records: ResonanceRecord[]): ResonanceRecord[] {
+  return typeof structuredClone === 'function'
+    ? structuredClone(records)
+    : JSON.parse(JSON.stringify(records))
+}
+
 export interface ResonanceBanner {
   bannerId: string
   bannerType: number

@@ -186,6 +186,25 @@ describe('error intake contract without a database', () => {
     expect(response.headers.get('X-Request-Id')).toBeTruthy()
     expect(tasks).toHaveLength(0)
   })
+  it('filters outfit 504 responses and reports from older clients before writing to D1', async () => {
+    const state = fakeDatabase()
+    const waitUntil = vi.fn()
+    const response = await middleware({
+      request: new Request('https://example.test/api/outfit-code/test'),
+      env: state.env, data: {}, next: async () => new Response(null, { status: 504 }), waitUntil
+    })
+    expect(response.status).toBe(504)
+    expect(waitUntil).not.toHaveBeenCalled()
+    const event = sampleEvent()
+    event.module = 'outfits'
+    event.action = 'parse'
+    event.error.message = 'Lookbook object request failed with 504'
+    expect((await handleErrorReport(request(event), state.env)).status).toBe(200)
+    expect(state.writes()).toBe(0)
+    event.error.message = 'Lookbook object request failed with 502'
+    expect((await handleErrorReport(request(event), state.env)).status).toBe(201)
+  })
+
   it('stores final home proxy diagnostics once with the response request ID', async () => {
     const state = fakeDatabase(),
       tasks: Promise<unknown>[] = [],
