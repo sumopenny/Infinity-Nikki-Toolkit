@@ -709,13 +709,13 @@ onBeforeUnmount(() => {
     padding-inline: 14px;
   }
   .frame-items {
-    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
   }
   .frame-preview {
-    width: min(100%, 84px);
+    width: min(100%, 76px);
   }
   .frame-items button img {
-    width: 68px;
+    width: 60px;
   }
   .preview-summary {
     display: grid;

@@ -7,39 +7,65 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.11 更新',
+  currentDate: '2026.11.13 更新',
   currentItems: [
     {
-      title: '图片浏览与多选操作调整。',
-      text: '相册、搭配码、家园方案、相机收藏及最近删除中的图片，改为单击查看大图。点击图片右下角圆圈可多选，手机端也可长按图片选择。'
+      title: '新增头像模拟器。',
+      text: '在“工具 → 头像模拟器”中选择喜欢的头像框，上传照片后即可拖动调整位置、缩放并保存为 PNG 图片。电脑端还支持从已打开的相册选图，预览区支持滚轮缩放。'
     },
     {
-      title: '搭配码新增来源链接，随时回看原帖。',
-      text: '新建或编辑搭配时，可粘贴原帖分享链接，自动提取网址。保存后，点击卡片上的链接按钮即可打开原帖。'
+      title: '手机顶栏新增“工具”菜单。',
+      text: '参数/搭配码解析、头像模拟器、抽卡吉时统一收纳到“工具”中，查找更方便。'
     },
     {
-      title: '美鸭梨数据导入新增用户脚本方式。',
-      text: '在「导入数据 → 从美鸭梨导入 → 脚本法」中按指引安装，即可在美鸭梨页面右下角获取 Cookie，复制后返回工具粘贴。支持有脚本功能的手机浏览器（推荐 Via、X 浏览器）及已安装油猴等类似扩展的电脑浏览器。'
+      title: '优化相册浏览性能。',
+      text: '调整缩略图生成、加载和缓存方式，减少浏览大量照片时的内存占用，改善滚动体验。'
     },
     {
-      title: '新增三种材质风格，更多控件统一显示。',
-      text: '在「视图 → 风格」中选择「实色」「磨砂」「液态玻璃」，应用于顶栏、手机底部导航、大图预览控件及批量操作栏。'
+      title: '自动记住上次浏览的模块。',
+      text: '刷新或重新打开网站时，可恢复到上次使用的页面。'
     },
     {
-      title: '手机底部导航新增悬浮胶囊布局。',
-      text: '在「视图 → 导航栏样式」中切换「贴底」或「悬浮胶囊」，可自由搭配材质风格。'
-    },
-    {
-      title: '优化导航交互与界面展示。',
-      text: '多处分类栏新增滑动选中效果，手机导航增加按压反馈。统一卡片悬浮按钮样式，优化搭配总结布局、手机底部操作栏及安装窗口动画。'
-    },
-    {
-      title: '优化衣橱浏览。',
-      text: '衣橱套装默认显示全部拥有状态，方便查看已收集和未收集的套装。'
+      title: '完善备份导入与数据提示。',
+      text: '导入时增加备份类型检查，选错文件时提供更明确的提示。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.7',
+      date: '2026.11.11',
+      items: [
+        {
+          title: '图片浏览与多选操作调整。',
+          text: '相册、搭配码、家园方案、相机收藏及最近删除中的图片，改为单击查看大图。点击图片右下角圆圈可多选，手机端也可长按图片选择。'
+        },
+        {
+          title: '搭配码新增来源链接，随时回看原帖。',
+          text: '新建或编辑搭配时，可粘贴原帖分享链接，自动提取网址。保存后，点击卡片上的链接按钮即可打开原帖。'
+        },
+        {
+          title: '美鸭梨数据导入新增用户脚本方式。',
+          text: '在「导入数据 → 从美鸭梨导入 → 脚本法」中按指引安装，即可在美鸭梨页面右下角获取 Cookie，复制后返回工具粘贴。支持有脚本功能的手机浏览器（推荐 Via、X 浏览器）及已安装油猴等类似扩展的电脑浏览器。'
+        },
+        {
+          title: '新增三种材质风格，更多控件统一显示。',
+          text: '在「视图 → 风格」中选择「实色」「磨砂」「液态玻璃」，应用于顶栏、手机底部导航、大图预览控件及批量操作栏。'
+        },
+        {
+          title: '手机底部导航新增悬浮胶囊布局。',
+          text: '在「视图 → 导航栏样式」中切换「贴底」或「悬浮胶囊」，可自由搭配材质风格。'
+        },
+        {
+          title: '优化导航交互与界面展示。',
+          text: '多处分类栏新增滑动选中效果，手机导航增加按压反馈。统一卡片悬浮按钮样式，优化搭配总结布局、手机底部操作栏及安装窗口动画。'
+        },
+        {
+          title: '优化衣橱浏览。',
+          text: '衣橱套装默认显示全部拥有状态，方便查看已收集和未收集的套装。'
+        }
+      ]
+    },
     {
       version: 'v2.6',
       date: '2026.11.07',
@@ -802,39 +828,65 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.11',
+  currentDate: 'Updated 2026.11.13',
   currentItems: [
     {
-      title: 'Updated image browsing and multiple selection.',
-      text: 'Single-click images in the Album, outfit codes, home schemes, camera favorites, and Recently deleted to preview them. Select multiple items using the circles at the bottom right of images; on mobile, you can also long-press images to select them.'
+      title: 'New Avatar Simulator.',
+      text: 'Choose a frame under Tools → Avatar Simulator, upload a photo, drag to reposition it, adjust the zoom, and save it as a PNG image. On desktop, you can also choose a photo from an open album and use the mouse wheel to zoom in the preview.'
     },
     {
-      title: 'Source links for outfit codes: revisit the original post.',
-      text: 'When creating or editing an outfit, paste a shared post link to extract its URL. After saving, select the link button on the card to open the original post.'
+      title: 'New Tools menu in the mobile header.',
+      text: 'The parameter / outfit-code parser, Avatar Simulator, and Lucky pull times are now grouped under Tools for easier access.'
     },
     {
-      title: 'New userscript option for Pear-Pal imports.',
-      text: 'Follow the instructions under Import data → Import from Pear-Pal → Userscript to install the script. Select Get Cookie at the bottom right of the Pear-Pal page, then return to the toolkit and paste it. Supports mobile browsers with userscript functionality (Via and XBrowser recommended) and desktop browsers with Tampermonkey or similar extensions installed.'
+      title: 'Improved album browsing performance.',
+      text: 'Updated thumbnail generation, loading, and caching to reduce memory use when browsing large photo collections and improve scrolling.'
     },
     {
-      title: 'Three material styles with a consistent look across more controls.',
-      text: 'Choose Opaque, Frosted, or Liquid glass under View → Material style. Your choice applies to the header, mobile bottom navigation, image preview controls, and batch action toolbar.'
+      title: 'Resume your last viewed section.',
+      text: 'Refreshing or reopening the site restores the section you last visited.'
     },
     {
-      title: 'New floating capsule layout for mobile bottom navigation.',
-      text: 'Switch between Docked and Floating capsule under View → Navigation style, and combine either layout with your preferred material style.'
-    },
-    {
-      title: 'Improved navigation interactions and interface presentation.',
-      text: 'Added sliding selection indicators to multiple category controls and press feedback to mobile navigation. Unified floating card buttons and refined the Outfit summary layout, mobile bottom action toolbar, and app installation window animations.'
-    },
-    {
-      title: 'Improved Wardrobe browsing.',
-      text: 'Wardrobe outfits now show all ownership statuses by default, making it easier to browse both collected and uncollected outfits.'
+      title: 'Clearer backup import and data messages.',
+      text: 'Backup imports now check the backup type and provide clearer guidance when you select the wrong file.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.7',
+      date: '2026.11.11',
+      items: [
+        {
+          title: 'Updated image browsing and multiple selection.',
+          text: 'Single-click images in the Album, outfit codes, home schemes, camera favorites, and Recently deleted to preview them. Select multiple items using the circles at the bottom right of images; on mobile, you can also long-press images to select them.'
+        },
+        {
+          title: 'Source links for outfit codes: revisit the original post.',
+          text: 'When creating or editing an outfit, paste a shared post link to extract its URL. After saving, select the link button on the card to open the original post.'
+        },
+        {
+          title: 'New userscript option for Pear-Pal imports.',
+          text: 'Follow the instructions under Import data → Import from Pear-Pal → Userscript to install the script. Select Get Cookie at the bottom right of the Pear-Pal page, then return to the toolkit and paste it. Supports mobile browsers with userscript functionality (Via and XBrowser recommended) and desktop browsers with Tampermonkey or similar extensions installed.'
+        },
+        {
+          title: 'Three material styles with a consistent look across more controls.',
+          text: 'Choose Opaque, Frosted, or Liquid glass under View → Material style. Your choice applies to the header, mobile bottom navigation, image preview controls, and batch action toolbar.'
+        },
+        {
+          title: 'New floating capsule layout for mobile bottom navigation.',
+          text: 'Switch between Docked and Floating capsule under View → Navigation style, and combine either layout with your preferred material style.'
+        },
+        {
+          title: 'Improved navigation interactions and interface presentation.',
+          text: 'Added sliding selection indicators to multiple category controls and press feedback to mobile navigation. Unified floating card buttons and refined the Outfit summary layout, mobile bottom action toolbar, and app installation window animations.'
+        },
+        {
+          title: 'Improved Wardrobe browsing.',
+          text: 'Wardrobe outfits now show all ownership statuses by default, making it easier to browse both collected and uncollected outfits.'
+        }
+      ]
+    },
     {
       version: 'v2.6',
       date: '2026.11.07',
