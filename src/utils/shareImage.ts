@@ -62,7 +62,7 @@ export function loadShareImage(url: string, signal?: AbortSignal): Promise<HTMLI
       reject(signal?.reason ?? new DOMException('Cancelled', 'AbortError'))
     }
     image.crossOrigin = 'anonymous'
-    image.referrerPolicy = 'no-referrer'
+    image.referrerPolicy = 'strict-origin-when-cross-origin'
     const timer = setTimeout(() => {
       cleanup()
       image.src = ''

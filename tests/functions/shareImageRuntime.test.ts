@@ -11,6 +11,7 @@ it('serves share images in real workerd and rejects upstream redirects', async (
           // Construct a real workerd Request so unsupported fetch options cannot be hidden by mocks.
           const request = new Request(input, init);
           if (request.redirect !== 'manual') throw new Error('Invalid redirect mode');
+          if (request.headers.get('Referer') !== 'http://localhost/') throw new Error('Missing site origin');
           if (request.headers.has('Cookie') || request.headers.has('Authorization')) {
             throw new Error('Credentials forwarded');
           }

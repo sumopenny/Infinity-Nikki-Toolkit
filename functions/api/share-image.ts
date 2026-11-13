@@ -44,7 +44,8 @@ export async function onRequestGet({ request }: { request: Request }): Promise<R
       // Workers supports manual/follow only; non-2xx responses below reject redirects.
       redirect: 'manual',
       signal: AbortSignal.timeout(15000),
-      headers: { Accept: 'image/webp' }
+      // 只向图床标明本站来源，不转发来访页面路径、查询参数或凭据。
+      headers: { Accept: 'image/webp', Referer: new URL(request.url).origin + '/' }
     })
     if (
       !upstream.ok ||

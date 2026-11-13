@@ -1201,7 +1201,11 @@ describe('App lifecycle coordination', () => {
     )
 
     await wrapper.get('.tools-menu-button').trigger('click')
-    await wrapper.get('.header-dropdown').findAll('button')[2].trigger('click')
+    await wrapper
+      .get('.header-dropdown')
+      .findAll('button')
+      .find((button) => button.text() === messages.zh.topBar.parseTools)!
+      .trigger('click')
     await vi.waitFor(() =>
       expect(wrapper.findAll('.parse-tools-section input:not([type="file"])')).toHaveLength(2)
     )
@@ -1261,7 +1265,11 @@ describe('App lifecycle coordination', () => {
     )
 
     await wrapper.get('.tools-menu-button').trigger('click')
-    await wrapper.get('.header-dropdown').findAll('button')[2].trigger('click')
+    await wrapper
+      .get('.header-dropdown')
+      .findAll('button')
+      .find((button) => button.text() === messages.zh.topBar.parseTools)!
+      .trigger('click')
     await vi.waitFor(() =>
       expect(wrapper.findAll('.parse-tools-section input:not([type="file"])')).toHaveLength(2)
     )

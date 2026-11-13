@@ -96,7 +96,7 @@ useModalFocus(visible, panel, close)
                     loading="eager"
                     fetchpriority="high"
                     :class="{ 'is-loading': imageState === 'loading' }"
-                    referrerpolicy="no-referrer"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     :src="imageUrl"
                     :alt="item.name[language]"
                     @load="imageState = 'loaded'"

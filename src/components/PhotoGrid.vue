@@ -137,6 +137,7 @@ onBeforeUnmount(() => thumbnailCache.dispose())
           ><img
             v-image-skeleton
             v-if="group.actionImageUrl"
+            referrerpolicy="strict-origin-when-cross-origin"
             class="action-group-image"
             :src="optimizedImageKitUrl(group.actionImageUrl)"
             :alt="group.title"

@@ -213,7 +213,7 @@ function hideBrokenImage(event: Event) {
     >
       <span class="resonance-sidebar-thumbnail">
         <img v-image-skeleton
-          referrerpolicy="no-referrer"
+          referrerpolicy="strict-origin-when-cross-origin"
           :src="record.outfitImageUrl"
           alt=""
           @error="hideBrokenImage"

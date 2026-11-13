@@ -237,6 +237,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
       >
         <img v-image-skeleton
           v-if="group.actionImageUrl"
+          referrerpolicy="strict-origin-when-cross-origin"
           :src="optimizedImageKitUrl(group.actionImageUrl)"
           :alt="group.actionName"
         />

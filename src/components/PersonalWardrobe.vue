@@ -844,7 +844,7 @@ async function clearRecords() {
                   <CatalogImage
                     fit="contain"
                     :language="language"
-                    referrerpolicy="no-referrer"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     :src="entry.image"
                     alt=""
                     :index="imageIndex"

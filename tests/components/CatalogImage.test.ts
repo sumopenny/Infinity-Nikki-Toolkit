@@ -18,7 +18,7 @@ describe('public catalog images', () => {
     })
     try {
       const wrapper = mount(CatalogImage, { props: { src: '/source.png' } })
-      expect(observed).toEqual([{ policy: 'no-referrer', loading: 'lazy' }])
+      expect(observed).toEqual([{ policy: 'strict-origin-when-cross-origin', loading: 'lazy' }])
       wrapper.unmount()
     } finally {
       setter.mockRestore()

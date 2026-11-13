@@ -1509,6 +1509,7 @@
     max-height: var(--mobile-dialog-space);
     border-radius: var(--mobile-dialog-radius);
   }
+  .avatar-panel,
   .update-log-panel,
   .help-about-panel {
     height: min(720px, var(--mobile-dialog-space));

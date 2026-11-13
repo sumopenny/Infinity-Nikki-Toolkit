@@ -55,7 +55,7 @@ describe('ResonanceSidebar', () => {
     expect(links[0].find('img').attributes()).toMatchObject({
       src: '/outfit-newer.png',
       alt: '',
-      referrerpolicy: 'no-referrer'
+      referrerpolicy: 'strict-origin-when-cross-origin'
     })
     await links[0].trigger('click')
     expect(wrapper.emitted('jumpToRecord')).toEqual([['newer']])

@@ -172,6 +172,7 @@ export interface FullLocaleMessages {
     feedbackClose: string
     updateLog: string
     helpAbout: string
+    avatarSimulator: string
     fortuneTime: string
     importPhotos: string
     exportAllPhotos: string

@@ -65,7 +65,7 @@ function retry(event: Event) {
     v-image-skeleton="skeleton"
     :key="`${src}:${attempt}`"
     v-bind="$attrs"
-    referrerpolicy="no-referrer"
+    referrerpolicy="strict-origin-when-cross-origin"
     :loading="loading ?? catalogImageLoading(index)"
     :fetchpriority="fetchpriority ?? catalogImagePriority(index)"
     decoding="async"

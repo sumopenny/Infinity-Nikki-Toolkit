@@ -99,6 +99,12 @@ const OutfitSummaryDialog = lazyFeature(
 import OutfitGuideDialog from './components/OutfitGuideDialog.vue'
 import OutfitParseDialog from './components/OutfitParseDialog.vue'
 import ParseToolsDialog from './components/ParseToolsDialog.vue'
+const isAvatarSimulatorVisible = ref(false)
+const AvatarSimulatorDialog = lazyFeature(
+  () => import('./components/AvatarSimulatorDialog.vue'),
+  () => language.value,
+  { active: () => isAvatarSimulatorVisible.value, cancel: () => (isAvatarSimulatorVisible.value = false) }
+)
 import FortuneTimeDialog from './components/FortuneTimeDialog.vue'
 import OutfitSidebar, { type OutfitFilter } from './components/OutfitSidebar.vue'
 import HomeSchemeWorkspace from './components/HomeSchemeWorkspace.vue'
@@ -2371,6 +2377,7 @@ function importAllDataFromMenu() {
       @clear-directory="clearDirectory"
       @authorize-x6-game="authorizeX6GameDirectory"
       @open-cleanup="openCleanupDialog"
+      @open-avatar-simulator="isAvatarSimulatorVisible = true"
       @open-fortune-time="isFortuneTimeVisible = true"
       @open-parse-tools="openParseTools"
       @clear-cache="clearCache"
@@ -3207,6 +3214,12 @@ function importAllDataFromMenu() {
       @upload="photoParams.openForFile"
     />
 
+    <AvatarSimulatorDialog
+      v-if="isAvatarSimulatorVisible"
+      :photos="photos"
+      :language="language"
+      @close="isAvatarSimulatorVisible = false"
+    />
     <FortuneTimeDialog
       v-if="mountedDialogs.has('FortuneTimeDialog')"
       :visible="isFortuneTimeVisible"

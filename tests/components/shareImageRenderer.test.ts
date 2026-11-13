@@ -10,6 +10,28 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('share image renderer', () => {
+  it('sets the source policy before loading a catalog image through the site proxy', async () => {
+    const observed: Array<{ source: string; policy: string }> = []
+    vi.stubGlobal(
+      'Image',
+      class {
+        referrerPolicy = ''
+        onload?: () => void
+        set src(source: string) {
+          observed.push({ source, policy: this.referrerPolicy })
+          queueMicrotask(() => this.onload?.())
+        }
+      }
+    )
+    const resource = 'https://ik.imagekit.io/nikkicube/images/poses/test.png'
+    await loadShareImage(resource)
+    expect(observed).toEqual([
+      {
+        source: '/api/share-image?resource=' + encodeURIComponent(resource + '?tr=f-webp,q-70'),
+        policy: 'strict-origin-when-cross-origin'
+      }
+    ])
+  })
   it('cancels a pending image load', async () => {
     let source = ''
     vi.stubGlobal(

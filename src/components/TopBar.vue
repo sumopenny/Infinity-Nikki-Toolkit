@@ -11,6 +11,7 @@ import {
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
+  CircleUserRound,
   BookHeart,
   Download,
   Upload,
@@ -90,6 +91,7 @@ const emit = defineEmits<{
   clearDirectory: []
   authorizeX6Game: []
   openCleanup: []
+  openAvatarSimulator: []
   openFortuneTime: []
   openParseTools: []
   clearCache: []
@@ -885,6 +887,9 @@ function openDonate() {
                 @click="runMenuAction(() => emit('openCleanup'))"
                 ><Eraser :size="16" /><span>{{ messages.specialCleanup }}</span></button
               >
+              <button type="button" role="menuitem" @click="runMenuAction(() => emit('openAvatarSimulator'))">
+                <CircleUserRound :size="17" /><span>{{ messages.avatarSimulator }}</span>
+              </button>
               <button
                 type="button"
                 role="menuitem"
@@ -960,6 +965,9 @@ function openDonate() {
                     @click="runMenuAction(() => emit('openParseTools'))"
                     ><ScanSearch :size="18" />{{ messages.parseTools }}</button
                   >
+                  <button type="button" role="menuitem" @click="runMenuAction(() => emit('openAvatarSimulator'))">
+                    <CircleUserRound :size="17" /><span>{{ messages.avatarSimulator }}</span>
+                  </button>
                   <button
                     type="button"
                     role="menuitem"

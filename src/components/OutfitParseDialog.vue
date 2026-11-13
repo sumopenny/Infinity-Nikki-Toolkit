@@ -495,7 +495,7 @@ onBeforeUnmount(() => {
                         !loadedItemImages.has(item.id) && !failedItemImages.has(item.id),
                       'is-failed': failedItemImages.has(item.id)
                     }"
-                    referrerpolicy="no-referrer"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     :src="item.imageUrl"
                     :alt="item.name"
                     :index="imageIndex"
@@ -590,7 +590,7 @@ onBeforeUnmount(() => {
                     loading="eager"
                     fetchpriority="high"
                     :class="{ 'is-loading': detailImageState === 'idle' }"
-                    referrerpolicy="no-referrer"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     :src="selectedDetail.detailImageUrl"
                     :alt="selectedDetail.itemName"
                     @load="markDetailImageLoaded"

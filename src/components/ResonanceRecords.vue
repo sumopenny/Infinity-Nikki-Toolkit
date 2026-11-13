@@ -546,7 +546,7 @@ defineExpose({ reload })
                 @click="openPreview(record.outfitId, 'outfit')"
                 ><CatalogImage
                   :language="language"
-                  referrerpolicy="no-referrer"
+                  referrerpolicy="strict-origin-when-cross-origin"
                   :src="record.outfitImageUrl"
                   :index="recordIndex * 100"
                   :alt="displayName(record.outfitName)"
@@ -597,7 +597,7 @@ defineExpose({ reload })
                   >
                     <CatalogImage
                       :language="language"
-                      referrerpolicy="no-referrer"
+                      referrerpolicy="strict-origin-when-cross-origin"
                       :src="getResonancePartIconUrl(part.id)"
                       :index="recordIndex * 100 + (set.setNumber - 1) * 30 + partIndex + 1"
                       :alt="displayName(part.name)"

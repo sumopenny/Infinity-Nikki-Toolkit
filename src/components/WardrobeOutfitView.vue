@@ -257,7 +257,7 @@ useModalFocus(dialogOpen, panel, closeDialog)
                     <CatalogImage
                       :language="language"
                       :key="detail.id"
-                      referrerpolicy="no-referrer"
+                      referrerpolicy="strict-origin-when-cross-origin"
                       :src="detail.image"
                       :skeleton="false"
                       loading="eager"
@@ -379,7 +379,7 @@ useModalFocus(dialogOpen, panel, closeDialog)
                       <CatalogImage
                         :language="language"
                         v-if="part.entry"
-                        referrerpolicy="no-referrer"
+                        referrerpolicy="strict-origin-when-cross-origin"
                         :src="part.entry.image"
                         :skeleton="false"
                         alt=""

@@ -33,7 +33,11 @@ it('only forwards fixed public PNGs without request credentials', async () => {
           'https://ik.imagekit.io/nikkicube/images/IconClothes/T_Icon_clothes_S0001H.png?tr=f-webp,q-70'
         ),
       {
-        headers: { Cookie: 'private' }
+        headers: {
+          Cookie: 'private',
+          Authorization: 'Bearer private',
+          Referer: 'https://external.example/private?secret=hidden'
+        }
       }
     )
   })
@@ -42,4 +46,8 @@ it('only forwards fixed public PNGs without request credentials', async () => {
     'https://ik.imagekit.io/nikkicube/images/IconClothes/T_Icon_clothes_S0001H.png?tr=f-webp,q-70'
   )
   expect(response.headers.get('content-type')).toBe('image/png')
+  expect(fetch.mock.calls[0]?.[1]?.headers).toEqual({
+    Accept: 'image/webp',
+    Referer: 'https://local/'
+  })
 })
