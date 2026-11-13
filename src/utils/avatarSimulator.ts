@@ -1,30 +1,7 @@
 export const avatarSize = 1024
 
-/** Find the centered circular rim inside the decorative transparent margins. */
-export function frameRadius(image: HTMLImageElement) {
-  const sample = document.createElement('canvas')
-  sample.width = sample.height = 256
-  const ctx = sample.getContext('2d')!
-  ctx.drawImage(image, 0, 0, 256, 256)
-  const pixels = ctx.getImageData(0, 0, 256, 256).data
-  let best = 94
-  let bestScore = -1
-  // The catalog uses a common icon layout, including higher-resolution exports.
-  for (let radius = 75; radius <= 103; radius++) {
-    let score = 0
-    for (let degree = 0; degree < 360; degree += 2) {
-      const angle = (degree * Math.PI) / 180
-      const x = Math.round(127.5 + radius * Math.cos(angle))
-      const y = Math.round(127.5 + radius * Math.sin(angle))
-      score += pixels[(y * 256 + x) * 4 + 3]
-    }
-    if (score > bestScore) {
-      bestScore = score
-      best = radius
-    }
-  }
-  return (best * avatarSize) / 256
-}
+// Keep the photo crop independent of each frame's decorative transparent margins.
+export const avatarPhotoRadius = 376
 
 export function cropBounds(photo: HTMLImageElement, zoom: number) {
   const scale = zoom / Math.min(photo.naturalWidth, photo.naturalHeight)
@@ -37,7 +14,6 @@ export function drawAvatar(
   canvas: HTMLCanvasElement,
   photo: HTMLImageElement | null,
   frame: HTMLImageElement | null,
-  radius: number,
   zoom: number,
   x: number,
   y: number
@@ -47,10 +23,10 @@ export function drawAvatar(
   ctx.clearRect(0, 0, avatarSize, avatarSize)
   if (photo) {
     const { width, height } = cropBounds(photo, zoom)
-    const diameter = radius * 2
+    const diameter = avatarPhotoRadius * 2
     ctx.save()
     ctx.beginPath()
-    ctx.arc(center, center, radius, 0, Math.PI * 2)
+    ctx.arc(center, center, avatarPhotoRadius, 0, Math.PI * 2)
     ctx.clip()
     ctx.drawImage(
       photo,

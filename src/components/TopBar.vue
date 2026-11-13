@@ -437,6 +437,17 @@ function openDonate() {
       /></button>
       <button
         type="button"
+        :title="messages.tools"
+        :aria-label="messages.toolsMenuAria"
+        aria-haspopup="menu"
+        :aria-expanded="openMenu === 'tools'"
+        @click.stop="toggleMenu('tools', $event)"
+        @pointerenter="enterMenu('tools', $event)"
+        @pointerleave="leaveMenu"
+        ><Wrench :size="18" aria-hidden="true"
+      /></button>
+      <button
+        type="button"
         :aria-label="messages.moreMenuAria"
         :aria-expanded="openMenu === 'more'"
         @click.stop="toggleMenu('more', $event)"
@@ -873,13 +884,29 @@ function openDonate() {
               @pointerenter="cancelMenuClose"
               @pointerleave="leaveMenu"
               tabindex="-1"
-              :aria-label="messages.more"
-              class="header-dropdown"
+              :aria-label="messages.tools"
+              class="header-dropdown tools-dropdown"
               :class="{ 'mobile-menu-sheet': compact }"
               :style="menuStyle"
               role="menu"
             >
+              <header v-if="compact" class="mobile-menu-heading"
+                ><h2>{{ messages.tools }}</h2
+                ><button
+                  type="button"
+                  :aria-label="language === 'zh' ? '关闭菜单' : 'Close menu'"
+                  @click="closeMenus"
+                  ><X :size="20" /></button
+              ></header>
               <button
+                v-if="compact"
+                type="button"
+                role="menuitem"
+                @click="runMenuAction(() => emit('openParseTools'))"
+                ><ScanSearch :size="18" /><span>{{ messages.parseTools }}</span></button
+              >
+              <button
+                v-if="!compact"
                 type="button"
                 role="menuitem"
                 :disabled="isBusy || albumReadOnly"
@@ -887,7 +914,11 @@ function openDonate() {
                 @click="runMenuAction(() => emit('openCleanup'))"
                 ><Eraser :size="16" /><span>{{ messages.specialCleanup }}</span></button
               >
-              <button type="button" role="menuitem" @click="runMenuAction(() => emit('openAvatarSimulator'))">
+              <button
+                type="button"
+                role="menuitem"
+                @click="runMenuAction(() => emit('openAvatarSimulator'))"
+              >
                 <CircleUserRound :size="17" /><span>{{ messages.avatarSimulator }}</span>
               </button>
               <button
@@ -902,8 +933,23 @@ function openDonate() {
                 role="menuitem"
                 :disabled="isBusy"
                 @click="runMenuAction(() => emit('openParseTools'))"
+                v-if="!compact"
                 ><ScanSearch :size="16" /><span>{{ messages.parseTools }}</span></button
               >
+              <button
+                v-if="compact && directorySupported !== false"
+                type="button"
+                role="menuitem"
+                :disabled="isBusy || albumReadOnly"
+                :title="albumReadOnly ? readOnlyHint : undefined"
+                @click="runMenuAction(() => emit('openCleanup'))"
+                ><Eraser :size="18" /><span>{{ messages.specialCleanup }}</span></button
+              >
+              <p v-if="compact && directorySupported === false" class="mobile-capability-note">{{
+                language === 'zh'
+                  ? '专项清理需在支持目录授权的电脑浏览器使用。'
+                  : 'Cleanup requires a supported desktop browser with folder access.'
+              }}</p>
             </div>
           </Transition>
         </Teleport>
@@ -959,21 +1005,6 @@ function openDonate() {
               ></header>
               <div class="more-menu-content">
                 <template v-if="compact">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    @click="runMenuAction(() => emit('openParseTools'))"
-                    ><ScanSearch :size="18" />{{ messages.parseTools }}</button
-                  >
-                  <button type="button" role="menuitem" @click="runMenuAction(() => emit('openAvatarSimulator'))">
-                    <CircleUserRound :size="17" /><span>{{ messages.avatarSimulator }}</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    @click="runMenuAction(() => emit('openFortuneTime'))"
-                    >✦ {{ messages.fortuneTime }}</button
-                  >
                   <template v-if="directorySupported !== false">
                     <button
                       type="button"
@@ -996,19 +1027,11 @@ function openDonate() {
                       @click="runMenuAction(() => emit('chooseDirectory'))"
                       ><FolderOpen :size="18" />{{ messages.chooseDirectory }}</button
                     >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      :disabled="isBusy || albumReadOnly"
-                      :title="albumReadOnly ? readOnlyHint : undefined"
-                      @click="runMenuAction(() => emit('openCleanup'))"
-                      >{{ messages.specialCleanup }}</button
-                    >
                   </template>
                   <p v-else class="mobile-capability-note">{{
                     language === 'zh'
-                      ? '相册与专项清理需在支持目录授权的电脑浏览器使用；手机可使用搭配、家园、相机参数和共鸣，并导入电脑备份。'
-                      : 'Album access and cleanup require a supported desktop browser. Use outfits, home schemes, camera parameters and resonance here, or import a desktop backup.'
+                      ? '相册需在支持目录授权的电脑浏览器使用；手机可使用搭配、家园、相机参数和共鸣，并导入电脑备份。'
+                      : 'Album access requires a supported desktop browser. Use outfits, home schemes, camera parameters and resonance here, or import a desktop backup.'
                   }}</p>
                   <a
                     class="mobile-official-link"

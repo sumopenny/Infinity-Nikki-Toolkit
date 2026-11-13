@@ -8,6 +8,72 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+it.each([false, true, undefined])(
+  'moves mobile tools out of More with directory support %s',
+  async (directorySupported) => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener() {},
+      removeEventListener() {}
+    }))
+    const wrapper = mount(TopBar, {
+      props: {
+        directoryName: '',
+        isLoading: false,
+        isDeleting: false,
+        hasAlbumDirectory: false,
+        hasX6GameAuthorization: false,
+        directorySupported,
+        thumbnailMode: 'default',
+        thumbnailModeOptions: [],
+        themeMode: 'light',
+        language: 'zh',
+        messages: messages.zh.topBar
+      },
+      global: { stubs: { Teleport: true, Transition: true, LikeCounter: true } }
+    })
+    try {
+      const triggers = wrapper.findAll('.mobile-header-row button')
+      expect(triggers).toHaveLength(4)
+      expect(triggers[2].attributes('aria-label')).toBe(messages.zh.topBar.toolsMenuAria)
+      await triggers[2].trigger('click')
+      await flushPromises()
+      let menu = wrapper.get('.header-dropdown')
+      expect(menu.attributes('aria-label')).toBe(messages.zh.topBar.tools)
+      expect(menu.get('.mobile-menu-heading h2').text()).toBe(messages.zh.topBar.tools)
+      const tools = [
+        messages.zh.topBar.parseTools,
+        messages.zh.topBar.avatarSimulator,
+        messages.zh.topBar.fortuneTime
+      ]
+      expect(
+        menu.findAll('[role="menuitem"]').map((button) => button.text().replace(/^✦\s*/, ''))
+      ).toEqual(
+        directorySupported === false ? tools : [...tools, messages.zh.topBar.specialCleanup]
+      )
+      await wrapper.setProps({ isLoading: true, albumReadOnly: true })
+      menu = wrapper.get('.header-dropdown')
+      expect(menu.findAll('[role="menuitem"]')[0].attributes('disabled')).toBeUndefined()
+      if (directorySupported !== false) {
+        expect(menu.findAll('[role="menuitem"]')[3].attributes('disabled')).toBeDefined()
+      }
+      await menu.get('.mobile-menu-heading button').trigger('click')
+      expect(triggers[2].attributes('aria-expanded')).toBe('false')
+      await triggers[3].trigger('click')
+      await flushPromises()
+      const moreLabels = wrapper
+        .get('.header-dropdown')
+        .findAll('[role="menuitem"]')
+        .map((button) => button.text())
+      for (const label of [...tools, messages.zh.topBar.specialCleanup]) {
+        expect(moreLabels).not.toContain(label)
+      }
+    } finally {
+      wrapper.unmount()
+    }
+  }
+)
+
 it('opens desktop menus on mouse hover and keeps the menu open across the gap', async () => {
   vi.useFakeTimers()
   vi.stubGlobal('matchMedia', () => ({

@@ -204,6 +204,9 @@
     color: var(--text);
   }
   .mobile-header-row button {
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
     border-radius: 10px;
   }
   .mobile-header-row button svg {
@@ -912,13 +915,13 @@
     color: var(--heading);
     font-size: 20px;
   }
-  /* 视图保持内容高度，在当前可视区域居中；标题抵消面板内边距。 */
-  .mobile-menu-sheet.view-dropdown {
+  /* 视图与工具保持内容高度，在当前可视区域居中；标题抵消面板内边距。 */
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown) {
     top: calc(var(--visible-top, 0px) + var(--visible-height, 100dvh) / 2);
     bottom: auto;
     transform: translateY(-50%);
   }
-  .mobile-menu-sheet.view-dropdown > .mobile-menu-heading {
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown) > .mobile-menu-heading {
     position: sticky;
     top: -12px;
     z-index: 2;
@@ -1566,8 +1569,8 @@
     opacity: 0;
     transform: translateY(8px);
   }
-  .mobile-menu-sheet.view-dropdown.mobile-menu-enter-from,
-  .mobile-menu-sheet.view-dropdown.mobile-menu-leave-to {
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown).mobile-menu-enter-from,
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown).mobile-menu-leave-to {
     transform: translateY(calc(-50% + 8px));
   }
   .collection-action-options {
