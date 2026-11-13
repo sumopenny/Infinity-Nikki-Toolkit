@@ -7,6 +7,7 @@ import type { OutfitMessages } from './messages/outfit'
 import type { PhotoParamsMessages } from './messages/photoParams'
 import type { HomeSchemeMessages } from './messages/homeScheme'
 import type { ResonanceMessages } from './messages/resonance'
+import type { ThemeMode } from '../types/theme'
 export type Language = 'zh' | 'en'
 export type StatusPrefix = 'read' | 'restored'
 export type StatusSuffix = 'continued' | 'remembered'
@@ -54,7 +55,7 @@ export interface FullLocaleMessages {
     clearDataConfirm: string
     clearDataStatus: string
     languageUpdated: string
-    themeUpdated: string
+    themeUpdated: Record<ThemeMode, string>
     movingPhotosToTrash: string
     restoringPhotos: string
     permanentlyDeletingPhotos: string
@@ -124,6 +125,7 @@ export interface FullLocaleMessages {
     languageToggleAria: string
     themeLight: string
     themeDark: string
+    themeSystem: string
     themeToggleAria: string
     chooseDirectory: string
     loading: string

@@ -8,6 +8,48 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+it.each([false, true])(
+  'selects the system theme from the view menu (compact=%s)',
+  async (compact) => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: compact,
+      addEventListener() {},
+      removeEventListener() {}
+    }))
+    const wrapper = mount(TopBar, {
+      props: {
+        directoryName: '',
+        isLoading: false,
+        isDeleting: false,
+        hasAlbumDirectory: false,
+        hasX6GameAuthorization: false,
+        thumbnailMode: 'default',
+        thumbnailModeOptions: [],
+        themeMode: 'light',
+        language: 'zh',
+        messages: messages.zh.topBar
+      },
+      global: { stubs: { Teleport: true, Transition: true, LikeCounter: true } }
+    })
+    try {
+      await wrapper.get(`[aria-label="${messages.zh.topBar.viewMenuAria}"]`).trigger('click')
+      await flushPromises()
+      const system = wrapper.get(`[aria-label="${messages.zh.topBar.themeSystem}"]`)
+      await system.trigger('click')
+      expect(wrapper.emitted('toggleTheme')).toEqual([['system']])
+      await wrapper.setProps({ themeMode: 'system' })
+      const selectedSystem = wrapper.get(`[aria-label="${messages.zh.topBar.themeSystem}"]`)
+      expect(selectedSystem.attributes('aria-pressed')).toBe('true')
+      await selectedSystem.trigger('click')
+      expect(wrapper.emitted('toggleTheme')).toHaveLength(1)
+      await wrapper.get(`[aria-label="${messages.zh.topBar.themeDark}"]`).trigger('click')
+      expect(wrapper.emitted('toggleTheme')?.[1]).toEqual(['dark'])
+    } finally {
+      wrapper.unmount()
+    }
+  }
+)
+
 it.each([false, true, undefined])(
   'moves mobile tools out of More with directory support %s',
   async (directorySupported) => {

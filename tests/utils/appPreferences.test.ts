@@ -8,7 +8,34 @@ beforeEach(() => {
   localStorage.clear()
   vi.useFakeTimers()
 })
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
+
+function mockSystemTheme(dark: boolean) {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>()
+  const query = {
+    matches: dark,
+    addEventListener: vi.fn((_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener)
+    }),
+    removeEventListener: vi.fn((_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener)
+    })
+  }
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => query)
+  )
+  return {
+    query,
+    change(matches: boolean) {
+      query.matches = matches
+      for (const listener of listeners) listener({ matches } as MediaQueryListEvent)
+    }
+  }
+}
 
 function setup() {
   const compact = ref(false)
@@ -37,6 +64,74 @@ function setup() {
     }
   }
 }
+
+it('defaults to the device theme, follows changes and releases its listener on unmount', async () => {
+  const system = mockSystemTheme(true)
+  const { preferences, wrapper, onStatus } = setup()
+  expect(preferences.themeMode.value).toBe('system')
+  expect(document.documentElement.dataset.theme).toBe('dark')
+  system.change(false)
+  await nextTick()
+  expect(document.documentElement.dataset.theme).toBe('light')
+  expect(localStorage.getItem('infinity-nikki-theme-mode')).toBeNull()
+  expect(onStatus).not.toHaveBeenCalled()
+  wrapper.unmount()
+  expect(system.query.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+  system.change(true)
+  await nextTick()
+  expect(document.documentElement.dataset.theme).toBe('light')
+})
+
+it.each([
+  ['zh', 'light', '已切换为浅色主题。'],
+  ['zh', 'dark', '已切换为深色主题。'],
+  ['zh', 'system', '主题已设为跟随系统。'],
+  ['en', 'light', 'Switched to light theme.'],
+  ['en', 'dark', 'Switched to dark theme.'],
+  ['en', 'system', 'Theme set to follow system.']
+] as const)(
+  'reports the selected %s %s theme in the top notice',
+  async (language, mode, message) => {
+    const system = mockSystemTheme(true)
+    localStorage.setItem('infinity-nikki-language', language)
+    const { preferences, onStatus, wrapper } = setup()
+    preferences.toggleTheme(mode)
+    expect(onStatus).toHaveBeenLastCalledWith({ type: 'custom', message, tone: 'success' })
+    system.change(false)
+    await nextTick()
+    expect(onStatus).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  }
+)
+
+it.each(['light', 'dark'] as const)(
+  'preserves saved %s until the user selects system and remembers that selection',
+  async (mode) => {
+    const system = mockSystemTheme(mode === 'light')
+    localStorage.setItem('infinity-nikki-theme-mode', mode)
+    const { preferences, wrapper, pause } = setup()
+    expect(document.documentElement.dataset.theme).toBe(mode)
+    system.change(mode === 'dark')
+    await nextTick()
+    expect(preferences.themeMode.value).toBe(mode)
+    preferences.toggleTheme('system')
+    await nextTick()
+    expect(document.documentElement.dataset.theme).toBe(mode)
+    expect(localStorage.getItem('infinity-nikki-theme-mode')).toBe('system')
+    system.change(mode === 'light')
+    await nextTick()
+    expect(document.documentElement.dataset.theme).toBe(mode === 'light' ? 'dark' : 'light')
+    pause()
+    preferences.toggleTheme('dark')
+    await nextTick()
+    expect(localStorage.getItem('infinity-nikki-theme-mode')).toBe('system')
+    wrapper.unmount()
+    const restored = setup()
+    expect(restored.preferences.themeMode.value).toBe('system')
+    expect(document.documentElement.dataset.theme).toBe(mode === 'light' ? 'dark' : 'light')
+    restored.wrapper.unmount()
+  }
+)
 
 it('migrates legacy half to square and desktop small without changing mobile size', () => {
   for (const key of [

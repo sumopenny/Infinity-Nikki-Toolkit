@@ -28,6 +28,7 @@ import {
   Music2,
   TvMinimal,
   Moon,
+  Monitor,
   MoreHorizontal,
   Smartphone,
   Wrench,
@@ -100,7 +101,7 @@ const emit = defineEmits<{
   importAllData: []
   refreshBackupAvailability: []
   toggleLanguage: []
-  toggleTheme: []
+  toggleTheme: [mode: ThemeMode]
   changeSurfaceStyle: [style: SurfaceStyle]
   changeMobileNavStyle: [style: MobileNavStyle]
   changeThumbnailMode: [mode: ThumbnailMode]
@@ -315,9 +316,9 @@ function runMenuAction(action: () => void) {
   action()
 }
 
-/** 视图菜单里的主题胶囊：只有点到与当前不同的那半边才触发切换。参数：mode 为目标主题。 */
+/** 选择浅色、深色或跟随系统偏好，重复选择当前项时保持原状态。 */
 function selectTheme(mode: ThemeMode) {
-  if (mode !== props.themeMode) emit('toggleTheme')
+  if (mode !== props.themeMode) emit('toggleTheme', mode)
 }
 
 /** 视图菜单里的语言胶囊：只有点到与当前不同的那半边才触发切换。参数：language 为目标语言。 */
@@ -695,6 +696,17 @@ function openDonate() {
                     @click="selectTheme('dark')"
                   >
                     <Moon :size="15" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    class="view-toggle-option"
+                    :class="{ active: themeMode === 'system' }"
+                    :aria-pressed="themeMode === 'system'"
+                    :title="messages.themeSystem"
+                    :aria-label="messages.themeSystem"
+                    @click="selectTheme('system')"
+                  >
+                    <Monitor :size="15" aria-hidden="true" />
                   </button>
                 </div>
                 <div

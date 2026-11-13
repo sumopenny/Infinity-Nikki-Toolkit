@@ -50,7 +50,11 @@ export const appZh: LocaleMessages['app'] = {
   clearDataConfirm: '清除全部数据',
   clearDataStatus: '当前浏览器的网站数据已清除，云端存档保留；正在重新加载并恢复初始状态。',
   languageUpdated: '语言切换成功。',
-  themeUpdated: '主题切换成功。',
+  themeUpdated: {
+    light: '已切换为浅色主题。',
+    dark: '已切换为深色主题。',
+    system: '主题已设为跟随系统。'
+  },
   movingPhotosToTrash: '正在移入最近删除...',
   restoringPhotos: '正在恢复照片...',
   permanentlyDeletingPhotos: '正在永久删除照片...',
@@ -182,7 +186,11 @@ export const appEn: LocaleMessages['app'] = {
   clearDataStatus:
     'Website data in this browser cleared; cloud saves remain. Reloading to restore the initial state.',
   languageUpdated: 'Language updated successfully.',
-  themeUpdated: 'Theme updated successfully.',
+  themeUpdated: {
+    light: 'Switched to light theme.',
+    dark: 'Switched to dark theme.',
+    system: 'Theme set to follow system.'
+  },
   movingPhotosToTrash: 'Moving photos to Recently Deleted...',
   restoringPhotos: 'Restoring photos...',
   permanentlyDeletingPhotos: 'Permanently deleting photos...',

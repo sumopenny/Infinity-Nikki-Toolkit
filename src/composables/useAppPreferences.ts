@@ -130,7 +130,16 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
     sizes.value[kind] = size
     if (canPersist()) writeLocalStorage(sizeKey(kind, compact), size)
   }
-  const themeMode = ref<ThemeMode>(isThemeMode(storedThemeMode) ? storedThemeMode : 'light')
+  const themeMode = ref<ThemeMode>(isThemeMode(storedThemeMode) ? storedThemeMode : 'system')
+  const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)')
+  const systemDark = ref(systemTheme?.matches ?? false)
+  const resolvedTheme = computed(() =>
+    themeMode.value === 'system' ? (systemDark.value ? 'dark' : 'light') : themeMode.value
+  )
+  function updateSystemTheme(event: MediaQueryListEvent) {
+    systemDark.value = event.matches
+  }
+  systemTheme?.addEventListener?.('change', updateSystemTheme)
 
   watch(
     language,
@@ -141,7 +150,7 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
     { immediate: true }
   )
   watch(
-    themeMode,
+    resolvedTheme,
     (value) => {
       const root = document.documentElement
       const isThemeChange = Boolean(root.dataset.theme && root.dataset.theme !== value)
@@ -166,11 +175,11 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
   })
 
   /** 立即应用偏好，并使用更新后的语言显示完成提示。 */
-  function applyPreference(preference: 'language' | 'theme') {
+  function applyPreference(preference: 'language' | 'theme', mode?: ThemeMode) {
     if (preference === 'language') {
       language.value = language.value === 'zh' ? 'en' : 'zh'
     } else {
-      themeMode.value = themeMode.value === 'light' ? 'dark' : 'light'
+      themeMode.value = mode ?? (resolvedTheme.value === 'light' ? 'dark' : 'light')
       if (canPersist()) writeLocalStorage(THEME_STORAGE_KEY, themeMode.value)
     }
 
@@ -179,7 +188,7 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
       message:
         preference === 'language'
           ? locale.value.app.languageUpdated
-          : locale.value.app.themeUpdated,
+          : locale.value.app.themeUpdated[themeMode.value],
       tone: 'success'
     })
   }
@@ -189,9 +198,10 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
     return applyPreference('language')
   }
 
-  /** 切换亮暗主题。参数：无。 */
-  function toggleTheme() {
-    return applyPreference('theme')
+  /** 应用指定主题偏好；省略参数时切换当前实际显示的亮暗主题。 */
+  function toggleTheme(mode?: ThemeMode) {
+    if (mode !== undefined && !isThemeMode(mode)) return
+    return applyPreference('theme', mode)
   }
 
   function setSurfaceStyle(style: SurfaceStyle) {
@@ -208,6 +218,7 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
     if (canPersist()) writeLocalStorage(modeKeys[kind], mode)
   }
   onBeforeUnmount(() => {
+    systemTheme?.removeEventListener?.('change', updateSystemTheme)
     if (themeSwitchFrame !== undefined) window.cancelAnimationFrame(themeSwitchFrame)
     document.documentElement.classList.remove('is-theme-switching')
   })
