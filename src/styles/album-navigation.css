@@ -310,7 +310,6 @@
   gap: 3px;
   padding: 6px;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius);
   background: var(--menu-bg);
   box-shadow: 0 18px 44px rgba(45, 39, 35, 0.18);
   backdrop-filter: blur(13px) saturate(1.5);
@@ -331,7 +330,6 @@
   min-height: 34px;
   padding: 5px 8px;
   border: 1px solid transparent;
-  border-radius: var(--menu-item-radius);
   background: transparent;
   color: var(--text);
   font-size: 12px;

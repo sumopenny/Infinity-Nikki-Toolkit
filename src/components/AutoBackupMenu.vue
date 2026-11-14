@@ -1125,13 +1125,8 @@ onBeforeUnmount(() => {
   place-items: center;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  background: var(--surface-strong);
   color: var(--notice-error);
   pointer-events: none;
-}
-.auto-backup-status[data-state='pending'] {
-  background: transparent;
 }
 .auto-backup-status[data-state='pending']::before {
   content: '';
@@ -1139,7 +1134,6 @@ onBeforeUnmount(() => {
   height: 8px;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 0 2px var(--surface-strong);
 }
 .auto-backup-status[data-state='success'] {
   color: var(--notice-success);

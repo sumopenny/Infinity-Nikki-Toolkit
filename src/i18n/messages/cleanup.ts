@@ -7,7 +7,6 @@ export const cleanupZh: LocaleMessages['cleanup'] = {
   dialogTitle: '专项清理',
   dialogCloseAria: '关闭专项清理窗口',
   authHint: '使用清理功能需要先授权 X6Game 文件夹。清理会直接删除电脑中的文件，且不可恢复。',
-  referenceHint: '一些清理项参考小红书“快乐的00号”老师。',
   authorize: '授权文件夹',
   reauthorize: '重新授权',
   authorizedAs: (name) => `已授权：${name}`,
@@ -70,7 +69,6 @@ export const cleanupEn: LocaleMessages['cleanup'] = {
   dialogCloseAria: 'Close cleanup window',
   authHint:
     'Cleanup requires authorizing the X6Game folder first. Cleanup permanently deletes files from your computer and cannot be undone.',
-  referenceHint: 'Some cleanup items are inspired by Xiaohongshu creator “快乐的00号”.',
   authorize: 'Authorize folder',
   reauthorize: 'Re-authorize',
   authorizedAs: (name) => `Authorized: ${name}`,

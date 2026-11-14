@@ -1,13 +1,18 @@
 /* 跨模块控件和减少动态效果规则：由入口统一加载，不再依赖搭配业务样式。 */
 .primary-button,
-.confirm-dialog-button,
-.header-dropdown {
+.confirm-dialog-button {
   border-radius: var(--ui-radius);
 }
 
+.header-dropdown,
+.resonance-nav-menu {
+  border-radius: 20px;
+}
+
 .header-dropdown button,
-.header-dropdown a {
-  border-radius: var(--menu-item-radius);
+.header-dropdown a,
+.resonance-nav-menu button {
+  border-radius: 14px;
 }
 
 .primary-button,

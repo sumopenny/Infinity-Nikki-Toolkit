@@ -140,6 +140,85 @@ describe('App lifecycle coordination', () => {
     document.body.innerHTML = ''
   })
 
+  it.each([
+    [null, 'outfits'],
+    ['all', 'outfits'],
+    ['trash', 'outfits'],
+    ['home', 'home'],
+    ['favorites', 'favorites'],
+    ['wardrobe', 'wardrobe']
+  ])('normalizes saved module %s to %s on compact startup', async (saved, expected) => {
+    vi.stubGlobal('matchMedia', (media: string) => ({
+      matches: media === '(max-width: 899px)',
+      addEventListener() {},
+      removeEventListener() {}
+    }))
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    if (saved) localStorage.setItem('infinity-nikki-active-view', saved)
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    try {
+      expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe(expected)
+      await flushPromises()
+      expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe(expected)
+      expect(localStorage.getItem('infinity-nikki-active-view')).toBe(expected)
+    } finally {
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it.each([
+    ['all', false],
+    ['trash', false],
+    ['all', true],
+    ['home', false]
+  ])('normalizes %s when compact, waiting for writes=%s', async (saved, busy) => {
+    const listeners = new Set<() => void>()
+    const query = {
+      matches: false,
+      addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_: string, fn: () => void) => listeners.delete(fn)
+    }
+    vi.stubGlobal('matchMedia', (media: string) =>
+      media === '(max-width: 899px)' ? query : { matches: false }
+    )
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    localStorage.setItem('infinity-nikki-active-view', saved)
+    const wrapper = mount(App, {
+      global: {
+        stubs: {
+          Teleport: true,
+          AllDataBackup: { name: 'AllDataBackup', template: '<div />' }
+        }
+      }
+    })
+    try {
+      await flushPromises()
+      const top = wrapper.getComponent({ name: 'TopBar' })
+      if (busy) {
+        wrapper.getComponent({ name: 'AllDataBackup' }).vm.$emit('busy', true)
+        await nextTick()
+      }
+      query.matches = true
+      listeners.forEach((fn) => fn())
+      await flushPromises()
+      if (busy) {
+        expect(top.props('activeView')).toBe(saved)
+        wrapper.getComponent({ name: 'AllDataBackup' }).vm.$emit('busy', false)
+        await flushPromises()
+      }
+      const expected = saved === 'home' ? 'home' : 'outfits'
+      expect(top.props('activeView')).toBe(expected)
+      query.matches = false
+      listeners.forEach((fn) => fn())
+      await flushPromises()
+      expect(top.props('activeView')).toBe(expected)
+    } finally {
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    }
+  })
+
   it.each(['outfits', 'home', 'resonance', 'wardrobe', 'makeup', 'favorites'])(
     'restores the saved module %s after mounting',
     async (view) => {
@@ -183,19 +262,26 @@ describe('App lifecycle coordination', () => {
     expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('all')
   })
 
-  it('prioritizes an explicit module link over the saved module', async () => {
-    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
-    localStorage.setItem('infinity-nikki-active-view', 'wardrobe')
-    const previousUrl = window.location.href
-    try {
-      window.history.replaceState(null, '', '?view=home')
-      const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
-      await flushPromises()
-      expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('home')
-    } finally {
-      window.history.replaceState(null, '', previousUrl)
+  it.each(['wardrobe', null])(
+    'ignores legacy view links with saved module %s',
+    async (savedView) => {
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+      if (savedView) localStorage.setItem('infinity-nikki-active-view', savedView)
+      else localStorage.removeItem('infinity-nikki-active-view')
+      const previousUrl = window.location.href
+      try {
+        window.history.replaceState(null, '', '?view=home')
+        const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+        await flushPromises()
+        expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe(
+          savedView ?? 'all'
+        )
+        wrapper.unmount()
+      } finally {
+        window.history.replaceState(null, '', previousUrl)
+      }
     }
-  })
+  )
 
   it.each([false, true])(
     'queues the reminder after updates and persists dismissal=%s',
@@ -621,7 +707,7 @@ describe('App lifecycle coordination', () => {
     }
   )
 
-  it('shows camera parameters in compact favorites and restores desktop photo tabs', async () => {
+  it('keeps camera parameters selected after returning from compact favorites', async () => {
     const listeners = new Set<() => void>()
     const query = {
       matches: false,
@@ -687,10 +773,10 @@ describe('App lifecycle coordination', () => {
         'large'
       )
       expect(wrapper.findAll('.favorites-view-switch button')).toHaveLength(2)
-      expect(wrapper.findAll('.favorites-view-switch button')[1]!.attributes('aria-pressed')).toBe(
+      expect(wrapper.findAll('.favorites-view-switch button')[0]!.attributes('aria-pressed')).toBe(
         'true'
       )
-      expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(false)
+      expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(true)
       await wrapper.getComponent({ name: 'TopBar' }).vm.$emit('toggleLanguage')
       await flushPromises()
       await vi.waitFor(() =>

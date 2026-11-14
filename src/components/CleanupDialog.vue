@@ -55,7 +55,6 @@ function isItemDisabled(item: SpecialCleanupItem): boolean {
             <div class="cleanup-dialog-title-group">
               <h2>{{ messages.dialogTitle }}</h2>
               <p class="cleanup-auth-hint">{{ messages.authHint }}</p>
-              <p class="cleanup-auth-hint">{{ messages.referenceHint }}</p>
             </div>
             <div class="cleanup-dialog-header-actions">
               <span v-if="authorizedName" class="cleanup-authorized-label">{{

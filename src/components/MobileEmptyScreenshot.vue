@@ -66,8 +66,8 @@ watch(source, () => {
 @media (max-width: 899px) {
   .mobile-empty-screenshot {
     display: block;
-    width: 100%;
-    max-width: 360px;
+    width: 85vw;
+    max-width: min(100%, 600px);
     min-width: 0;
     height: auto;
     margin: 16px auto 0;

@@ -879,7 +879,7 @@
     width: auto;
     min-width: 0;
     max-width: none;
-    max-height: min(85dvh, var(--mobile-dialog-space));
+    max-height: min(75dvh, var(--mobile-dialog-space));
     margin: 0;
     padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
     border-radius: var(--mobile-dialog-radius);
@@ -887,14 +887,8 @@
     animation: none;
     background: var(--surface-strong);
   }
-  /* 更多窗口沿用编辑器的可视高度及安全区留白，仅下方菜单内容滚动。 */
+  /* 更多窗口沿用公共高度上限，仅下方菜单内容滚动。 */
   .mobile-menu-sheet.more-menu-panel {
-    top: calc(
-      var(--visible-top, 0px) + max(var(--mobile-dialog-gap), env(safe-area-inset-top, 0px))
-    );
-    bottom: auto;
-    height: var(--mobile-dialog-space);
-    max-height: var(--mobile-dialog-space);
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -915,8 +909,8 @@
     color: var(--heading);
     font-size: 20px;
   }
-  /* 视图与工具保持内容高度，在当前可视区域居中；标题抵消面板内边距。 */
-  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown) {
+  /* 三个手机菜单在当前可视区域居中；视图与工具标题抵消面板内边距。 */
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown, .more-menu-panel) {
     top: calc(var(--visible-top, 0px) + var(--visible-height, 100dvh) / 2);
     bottom: auto;
     transform: translateY(-50%);
@@ -1569,8 +1563,8 @@
     opacity: 0;
     transform: translateY(8px);
   }
-  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown).mobile-menu-enter-from,
-  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown).mobile-menu-leave-to {
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown, .more-menu-panel).mobile-menu-enter-from,
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown, .more-menu-panel).mobile-menu-leave-to {
     transform: translateY(calc(-50% + 8px));
   }
   .collection-action-options {

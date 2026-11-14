@@ -3,7 +3,6 @@ import {
   defaultStates,
   loadConfig,
   countBrowserRecords,
-  pendingEnabledBackups,
   readModuleStatus,
   supportsBackup,
   syncModule,
@@ -92,8 +91,11 @@ export function runDirectoryBackup(notifyAutomaticSuccess = true): Promise<void>
       const latest = await loadConfig()
       config.value = latest
       if (!supportsBackup() || latest.paused) return
-      // 仅在有待写入数据时显示后台进度；单纯刷新状态与无变化检查不提示。
-      if (notifyAutomaticSuccess && (await pendingEnabledBackups())) {
+      // 仅首次建立备份显示进度和结果，日常变更及重新进入页面后的补同步保持静默。
+      const initialModules = MODULES.filter(
+        (module) => latest.enabled[module] && !latest.initialized[module]
+      )
+      if (notifyAutomaticSuccess && initialModules.length) {
         autoNoticeActive = true
         backupNotice('directory-backup-auto-success', '正在自动备份…', true)
       }
@@ -103,14 +105,18 @@ export function runDirectoryBackup(notifyAutomaticSuccess = true): Promise<void>
         statuses[module].enabled = true
         const previousSuccess = statuses[module].lastSuccess
         await syncModule(latest, module, statuses[module] as ModuleProgress, () => {
-          if (!autoNoticeActive) return
+          if (!autoNoticeActive || !initialModules.includes(module)) return
           const progress = statuses[module]
           const name = { outfits: '搭配码', home: '家园方案', camera: '相机参数收藏' }[module]
           const count = progress.total ? ` ${progress.processed ?? 0} / ${progress.total}` : ''
           if (progress.state === 'initializing' || progress.state === 'syncing')
             backupNotice('directory-backup-auto-success', `正在自动备份${name}${count}…`, true)
         })
-        if (statuses[module].lastSuccess && statuses[module].lastSuccess !== previousSuccess)
+        if (
+          initialModules.includes(module) &&
+          statuses[module].lastSuccess &&
+          statuses[module].lastSuccess !== previousSuccess
+        )
           updatedModules.push(
             { outfits: '搭配码', home: '家园方案', camera: '相机参数收藏' }[module]
           )

@@ -324,7 +324,6 @@
   max-width: min(340px, calc(100vw - 24px));
   padding: 6px;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius);
   background: var(--menu-bg);
   box-shadow: 0 18px 44px rgba(45, 39, 35, 0.18);
   backdrop-filter: blur(16px) saturate(1.5);
@@ -361,7 +360,6 @@
   gap: 9px;
   padding: 6px 8px;
   border: 1px solid transparent;
-  border-radius: var(--ui-radius);
   background: transparent;
   color: var(--text);
   font-size: 13px;
@@ -528,50 +526,15 @@
   .brand-lockup {
     flex: 1 1 180px;
   }
-
-  .header-actions {
-    flex: 1 1 auto;
-    flex-wrap: wrap;
-  }
-
-  .header-search {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    width: 100%;
-  }
-
-  .album-name-button {
-    max-width: min(43vw, 230px);
-  }
 }
 
 @media (max-width: 520px) {
-  .header-star-hint {
-    display: none;
-  }
-
   .brand-lockup h1 {
     font-size: 17px;
   }
 
-  .header-actions {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-  }
-  .header-actions > button,
-  .header-menu-wrap,
-  .header-menu-wrap > button {
-    width: 100%;
-  }
-
   .header-icon-button:has(span) {
     padding: 0 10px;
-  }
-
-  .album-name-button {
-    max-width: none;
   }
 
   .header-dropdown {

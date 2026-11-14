@@ -539,7 +539,7 @@ function openDonate() {
         @update:open="setBackupMenuOpen"
       />
 
-      <div class="header-menu-wrap">
+      <div v-if="!compact" class="header-menu-wrap">
         <button
           class="header-menu-button album-name-button"
           type="button"
@@ -561,7 +561,7 @@ function openDonate() {
         </button>
         <Teleport to="body">
           <Transition
-            :name="compact ? 'mobile-menu' : 'desktop-menu'"
+            name="desktop-menu"
             @before-enter="menuMotion.beforeEnter"
             @before-leave="beforeMenuLeave"
             @after-leave="menuMotion.afterLeave"
@@ -574,7 +574,6 @@ function openDonate() {
               tabindex="-1"
               :aria-label="messages.more"
               class="header-dropdown"
-              :class="{ 'mobile-menu-sheet': compact }"
               :style="menuStyle"
               role="menu"
             >
@@ -588,7 +587,7 @@ function openDonate() {
                 <span>{{ messages.chooseDirectory }}</span>
               </button>
               <button
-                v-if="compatibleLabel && !compact"
+                v-if="compatibleLabel"
                 type="button"
                 role="menuitem"
                 :disabled="isBusy"

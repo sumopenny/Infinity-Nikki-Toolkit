@@ -262,7 +262,6 @@ export interface FullLocaleMessages {
     dialogTitle: string
     dialogCloseAria: string
     authHint: string
-    referenceHint: string
     authorize: string
     reauthorize: string
     authorizedAs: (name: string) => string

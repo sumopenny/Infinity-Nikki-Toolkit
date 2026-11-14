@@ -345,17 +345,11 @@ function isAlbumView(value: string | null): value is AlbumView {
     )
   )
 }
-const linkedView = new URLSearchParams(window.location.search).get('view')
+function viewForLayout(view: AlbumView): AlbumView {
+  return compactLayout.value && (view === 'all' || view === 'trash') ? 'outfits' : view
+}
 const storedView = readLocalStorage(ACTIVE_VIEW_STORAGE_KEY)
-const activeView = ref<AlbumView>(
-  isAlbumView(linkedView)
-    ? linkedView
-    : isAlbumView(storedView)
-      ? storedView
-      : compactLayout.value && !directorySupported
-        ? 'outfits'
-        : 'all'
-)
+const activeView = ref<AlbumView>(viewForLayout(isAlbumView(storedView) ? storedView : 'all'))
 watch(
   activeView,
   (view) => {
@@ -538,7 +532,7 @@ watch(cameraFavoritesRef, (view) => {
   pendingCameraFavorite = null
   open()
 })
-// 手机布局只展示相机参数，保留电脑端原有的收藏标签状态。
+// 手机布局只展示相机参数，进入手机布局时同步校正收藏标签。
 const isCameraFavoritesView = computed(
   () => activeView.value === 'favorites' && (compactLayout.value || favoriteTab.value === 'camera')
 )
@@ -760,9 +754,20 @@ watch(activeView, () => {
   mobileFiltersOpen.value = false
   topBarRef.value?.closeMenus()
 })
-watch(compactLayout, (compact) => {
+watch([compactLayout, navigationBusy], ([compact, busy]) => {
   mobileFiltersOpen.value = false
-  if (compact) isOutfitGuideVisible.value = false
+  if (!compact) return
+  isOutfitGuideVisible.value = false
+  // 写任务或模态操作结束后再切换，避免中断任务；回到电脑布局不恢复旧照片页。
+  if (busy) return
+  const view = viewForLayout(activeView.value)
+  if (view !== activeView.value) changeAlbumView(view)
+  else if (view === 'favorites' && favoriteTab.value === 'photos') {
+    favoriteTab.value = 'camera'
+    currentPreview.value = null
+    selectedIds.value = new Set()
+    trashSelectedIds.value = new Set()
+  }
 })
 
 const currentPreviewIndex = computed(() =>
