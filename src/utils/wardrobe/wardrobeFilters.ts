@@ -88,6 +88,16 @@ export function matchesWardrobeSource(
   return value !== 'limited-reward' || entry.sourceDetails.includes('deep-echo')
 }
 
+/** 详情标题共用来源标签，保持套装与部件的来源命名一致。 */
+export function wardrobeSourceLabel(entry: WardrobeEntry | null, language: Language): string {
+  return entry
+    ? wardrobeSourceOptions(entry.kind, language)
+        .filter((option) => matchesWardrobeSource(entry, option.value))
+        .map((option) => option.label)
+        .join(' · ')
+    : ''
+}
+
 /** 与共鸣录列表一致，奖励匹配扩展到同一紧凑图鉴部件家族。 */
 export function assignWardrobeRewardSources(entries: WardrobeEntry[]): void {
   const rewardIds = new Set(metadata.deepEchoRewardIds.map(String))

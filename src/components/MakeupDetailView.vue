@@ -7,7 +7,7 @@ import { useLatestRequest } from '../composables/useLatestRequest'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { getCatalogImageSource } from '../utils/gongeo/catalogImage'
 import { wardrobeVariantLabels } from '../utils/wardrobe/wardrobePresentation'
-import { wardrobeSourceOptions, matchesWardrobeSource } from '../utils/wardrobe/wardrobeFilters'
+import { makeupSourceLabel } from '../utils/makeupCatalog'
 import {
   loadWardrobeCatalog,
   type WardrobeCatalog,
@@ -100,17 +100,7 @@ const detailParts = computed(() => {
     .map((id) => ({ id, entry: byId.get(id) }))
     .sort((a, b) => (a.entry?.category ?? 99) - (b.entry?.category ?? 99))
 })
-const source = computed(() =>
-  props.detail
-    ? wardrobeSourceOptions('item', props.language)
-        .filter(
-          (option) =>
-            option.value !== 'limited-reward' && matchesWardrobeSource(props.detail!, option.value)
-        )
-        .map((option) => option.label)
-        .join(' · ')
-    : ''
-)
+const source = computed(() => makeupSourceLabel(props.detail, props.language))
 const linkedOutfits = computed(() => {
   const ids = new Set(
     isPart.value

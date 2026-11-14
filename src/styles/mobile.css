@@ -1879,12 +1879,12 @@
 /* 悬浮导航的占位同时驱动页面留白和批量操作栏，避免底部内容被遮挡。 */
 @media (max-width: 899px) {
   :root[data-mobile-nav-style='capsule'] {
-    --mobile-nav-height: calc(76px + env(safe-area-inset-bottom, 0px));
+    --mobile-nav-height: calc(99px + env(safe-area-inset-bottom, 0px));
   }
   :root[data-mobile-nav-style='capsule'] .mobile-navigation {
     left: max(48px, env(safe-area-inset-left, 0px));
     right: max(48px, env(safe-area-inset-right, 0px));
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(35px + env(safe-area-inset-bottom, 0px));
     height: 60px;
     max-width: 320px;
     margin-inline: auto;

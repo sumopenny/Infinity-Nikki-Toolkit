@@ -1,3 +1,20 @@
+.outfit-detail-heading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 8px 12px;
+}
+.outfit-detail-heading h2 {
+  flex-shrink: 0;
+}
+.outfit-detail-panel > header {
+  gap: 12px;
+}
+.outfit-detail-panel > header > button {
+  flex-shrink: 0;
+}
 .wardrobe-detail-meta {
   display: flex;
   align-items: center;

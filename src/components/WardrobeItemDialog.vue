@@ -2,6 +2,7 @@
 import CatalogImage from './CatalogImage.vue'
 import { getCatalogImageSource } from '../utils/gongeo/catalogImage'
 import WardrobeFormNav from './WardrobeFormNav.vue'
+import { wardrobeSourceLabel } from '../utils/wardrobe/wardrobeFilters'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 import { computed, ref, watch } from 'vue'
 import { ExternalLink, X } from 'lucide-vue-next'
@@ -32,6 +33,7 @@ const emit = defineEmits<{
   openOutfit: [outfit: WardrobeEntry]
 }>()
 const visible = computed(() => !!props.item)
+const itemSource = computed(() => wardrobeSourceLabel(props.item, props.language))
 const panel = ref<HTMLElement | null>(null)
 const imageState = ref<'loading' | 'loaded' | 'failed'>('loading')
 const imageUrl = computed(() => (props.item ? getCatalogImageSource('item', props.item.id) : ''))
@@ -67,7 +69,12 @@ useModalFocus(visible, panel, close)
           aria-labelledby="wardrobe-item-title"
         >
           <header>
-            <h2 id="wardrobe-item-title">{{ text('部件详情', 'Item details') }}</h2>
+            <div class="outfit-detail-heading">
+              <h2 id="wardrobe-item-title">{{ text('部件详情', 'Item details') }}</h2>
+              <span v-if="itemSource" class="wardrobe-detail-source" :title="itemSource">{{
+                itemSource
+              }}</span>
+            </div>
             <button type="button" :aria-label="text('关闭', 'Close')" @click="close">
               <X :size="19" aria-hidden="true" />
             </button>
@@ -103,11 +110,7 @@ useModalFocus(visible, panel, close)
                     @error="imageState = 'failed'"
                     @retry="imageState = 'loading'"
                   />
-                  <div
-                    v-if="imageState === 'loading'"
-                    class="visually-hidden"
-                    role="status"
-                  >
+                  <div v-if="imageState === 'loading'" class="visually-hidden" role="status">
                     <span>{{ text('正在加载图片…', 'Loading image…') }}</span>
                   </div>
                 </div>
@@ -147,6 +150,7 @@ useModalFocus(visible, panel, close)
   </Teleport>
 </template>
 
+<style scoped src="../styles/wardrobe-detail-tokens.css"></style>
 <style scoped>
 .wardrobe-outfit-link {
   display: inline-flex;

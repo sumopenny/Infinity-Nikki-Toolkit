@@ -3,6 +3,7 @@ import { reportError as captureDiagnosticError } from '../utils/errorReporting/e
 import { buildParseItems, type ParseItemView } from '../utils/outfit/parseItemView'
 import CatalogImage from './CatalogImage.vue'
 import WardrobeFormNav from './WardrobeFormNav.vue'
+import { wardrobeSourceLabel } from '../utils/wardrobe/wardrobeFilters'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 // 搭配码与照片共用部件列表和详情；照片传入解码结果时不请求搭配码服务。
 import {
@@ -34,7 +35,7 @@ import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import WardrobeOutfitDialog from './WardrobeOutfitDialog.vue'
 import MakeupDetailDialog from './MakeupDetailDialog.vue'
 import { loadMakeupCatalog, type MakeupCatalogData } from '../utils/loadMakeupCatalog'
-import type { MakeupEntry } from '../utils/makeupCatalog'
+import { makeupSourceLabel, type MakeupEntry } from '../utils/makeupCatalog'
 import {
   loadWardrobeCatalog,
   type WardrobeCatalog,
@@ -95,6 +96,15 @@ const associatedMakeups = computed(() => {
 const selectedWardrobeItem = computed(() => {
   const entry = wardrobeCatalog.value?.byId.get(String(selectedDetail.value?.itemId))
   return entry?.kind === 'item' ? entry : null
+})
+const itemSource = computed(() => {
+  const id = selectedDetail.value?.itemId
+  const clothType = id ? inferClothTypeFromItemId(id) : null
+  if (clothType !== null && clothType >= 80 && clothType <= 85) {
+    const part = makeupData.value?.parts.find((entry) => entry.id === String(id)) ?? null
+    return makeupSourceLabel(part, props.language)
+  }
+  return wardrobeSourceLabel(selectedWardrobeItem.value, props.language)
 })
 const hasDetailForms = computed(() => {
   const entry = selectedWardrobeItem.value
@@ -550,7 +560,12 @@ onBeforeUnmount(() => {
           }"
         >
           <header>
-            <h2>{{ messages.detailTitle }}</h2>
+            <div class="outfit-detail-heading">
+              <h2>{{ messages.detailTitle }}</h2>
+              <span v-if="itemSource" class="wardrobe-detail-source" :title="itemSource">{{
+                itemSource
+              }}</span>
+            </div>
             <button
               type="button"
               :title="messages.detailClose"
@@ -740,6 +755,7 @@ onBeforeUnmount(() => {
   />
 </template>
 
+<style scoped src="../styles/wardrobe-detail-tokens.css"></style>
 <style scoped>
 .outfit-parse-panel > header {
   gap: 10px;

@@ -664,3 +664,94 @@ it('embeds photo dressing, opens dye details and updates without requesting a sh
     wrapper.unmount()
   }
 })
+
+it('shows the decoded item source in its detail title and follows language changes', async () => {
+  const { loadWardrobeCatalog } = await import('../../src/utils/wardrobe/wardrobeCatalog')
+  const catalog = await loadWardrobeCatalog()
+  const item = catalog.entries.find((entry) => entry.kind === 'item' && entry.obtainType === 10007)!
+  expect(item).toBeDefined()
+  loadOutfitDetailMock.mockResolvedValue({ ...detail, itemId: Number(item.id), dyes: [] })
+  const wrapper = mount(OutfitParseDialog, {
+    props: {
+      visible: true,
+      code: '',
+      directItem: { id: Number(item.id), name: item.name.zh, clothType: item.category },
+      language: 'zh',
+      messages: getOutfitMessages('zh')
+    },
+    global: { stubs: { Teleport: true, Transition: true } }
+  })
+  try {
+    await flushPromises()
+    expect(wrapper.get('.outfit-detail-panel > header .wardrobe-detail-source').text()).toBe(
+      '唱诗蓝龙'
+    )
+    await wrapper.setProps({ language: 'en', messages: getOutfitMessages('en') })
+    await flushPromises()
+    expect(wrapper.get('.outfit-detail-panel > header .wardrobe-detail-source').text()).toBe(
+      "Cadenceborn's Gift"
+    )
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('uses makeup part sources and clears them when switching to a part without a source', async () => {
+  const { loadMakeupCatalog } = await import('../../src/utils/loadMakeupCatalog')
+  const base = await loadMakeupCatalog()
+  const full = { ...base.entries[0]!, obtainType: 10005 }
+  vi.mocked(loadMakeupCatalog).mockResolvedValueOnce({
+    ...base,
+    entries: [full],
+    parts: [
+      {
+        ...full,
+        id: '1020840001',
+        category: 4,
+        obtainType: 10007,
+        name: { zh: '测试美瞳', en: 'Test lenses' }
+      }
+    ]
+  })
+  loadOutfitDetailMock.mockImplementation(async (id) => ({
+    ...detail,
+    itemId: id,
+    outfitId: null,
+    dyes: []
+  }))
+  const wrapper = mount(OutfitParseDialog, {
+    props: {
+      visible: true,
+      code: '',
+      directItem: { id: 1020840001, name: '测试美瞳', clothType: 84 },
+      language: 'zh',
+      messages: getOutfitMessages('zh')
+    },
+    global: { stubs: { Teleport: true, Transition: true } }
+  })
+  try {
+    await flushPromises()
+    expect(wrapper.get('.outfit-detail-panel header .wardrobe-detail-source').text()).toBe(
+      '唱诗蓝龙'
+    )
+    await wrapper.setProps({ language: 'en', messages: getOutfitMessages('en') })
+    await flushPromises()
+    expect(wrapper.get('.outfit-detail-panel header .wardrobe-detail-source').text()).toBe(
+      "Cadenceborn's Gift"
+    )
+    await wrapper.setProps({
+      directItem: { id: 1020849999, name: 'Unknown lenses', clothType: 84 }
+    })
+    await flushPromises()
+    expect(wrapper.find('.outfit-detail-panel header .wardrobe-detail-source').exists()).toBe(false)
+    await wrapper.setProps({
+      directItem: { id: 1020840001, name: 'Test lenses', clothType: 84 }
+    })
+    await flushPromises()
+    expect(wrapper.get('.outfit-detail-panel header .wardrobe-detail-source').text()).toBe(
+      "Cadenceborn's Gift"
+    )
+  } finally {
+    wrapper.unmount()
+  }
+})

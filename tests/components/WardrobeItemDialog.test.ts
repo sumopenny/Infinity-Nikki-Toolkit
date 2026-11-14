@@ -120,3 +120,27 @@ it.each([false, true])(
     }
   }
 )
+
+it('shows the item source beside the title, updates language and hides missing sources', async () => {
+  const { loadWardrobeCatalog } = await import('../../src/utils/wardrobe/wardrobeCatalog')
+  const catalog = await loadWardrobeCatalog()
+  const item = catalog.entries.find((entry) => entry.kind === 'item' && entry.obtainType === 10007)!
+  expect(item).toBeDefined()
+  const wrapper = mount(WardrobeItemDialog, {
+    props: { item, catalog, outfits: [], language: 'zh' },
+    global: { stubs: { Teleport: true, Transition: true } }
+  })
+  try {
+    const heading = wrapper.get('.outfit-detail-panel > header .outfit-detail-heading')
+    expect(heading.get('h2').text()).toBe('部件详情')
+    expect(heading.get('.wardrobe-detail-source').text()).toBe('唱诗蓝龙')
+    await wrapper.setProps({ language: 'en' })
+    expect(wrapper.get('.outfit-detail-heading .wardrobe-detail-source').text()).toBe(
+      "Cadenceborn's Gift"
+    )
+    await wrapper.setProps({ item: { ...item, obtainType: null } })
+    expect(wrapper.find('.outfit-detail-heading .wardrobe-detail-source').exists()).toBe(false)
+  } finally {
+    wrapper.unmount()
+  }
+})

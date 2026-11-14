@@ -4,7 +4,7 @@ import WardrobeFormNav from './WardrobeFormNav.vue'
 import { catalogResources } from '../utils/gongeo/catalogResources'
 import { loadMakeupCatalog, type MakeupCatalogData } from '../utils/loadMakeupCatalog'
 import type { MakeupEntry } from '../utils/makeupCatalog'
-import { matchesWardrobeSource, wardrobeSourceOptions } from '../utils/wardrobe/wardrobeFilters'
+import { wardrobeSourceLabel } from '../utils/wardrobe/wardrobeFilters'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 import { computed, ref, shallowRef, toRef, watch } from 'vue'
 import {
@@ -149,14 +149,7 @@ const detailStyle = computed(() =>
   detail.value?.style ? wardrobeStyleLabels[detail.value.style][props.language] : ''
 )
 const detailSourceVersion = computed(() => detail.value?.version ?? '')
-const detailSource = computed(() =>
-  detail.value
-    ? wardrobeSourceOptions(detail.value.kind, props.language)
-        .filter((option) => matchesWardrobeSource(detail.value!, option.value))
-        .map((option) => option.label)
-        .join(' · ')
-    : ''
-)
+const detailSource = computed(() => wardrobeSourceLabel(detail.value, props.language))
 const detailProgress = computed(() =>
   detail.value
     ? getOwnershipSummary(detail.value, snapshot.value)
