@@ -51,10 +51,7 @@ provide(archiveCloudKey, archiveCloud)
 import { useDirectoryBackupLifecycle } from './composables/useDirectoryBackup'
 useDirectoryBackupLifecycle()
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
-import {
-  clearAllBrowserData,
-  subscribeDatabaseVersionMismatch
-} from './utils/file-system/database'
+import { clearAllBrowserData, subscribeDatabaseVersionMismatch } from './utils/file-system/database'
 import {
   pendingEnabledBackups,
   flushBackupsBeforeReset,
@@ -104,7 +101,10 @@ const isAvatarSimulatorVisible = ref(false)
 const AvatarSimulatorDialog = lazyFeature(
   () => import('./components/AvatarSimulatorDialog.vue'),
   () => language.value,
-  { active: () => isAvatarSimulatorVisible.value, cancel: () => (isAvatarSimulatorVisible.value = false) }
+  {
+    active: () => isAvatarSimulatorVisible.value,
+    cancel: () => (isAvatarSimulatorVisible.value = false)
+  }
 )
 import FortuneTimeDialog from './components/FortuneTimeDialog.vue'
 import OutfitSidebar, { type OutfitFilter } from './components/OutfitSidebar.vue'
@@ -157,7 +157,7 @@ import {
   supportsDirectoryAuthorization
 } from './utils/file-system/directoryAccess'
 import {
-  clearSavedPhotoActionCache,
+  clearSavedParseCaches,
   getSavedCameraParamUids,
   getSavedX6GameDirectoryHandle
 } from './utils/file-system/directoryStorage'
@@ -191,10 +191,6 @@ import { usePhotoParams } from './composables/usePhotoParams'
 import { usePhotoActionParsing } from './composables/usePhotoActionParsing'
 import { usePhotoTransfer } from './composables/usePhotoTransfer'
 
-import {
-  clearSavedHomeSchemeParseResults,
-  clearSavedOutfitParseResults
-} from './utils/file-system/directoryStorage'
 import { countHomeSchemes } from './utils/homeBuild/homeSchemeStorage'
 
 import type { ResonanceRecord } from './utils/resonance/resonanceTypes'
@@ -1313,11 +1309,7 @@ async function clearCache() {
   try {
     photoActionParsing.reset()
     await invalidateCacheWrites()
-    await Promise.all([
-      clearSavedOutfitParseResults(),
-      clearSavedHomeSchemeParseResults(),
-      clearSavedPhotoActionCache()
-    ])
+    await clearSavedParseCaches()
     statusState.value = {
       type: 'custom',
       message: locale.value.app.clearCacheStatus,

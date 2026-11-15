@@ -1,3 +1,4 @@
+import { assertBackupKind } from '../../src/utils/backup/backupDetector'
 // @vitest-environment node
 import 'fake-indexeddb/auto'
 import { CAMERA_BACKUP_LIMITS } from '../../src/utils/backup/zipBackup'
@@ -466,4 +467,14 @@ it('reads metadata alone for the list and retrieves one cover on demand', async 
   expect((await readCameraFavoriteCover('one')).size).toBe(blob.size)
   expect((await readCameraFavorites()).covers.get('one')?.size).toBe(blob.size)
   reads.mockRestore()
+})
+
+// 使用真实导出器与两个导入阶段，防止类型识别限制小于合法分包清单。
+it('restores its own camera export when the manifest exceeds four MiB', async () => {
+  const records = Array.from({ length: 50 }, (_, index) =>
+    record(`large-${index}`, 'A'.repeat(45000) + index)
+  )
+  const blob = await exportCameraBackup({ records, covers: new Map(), tags: ['人像'] })
+  await expect(assertBackupKind(new File([blob], 'camera.zip'), 'camera')).resolves.toBeUndefined()
+  expect((await readCameraBackup(blob)).records).toEqual(records)
 })

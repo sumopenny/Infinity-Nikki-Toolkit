@@ -1,3 +1,7 @@
+import { computed, ref } from 'vue'
+import { useAlbumViewModel } from '../../src/composables/useAlbumViewModel'
+import { messages } from '../../src/i18n'
+import { resourceName } from '../../src/utils/photo-params/resourceManifest'
 import { describe, expect, it } from 'vitest'
 import {
   groupDatesByYear,
@@ -64,4 +68,44 @@ describe('groupPhotosByAction', () => {
       '未解析'
     ])
   })
+})
+
+it('sorts action groups by the displayed language even when names were cached in Chinese', () => {
+  const language = ref<'zh' | 'en'>('zh')
+  const ids = ['1340020002', '1340020003', '1340020004', '1340020005', '1340020008', '1340020009']
+  const photos = ids.map((id, timestamp) => ({ id, name: id, timestamp, note: '' }) as PhotoItem)
+  const actionInfo = new Map<string, PhotoActionInfo>(
+    ids.map((id) => [
+      id,
+      {
+        status: 'action',
+        actionId: id,
+        actionName: resourceName('pose', id, 'zh')
+      }
+    ])
+  )
+  const model = useAlbumViewModel({
+    photos: ref(photos),
+    outfits: ref([]),
+    recentlyDeleted: ref([]),
+    favoriteIds: ref(new Set()),
+    activeView: ref('all'),
+    activeOutfitFilter: ref('all'),
+    searchQuery: ref(''),
+    currentPreview: ref(null),
+    thumbnailMode: ref('default'),
+    outfitThumbnailMode: ref('default'),
+    homeThumbnailMode: ref('default'),
+    directoryState: ref({ type: 'none' }),
+    language,
+    locale: computed(() => messages[language.value]),
+    actionInfo: ref(actionInfo),
+    actionSort: ref('name')
+  })
+  for (const current of ['zh', 'en', 'zh'] as const) {
+    language.value = current
+    expect(model.actionGroups.value.map((group) => group.actionName)).toEqual(
+      ids.map((id) => resourceName('pose', id, current)).sort((a, b) => a.localeCompare(b))
+    )
+  }
 })

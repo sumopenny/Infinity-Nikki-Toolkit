@@ -209,15 +209,27 @@ export async function saveHomeScheme(input: SaveHomeSchemeInput): Promise<HomeSc
   return displayHomeScheme(saved.record)
 }
 
-export async function deleteHomeScheme(
+/** 记录、图片和删除凭证在同一事务中提交；失败时整批回滚。 */
+export async function deleteHomeSchemes(
+  items: ReadonlyArray<Pick<HomeSchemeItem, 'id'>>,
+  confirmed = false
+): Promise<void> {
+  const ids = new Set(items.map((item) => item.id))
+  if (!ids.size) return
+  await homeTransaction([HOME_SCHEMES_STORE, HOME_IMAGES_STORE], 'readwrite', async (tx) => {
+    if (confirmed) markConfirmedDeletion(tx, 'home')
+    for (const id of ids) {
+      tx.objectStore(HOME_SCHEMES_STORE).delete(id)
+      tx.objectStore(HOME_IMAGES_STORE).delete(id)
+    }
+  })
+}
+
+export function deleteHomeScheme(
   item: Pick<HomeSchemeItem, 'id'>,
   confirmed = false
 ): Promise<void> {
-  await homeTransaction([HOME_SCHEMES_STORE, HOME_IMAGES_STORE], 'readwrite', async (tx) => {
-    if (confirmed) markConfirmedDeletion(tx, 'home')
-    tx.objectStore(HOME_SCHEMES_STORE).delete(item.id)
-    tx.objectStore(HOME_IMAGES_STORE).delete(item.id)
-  })
+  return deleteHomeSchemes([item], confirmed)
 }
 
 export async function saveHomeSchemeTags(values: string[]): Promise<string[]> {

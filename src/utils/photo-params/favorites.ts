@@ -268,16 +268,22 @@ export function planCameraImport(local: FavoriteLibrary, incoming: FavoriteLibra
   let skipped = 0
   const seen = new Set<string>()
   const accepted: CameraFavorite[] = []
+  const localById = new Map<string, CameraFavorite>()
+  const localIdsByCode = new Map<string, Set<string>>()
+  for (const record of local.records) {
+    if (!localById.has(record.id)) localById.set(record.id, record)
+    const ids = localIdsByCode.get(record.code) ?? new Set<string>()
+    ids.add(record.id)
+    localIdsByCode.set(record.code, ids)
+  }
   for (const record of incoming.records) {
-    if (
-      seen.has(record.code) ||
-      local.records.some((r) => r.code === record.code && r.id !== record.id)
-    ) {
+    const localIds = localIdsByCode.get(record.code)
+    if (seen.has(record.code) || (localIds && (localIds.size > 1 || !localIds.has(record.id)))) {
       skipped++
       continue
     }
     seen.add(record.code)
-    const old = local.records.find((r) => r.id === record.id)
+    const old = localById.get(record.id)
     if (old && JSON.stringify(old) === JSON.stringify(record)) {
       skipped++
       continue
@@ -297,6 +303,7 @@ export async function applyCameraImport(
   plan: ImportPlan,
   choices: Record<string, 'local' | 'incoming'>
 ): Promise<number> {
+  const conflictIds = new Set(plan.conflicts.map((record) => record.id))
   return transact('readwrite', (records, covers, done, tags) => {
     const request = records.getAll()
     const order = tags.get('order')
@@ -314,8 +321,7 @@ export async function applyCameraImport(
       }
       let count = 0
       for (const record of plan.incoming.records) {
-        if (plan.conflicts.some((r) => r.id === record.id) && choices[record.id] !== 'incoming')
-          continue
+        if (conflictIds.has(record.id) && choices[record.id] !== 'incoming') continue
         records.put(record)
         const cover = plan.incoming.covers.get(record.id)
         if (cover) covers.put(cover, record.id)

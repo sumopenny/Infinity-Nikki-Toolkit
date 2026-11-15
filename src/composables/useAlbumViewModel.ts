@@ -102,13 +102,12 @@ export function useAlbumViewModel(options: {
   )
   const yearGroups = computed(() => groupDatesByYear(formattedDateGroups.value))
   const actionGroups = computed<ActionGroup[]>(() =>
-    groupPhotosByAction(visiblePhotos.value, actionInfo.value, actionSort.value, {
-      none: locale.value.sidebar.noAction,
-      unparsed: locale.value.sidebar.unparsed
-    }).map((group) =>
-      group.actionId
-        ? { ...group, actionName: resourceName('pose', group.actionId, language.value) }
-        : group
+    groupPhotosByAction(
+      visiblePhotos.value,
+      actionInfo.value,
+      actionSort.value,
+      { none: locale.value.sidebar.noAction, unparsed: locale.value.sidebar.unparsed },
+      (id) => resourceName('pose', id, language.value)
     )
   )
   const visibleCount = computed(() => visiblePhotos.value.length)

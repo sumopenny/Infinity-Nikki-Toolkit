@@ -181,7 +181,12 @@ describe('mobile navigation and collection controls', () => {
     await flushPromises()
     expect(
       wrapper.findAll('.mobile-header-row button').map((button) => button.attributes('aria-label'))
-    ).toEqual(['搜索当前页面', messages.zh.topBar.viewMenuAria, messages.zh.topBar.moreMenuAria])
+    ).toEqual([
+      '搜索当前页面',
+      messages.zh.topBar.viewMenuAria,
+      messages.zh.topBar.toolsMenuAria,
+      messages.zh.topBar.moreMenuAria
+    ])
     expect(wrapper.get('.mobile-header-row button').find('svg.lucide-search').exists()).toBe(true)
     const sheet = document.querySelector('.mobile-menu-sheet')!
     expect(sheet).not.toBeNull()
@@ -243,14 +248,19 @@ describe('mobile navigation and collection controls', () => {
         .get(compact ? '.mobile-header-row button[aria-label="打开视图菜单"]' : '.view-menu-button')
         .trigger('click')
       await flushPromises()
-      let options = [...document.querySelectorAll<HTMLButtonElement>('.thumbnail-options button')]
-      expect(options).toHaveLength(0)
-      expect(options.every((button) => button.disabled)).toBe(true)
-      expect(
-        [...document.querySelectorAll<HTMLButtonElement>('.thumbnail-size-options button')].every(
-          (button) => button.disabled
+      let options = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          '.thumbnail-options:not(.mobile-nav-style-options) button'
         )
-      ).toBe(true)
+      ]
+      expect(options).toHaveLength(0)
+      const disabledSizes = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          '.thumbnail-size-options:not(.surface-style-options) button'
+        )
+      ]
+      expect(disabledSizes).toHaveLength(3)
+      expect(disabledSizes.every((button) => button.disabled)).toBe(true)
       expect(wrapper.emitted('changeThumbnailMode')).toBeUndefined()
       expect(
         [...document.querySelectorAll<HTMLButtonElement>('.view-toggle-option')].every(
@@ -258,13 +268,19 @@ describe('mobile navigation and collection controls', () => {
         )
       ).toBe(true)
       await wrapper.setProps({ thumbnailModeDisabled: false, thumbnailSizeDisabled: false })
-      options = [...document.querySelectorAll<HTMLButtonElement>('.thumbnail-options button')]
+      options = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          '.thumbnail-options:not(.mobile-nav-style-options) button'
+        )
+      ]
       expect(options).toHaveLength(3)
       expect(options[0]!.disabled).toBe(false)
       expect(options[1]!.disabled).toBe(false)
       expect(options[2]!.disabled).toBe(false)
       const sizes = [
-        ...document.querySelectorAll<HTMLButtonElement>('.thumbnail-size-options button')
+        ...document.querySelectorAll<HTMLButtonElement>(
+          '.thumbnail-size-options:not(.surface-style-options) button'
+        )
       ]
       expect(sizes.map((button) => button.textContent?.trim())).toEqual(['小', '中', '大'])
       expect(sizes.every((button) => !button.disabled)).toBe(true)

@@ -1,5 +1,6 @@
 export { hasAllBackupData } from './backupAvailability'
 import { backupBaseName } from './backupName'
+import { ALL_DATA_BACKUP_LIMITS } from './backupLimits'
 import {
   createWardrobeBackup,
   loadWardrobe,
@@ -38,8 +39,7 @@ import type { ResonanceRecord } from '../resonance/resonanceTypes'
 import { releasePhotoUrls } from '../file-system/photoUrl'
 
 const FORMAT = 'infinity-nikki-all-data-backup'
-const MAX_BYTES = 2 * 1024 ** 3
-const MAX_MANIFEST = 4 * 1024 ** 2
+const { bytes: MAX_BYTES, manifest: MAX_MANIFEST } = ALL_DATA_BACKUP_LIMITS
 const MODULES = ['outfits', 'home', 'camera', 'resonance', 'wardrobe'] as const
 export type BackupModule = (typeof MODULES)[number]
 interface BundleEntry {
@@ -120,7 +120,7 @@ export async function exportAllDataBackup(
   const blob = await backupPartBlob(
     { manifest: strToU8(JSON.stringify(manifest)), files, count: entries.length },
     'backup.json',
-    { bytes: MAX_BYTES, entries: 10000, records: 10000, manifest: MAX_MANIFEST, image: 1024 ** 3 }
+    ALL_DATA_BACKUP_LIMITS
   )
   const name = backupBaseName('全部数据') + '.zip'
   await download(name, blob)
@@ -150,14 +150,19 @@ async function readBundle(file: File): Promise<Map<string, Blob>> {
       {
         filter: (entry) => {
           const directory = /^(outfits|home|camera|resonance|wardrobe)\/$/.test(entry.name)
-          const allowedFile = /^(backup\.json|(outfits|home|camera)\/[1-9]\d*\.zip|(resonance|wardrobe)\/1\.json)$/.test(
-            entry.name
-          )
+          const allowedFile =
+            /^(backup\.json|(outfits|home|camera)\/[1-9]\d*\.zip|(resonance|wardrobe)\/1\.json)$/.test(
+              entry.name
+            )
           const limit = entry.name === 'backup.json' ? MAX_MANIFEST : 1024 ** 3
-          if (isUnsafeBackupPath(entry.name)) failure ??= backupEntryError('unsafe_path', entry.name, 'all')
-          else if (names.has(entry.name)) failure ??= backupEntryError('duplicate_entry', entry.name, 'all')
-          else if (names.size >= 10000) failure ??= new BackupInputError('too_many_entries')
-          else if (!directory && !allowedFile) failure ??= backupEntryError('unsupported_entry', entry.name, 'all')
+          if (isUnsafeBackupPath(entry.name))
+            failure ??= backupEntryError('unsafe_path', entry.name, 'all')
+          else if (names.has(entry.name))
+            failure ??= backupEntryError('duplicate_entry', entry.name, 'all')
+          else if (names.size >= ALL_DATA_BACKUP_LIMITS.entries)
+            failure ??= new BackupInputError('too_many_entries')
+          else if (!directory && !allowedFile)
+            failure ??= backupEntryError('unsupported_entry', entry.name, 'all')
           names.add(entry.name)
           if (
             !Number.isSafeInteger(entry.originalSize) ||
@@ -182,8 +187,7 @@ async function readBundle(file: File): Promise<Map<string, Blob>> {
     )
   })
   if (failure) throw failure
-  if (Object.keys(entries).length !== fileNames.size)
-    throw new BackupInputError('incomplete')
+  if (Object.keys(entries).length !== fileNames.size) throw new BackupInputError('incomplete')
   const files = new Map<string, Blob>()
   let actualSize = 0
   for (const [name, bytes] of Object.entries(entries)) {

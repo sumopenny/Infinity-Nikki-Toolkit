@@ -1,3 +1,5 @@
+import { ensureReadWritePermission, getSupportedDirectoryPicker } from './directoryPermission'
+export { supportsDirectoryAuthorization } from './directoryPermission'
 // 目录访问：负责浏览器目录选择、读写权限、X6Game 授权复用和账号路径验证。
 import {
   clearSavedX6GameDirectoryHandle,
@@ -14,29 +16,6 @@ export interface X6GameDirectoryOptions {
   allowUnrelatedAlbum?: boolean
   /** 强制打开目录选择器，不复用已保存的授权句柄。 */ forcePick?: boolean
 }
-function isMobileDevice(): boolean {
-  const isMobileUserAgent = /android|iphone|ipod|ipad/i.test(navigator.userAgent)
-  const isTouchCapableMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
-  return isMobileUserAgent || isTouchCapableMac
-}
-
-/** 自动授权前检查能力，不弹出错误提示。 */
-export function supportsDirectoryAuthorization(): boolean {
-  return !isMobileDevice() && typeof window.showDirectoryPicker === 'function'
-}
-
-function getSupportedDirectoryPicker(
-  messages: FileSystemMessages
-): NonNullable<typeof window.showDirectoryPicker> {
-  if (isMobileDevice()) {
-    throw new Error(messages.mobileBrowserUnsupported)
-  }
-  if (!window.showDirectoryPicker) {
-    throw new Error(messages.unsupportedBrowser)
-  }
-  return window.showDirectoryPicker
-}
-
 function isMissingDirectoryError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'NotFoundError'
 }
@@ -50,21 +29,6 @@ async function getRequiredNestedDirectory(
     current = await current.getDirectoryHandle(segment)
   }
   return current
-}
-
-async function ensureReadWritePermission(
-  handle: FileSystemDirectoryHandle,
-  requestPermission: boolean
-): Promise<boolean> {
-  const options = { mode: 'readwrite' as const }
-  if (handle.queryPermission) {
-    const current = await handle.queryPermission(options)
-    if (current === 'granted') return true
-    if (!requestPermission) return false
-  }
-  if (!requestPermission && handle.requestPermission) return false
-  if (!handle.requestPermission) return true
-  return (await handle.requestPermission(options)) === 'granted'
 }
 
 export async function isSameOrNestedDirectory(

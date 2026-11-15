@@ -1,3 +1,4 @@
+import { ensureReadWritePermission, getSupportedDirectoryPicker } from './directoryPermission'
 import { PHOTO_IMAGE_EXTENSIONS as IMAGE_EXTENSIONS } from './imageFormats'
 // 相册文件系统：负责相册目录读取、照片扫描和增量刷新。
 import {
@@ -7,7 +8,13 @@ import {
   type RecentlyDeletedPhoto
 } from '../photoGrouping'
 import type { LocaleMessages } from '../../i18n'
-import { readAlbumMetadata, savePhotoNote, inspectAlbumNotes, type AlbumNoteSnapshot, type AlbumMetadata } from './photoMetadata'
+import {
+  readAlbumMetadata,
+  savePhotoNote,
+  inspectAlbumNotes,
+  type AlbumNoteSnapshot,
+  type AlbumMetadata
+} from './photoMetadata'
 import { PHOTO_NOTE_LIMIT, normalizePhotoNote } from './photoMetadata'
 import { ensurePhotoUrl, resetPhotoUrl, releasePhotoUrl, releasePhotoUrls } from './photoUrl'
 import {
@@ -18,7 +25,6 @@ import {
 import { listRecentlyDeleted } from './trashFileSystem'
 import { runWithConcurrency } from '../concurrency'
 import { createDirectoryError, normalizeDirectoryError } from './directoryErrors'
-
 
 const SCAN_CONCURRENCY = 6
 
@@ -33,21 +39,6 @@ export { PHOTO_NOTE_LIMIT, normalizePhotoNote, readAlbumMetadata, savePhotoNote 
 export type { AlbumMetadata }
 
 type FileSystemMessages = LocaleMessages['fileSystem']
-
-function isMobileDevice(): boolean {
-  return (
-    /android|iphone|ipod|ipad/i.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  )
-}
-
-function getSupportedDirectoryPicker(
-  messages: FileSystemMessages
-): NonNullable<typeof window.showDirectoryPicker> {
-  if (isMobileDevice()) throw new Error(messages.mobileBrowserUnsupported)
-  if (!window.showDirectoryPicker) throw new Error(messages.unsupportedBrowser)
-  return window.showDirectoryPicker
-}
 
 export interface RefreshAlbumPhotosResult extends AlbumDirectoryResult {
   addedCount: number
@@ -67,22 +58,6 @@ function isImageFile(fileName: string): boolean {
 
 import { formatFileSize } from './photoUrl'
 export { formatFileSize, ensurePhotoUrl, resetPhotoUrl, releasePhotoUrl, releasePhotoUrls }
-
-async function ensureReadWritePermission(
-  directoryHandle: FileSystemDirectoryHandle,
-  requestPermission: boolean
-): Promise<boolean> {
-  const options = { mode: 'readwrite' as const }
-  if (directoryHandle.queryPermission) {
-    const current = await directoryHandle.queryPermission(options)
-    if (current === 'granted') return true
-    if (!requestPermission) return false
-  }
-
-  if (!requestPermission && directoryHandle.requestPermission) return false
-  if (!directoryHandle.requestPermission) return true
-  return (await directoryHandle.requestPermission(options)) === 'granted'
-}
 
 export { saveAlbumDirectoryHandle, getSavedAlbumDirectoryHandle, clearSavedAlbumDirectoryHandle }
 

@@ -13,16 +13,20 @@ it('shares original locale requests and preserves all item and makeup names', as
   const pending = loadItemCatalog()
   expect(loadItemCatalog()).toBe(pending)
   const catalog = await pending
+  const expectedIds = { item: new Set<number>(), makeup: new Set<number>() }
   for (const kind of ['item', 'makeup'] as const) {
     const zh = await loadCatalogNames(kind, 'zh')
     const en = await loadCatalogNames(kind, 'en')
     for (const [key, name] of Object.entries(zh)) {
       const id = Number(key.split('.')[1])
+      expectedIds[kind].add(id)
       expect(catalog.get(id)).toEqual({ id, zh: name, en: en[key], makeup: kind === 'makeup' })
     }
   }
-  expect([...catalog.values()].filter((entry) => entry.makeup)).toHaveLength(100)
-  expect([...catalog.values()].filter((entry) => !entry.makeup)).toHaveLength(9008)
+  expect([...catalog.values()].filter((entry) => entry.makeup)).toHaveLength(
+    expectedIds.makeup.size
+  )
+  expect([...catalog.values()].filter((entry) => !entry.makeup)).toHaveLength(expectedIds.item.size)
 })
 
 it('retries failures and preserves single-language fallback and makeup classification', async () => {

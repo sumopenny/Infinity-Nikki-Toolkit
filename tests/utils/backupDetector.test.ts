@@ -92,7 +92,10 @@ it('does not mistake normal nested module manifests for a repackaged full backup
 it('rejects duplicate ZIP entries with redacted diagnostics', async () => {
   const { Zip, ZipPassThrough } = await import('fflate')
   const chunks: Uint8Array[] = []
-  const archive = new Zip((error, chunk) => { if (error) throw error; chunks.push(chunk) })
+  const archive = new Zip((error, chunk) => {
+    if (error) throw error
+    chunks.push(chunk)
+  })
   for (let i = 0; i < 2; i++) {
     const entry = new ZipPassThrough('backup.json')
     archive.add(entry)
@@ -103,4 +106,14 @@ it('rejects duplicate ZIP entries with redacted diagnostics', async () => {
     reason: 'duplicate_entry',
     diagnostics: { entryPath: 'backup.json', entryType: 'file', rule: 'duplicate_entry' }
   })
+})
+
+it('accepts the maximum camera entry count exported with one cover per record', async () => {
+  const entries: Record<string, Uint8Array> = {
+    'favorites.json': manifest('nikki-camera-favorites', 2)
+  }
+  for (let id = 0; id < 10000; id++) entries[`covers/${id}`] = new Uint8Array()
+  await expect(detectBackupKind(zip(entries))).resolves.toEqual({ kind: 'camera', version: 2 })
+  entries['covers/extra'] = new Uint8Array()
+  await expect(detectBackupKind(zip(entries))).rejects.toMatchObject({ reason: 'too_many_entries' })
 })

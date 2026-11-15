@@ -1,5 +1,6 @@
 // 目录句柄存储：使用 IndexedDB 保存和读取相册及 X6Game 目录授权句柄。
-import { openDb, runStoreRequest } from './database'
+import { runStoreRequest } from './database'
+import { runDatabaseTransaction } from './transaction'
 const STORE_NAME = 'album-handles'
 const SAVED_DIRECTORY_KEY = 'current-album-directory'
 const SAVED_X6GAME_DIRECTORY_KEY = 'current-x6game-directory'
@@ -93,42 +94,41 @@ function photoActionCacheKey(albumKey: string, photoKey: string): string {
   return `${PHOTO_ACTION_CACHE_KEY_PREFIX}${encodeURIComponent(albumKey)}:${encodeURIComponent(photoKey)}`
 }
 
+/** 一批缓存共用事务，批次失败整体回滚；不会改动授权或业务存档。 */
+export async function savePhotoActionCaches(
+  albumKey: string,
+  entries: ReadonlyArray<readonly [photoKey: string, entry: PhotoActionCacheEntry]>
+): Promise<void> {
+  if (!entries.length) return
+  await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_NAME)
+    for (const [photoKey, entry] of entries)
+      store.put(entry, photoActionCacheKey(albumKey, photoKey))
+  })
+}
+
 export async function savePhotoActionCache(
   albumKey: string,
   photoKey: string,
   entry: PhotoActionCacheEntry
 ): Promise<void> {
-  await transaction('readwrite', (store) =>
-    store.put(entry, photoActionCacheKey(albumKey, photoKey))
-  )
+  await savePhotoActionCaches(albumKey, [[photoKey, entry]])
 }
 
-export async function clearSavedPhotoActionCache(): Promise<void> {
-  const db = await openDb()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite')
+/** 按前缀范围删除，不枚举整张授权与缓存表。 */
+async function clearCachePrefixes(prefixes: readonly string[]): Promise<void> {
+  await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
     const store = tx.objectStore(STORE_NAME)
-    const request = store.getAllKeys()
-    request.onsuccess = () => {
-      for (const key of request.result) {
-        if (typeof key === 'string' && key.startsWith(PHOTO_ACTION_CACHE_KEY_PREFIX))
-          store.delete(key)
-      }
-    }
-    request.onerror = () => reject(request.error)
-    tx.oncomplete = () => {
-      db.close()
-      resolve()
-    }
-    tx.onerror = () => {
-      db.close()
-      reject(tx.error)
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(tx.error)
-    }
+    for (const prefix of prefixes) store.delete(IDBKeyRange.bound(prefix, prefix + '\uffff'))
   })
+}
+
+export function clearSavedParseCaches(): Promise<void> {
+  return clearCachePrefixes([
+    PHOTO_ACTION_CACHE_KEY_PREFIX,
+    OUTFIT_PARSE_CACHE_KEY_PREFIX,
+    HOME_SCHEME_PARSE_CACHE_KEY_PREFIX
+  ])
 }
 
 export async function saveOutfitParseResult(code: string, result: unknown): Promise<void> {
@@ -137,32 +137,8 @@ export async function saveOutfitParseResult(code: string, result: unknown): Prom
   )
 }
 
-export async function clearSavedOutfitParseResults(): Promise<void> {
-  const db = await openDb()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.getAllKeys()
-    request.onsuccess = () => {
-      for (const key of request.result) {
-        if (typeof key === 'string' && key.startsWith(OUTFIT_PARSE_CACHE_KEY_PREFIX))
-          store.delete(key)
-      }
-    }
-    request.onerror = () => reject(request.error)
-    tx.oncomplete = () => {
-      db.close()
-      resolve()
-    }
-    tx.onerror = () => {
-      db.close()
-      reject(tx.error)
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(tx.error)
-    }
-  })
+export function clearSavedOutfitParseResults(): Promise<void> {
+  return clearCachePrefixes([OUTFIT_PARSE_CACHE_KEY_PREFIX])
 }
 
 export async function getSavedHomeSchemeParseResult(code: string): Promise<unknown> {
@@ -178,32 +154,8 @@ export async function saveHomeSchemeParseResult(code: string, result: unknown): 
 }
 
 /** 仅删除家园方案解析缓存，不触碰相册授权句柄、搭配码缓存或方案文件。 */
-export async function clearSavedHomeSchemeParseResults(): Promise<void> {
-  const db = await openDb()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.getAllKeys()
-    request.onsuccess = () => {
-      for (const key of request.result) {
-        if (typeof key === 'string' && key.startsWith(HOME_SCHEME_PARSE_CACHE_KEY_PREFIX))
-          store.delete(key)
-      }
-    }
-    request.onerror = () => reject(request.error)
-    tx.oncomplete = () => {
-      db.close()
-      resolve()
-    }
-    tx.onerror = () => {
-      db.close()
-      reject(tx.error)
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(tx.error)
-    }
-  })
+export function clearSavedHomeSchemeParseResults(): Promise<void> {
+  return clearCachePrefixes([HOME_SCHEME_PARSE_CACHE_KEY_PREFIX])
 }
 
 /** One readonly transaction for an album instead of one connection per photo. */

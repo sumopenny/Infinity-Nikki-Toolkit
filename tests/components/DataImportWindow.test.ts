@@ -453,7 +453,7 @@ it('defaults to userscript on mobile each time the import window opens', async (
   wrapper = mount(DataImportWindow, { props: { visible: true }, attachTo: document.body })
   const scriptTab = () =>
     [...document.querySelectorAll<HTMLButtonElement>('.resonance-choice')].find((button) =>
-      button.textContent?.includes('脚本法（推荐）')
+      button.textContent?.includes('脚本法（安卓推荐）')
     )!
   expect(scriptTab().getAttribute('aria-pressed')).toBe('true')
   expect(document.querySelector('.resonance-via-script')!.textContent).toContain(

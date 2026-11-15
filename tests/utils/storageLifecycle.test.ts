@@ -10,9 +10,8 @@ import {
 import {
   getSavedPhotoActionCaches,
   savePhotoActionCache,
-  clearSavedHomeSchemeParseResults,
-  clearSavedOutfitParseResults,
-  clearSavedPhotoActionCache
+  savePhotoActionCaches,
+  clearSavedParseCaches
 } from '../../src/utils/file-system/directoryStorage'
 import {
   loadResonanceRecords,
@@ -72,11 +71,10 @@ it('cache clearing preserves UID, directory authorization, favorites and resonan
     await runStoreRequest('album-handles', 'readwrite', (store) => store.put(value, key))
   await saveResonanceRecords([])
   await runStoreRequest('camera-favorites', 'readwrite', (store) => store.put({ id: 'saved' }))
-  await Promise.all([
-    clearSavedHomeSchemeParseResults(),
-    clearSavedOutfitParseResults(),
-    clearSavedPhotoActionCache()
-  ])
+  const transactions = vi.spyOn(IDBDatabase.prototype, 'transaction')
+  await clearSavedParseCaches()
+  expect(transactions).toHaveBeenCalledTimes(1)
+  transactions.mockRestore()
   expect(await runStoreRequest('album-handles', 'readonly', (store) => store.getAllKeys())).toEqual(
     ['current-album-directory', 'current-camera-param-uids']
   )
@@ -92,8 +90,10 @@ it('loads one album cache in a single transaction with encoded names', async () 
     status: 'none' as const,
     parsedAt: 1
   }
-  await savePhotoActionCache('album:中文', 'a:b.jpg', entry)
-  await savePhotoActionCache('album:中文', 'c.jpg', entry)
+  await savePhotoActionCaches('album:中文', [
+    ['a:b.jpg', entry],
+    ['c.jpg', entry]
+  ])
   await savePhotoActionCache('another', 'a:b.jpg', entry)
   const result = await getSavedPhotoActionCaches('album:中文')
   expect([...result.keys()]).toEqual(['a:b.jpg', 'c.jpg'])

@@ -9,6 +9,7 @@ import type { PhotoActionInfo, PhotoItem } from '../utils/photoGrouping'
 import {
   getSavedPhotoActionCaches,
   savePhotoActionCache,
+  savePhotoActionCaches,
   type PhotoActionCacheEntry
 } from '../utils/file-system/directoryStorage'
 import {
@@ -209,20 +210,30 @@ export function usePhotoActionParsing(options: {
         }
         actionInfo.value = updated
         // Missing UID is a stable result until credentials change or the user retries.
-        for (const photo of pending) {
-          const fingerprint = photoActionFingerprint(albumKey, photo)
-          void persistCacheIfCurrent(generation, () =>
-            savePhotoActionCache(albumKey, photo.name, {
-              fingerprint,
-              parserVersion: PHOTO_ACTION_PARSER_VERSION,
-              catalogVersion: PHOTO_ACTION_CATALOG_VERSION,
-              status: 'unparsed',
-              errorCode: 'uid_missing',
-              uidSignature: uidSignature([]),
-              parsedAt: Date.now()
-            })
+        // 串行提交小批次，取消或清缓存后不再分派，避免为每张照片同时打开数据库。
+        const batchSize = 128
+        for (let offset = 0; offset < pending.length; offset += batchSize) {
+          if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
+          const entries = pending.slice(offset, offset + batchSize).map(
+            (photo) =>
+              [
+                photo.name,
+                {
+                  fingerprint: photoActionFingerprint(albumKey, photo),
+                  parserVersion: PHOTO_ACTION_PARSER_VERSION,
+                  catalogVersion: PHOTO_ACTION_CATALOG_VERSION,
+                  status: 'unparsed',
+                  errorCode: 'uid_missing',
+                  uidSignature: uidSignature([]),
+                  parsedAt: Date.now()
+                }
+              ] as const
+          )
+          await persistCacheIfCurrent(generation, () =>
+            savePhotoActionCaches(albumKey, entries)
           ).catch(() => undefined)
         }
+        if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
         progress.value = {
           running: false,
           completed: photos.length,

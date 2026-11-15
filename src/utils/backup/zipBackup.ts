@@ -1,34 +1,13 @@
 import { strToU8, Zip, ZipDeflate, ZipPassThrough } from 'fflate'
 import { retainDownload, requestBlobDownload } from './downloadFallback'
 
-export interface BackupLimits {
-  bytes: number
-  entries: number
-  records: number
-  manifest: number
-  image: number
-}
-export const HOME_BACKUP_LIMITS: BackupLimits = {
-  bytes: 128 * 1024 ** 2,
-  entries: 500,
-  records: 10000,
-  manifest: 4 * 1024 ** 2,
-  image: 64 * 1024 ** 2
-}
-export const OUTFIT_BACKUP_LIMITS: BackupLimits = {
-  bytes: 512 * 1024 ** 2,
-  entries: 2000,
-  records: 10000,
-  manifest: 4 * 1024 ** 2,
-  image: 64 * 1024 ** 2
-}
-export const CAMERA_BACKUP_LIMITS: BackupLimits = {
-  bytes: 1024 ** 3,
-  entries: 10001,
-  records: 10000,
-  manifest: 20 * 1024 ** 2,
-  image: 1024 ** 3
-}
+import type { BackupLimits } from './backupLimits'
+export {
+  HOME_BACKUP_LIMITS,
+  OUTFIT_BACKUP_LIMITS,
+  CAMERA_BACKUP_LIMITS,
+  type BackupLimits
+} from './backupLimits'
 export interface BackupFile {
   name: string
   blob: Blob

@@ -1,3 +1,4 @@
+import { updateConfig, dirtyChanges } from '../../src/utils/directory-backup/repository'
 // @vitest-environment node
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -12,6 +13,7 @@ import {
 import {
   addHomeSchemeTag,
   deleteHomeScheme,
+  deleteHomeSchemes,
   deleteHomeSchemeTag,
   homeTransaction,
   readHomeSchemeSnapshot,
@@ -173,4 +175,49 @@ it('merges concurrent tag additions and keeps unused tags', async () => {
   )
   await addHomeSchemeTag('页面A')
   expect((await readHomeSchemeSnapshot()).tags).toHaveLength(3)
+})
+
+it('deletes a selected batch and its images in one transaction with confirmed backup intent', async () => {
+  await updateConfig((current) => {
+    current.enabled.home = true
+  })
+  const first = await saveHomeScheme({ ...input('FIRST'), tags: [], imageFile: image() })
+  const second = await saveHomeScheme({ ...input('SECOND'), tags: [], imageFile: image() })
+  const keep = await saveHomeScheme({ ...input('KEEP'), tags: [], imageFile: image() })
+  const transactions = vi.spyOn(IDBDatabase.prototype, 'transaction')
+  await deleteHomeSchemes([first, second, first], true)
+  expect(transactions).toHaveBeenCalledTimes(1)
+  transactions.mockRestore()
+  const remaining = await readHomeSchemeSnapshot()
+  expect(remaining.records.map((record) => record.id)).toEqual([keep.id])
+  expect([...remaining.images.keys()]).toEqual([keep.id])
+  const changes = await dirtyChanges('home')
+  for (const item of [first, second])
+    expect(
+      changes.find((change) => change.key[1] === 'record' && change.key[2] === item.id)?.intent
+    ).toBe('confirmed-delete')
+})
+
+it('rolls the whole home deletion batch back if a later record cannot be deleted', async () => {
+  const first = await saveHomeScheme({ ...input('FIRST'), tags: [], imageFile: image() })
+  const second = await saveHomeScheme({ ...input('SECOND'), tags: [], imageFile: image() })
+  const original = IDBObjectStore.prototype.delete
+  const deletion = vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
+    this: IDBObjectStore,
+    key
+  ) {
+    if (this.name === HOME_SCHEMES_STORE && key === second.id)
+      throw new Error('batch deletion failed')
+    return original.call(this, key)
+  })
+  try {
+    await expect(deleteHomeSchemes([first, second], true)).rejects.toThrow('batch deletion failed')
+  } finally {
+    deletion.mockRestore()
+  }
+  const remaining = await readHomeSchemeSnapshot()
+  expect(new Set(remaining.records.map((record) => record.id))).toEqual(
+    new Set([first.id, second.id])
+  )
+  expect(new Set(remaining.images.keys())).toEqual(new Set([first.id, second.id]))
 })

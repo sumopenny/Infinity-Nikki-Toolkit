@@ -210,7 +210,8 @@ export function groupPhotosByAction(
   photos: PhotoItem[],
   actionInfo: ReadonlyMap<string, PhotoActionInfo>,
   sort: ActionSort,
-  labels: { none: string; unparsed: string }
+  labels: { none: string; unparsed: string },
+  actionNameForId?: (id: string) => string
 ): ActionGroup[] {
   const groups = new Map<string, ActionGroup>()
   for (const photo of photos) {
@@ -229,7 +230,10 @@ export function groupPhotosByAction(
       actionId: status === 'action' ? info?.actionId : undefined,
       actionName:
         status === 'action'
-          ? (info?.actionName ?? info?.actionId ?? labels.unparsed)
+          ? ((info?.actionId && actionNameForId?.(info.actionId)) ??
+            info?.actionName ??
+            info?.actionId ??
+            labels.unparsed)
           : isNone
             ? labels.none
             : labels.unparsed,

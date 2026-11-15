@@ -130,8 +130,8 @@ afterEach(async () => {
 })
 
 it.each([false, true])(
-  'keeps the library consistent after cancellation or partial deletion failure (%s)',
-  async (partialFailure) => {
+  'keeps every confirmed record after cancellation or atomic deletion failure (%s)',
+  async (failure) => {
     for (const name of ['Alpha', 'Beta']) {
       await saveHomeScheme({
         code: name.toUpperCase(),
@@ -142,14 +142,10 @@ it.each([false, true])(
         metadata: createEmptyHomeSchemeMetadata()
       })
     }
-    const originalDelete = homeStorage.deleteHomeScheme
-    const deletion = vi.spyOn(homeStorage, 'deleteHomeScheme')
-    if (partialFailure)
-      deletion
-        .mockImplementationOnce(originalDelete)
-        .mockRejectedValueOnce(new Error('delete failed'))
+    const deletion = vi.spyOn(homeStorage, 'deleteHomeSchemes')
+    if (failure) deletion.mockRejectedValueOnce(new Error('delete failed'))
     const wrapper = mount(HomeSchemeWorkspace, {
-      props: { ...props, confirmAction: async () => partialFailure },
+      props: { ...props, confirmAction: async () => failure },
       attachTo: document.body
     })
     try {
@@ -158,11 +154,12 @@ it.each([false, true])(
         await card.get('.selected-badge').trigger('click')
       wrapper.findComponent(SelectionBar).vm.$emit('delete')
       await flushPromises()
-      const count = partialFailure ? 1 : 2
+      const count = 2
       await vi.waitFor(() => expect(wrapper.findAll('.home-scheme-card')).toHaveLength(count))
       expect((await readHomeSchemeSnapshot()).records).toHaveLength(count)
       expect(wrapper.findComponent(SelectionBar).props('selectedCount')).toBe(count)
-      expect(deletion).toHaveBeenCalledTimes(partialFailure ? 2 : 0)
+      expect(deletion).toHaveBeenCalledTimes(failure ? 1 : 0)
+      if (failure) expect(wrapper.emitted('status')?.at(-1)?.[1]).toBe('error')
     } finally {
       wrapper.unmount()
     }
@@ -346,7 +343,7 @@ it('does not release an in-flight deletion merely because the component unmounts
     metadata: createEmptyHomeSchemeMetadata()
   })
   let finish!: () => void
-  const deletion = vi.spyOn(homeStorage, 'deleteHomeScheme').mockImplementationOnce(
+  const deletion = vi.spyOn(homeStorage, 'deleteHomeSchemes').mockImplementationOnce(
     () =>
       new Promise<void>((resolve) => {
         finish = resolve

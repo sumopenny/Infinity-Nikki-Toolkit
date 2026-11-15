@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { assertBackupKind, backupInputMessage, isBackupInputError } from '../utils/backup/backupDetector'
+import {
+  assertBackupKind,
+  backupInputMessage,
+  isBackupInputError
+} from '../utils/backup/backupDetector'
 import { vSelectableCard } from '../utils/selectableCard'
 import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
@@ -34,6 +38,7 @@ import { copyTextToClipboard } from '../utils/clipboard'
 import { importHomeSchemeBackup, exportHomeSchemeBackup } from '../utils/homeBuild/homeSchemeBackup'
 import {
   deleteHomeScheme,
+  deleteHomeSchemes,
   deleteHomeSchemeTag,
   readHomeSchemeLibrary,
   readHomeSchemeImage,
@@ -644,7 +649,6 @@ async function deleteSelectedSchemes() {
     if (isBusy.value || !selectedSchemeCount.value) return
     const selected = [...selectedSchemes.value]
     busy.value = true
-    const deletedIds = new Set<string>()
     try {
       if (
         !(await props.confirmAction(
@@ -663,23 +667,18 @@ async function deleteSelectedSchemes() {
         ))
       )
         return
-      for (const item of selected) {
-        await deleteHomeScheme(item, true)
-        deletedIds.add(item.id)
-      }
+      await deleteHomeSchemes(selected, true)
+      const deletedIds = new Set(selected.map((item) => item.id))
+      schemes.value = schemes.value.filter((item) => !deletedIds.has(item.id))
+      selectedSchemeIds.value = new Set(
+        [...selectedSchemeIds.value].filter((id) => !deletedIds.has(id))
+      )
+      if (previewScheme.value && deletedIds.has(previewScheme.value.id)) closePreview()
+      emit('countChange', schemes.value.length)
       emit('status', props.messages.deleteSucceeded, 'success')
     } catch (error) {
       emit('status', operationError(error, 'deleteSelectedSchemes'), 'error')
     } finally {
-      // 部分删除失败时也同步已成功的记录，避免页面继续展示已不存在的数据。
-      if (deletedIds.size) {
-        schemes.value = schemes.value.filter((item) => !deletedIds.has(item.id))
-        selectedSchemeIds.value = new Set(
-          [...selectedSchemeIds.value].filter((id) => !deletedIds.has(id))
-        )
-        if (previewScheme.value && deletedIds.has(previewScheme.value.id)) closePreview()
-        emit('countChange', schemes.value.length)
-      }
       busy.value = false
     }
   })

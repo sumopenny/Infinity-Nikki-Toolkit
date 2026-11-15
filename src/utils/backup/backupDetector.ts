@@ -1,4 +1,10 @@
 import { inflateSync, strFromU8 } from 'fflate'
+import {
+  ALL_DATA_BACKUP_LIMITS,
+  CAMERA_BACKUP_LIMITS,
+  HOME_BACKUP_LIMITS,
+  OUTFIT_BACKUP_LIMITS
+} from './backupLimits'
 
 export type BackupKind = 'all' | 'outfits' | 'home' | 'camera'
 export type BackupInputReason =
@@ -85,23 +91,45 @@ export function isUnsafeBackupPath(name: string): boolean {
 }
 
 const definitions = {
-  all: { name: 'backup.json', format: 'infinity-nikki-all-data-backup', versions: [1, 2] },
+  all: {
+    name: 'backup.json',
+    format: 'infinity-nikki-all-data-backup',
+    versions: [1, 2],
+    limits: ALL_DATA_BACKUP_LIMITS
+  },
   outfits: {
     name: 'manifest.json',
     format: 'infinity-nikki-outfit-backup',
-    versions: [1, 2, 3, 4]
+    versions: [1, 2, 3, 4],
+    limits: OUTFIT_BACKUP_LIMITS
   },
-  home: { name: 'manifest.json', format: 'infinity-nikki-home-scheme-backup', versions: [1, 2] },
-  camera: { name: 'favorites.json', format: 'nikki-camera-favorites', versions: [2] }
+  home: {
+    name: 'manifest.json',
+    format: 'infinity-nikki-home-scheme-backup',
+    versions: [1, 2],
+    limits: HOME_BACKUP_LIMITS
+  },
+  camera: {
+    name: 'favorites.json',
+    format: 'nikki-camera-favorites',
+    versions: [2],
+    limits: CAMERA_BACKUP_LIMITS
+  }
 } as const
 
 const labels = {
   zh: { all: '全部数据', outfits: '搭配码', home: '家园方案', camera: '相机参数收藏' },
   en: { all: 'all-data', outfits: 'outfit', home: 'home-scheme', camera: 'camera-favorites' }
 }
-const manifestNames = new Set(['backup.json', 'manifest.json', 'favorites.json'])
-const MAX_FILE_BYTES = 2 * 1024 ** 3
-const MAX_MANIFEST_BYTES = 4 * 1024 ** 2
+const manifestNames = new Set<string>(Object.values(definitions).map(({ name }) => name))
+const manifestLimit = (name: string) =>
+  Math.max(
+    ...Object.values(definitions)
+      .filter((definition) => definition.name === name)
+      .map(({ limits }) => limits.manifest)
+  )
+const MAX_FILE_BYTES = Math.max(...Object.values(definitions).map(({ limits }) => limits.bytes))
+const MAX_ENTRIES = Math.max(...Object.values(definitions).map(({ limits }) => limits.entries))
 const MAX_DIRECTORY_BYTES = 16 * 1024 ** 2
 
 const read16 = (data: DataView, at: number) => data.getUint16(at, true)
@@ -143,7 +171,7 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
   const count = read16(tailView, endRecord + 10)
   const directorySize = read32(tailView, endRecord + 12)
   const directoryOffset = read32(tailView, endRecord + 16)
-  if (count > 10000) throw new BackupInputError('too_many_entries')
+  if (count > MAX_ENTRIES) throw new BackupInputError('too_many_entries')
   if (directorySize > MAX_DIRECTORY_BYTES) throw new BackupInputError('too_large')
   // Reject ZIP64 and invalid offsets rather than guessing positions.
   if (
@@ -194,8 +222,8 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
     if (
       flags & 1 ||
       ![0, 8].includes(method) ||
-      originalSize > MAX_MANIFEST_BYTES ||
-      compressedSize > MAX_MANIFEST_BYTES + 65536
+      originalSize > manifestLimit(name) ||
+      compressedSize > manifestLimit(name) + 65536
     )
       throw new BackupInputError('invalid_manifest')
     manifestEntries.push({ name, method, originalSize, compressedSize, localOffset })
@@ -229,7 +257,7 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
     let manifest: { format?: unknown; version?: unknown }
     try {
       const data = entry.method === 8 ? inflateSync(compressed) : compressed
-      if (data.length !== entry.originalSize || data.length > MAX_MANIFEST_BYTES)
+      if (data.length !== entry.originalSize || data.length > manifestLimit(entry.name))
         throw new Error('Manifest size mismatch')
       manifest = JSON.parse(strFromU8(data)) as { format?: unknown; version?: unknown }
     } catch {

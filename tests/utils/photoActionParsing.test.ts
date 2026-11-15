@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import { usePhotoActionParsing } from '../../src/composables/usePhotoActionParsing'
 import {
   getSavedPhotoActionCaches,
-  savePhotoActionCache
+  savePhotoActionCache,
+  savePhotoActionCaches
 } from '../../src/utils/file-system/directoryStorage'
 import {
   parsePhotoAction,
@@ -15,7 +16,8 @@ import type { PhotoItem } from '../../src/utils/photoGrouping'
 
 vi.mock('../../src/utils/file-system/directoryStorage', () => ({
   getSavedPhotoActionCaches: vi.fn(),
-  savePhotoActionCache: vi.fn().mockResolvedValue(undefined)
+  savePhotoActionCache: vi.fn().mockResolvedValue(undefined),
+  savePhotoActionCaches: vi.fn().mockResolvedValue(undefined)
 }))
 vi.mock('../../src/utils/photo-params/photoActionParser', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../src/utils/photo-params/photoActionParser')>()),
@@ -281,4 +283,55 @@ it('retries failed photos cached by the previous parser version', async () => {
   expect(parsePhotoAction).toHaveBeenCalledTimes(1)
   expect(parser.actionInfo.value.get(cached.id)?.status).toBe('none')
   expect(savePhotoActionCache).toHaveBeenCalled()
+})
+
+it('writes missing-UID results in serial batches rather than one transaction per photo', async () => {
+  vi.clearAllMocks()
+  vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map())
+  let active = 0,
+    maximum = 0
+  vi.mocked(savePhotoActionCaches).mockImplementation(async () => {
+    maximum = Math.max(maximum, ++active)
+    await Promise.resolve()
+    active--
+  })
+  const photos = Array.from({ length: 1000 }, (_, index) => photo(`${index}.jpg`))
+  const parser = usePhotoActionParsing({ language: ref('zh') })
+  await parser.start(photos, 'album', async () => [])
+  const calls = vi.mocked(savePhotoActionCaches).mock.calls
+  expect(calls.length).toBeGreaterThan(1)
+  expect(calls.length).toBeLessThan(photos.length)
+  expect(calls.flatMap(([, entries]) => entries.map(([name]) => name))).toEqual(
+    photos.map((p) => p.name)
+  )
+  expect(
+    calls.every(([, entries]) => entries.every(([, entry]) => entry.errorCode === 'uid_missing'))
+  ).toBe(true)
+  expect(maximum).toBe(1)
+  expect(savePhotoActionCache).not.toHaveBeenCalled()
+  expect(parser.progress.value).toMatchObject({ running: false, completed: 1000, failed: 1000 })
+})
+
+it('stops dispatching missing-UID cache batches after cancellation', async () => {
+  vi.clearAllMocks()
+  vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map())
+  let finish!: () => void
+  vi.mocked(savePhotoActionCaches).mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      })
+  )
+  const parser = usePhotoActionParsing({ language: ref('zh') })
+  const run = parser.start(
+    Array.from({ length: 1000 }, (_, index) => photo(`${index}.jpg`)),
+    'album',
+    async () => []
+  )
+  await vi.waitFor(() => expect(savePhotoActionCaches).toHaveBeenCalledTimes(1))
+  parser.cancel()
+  finish()
+  await run
+  expect(savePhotoActionCaches).toHaveBeenCalledTimes(1)
+  expect(parser.progress.value.running).toBe(false)
 })
