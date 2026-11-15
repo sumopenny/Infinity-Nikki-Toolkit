@@ -1529,9 +1529,9 @@ function handleImportChoices(value: typeof choices.value) {
 }
 .camera-resources img {
   width: 100%;
-  max-width: 84px;
-  height: 58px;
+  height: auto;
   object-fit: contain;
+  border-radius: 10px;
 }
 /* 图标封面填满固定比例区域，避免资源文字的最小高度撑高小图。 */
 .camera-resources.is-image-only {
@@ -1766,9 +1766,6 @@ summary {
   }
   .camera-resources > div {
     gap: 4px;
-  }
-  .camera-resources img {
-    height: 36px;
   }
   .camera-resources strong {
     font-size: 10px;

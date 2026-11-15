@@ -64,10 +64,18 @@ export function formatCameraParams(
   }
   const lightId = resourceId(light)
   const filterId = resourceId(filter)
-  const poseId = photoData?.poseId as string | number | undefined
-  // 2026-10-11：仅照片解析展示角色动作；纯相机参数不含动作，所有解析结果均不展示大喵动作。
+  const poseId = (
+    photoData
+      ? photoData.poseId
+      : typeof nikkiPose?.poseId === 'number' &&
+          Number.isFinite(nikkiPose.poseId) &&
+          nikkiPose.poseId > 0
+        ? nikkiPose.poseId
+        : undefined
+  ) as string | number | undefined
+  // 照片沿用解析后的动作；独立 V3 参数从 nikkiPoseInfo 读取动作。
   const resources: PhotoParamsResult['resourceGroups'] = []
-  if (photoData) {
+  if (photoData || poseId != null) {
     resources.push({
       kind: 'pose',
       id:

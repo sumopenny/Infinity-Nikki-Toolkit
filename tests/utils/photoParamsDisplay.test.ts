@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import * as loader from '@assemblyscript/loader'
 import { describe, it, expect } from 'vitest'
 import { formatCameraParams } from '../../src/utils/photo-params/formatCameraParams'
 import { weatherWithWind } from '../../src/utils/photo-params/weather'
@@ -34,6 +36,43 @@ describe('new photo parameter display', () => {
       render(0.75, { poseId: 456 }).resourceGroups.find((x) => x.kind === 'pose')?.value
     ).toBeUndefined()
   })
+  it('displays the action and progress from a real standalone V3 parameter string', async () => {
+    const raw =
+      '8ASm5DmvOQ7TBFAgDS3WUAWOLgRf5NT+TwL63v1D21peoFUVKX7ER8aT0UYeFnML9C/y4wN8K53p6vTMBCmyojK9TlrVA1jXQMXpx/G50huXYStn+ABnWTsjpIT8sxszOEK7O22eKsh75Y+CRxlNazHTb2OCzybyU7BxaVz+TApVP6AXgGXlaD2o8loV/YGYYirISHiDl8Kgfsp5OLu1Hh/WGDblH5ek8VglYp/C/tPwLmtNGhnOkrM0v2XIl+61sHU63kbD6cxlKVaORgIi3Nm/ei/Y6iZuKLO6nIm0wg0='
+    const module = await loader.instantiate(await readFile('src/assets/photo-params.wasm'), {})
+    const wasm = module.exports as Record<string, any>
+    const decoded = JSON.parse(wasm.__getString(wasm.decodeCameraParams(wasm.__newString(raw))))
+    expect(decoded.ok).toBe(true)
+    const result = formatCameraParams(decoded.value, raw, 'zh', photoParamsZh)
+    const pose = result.resourceGroups.find((group) => group.kind === 'pose')
+    expect(pose).toMatchObject({ id: '1090012182', name: '玫瑰的邀约', value: '62%' })
+    expect(pose?.imageUrl).toBeTruthy()
+    expect(result.rawCameraParams).toBe(raw)
+  })
+  it.each([
+    [0, '0%'],
+    [null, undefined],
+    [undefined, undefined],
+    [NaN, undefined]
+  ] as const)('handles standalone action progress %s', (progress, value) => {
+    const result = formatCameraParams(
+      { nikkiPoseInfo: { poseId: 1090012182, playingPercent: progress } },
+      '',
+      'zh',
+      photoParamsZh
+    )
+    expect(result.resourceGroups.find((group) => group.kind === 'pose')).toMatchObject({
+      id: '1090012182',
+      value
+    })
+  })
+  it.each([undefined, null, {}, { poseId: 0 }, { poseId: -1 }, { poseId: NaN }])(
+    'omits standalone actions without a valid pose: %j',
+    (nikkiPoseInfo) => {
+      const result = formatCameraParams({ nikkiPoseInfo }, '', 'zh', photoParamsZh)
+      expect(result.resourceGroups.map((group) => group.kind)).toEqual(['light', 'filter'])
+    }
+  )
   it('appends mapped wind to the existing weather name', () => {
     expect(
       render(null, { weatherType: 0, windIntensity: 1, windDirection: 1 }).environmentFields
