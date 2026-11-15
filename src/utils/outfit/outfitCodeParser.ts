@@ -1,3 +1,5 @@
+import { decodeLookbookShareCodePathId, decodeLookbookPayload } from './lookbookWasmClient'
+import { throwIfSignalAborted } from '../abortSignal'
 import {
   cacheGeneration,
   isCurrentCacheGeneration,
@@ -152,7 +154,6 @@ const isCachedParseResult = (value: unknown, code: string): value is LookbookDec
 async function requestLookbookParse(code: string): Promise<LookbookDecodeResult> {
   let pathId: string | null
   try {
-    const { decodeLookbookShareCodePathId } = await import('./lookbookWasmClient')
     pathId = await measureLookbook('share_code_decode', () => decodeLookbookShareCodePathId(code))
   } catch (error) {
     throw new OutfitCodeParseError(
@@ -238,9 +239,7 @@ async function requestLookbookSource(
   let decoded
   try {
     decoded = await measureLookbook('payload_decode', () =>
-      import('./lookbookWasmClient').then(({ decodeLookbookPayload }) =>
-        decodeLookbookPayload<LookbookDecodeResult>(code, payload)
-      )
+      decodeLookbookPayload<LookbookDecodeResult>(code, payload)
     )
   } catch (error) {
     throw new OutfitCodeParseError(
@@ -257,7 +256,7 @@ async function requestLookbookSource(
           : `Lookbook upstream response could not be normalized (${decoded.errorCode})`
     throw new OutfitCodeParseError('unavailable', message)
   }
-  signal.throwIfAborted()
+  throwIfSignalAborted(signal)
   if (!isCachedParseResult(decoded.value, code))
     throw new OutfitCodeParseError('unavailable', 'Lookbook result failed validation')
   lookbookTiming('source_success', performance.now(), { source })

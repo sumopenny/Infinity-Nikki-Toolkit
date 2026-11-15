@@ -201,9 +201,9 @@ export const resonanceZh: ResonanceMessages = {
     '编辑该书签，将网址（URL）替换为刚复制的完整代码，确认开头保留 javascript:，然后保存。',
   mobileBookmarkStep5: '在美鸭梨页面运行书签。书签可从书签列表打开。',
   userscriptMethod: '脚本法（油猴推荐）',
-  mobileUserscriptMethod: '脚本法（推荐）',
+  mobileUserscriptMethod: '脚本法（安卓推荐）',
   bookmarkMethod: '书签法（推荐）',
-  mobileBookmarkMethod: '书签法',
+  mobileBookmarkMethod: '书签法（通用）',
   consoleMethod: '控制台方法',
   sourceAttributionLabel: '方法来源',
   sourceAttribution: '以下书签法、控制台法获取登录凭据的方法来自暖暖共鸣录。',
@@ -358,9 +358,9 @@ export const resonanceEn: ResonanceMessages = {
   mobileBookmarkStep5:
     'Run the bookmark on the Pear-Pal page. You can open it from your bookmarks list.',
   userscriptMethod: 'Userscript (Tampermonkey recommended)',
-  mobileUserscriptMethod: 'Userscript (recommended)',
+  mobileUserscriptMethod: 'Userscript (recommended for Android)',
   bookmarkMethod: 'Bookmark (recommended)',
-  mobileBookmarkMethod: 'Bookmark',
+  mobileBookmarkMethod: 'Bookmark (general)',
   consoleMethod: 'Console',
   sourceAttributionLabel: 'Method source',
   sourceAttribution:

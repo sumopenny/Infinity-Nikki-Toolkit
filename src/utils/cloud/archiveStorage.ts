@@ -1,3 +1,4 @@
+import { cloneJsonData } from '../cloneJsonData'
 import { openDb } from '../file-system/database'
 import { emptyWardrobe, validateWardrobe, wardrobeBaseline } from '../wardrobe/wardrobeSchema'
 import {
@@ -81,7 +82,7 @@ export async function replaceArchiveLocal(
   incoming: ArchiveSnapshot,
   selected: ArchiveModule[]
 ) {
-  const snapshot = structuredClone(incoming)
+  const snapshot = cloneJsonData(incoming)
   const db = await openDb()
   return new Promise<void>((resolve, reject) => {
     let tx: IDBTransaction

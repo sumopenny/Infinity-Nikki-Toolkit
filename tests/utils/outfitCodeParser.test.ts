@@ -66,16 +66,28 @@ describe('normalizeLookbookCode', () => {
 describe('parseOutfitCode', () => {
   afterEach(clearOutfitCodeParseCache)
 
-  it('requests the reported code using its 17-digit id and parses the response', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(jsonResponse({ Content: { Content: { wearingClothes: [1020100001] } } }))
-    vi.stubGlobal('fetch', fetchMock)
-    await expect(parseOutfitCode('1sawf3K6YcO#')).resolves.toMatchObject({
-      code: '1sawf3K6YcO#',
-      wearingClothes: [{ itemId: 1020100001, clothType: 10, outfitId: null }]
+  it('requests the reported code without native throwIfAborted', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(AbortSignal.prototype, 'throwIfAborted')!
+    Object.defineProperty(AbortSignal.prototype, 'throwIfAborted', {
+      ...descriptor,
+      value: undefined
     })
-    expect(fetchMock).toHaveBeenCalledWith('/api/outfit-code/81919035101291850', expect.any(Object))
+    try {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ Content: { Content: { wearingClothes: [1020100001] } } }))
+      vi.stubGlobal('fetch', fetchMock)
+      await expect(parseOutfitCode('1sawf3K6YcO#')).resolves.toMatchObject({
+        code: '1sawf3K6YcO#',
+        wearingClothes: [{ itemId: 1020100001, clothType: 10, outfitId: null }]
+      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/outfit-code/81919035101291850',
+        expect.any(Object)
+      )
+    } finally {
+      Object.defineProperty(AbortSignal.prototype, 'throwIfAborted', descriptor)
+    }
   })
 
   it('持久化缓存命中不请求任何线路，旧结果按统一规则展示', async () => {

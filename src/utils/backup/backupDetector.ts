@@ -6,6 +6,8 @@ export type BackupInputReason =
   | 'unreadable_zip'
   | 'too_large'
   | 'missing_manifest'
+  | 'nested_manifest'
+  | 'unsafe_path'
   | 'invalid_manifest'
   | 'unsupported_version'
   | 'unsupported_format'
@@ -21,7 +23,8 @@ export class BackupInputError extends Error {
   constructor(
     readonly reason: BackupInputReason,
     readonly actual?: BackupKind,
-    options?: ErrorOptions
+    options?: ErrorOptions,
+    readonly diagnostics: Record<string, string | number> = {}
   ) {
     // Preserve legacy error text; UI uses the stable reason instead.
     super(
@@ -36,9 +39,58 @@ export class BackupInputError extends Error {
   }
 }
 
+/** Log structure only: never retain user-provided directory or file names. */
+export function backupEntryError(
+  reason: BackupInputReason,
+  name: string,
+  actual?: BackupKind
+): BackupInputError {
+  const parts = name.replace(/\\/g, '/').split('/').filter(Boolean)
+  const fixed = new Set([
+    'backup.json',
+    'manifest.json',
+    'favorites.json',
+    'outfits',
+    'home',
+    'camera',
+    'resonance',
+    'wardrobe'
+  ])
+  const path = parts
+    .slice(0, 6)
+    .map((part) =>
+      fixed.has(part)
+        ? part
+        : /^[1-9]\d*\.(zip|json)$/.test(part)
+          ? part.replace(/\d+/, '*')
+          : '<entry>'
+    )
+    .join('/')
+  return new BackupInputError(reason, actual, undefined, {
+    rule: reason,
+    entryType: name.endsWith('/') ? 'directory' : 'file',
+    entryPath: path,
+    pathDepth: parts.length
+  })
+}
+
+export function isUnsafeBackupPath(name: string): boolean {
+  return (
+    name.startsWith('/') ||
+    name.includes('\\') ||
+    name.includes(':') ||
+    /[\x00-\x1f\x7f]/.test(name) ||
+    name.split('/').some((part) => part === '..' || part === '.')
+  )
+}
+
 const definitions = {
   all: { name: 'backup.json', format: 'infinity-nikki-all-data-backup', versions: [1, 2] },
-  outfits: { name: 'manifest.json', format: 'infinity-nikki-outfit-backup', versions: [1, 2, 3, 4] },
+  outfits: {
+    name: 'manifest.json',
+    format: 'infinity-nikki-outfit-backup',
+    versions: [1, 2, 3, 4]
+  },
   home: { name: 'manifest.json', format: 'infinity-nikki-home-scheme-backup', versions: [1, 2] },
   camera: { name: 'favorites.json', format: 'nikki-camera-favorites', versions: [2] }
 } as const
@@ -63,7 +115,8 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
   if (!file.size || file.size > MAX_FILE_BYTES) throw new BackupInputError('too_large')
   const header = new Uint8Array(await file.slice(0, 4).arrayBuffer())
   if (
-    header[0] !== 0x50 || header[1] !== 0x4b ||
+    header[0] !== 0x50 ||
+    header[1] !== 0x4b ||
     !((header[2] === 3 && header[3] === 4) || (header[2] === 5 && header[3] === 6))
   )
     throw new BackupInputError('not_zip')
@@ -79,9 +132,12 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
       break
     }
   }
-  if (endRecord < 0 || read16(tailView, endRecord + 4) !== 0 ||
-      read16(tailView, endRecord + 6) !== 0 ||
-      read16(tailView, endRecord + 8) !== read16(tailView, endRecord + 10))
+  if (
+    endRecord < 0 ||
+    read16(tailView, endRecord + 4) !== 0 ||
+    read16(tailView, endRecord + 6) !== 0 ||
+    read16(tailView, endRecord + 8) !== read16(tailView, endRecord + 10)
+  )
     throw new BackupInputError('unreadable_zip')
 
   const count = read16(tailView, endRecord + 10)
@@ -90,8 +146,12 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
   if (count > 10000) throw new BackupInputError('too_many_entries')
   if (directorySize > MAX_DIRECTORY_BYTES) throw new BackupInputError('too_large')
   // Reject ZIP64 and invalid offsets rather than guessing positions.
-  if (count === 0xffff || directorySize === 0xffffffff || directoryOffset === 0xffffffff ||
-      directoryOffset + directorySize > tailStart + endRecord)
+  if (
+    count === 0xffff ||
+    directorySize === 0xffffffff ||
+    directoryOffset === 0xffffffff ||
+    directoryOffset + directorySize > tailStart + endRecord
+  )
     throw new BackupInputError('unreadable_zip')
 
   const central = new Uint8Array(
@@ -107,6 +167,7 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
     localOffset: number
   }> = []
   const seen = new Set<string>()
+  let nestedManifest: string | undefined
   let offset = 0
   for (let i = 0; i < count; i++) {
     if (offset + 46 > central.length || read32(view, offset) !== 0x02014b50)
@@ -123,16 +184,27 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
     if (next > central.length) throw new BackupInputError('unreadable_zip')
     const name = decode.decode(central.subarray(offset + 46, offset + 46 + nameLength))
     offset = next
-    if (!manifestNames.has(name)) continue
-    if (seen.has(name)) throw new BackupInputError('duplicate_entry')
+    if (isUnsafeBackupPath(name)) throw backupEntryError('unsafe_path', name)
+    if (seen.has(name)) throw backupEntryError('duplicate_entry', name)
     seen.add(name)
-    if ((flags & 1) || ![0, 8].includes(method) ||
-        originalSize > MAX_MANIFEST_BYTES || compressedSize > MAX_MANIFEST_BYTES + 65536)
+    if (!manifestNames.has(name)) {
+      if (manifestNames.has(name.split('/').at(-1) ?? '')) nestedManifest ??= name
+      continue
+    }
+    if (
+      flags & 1 ||
+      ![0, 8].includes(method) ||
+      originalSize > MAX_MANIFEST_BYTES ||
+      compressedSize > MAX_MANIFEST_BYTES + 65536
+    )
       throw new BackupInputError('invalid_manifest')
     manifestEntries.push({ name, method, originalSize, compressedSize, localOffset })
   }
   if (offset !== central.length) throw new BackupInputError('unreadable_zip')
-  if (!manifestEntries.length) throw new BackupInputError('missing_manifest')
+  if (!manifestEntries.length) {
+    if (nestedManifest) throw backupEntryError('nested_manifest', nestedManifest)
+    throw new BackupInputError('missing_manifest')
+  }
 
   let matched: { kind: BackupKind; version: number } | undefined
   for (const entry of manifestEntries) {
@@ -160,8 +232,9 @@ export async function detectBackupKind(file: Blob): Promise<{ kind: BackupKind; 
       if (data.length !== entry.originalSize || data.length > MAX_MANIFEST_BYTES)
         throw new Error('Manifest size mismatch')
       manifest = JSON.parse(strFromU8(data)) as { format?: unknown; version?: unknown }
-    } catch (error) {
-      throw new BackupInputError('invalid_manifest', undefined, { cause: error })
+    } catch {
+      // Do not attach parser errors: their messages may contain manifest contents.
+      throw new BackupInputError('invalid_manifest')
     }
     for (const kind of Object.keys(definitions) as BackupKind[]) {
       const definition = definitions[kind]
@@ -188,24 +261,24 @@ export function isBackupInputError(error: unknown): error is BackupInputError {
 
 // Normalize errors from older module-specific ZIP parsers without exposing file paths.
 const legacyReasons: Record<string, BackupInputReason> = {
-  'home_scheme_backup_manifest_missing': 'missing_manifest',
-  'home_scheme_backup_format_unsupported': 'unsupported_format',
-  'home_scheme_backup_entry_invalid': 'unsupported_entry',
-  'home_scheme_backup_path_invalid': 'unsupported_entry',
-  'home_scheme_backup_duplicate_entry': 'duplicate_entry',
-  'home_scheme_backup_size_invalid': 'too_large',
-  'home_scheme_backup_expanded_size_invalid': 'expanded_too_large',
-  'home_scheme_backup_record_invalid': 'invalid_manifest',
-  'home_scheme_backup_image_missing': 'incomplete',
+  home_scheme_backup_manifest_missing: 'missing_manifest',
+  home_scheme_backup_format_unsupported: 'unsupported_format',
+  home_scheme_backup_entry_invalid: 'unsupported_entry',
+  home_scheme_backup_path_invalid: 'unsafe_path',
+  home_scheme_backup_duplicate_entry: 'duplicate_entry',
+  home_scheme_backup_size_invalid: 'too_large',
+  home_scheme_backup_expanded_size_invalid: 'expanded_too_large',
+  home_scheme_backup_record_invalid: 'invalid_manifest',
+  home_scheme_backup_image_missing: 'incomplete',
   'invalid length/literal': 'unreadable_zip',
   'Backup manifest is missing': 'missing_manifest',
   'Unsupported backup format': 'unsupported_format',
   'Backup contains duplicate entries': 'duplicate_entry',
   'Backup contains an unsupported file': 'unsupported_entry',
   'Backup is missing an outfit image': 'incomplete',
-  '备份格式无效': 'unsupported_format',
+  备份格式无效: 'unsupported_format',
   '无法读取 ZIP 备份': 'unreadable_zip',
-  '备份解压后的体积过大': 'expanded_too_large'
+  备份解压后的体积过大: 'expanded_too_large'
 }
 
 export function backupInputMessage(
@@ -225,7 +298,13 @@ export function backupInputMessage(
   if (language === 'zh') {
     switch (known.reason) {
       case 'type_mismatch':
-        return '检测到的是「' + actual + '」备份，不是「' + name + '」备份。请到对应模块导入，或重新选择正确文件。'
+        return (
+          '检测到的是「' +
+          actual +
+          '」备份，不是「' +
+          name +
+          '」备份。请到对应模块导入，或重新选择正确文件。'
+        )
       case 'not_zip':
         return '所选文件不是 ZIP 备份，请选择暖立方导出的 ZIP 文件。'
       case 'unreadable_zip':
@@ -233,8 +312,12 @@ export function backupInputMessage(
       case 'too_large':
       case 'expanded_too_large':
         return '备份文件或解压后的内容超过安全限制，请使用模块分包备份。'
+      case 'nested_manifest':
+        return '备份清单位于额外的文件夹内，请选择原样导出的 ZIP，不要解压后重新打包。'
+      case 'unsafe_path':
+        return '备份文件结构异常，已停止导入。'
       case 'missing_manifest':
-        return '未找到暖立方备份清单，请确认选择的是正确的备份 ZIP。'
+        return '未找到备份清单，请选择由暖立方导出的原始 ZIP 文件。'
       case 'invalid_manifest':
         return '备份清单无效或已损坏，已停止导入以保护原有数据。'
       case 'unsupported_format':
@@ -242,9 +325,9 @@ export function backupInputMessage(
       case 'unsupported_version':
         return '此「' + (actual || name) + '」备份的版本暂不受当前网页支持。'
       case 'duplicate_entry':
-        return '备份内有重复的文件条目，已停止导入以保护原有数据。'
+        return '备份内存在重复文件，无法导入，请重新导出备份。'
       case 'unsupported_entry':
-        return '备份内有不支持的文件条目，请检查 ZIP 是否被重新打包。'
+        return '备份目录结构不符合要求，请选择原样导出的 ZIP。'
       case 'too_many_entries':
         return '备份内文件数量超过安全限制，无法导入。'
       case 'incomplete':
@@ -255,7 +338,13 @@ export function backupInputMessage(
   }
   switch (known.reason) {
     case 'type_mismatch':
-      return 'This is a ' + actual + ' backup, not a ' + name + ' backup. Use the matching module or select another file.'
+      return (
+        'This is a ' +
+        actual +
+        ' backup, not a ' +
+        name +
+        ' backup. Use the matching module or select another file.'
+      )
     case 'not_zip':
       return 'This is not a ZIP backup. Select a ZIP exported by the app.'
     case 'unreadable_zip':
@@ -263,8 +352,12 @@ export function backupInputMessage(
     case 'too_large':
     case 'expanded_too_large':
       return 'The archive exceeds the safe size limit. Export smaller module backups.'
+    case 'nested_manifest':
+      return 'The backup manifest is inside an extra folder. Select the original exported ZIP without repackaging it.'
+    case 'unsafe_path':
+      return 'The backup contains an unsafe path. Nothing was imported.'
     case 'missing_manifest':
-      return 'No backup manifest was found. Select a valid app backup ZIP.'
+      return 'No backup manifest was found. Select the original app-exported ZIP.'
     case 'invalid_manifest':
       return 'The backup manifest is invalid. Nothing was imported.'
     case 'unsupported_format':

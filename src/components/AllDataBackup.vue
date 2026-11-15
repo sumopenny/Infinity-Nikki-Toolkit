@@ -73,7 +73,12 @@ function report(error: unknown, action: string, file?: File) {
         module: 'backup',
         action,
         code: error.reason,
-        context: file ? { fileSize: file.size, fileType: file.type } : {}
+        context: {
+          ...(file ? { fileSize: file.size, fileType: file.type } : {}),
+          ...error.diagnostics,
+          rule: error.reason,
+          backupKind: error.actual ?? 'unknown'
+        }
       })
     emit('status', known, 'warning')
     return

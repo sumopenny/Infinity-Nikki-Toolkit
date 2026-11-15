@@ -53,13 +53,25 @@ function setup(statuses = [201], enabled = true) {
 }
 afterEach(() => vi.useRealTimers())
 describe('in-memory error reporter', () => {
-  it('skips outfit parse 504 reports while retaining other response errors', async () => {
+  it.each(['Lookbook object request failed with 504', 'Lookbook object request failed with 502', 'Lookbook request timed out', 'Failed to fetch', 'WASM HTTP 404', 'save failed'])(
+    'does not upload outfit errors: %s', async (message) => {
+      const { reporter, transport } = setup()
+      expect(reporter.report(new Error(message), { module: 'outfits', action: 'parse' })).toBeNull()
+      await reporter.flush()
+      expect(transport).not.toHaveBeenCalled()
+    }
+  )
+  it('filters implicit outfit module, annotations and API diagnostics but retains other modules', async () => {
     const { reporter, payloads } = setup()
-    const metadata = { module: 'outfits', action: 'parse' }
-    expect(reporter.report(new Error('Lookbook object request failed with 504'), metadata)).toBeNull()
-    reporter.report(new Error('Lookbook object request failed with 502'), metadata)
+    reporter.setModule('outfits')
+    expect(reporter.report(new Error('component failed'), { type: 'vue' })).toBeNull()
+    reporter.setModule('home')
+    const error = annotateDiagnosticError(new Error('decode failed'), { module: 'outfits' })
+    expect(reporter.report(error)).toBeNull()
+    expect(reporter.report(new Error('HTTP 502'), { module: 'api', context: {endpoint: '/api/outfit-code/:key'} })).toBeNull()
+    reporter.report(new Error('home failed'), { module: 'home-schemes' })
     await reporter.flush()
-    expect(payloads.map((event) => event.error.message)).toEqual(['Lookbook object request failed with 502'])
+    expect(payloads.map(event => event.module)).toEqual(['home-schemes'])
   })
   it('does nothing when disabled', async () => {
     const { reporter, transport } = setup([], false)

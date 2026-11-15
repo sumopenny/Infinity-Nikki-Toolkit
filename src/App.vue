@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { migrateHomeSchemeLibrary } from './utils/homeBuild/homeSchemeMigration'
 import { vSegmentedIndicator } from './utils/segmentedIndicator'
 import SkeletonSweep from './components/SkeletonSweep.vue'
 import { globalSkeletonSweepKey } from './utils/imageSkeleton'
@@ -122,10 +123,7 @@ import MobileNavigation from './components/MobileNavigation.vue'
 import { useCompactLayout, useVisualViewport } from './composables/useCompactLayout'
 import TopBar from './components/TopBar.vue'
 import PhotoTransferProgressDialog from './components/PhotoTransferProgressDialog.vue'
-const CardShareDialog = lazyFeature(
-  () => import('./components/ShareImageDialog.vue'),
-  () => language.value
-)
+import CardShareDialog from './components/ShareImageDialog.vue'
 const sharingOutfit = ref<OutfitItem | null>(null)
 const autoSharePhoto = ref(false)
 const loadCardSharePhoto = () => readPhotoBlob(sharingOutfit.value!)
@@ -937,9 +935,7 @@ async function migrateHomeSchemes(
   directory: FileSystemDirectoryHandle
 ): Promise<StatusState | null> {
   try {
-    const result = await (
-      await import('./utils/homeBuild/homeSchemeMigration')
-    ).migrateHomeSchemeLibrary(directory)
+    const result = await migrateHomeSchemeLibrary(directory)
     await updateHomeSchemeCount()
     if (result.addedCount || result.replacedCount || result.tagsChanged) homeLibraryRevision.value++
     if (

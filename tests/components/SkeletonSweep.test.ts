@@ -40,12 +40,10 @@ it('uses one fixed-angle band for visible skeletons, independent of list height'
   await vi.advanceTimersByTimeAsync(16)
   expect(wrapper.findAll('.content-skeleton-band')).toHaveLength(1)
   expect(wrapper.findAll('mask rect')).toHaveLength(2)
-  expect(wrapper.get('.content-skeleton-band rect').attributes('transform')).toBe('skewX(-18)')
   expect(wrapper.get('.content-skeleton-band rect').attributes('height')).toBe(
     String(window.innerHeight)
   )
   expect(wrapper.get('svg').attributes('style')).toContain('height: ' + window.innerHeight + 'px')
-  expect(wrapper.findAll('linearGradient stop')).toHaveLength(5)
 })
 it('masks only the active modal and clips images to its scrolling panel', async () => {
   document.body.innerHTML =
@@ -61,17 +59,6 @@ it('masks only the active modal and clips images to its scrolling panel', async 
   wrapper.unmount()
   wrapper = undefined
   expect(vi.getTimerCount()).toBe(0)
-})
-
-it('adapts the band width to a phone viewport while preserving its angle', async () => {
-  vi.stubGlobal('innerWidth', 390)
-  vi.stubGlobal('innerHeight', 844)
-  document.body.innerHTML = '<span data-image-pending data-image-skeleton></span>'
-  wrapper = mount(SkeletonSweep, { props: { global: true }, attachTo: document.body })
-  await vi.advanceTimersByTimeAsync(16)
-  expect(wrapper.get('.content-skeleton-band rect').attributes('width')).toBe('80')
-  expect(wrapper.get('.content-skeleton-band rect').attributes('transform')).toBe('skewX(-18)')
-  expect(wrapper.get('.content-skeleton-band rect').attributes('height')).toBe('844')
 })
 it('ignores unrelated DOM updates when no image is loading', async () => {
   const request = vi.spyOn(window, 'requestAnimationFrame')

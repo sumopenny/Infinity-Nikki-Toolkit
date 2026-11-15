@@ -1,3 +1,4 @@
+import { cloneJsonData } from '../cloneJsonData'
 import { BackupStateError, backupErrorState } from './errors'
 import {
   BACKUP_SETTINGS_STORE,
@@ -376,7 +377,7 @@ async function applyChanges(
   task: Task
 ) {
   const manifest = await trackedManifest(config, dir, module)
-  const next = structuredClone(manifest)
+  const next = cloneJsonData(manifest)
   const indexes = new Map<string, Record<string, string>>()
   const index = async (kind: IndexKind, bucket: string) => {
     const token = `${kind}/${bucket}`

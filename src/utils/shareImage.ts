@@ -1,3 +1,4 @@
+import { throwIfSignalAborted } from './abortSignal'
 import { resolveResourceImage } from './photo-params/resourceManifest'
 import brandMarkUrl from '../../img/brand-mark.png'
 import { isImageKitResource, optimizedImageKitUrl } from './imagekit'
@@ -49,7 +50,7 @@ export function wrapShareText(
 export function loadShareImage(url: string, signal?: AbortSignal): Promise<HTMLImageElement> {
   url = optimizedImageKitUrl(url)
   return new Promise((resolve, reject) => {
-    signal?.throwIfAborted()
+    throwIfSignalAborted(signal)
     const image = new Image()
     const cleanup = () => {
       clearTimeout(timer)
@@ -105,17 +106,17 @@ function sharePalette() {
 /** Four reference layouts; variable content grows vertically without truncating data. */
 export async function renderShareImage(input: ShareInput): Promise<Blob> {
   const { signal } = input
-  signal?.throwIfAborted()
+  throwIfSignalAborted(signal)
   const load = (url: string) => loadShareImage(url, signal)
   const { image, result, modules, english } = input
   await document.fonts?.ready
-  signal?.throwIfAborted()
+  throwIfSignalAborted(signal)
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas unavailable')
   const colors = sharePalette()
   const brandMark = await load(brandMarkUrl)
-  signal?.throwIfAborted()
+  throwIfSignalAborted(signal)
   const outfit = !!input.outfitCode
   const bare = !outfit && !modules.parameters && !modules.clothes && !modules.code
   const width = bare ? image.naturalWidth : outfit ? OUTFIT_WIDTH : 1400
@@ -776,7 +777,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
       y += height + gap
     }
     if (y > 16000) throw new Error('Share content limit exceeded')
-    signal?.throwIfAborted()
+    throwIfSignalAborted(signal)
     const outputWidth = baseWidth + sideWidth
     canvas.width = outputWidth
     canvas.height = Math.ceil(y + 12 * scale)
@@ -784,7 +785,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     ctx.fillRect(0, 0, outputWidth, canvas.height)
     actions.forEach((draw) => draw())
   }
-  signal?.throwIfAborted()
+  throwIfSignalAborted(signal)
   return new Promise((resolve, reject) =>
     canvas.toBlob(
       (blob) => {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   handleErrorReport,
+  recordServerError,
   storeErrorEvent,
   type ErrorDatabase,
   type ErrorEnv
@@ -186,23 +187,42 @@ describe('error intake contract without a database', () => {
     expect(response.headers.get('X-Request-Id')).toBeTruthy()
     expect(tasks).toHaveLength(0)
   })
-  it('filters outfit 504 responses and reports from older clients before writing to D1', async () => {
+  it.each([500, 502, 504])('does not record outfit API status %s', async (status) => {
     const state = fakeDatabase()
     const waitUntil = vi.fn()
     const response = await middleware({
       request: new Request('https://example.test/api/outfit-code/test'),
-      env: state.env, data: {}, next: async () => new Response(null, { status: 504 }), waitUntil
+      env: state.env, data: {}, next: async () => new Response(null, { status }), waitUntil
     })
-    expect(response.status).toBe(504)
+    expect(response.status).toBe(status)
+    expect(response.headers.get('X-Request-Id')).toBeTruthy()
     expect(waitUntil).not.toHaveBeenCalled()
+    await recordServerError(state.env, new Error('failed'), {
+      route: '/api/outfit-code/:key', method: 'GET', status, requestId: 'test', durationMs: 1
+    })
+    expect(state.calls).toHaveLength(0)
+  })
+  it.each(['parse', 'save', 'importBackup', 'component-error'])('filters old outfit clients for %s before any database access', async (action) => {
+    const state = fakeDatabase()
     const event = sampleEvent()
     event.module = 'outfits'
-    event.action = 'parse'
-    event.error.message = 'Lookbook object request failed with 504'
+    event.action = action
+    event.error.message = 'arbitrary failure'
+    const response = await handleErrorReport(request(event), state.env)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({accepted: true, filtered: true})
+    expect(state.calls).toHaveLength(0)
+  })
+  it('filters outfit endpoint metadata while keeping home reports', async () => {
+    const state = fakeDatabase()
+    const event = sampleEvent()
+    event.module = 'api'
+    event.context = {endpoint: '/api/outfit-code/:key'}
     expect((await handleErrorReport(request(event), state.env)).status).toBe(200)
-    expect(state.writes()).toBe(0)
-    event.error.message = 'Lookbook object request failed with 502'
+    expect(state.calls).toHaveLength(0)
+    event.context = {endpoint: '/api/home-build/:key'}
     expect((await handleErrorReport(request(event), state.env)).status).toBe(201)
+    expect(state.writes()).toBe(1)
   })
 
   it('stores final home proxy diagnostics once with the response request ID', async () => {

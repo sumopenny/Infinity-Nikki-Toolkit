@@ -1,3 +1,4 @@
+import { useLegacyJsonClone } from '../helpers/legacyJsonClone'
 import 'fake-indexeddb/auto'
 import { defineComponent, provide, ref } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
@@ -127,28 +128,36 @@ describe('shared archive cloud window', () => {
     expect(panel().hasAttribute('open')).toBe(true)
     expect(document.body.querySelectorAll('dialog')).toHaveLength(1)
   })
-  it('defaults both modules and submits them in one request with unchanged action labels', async () => {
-    await open('upload')
-    expect(panel().querySelector('h2')?.textContent).toBe('上传云端')
-    expect(panel().querySelector('button[type=submit]')?.textContent?.trim()).toBe('确认')
-    expect(panel().querySelectorAll('input:checked')).toHaveLength(2)
-    expect(panel().textContent).toContain('国服')
-    await submit()
-    expect(writeArchive).toHaveBeenCalledTimes(1)
-    expect(writeArchive).toHaveBeenCalledWith(
-      'upload',
-      user,
-      expect.objectContaining({
-        modules: {
-          resonance: { revision: 1, records: [resonanceFixture('local')] },
-          wardrobe: { revision: 1, data: expect.objectContaining({ regionScope: 'cn' }) }
-        }
+  it('uploads both modules without structuredClone', async () => {
+    const legacyClone = useLegacyJsonClone()
+    try {
+      await open('upload')
+      expect(panel().querySelector('h2')?.textContent).toBe('上传云端')
+      expect(panel().querySelector('button[type=submit]')?.textContent?.trim()).toBe('确认')
+      expect(panel().querySelectorAll('input:checked')).toHaveLength(2)
+      expect(panel().textContent).toContain('国服')
+      await submit()
+      expect(writeArchive).toHaveBeenCalledTimes(1)
+      expect(writeArchive).toHaveBeenCalledWith(
+        'upload',
+        user,
+        expect.objectContaining({
+          modules: {
+            resonance: { revision: 1, records: [resonanceFixture('local')] },
+            wardrobe: { revision: 1, data: expect.objectContaining({ regionScope: 'cn' }) }
+          }
+        })
+      )
+      expect(
+        wrapper.findComponent(ArchiveCloudDialog).emitted('notice')?.at(-1)?.[0]
+      ).toMatchObject({
+        tone: 'success',
+        message: expect.stringContaining('共鸣记录 1 条')
       })
-    )
-    expect(wrapper.findComponent(ArchiveCloudDialog).emitted('notice')?.at(-1)?.[0]).toMatchObject({
-      tone: 'success',
-      message: expect.stringContaining('共鸣记录 1 条')
-    })
+      expect(legacyClone).toHaveBeenCalled()
+    } finally {
+      legacyClone.mockRestore()
+    }
   })
   it('downloads both modules atomically and signals the shared page refresh', async () => {
     await open('download')
@@ -181,7 +190,9 @@ describe('shared archive cloud window', () => {
     await open('download')
     expect(sync.selected.value).toEqual(['resonance'])
     expect(panel().querySelector('.archive-cloud-unavailable')).toBeNull()
-    expect(panel().querySelectorAll<HTMLInputElement>('input[type=checkbox]')[1].disabled).toBe(true)
+    expect(panel().querySelectorAll<HTMLInputElement>('input[type=checkbox]')[1].disabled).toBe(
+      true
+    )
     expect(sync.canSubmit.value).toBe(true)
   })
   it('distinguishes cleared local data from a valid imported zero-piece wardrobe', async () => {

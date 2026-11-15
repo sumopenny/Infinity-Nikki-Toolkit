@@ -75,7 +75,7 @@ export function lazyFeature<T extends Component>(
     delay: 150,
     onError(error, tryAgain) {
       resourceFailed.value =
-        /dynamically imported module|Importing a module script failed|Unable to preload CSS/i.test(
+        /dynamically imported module|Importing a module script failed|Unable to preload CSS|not a valid JavaScript MIME type|module script[\s\S]*MIME type/i.test(
           error.message
         )
       reportError(error, { module: 'app', action: 'load-feature' })

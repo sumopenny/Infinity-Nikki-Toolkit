@@ -111,3 +111,62 @@ it.each([
     vi.unstubAllGlobals()
   }
 })
+
+it.each([
+  ["'text/html' is not a valid JavaScript MIME type.", false],
+  ["'text/html' is not a valid JavaScript MIME type for module script '/assets/old.js'.", true],
+  [
+    'Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html".',
+    false
+  ],
+  ['Unable to preload CSS for /assets/old.css', true]
+])('recovers a resource failure by manual retry: %s', async (message, dialog) => {
+  vi.useFakeTimers()
+  const ready = defineComponent({ template: '<p class="resource-ready">Ready</p>' })
+  const loader = vi.fn().mockRejectedValueOnce(new TypeError(message)).mockResolvedValue(ready)
+  const reload = vi.fn()
+  vi.stubGlobal('location', { ...window.location, reload })
+  const confirm = vi.spyOn(window, 'confirm')
+  const Feature = lazyFeature(
+    loader,
+    () => 'zh',
+    dialog ? { active: () => true, cancel: () => {} } : undefined
+  )
+  const wrapper = mount(defineComponent(() => () => h(Feature)))
+  try {
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(160)
+    const buttons = [
+      ...wrapper.findAll('button').map((button) => button.element),
+      ...document.body.querySelectorAll('button')
+    ]
+    expect(buttons.some((button) => button.textContent === '刷新页面')).toBe(true)
+    expect(reload).not.toHaveBeenCalled()
+    expect(confirm).not.toHaveBeenCalled()
+    const retry = buttons.find((button) => button.textContent === '重试')!
+    retry.click()
+    await flushPromises()
+    expect(wrapper.find('.resource-ready').exists()).toBe(true)
+    expect(loader).toHaveBeenCalledTimes(2)
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+  } finally {
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  }
+})
+
+it('does not classify an ordinary feature error as a resource failure', async () => {
+  vi.useFakeTimers()
+  const Feature = lazyFeature(
+    () => Promise.reject(new Error('Invalid preview data')),
+    () => 'zh'
+  )
+  const wrapper = mount(defineComponent(() => () => h(Feature)))
+  try {
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(160)
+    expect(wrapper.findAll('button').map((button) => button.text())).toEqual(['重试'])
+  } finally {
+    wrapper.unmount()
+  }
+})

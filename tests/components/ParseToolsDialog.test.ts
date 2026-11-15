@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import ParseToolsDialog from '../../src/components/ParseToolsDialog.vue'
 import { warmLookbookParser } from '../../src/utils/outfit/lookbookWasmClient'
 
-vi.mock('../../src/utils/outfit/lookbookWasmClient', () => ({ warmLookbookParser: vi.fn() }))
+vi.mock('../../src/utils/outfit/lookbookWasmClient', () => ({
+  warmLookbookParser: vi.fn(async () => undefined)
+}))
 
 const messages = {
   title: '参数/搭配码解析',

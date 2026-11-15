@@ -8,7 +8,7 @@ import {
   diagnosticText,
   fingerprintInput,
   isExpectedError,
-  isOutfitParse504,
+  isOutfitErrorReport,
   isDiagnosticWarning,
   serializeError,
   validateErrorPayload,
@@ -240,8 +240,7 @@ export function createErrorReporter(options: ReporterOptions) {
     try {
       if (
         isExpectedError(error) ||
-        (metadata.code && isExpectedError(metadata.code)) ||
-        isOutfitParse504(metadata.module, metadata.action, error instanceof Error ? error.message : error)
+        (metadata.code && isExpectedError(metadata.code))
       ) {
         counts.filtered++
         return skip('expected-error')
@@ -256,6 +255,14 @@ export function createErrorReporter(options: ReporterOptions) {
       }
       const annotation = diagnosticMetadata(error)
       const info = { ...annotation, ...metadata, stage: annotation.stage ?? metadata.stage }
+      if (
+        isOutfitErrorReport(
+          info.module ?? currentModule,
+          { ...annotation.context, ...metadata.context },
+          info.stage
+        )
+      )
+        return skip('outfits-not-reported')
       const stamp = now()
       sent = sent.filter((at) => stamp - at < 60000)
       if (sent.length >= 20 || queue.length >= 10) {

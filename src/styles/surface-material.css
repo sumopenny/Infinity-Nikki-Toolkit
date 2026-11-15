@@ -61,6 +61,7 @@
 :root[data-surface-style='glass'] .mobile-navigation > button {
   position: relative;
   color: var(--glass-ink);
+  text-shadow: 0 1px 2px var(--surface-strong);
   text-shadow: 0 1px 2px color-mix(in srgb, var(--surface-strong) 80%, transparent);
 }
 :root[data-surface-style='glass'] .mobile-navigation button[aria-current='page'] {
@@ -89,6 +90,7 @@
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 38%);
   }
   :root[data-surface-style='glass'] .app-header .like-counter:hover {
+    background: var(--glass-selected);
     background: color-mix(in srgb, var(--glass-selected) 80%, var(--pink-deep) 8%);
     border-color: var(--pink-deep);
   }
@@ -98,9 +100,11 @@
     box-shadow: var(--input-focus-shadow);
   }
   :root[data-surface-style='glass'] .app-header .official-site-link::after {
+    background: var(--glass-selected);
     background: color-mix(in srgb, var(--glass-selected) 85%, #e8a35c 10%);
   }
   :root[data-surface-style='glass'] .app-header .official-site-link:hover::after {
+    background: var(--glass-selected);
     background: color-mix(in srgb, var(--glass-selected) 85%, #e8a35c 16%);
   }
   :root[data-surface-style='glass']
@@ -213,6 +217,7 @@
       :hover,
       [aria-expanded='true']
     ):not(:disabled) {
+    background: var(--surface-strong);
     background: color-mix(in srgb, var(--surface-strong) 50%, transparent);
   }
 

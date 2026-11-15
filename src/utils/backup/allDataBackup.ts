@@ -11,7 +11,7 @@ import {
 import { wardrobeRegionScope, type WardrobeRegionScope } from '../wardrobe/wardrobeRegion'
 import { hasWardrobeSnapshot } from '../wardrobe/wardrobeOwnership'
 import { strToU8, unzip } from 'fflate'
-import { BackupInputError } from './backupDetector'
+import { BackupInputError, backupEntryError, isUnsafeBackupPath } from './backupDetector'
 import { backupPartBlob, downloadBackupBlob, type BackupDownload } from './zipBackup'
 import {
   exportOutfitBackup,
@@ -154,16 +154,17 @@ async function readBundle(file: File): Promise<Map<string, Blob>> {
             entry.name
           )
           const limit = entry.name === 'backup.json' ? MAX_MANIFEST : 1024 ** 3
-          if (names.has(entry.name)) failure ??= new BackupInputError('duplicate_entry')
+          if (isUnsafeBackupPath(entry.name)) failure ??= backupEntryError('unsafe_path', entry.name, 'all')
+          else if (names.has(entry.name)) failure ??= backupEntryError('duplicate_entry', entry.name, 'all')
           else if (names.size >= 10000) failure ??= new BackupInputError('too_many_entries')
-          else if (!directory && !allowedFile) failure ??= new BackupInputError('unsupported_entry')
+          else if (!directory && !allowedFile) failure ??= backupEntryError('unsupported_entry', entry.name, 'all')
           names.add(entry.name)
           if (
             !Number.isSafeInteger(entry.originalSize) ||
             entry.originalSize < 0 ||
             (directory && entry.originalSize !== 0)
           )
-            failure ??= new BackupInputError('unsupported_entry')
+            failure ??= backupEntryError('unsupported_entry', entry.name, 'all')
           if (!directory) {
             fileNames.add(entry.name)
             expanded += entry.originalSize
@@ -205,7 +206,13 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
   const blobs = await readBundle(file),
     manifestBlob = blobs.get('backup.json')
   if (!manifestBlob) throw new BackupInputError('missing_manifest')
-  const manifest = JSON.parse(await manifestBlob.text()) as BundleManifest
+  let manifest: BundleManifest
+  try {
+    manifest = JSON.parse(await manifestBlob.text()) as BundleManifest
+  } catch {
+    // JSON parser messages may contain fragments of the user's manifest.
+    throw new BackupInputError('invalid_manifest', 'all')
+  }
   if (
     !manifest ||
     manifest.format !== FORMAT ||

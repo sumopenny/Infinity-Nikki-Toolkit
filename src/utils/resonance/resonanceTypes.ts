@@ -1,3 +1,5 @@
+import { cloneJsonData } from '../cloneJsonData'
+
 export type ResonanceRarity = 4 | 5
 
 export interface ResonanceLocalizedName {
@@ -36,9 +38,7 @@ export interface ResonanceRecord {
 
 /** 共鸣记录是可导出为 JSON 的数据；旧浏览器也需要在异步写入前固定快照。 */
 export function cloneResonanceRecords(records: ResonanceRecord[]): ResonanceRecord[] {
-  return typeof structuredClone === 'function'
-    ? structuredClone(records)
-    : JSON.parse(JSON.stringify(records))
+  return cloneJsonData(records)
 }
 
 export interface ResonanceBanner {

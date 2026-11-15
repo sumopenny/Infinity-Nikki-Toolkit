@@ -1,3 +1,4 @@
+import { throwIfSignalAborted } from '../abortSignal'
 import type { Language } from '../../i18n/types'
 import { loadCatalogNames } from '../gongeo/catalogResources'
 
@@ -15,14 +16,14 @@ export async function loadOutfitText(
 ): Promise<OutfitText> {
   const id = String(outfitId)
   if (!/^[1-9]\d*$/.test(id) || !['zh', 'en'].includes(language)) throw new Error('Invalid catalog request')
-  signal?.throwIfAborted()
+  throwIfSignalAborted(signal)
   const [names, descriptions] = await Promise.all([
     loadCatalogNames('outfit', language),
     language === 'zh'
       ? import('../../data/outfits/locales/zh/outfitDescriptions.json').then((m) => m.default)
       : import('../../data/outfits/locales/en/outfitDescriptions.json').then((m) => m.default)
   ])
-  signal?.throwIfAborted()
+  throwIfSignalAborted(signal)
   const rows = descriptions as Record<string, { id: number; description: string }>
   return {
     id: Number(id),

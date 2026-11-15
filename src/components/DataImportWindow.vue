@@ -488,7 +488,7 @@ async function copyScript(kind: 'bookmark' | 'console') {
         ></span>
       </div>
       <p v-if="progress.failed">{{
-        text('此阶段失败，请重试。', 'This stage failed. Please retry.')
+        text('此阶段失败。网络服务经常波动，可点击“获取预览”重试，或稍后再试。', 'This stage failed. Please retry.')
       }}</p>
     </section>
     <p v-if="error" class="data-import-error" role="alert">{{ error }}</p>

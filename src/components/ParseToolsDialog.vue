@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { warmLookbookParser } from '../utils/outfit/lookbookWasmClient'
 import { computed, nextTick, ref, watch } from 'vue'
 import { ScanSearch, Upload, X } from 'lucide-vue-next'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
@@ -81,9 +82,7 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible) {
-      void import('../utils/outfit/lookbookWasmClient')
-        .then(({ warmLookbookParser }) => warmLookbookParser())
-        .catch(() => undefined)
+      void warmLookbookParser().catch(() => undefined)
       previousActiveElement =
         document.activeElement instanceof HTMLElement ? document.activeElement : null
       // 打开时聚焦面板，避免自动进入输入状态或唤起手机键盘。

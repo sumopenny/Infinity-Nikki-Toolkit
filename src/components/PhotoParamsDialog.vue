@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ShareImageDialog from './ShareImageDialog.vue'
 import { resolveResourceImage } from '../utils/photo-params/resourceManifest'
 
 import { vImageSkeleton } from '../utils/imageSkeleton'
@@ -35,7 +36,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ close: []; copy: []; favorite: []; submitUid: [uid: string] }>()
-const ShareImageDialog = defineAsyncComponent(() => import('./ShareImageDialog.vue'))
 const shareVisible = ref(false)
 const canShare = computed(
   () => !!props.result && (!!props.sourceFile || (!!props.photo && isAlbumPhoto(props.photo)))

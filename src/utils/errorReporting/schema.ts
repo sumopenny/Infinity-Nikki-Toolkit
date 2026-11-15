@@ -195,8 +195,16 @@ function isExpectedMessage(message: string): boolean {
     expectedDirectoryPrefixes.some((prefix) => message.startsWith(prefix))
   )
 }
-export function isOutfitParse504(module: unknown, action: unknown, message: unknown): boolean {
-  return module === 'outfits' && action === 'parse' && message === 'Lookbook object request failed with 504'
+/** Outfit diagnostics stay local, including API failures and reports from older clients. */
+export function isOutfitErrorReport(
+  module: unknown,
+  context: Record<string, unknown> = {},
+  stage?: unknown
+): boolean {
+  if (module === 'outfits' || context.module === 'outfits') return true
+  return [context.route, context.endpoint, stage].some(
+    (value) => typeof value === 'string' && /^\/api\/outfit-code(?:\/|$|[?#])/.test(value)
+  )
 }
 
 export function isExpectedError(value: unknown): boolean {

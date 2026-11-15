@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ShareImageDialog from './ShareImageDialog.vue'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
 import { buildParseItems, type ParseItemView } from '../utils/outfit/parseItemView'
 import CatalogImage from './CatalogImage.vue'
@@ -8,7 +9,6 @@ import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
 // 搭配码与照片共用部件列表和详情；照片传入解码结果时不请求搭配码服务。
 import {
   computed,
-  defineAsyncComponent,
   nextTick,
   onBeforeUnmount,
   ref,
@@ -63,7 +63,6 @@ const props = defineProps<{
   messages: OutfitMessages
 }>()
 
-const ShareImageDialog = defineAsyncComponent(() => import('./ShareImageDialog.vue'))
 const shareVisible = ref(false)
 watch(
   () => [props.visible, props.code],

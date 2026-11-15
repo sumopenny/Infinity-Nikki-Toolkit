@@ -1,3 +1,4 @@
+import { useLegacyJsonClone } from '../helpers/legacyJsonClone'
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
@@ -130,6 +131,7 @@ async function repack(
 it.each([false, true])(
   'round-trips all five modules, covers, tags and ignores without portable directory authorization (network HTTP: %s)',
   async (networkHttp) => {
+    const legacyClone = networkHttp ? useLegacyJsonClone() : null
     expect(await hasAllBackupData()).toBe(false)
     await seed()
     await runStoreRequest('album-handles', 'readwrite', (store) =>
@@ -137,6 +139,9 @@ it.each([false, true])(
     )
     expect(await hasAllBackupData()).toBe(true)
     const file = await exported()
+    expect(
+      await (await import('../../src/utils/backup/backupDetector')).detectBackupKind(file)
+    ).toEqual({ kind: 'all', version: 2 })
     const names = Object.keys(unzipSync(new Uint8Array(await file.arrayBuffer())))
     expect(names.sort()).toEqual([
       'backup.json',
@@ -165,6 +170,10 @@ it.each([false, true])(
     expect(await runStoreRequest('album-handles', 'readonly', (store) => store.count())).toBe(0)
     if (networkHttp)
       expect((await prepareAllDataBackup(await exported())).camera.records).toHaveLength(1)
+    if (legacyClone) {
+      expect(legacyClone).toHaveBeenCalled()
+      legacyClone.mockRestore()
+    }
   }
 )
 it('accepts a valid all-data backup with explicit empty ZIP directory records', async () => {
@@ -571,4 +580,25 @@ it('reuses validated images and checks current records when applying a prepared 
   expect((await readOutfitSnapshot()).records[0].note).toBe('new local note')
   expect((await readHomeSchemeSnapshot()).records[0].name).toBe('new local home')
   expect(createImageBitmap).not.toHaveBeenCalled()
+})
+
+it.each([
+  ['private-user-name.txt', 'unsupported_entry'],
+  ['../private-user-name.txt', 'unsafe_path']
+])('rejects %s with structural diagnostics before writing', async (path, reason) => {
+  await seed()
+  const file = await exported()
+  const files = unzipSync(new Uint8Array(await file.arrayBuffer()))
+  files[path!] = strToU8('private file contents')
+  const error = await prepareAllDataBackup(new File([zipSync(files)], 'changed.zip')).catch(
+    (error) => error
+  )
+  expect(error).toMatchObject({
+    reason,
+    actual: 'all',
+    diagnostics: { rule: reason, entryType: 'file' }
+  })
+  expect(JSON.stringify(error)).not.toContain('private-user-name')
+  expect(JSON.stringify(error)).not.toContain('private file contents')
+  expect(await loadResonanceRecords()).toHaveLength(1)
 })

@@ -1,3 +1,4 @@
+import { useLegacyJsonClone } from '../helpers/legacyJsonClone'
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearAllBrowserData, runStoreRequest } from '../../src/utils/file-system/database'
@@ -16,15 +17,21 @@ beforeEach(async () => {
   await updateWardrobe(() => ({ ...wardrobeFixture(), regionScope: 'cn' }))
 })
 describe('archive local transaction', () => {
-  it('replaces both modules and restores the wardrobe region', async () => {
-    await replaceArchiveLocal(await readArchiveLocal(), archiveSnapshot(), [
-      'resonance',
-      'wardrobe'
-    ])
-    expect(await readArchiveLocal()).toMatchObject({
-      resonance: [{ outfitId: 'cloud' }],
-      wardrobe: { regionScope: 'global' }
-    })
+  it('replaces both modules without structuredClone and restores the wardrobe region', async () => {
+    const legacyClone = useLegacyJsonClone()
+    try {
+      await replaceArchiveLocal(await readArchiveLocal(), archiveSnapshot(), [
+        'resonance',
+        'wardrobe'
+      ])
+      expect(await readArchiveLocal()).toMatchObject({
+        resonance: [{ outfitId: 'cloud' }],
+        wardrobe: { regionScope: 'global' }
+      })
+      expect(legacyClone).toHaveBeenCalled()
+    } finally {
+      legacyClone.mockRestore()
+    }
   })
   it.each(['resonance', 'wardrobe'] as const)(
     'keeps both modules when the %s baseline changes',

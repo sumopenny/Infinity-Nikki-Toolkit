@@ -1,3 +1,4 @@
+import { cloneJsonData } from '../utils/cloneJsonData'
 import { computed, inject, onMounted, ref, shallowRef, type InjectionKey } from 'vue'
 import { useCloudSession } from './useCloudSession'
 import {
@@ -227,7 +228,7 @@ export function useArchiveCloudSync(
                 revision: remote.value!.wardrobe.revision,
                 ...(operation === 'upload' ? { data: local.value!.wardrobe } : {})
               }
-            pending.value = structuredClone(
+            pending.value = cloneJsonData(
               validateArchiveWrite(
                 { requestId: createUuid(), modules: payload },
                 operation === 'delete'

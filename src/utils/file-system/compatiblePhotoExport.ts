@@ -1,3 +1,4 @@
+import { throwIfSignalAborted } from '../abortSignal'
 import { readPhotoFile, type PhotoItem } from '../photoGrouping'
 import {
   streamBackupPart,
@@ -15,7 +16,7 @@ export async function exportCompatiblePhotos(
 ): Promise<void> {
   const items = []
   for (const photo of photos) {
-    signal.throwIfAborted()
+    throwIfSignalAborted(signal)
     items.push({
       record: { name: photo.name, note: photo.note ?? '' },
       files: [{ name: photo.name, blob: await readPhotoFile(photo) }]
@@ -32,19 +33,19 @@ export async function exportCompatiblePhotos(
   )
   let completed = 0
   for (let index = 0; index < parts.length; index++) {
-    signal.throwIfAborted()
+    throwIfSignalAborted(signal)
     const chunks: Uint8Array[] = []
     await streamBackupPart(
       parts[index],
       'album-metadata.json',
       HOME_BACKUP_LIMITS,
       async (chunk) => {
-        signal.throwIfAborted()
+        throwIfSignalAborted(signal)
         chunks.push(chunk.slice())
       }
     )
     const blob = new Blob(chunks, { type: 'application/zip' })
-    signal.throwIfAborted()
+    throwIfSignalAborted(signal)
     onPart(
       new File([blob], backupPartName('album-photos', index, parts.length), {
         type: 'application/zip'

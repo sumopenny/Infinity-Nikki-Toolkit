@@ -188,7 +188,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     parseLoading: '正在解析搭配码…',
     parseEmpty: '未解析到搭配部件。',
     parseInvalidCode: '搭配码无效或不存在。',
-    parseUnavailable: '搭配码解析服务暂不稳定，请稍后刷新网站重试。',
+    parseUnavailable: '搭配码解析服务经常波动，请稍后刷新网站重试。',
     parseRetry: '重试',
     parseClose: '关闭解析窗口',
     parseOpenDetail: (name) => `查看${name}的部件详情`,

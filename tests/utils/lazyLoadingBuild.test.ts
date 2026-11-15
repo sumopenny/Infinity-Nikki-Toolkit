@@ -40,6 +40,7 @@ it('includes static components in the initial production dependency graph and ke
     'PersonalWardrobe',
     'ResonanceSidebar',
     'PhotoParamsDialog',
+    'ShareImageDialog',
     'CameraFavorites',
     'CameraImportConflictDialog',
     'WardrobeRestoreRegionDialog'
@@ -49,7 +50,7 @@ it('includes static components in the initial production dependency graph and ke
       component
     ).toBe(true)
   }
-  for (const component of ['OutfitSummaryDialog', 'ShareImageDialog']) {
+  for (const component of ['OutfitSummaryDialog']) {
     expect(
       modules.some((id) => id.includes(`/components/${component}.vue`)),
       component
@@ -65,5 +66,6 @@ it('includes static components in the initial production dependency graph and ke
     'locales/en/banner.json',
     'locales/zh/banner.json'
   ])
-  expect(modules.some((id) => id.endsWith('/lookbookWasmClient.ts'))).toBe(false)
+  expect(modules.some((id) => id.endsWith('/lookbookWasmClient.ts'))).toBe(true)
+  expect(modules.some((id) => id.endsWith('/homeSchemeMigration.ts'))).toBe(true)
 }, 60000)

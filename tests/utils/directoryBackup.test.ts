@@ -1,3 +1,4 @@
+import { useLegacyJsonClone } from '../helpers/legacyJsonClone'
 import { saveConfig } from '../helpers/directoryBackupFs'
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -168,26 +169,37 @@ describe('原始目录增量备份（模拟 File System Access API）', () => {
     const config = await setup()
     config.enabled.outfits = true
     await saveConfig(config)
-    const saved = await saveOutfit({ code: 'TEST01', tag: null, note: '' })
-    const dirty = await runStoreRequest<unknown[]>(BACKUP_DIRTY_STORE, 'readonly', (s) =>
-      s.getAll()
-    )
-    expect(dirty.some((x) => (x as { key: string[] }).key[0] === 'outfits')).toBe(true)
-    const first = await run(config, 'outfits')
-    expect(first.count).toBe(1)
-    const root = await getRecordFiles(config.handle as unknown as MockDirectory, 'outfits')
-    const hash = await keyHash(saved.id)
-    expect((await readJson<Entry>(asHandle(root), recordPath(hash)))?.id).toBe(saved.id)
-    const edited = await saveOutfit({ outfit: saved, code: saved.code, tag: null, note: 'renamed' })
-    const second = await run(config, 'outfits')
-    expect(second.count).toBe(1)
-    expect((await readJson<Entry>(asHandle(root), recordPath(hash)))?.value).toMatchObject({
-      note: 'renamed'
-    })
-    await deleteOutfit(edited, true) // 模拟用户已确认永久删除
-    const third = await run(config, 'outfits')
-    expect(third.count).toBe(0)
-    expect(await readBytes(asHandle(root), recordPath(hash))).toBeNull()
+    const legacyClone = useLegacyJsonClone()
+    try {
+      const saved = await saveOutfit({ code: 'TEST01', tag: null, note: '' })
+      const dirty = await runStoreRequest<unknown[]>(BACKUP_DIRTY_STORE, 'readonly', (s) =>
+        s.getAll()
+      )
+      expect(dirty.some((x) => (x as { key: string[] }).key[0] === 'outfits')).toBe(true)
+      const first = await run(config, 'outfits')
+      expect(first.count).toBe(1)
+      const root = await getRecordFiles(config.handle as unknown as MockDirectory, 'outfits')
+      const hash = await keyHash(saved.id)
+      expect((await readJson<Entry>(asHandle(root), recordPath(hash)))?.id).toBe(saved.id)
+      const edited = await saveOutfit({
+        outfit: saved,
+        code: saved.code,
+        tag: null,
+        note: 'renamed'
+      })
+      const second = await run(config, 'outfits')
+      expect(second.count).toBe(1)
+      expect((await readJson<Entry>(asHandle(root), recordPath(hash)))?.value).toMatchObject({
+        note: 'renamed'
+      })
+      await deleteOutfit(edited, true) // 模拟用户已确认永久删除
+      const third = await run(config, 'outfits')
+      expect(third.count).toBe(0)
+      expect(await readBytes(asHandle(root), recordPath(hash))).toBeNull()
+      expect(legacyClone).toHaveBeenCalled()
+    } finally {
+      legacyClone.mockRestore()
+    }
   })
   it('单条记录更新不会访问该记录图片 Blob，换图只替换自身', async () => {
     const config = await setup()

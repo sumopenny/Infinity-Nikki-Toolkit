@@ -168,14 +168,6 @@ const VIDEO_TUTORIALS = [
                   </a>
                 </div>
               </div>
-              <div v-if="showMobileCredentialTip" class="resonance-mobile-browsers resonance-hint">
-                <p>{{ t.mobileAndroidBrowsers }}</p>
-                <p>{{ t.mobileIosBrowsers }}</p>
-              </div>
-              <p v-if="showMobileCredentialTip" class="resonance-mobile-credential-tip">
-                <Info :size="16" aria-hidden="true" />
-                <span>{{ t.mobileCredentialTip }}</span>
-              </p>
               <p class="resonance-source-attribution"
                 ><strong>{{ t.sourceAttributionLabel }}</strong
                 ><span>{{ t.sourceAttribution }}</span></p
@@ -248,6 +240,16 @@ const VIDEO_TUTORIALS = [
                   </ul>
                 </div>
 
+                <template v-if="showMobileCredentialTip && cookieMethod === 'bookmark'">
+                  <div class="resonance-mobile-browsers resonance-hint">
+                    <p>{{ t.mobileAndroidBrowsers }}</p>
+                    <p>{{ t.mobileIosBrowsers }}</p>
+                  </div>
+                  <p class="resonance-mobile-credential-tip">
+                    <Info :size="16" aria-hidden="true" />
+                    <span>{{ t.mobileCredentialTip }}</span>
+                  </p>
+                </template>
                 <ol
                   v-if="showMobileCredentialTip && cookieMethod === 'bookmark'"
                   class="resonance-steps resonance-mobile-bookmark-steps"
