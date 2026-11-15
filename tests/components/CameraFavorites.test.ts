@@ -664,6 +664,50 @@ describe('camera cover conversion', () => {
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flushPromises()
   }
+  it.each(['drop', 'paste'])(
+    'replaces a cover through %s and saves the selected image',
+    async (method) => {
+      await openAlbum()
+      const upload = new File(['shortcut'], 'shortcut.png', { type: 'image/png' })
+      const target = document.querySelector('.camera-cover-dropzone')!
+      const event = new Event(method, { bubbles: true, cancelable: true })
+      Object.defineProperty(event, method === 'drop' ? 'dataTransfer' : 'clipboardData', {
+        value: { files: [new File(['text'], 'notes.txt', { type: 'text/plain' }), upload] }
+      })
+      target.dispatchEvent(new Event('dragover', { bubbles: true, cancelable: true }))
+      await flushPromises()
+      expect(target.classList.contains('is-dragging')).toBe(true)
+      target.dispatchEvent(event)
+      await flushPromises()
+      expect(event.defaultPrevented).toBe(true)
+      expect(target.classList.contains('is-dragging')).toBe(false)
+      expect(URL.createObjectURL).toHaveBeenLastCalledWith(upload)
+      await submit()
+      expect(mocks.webp).toHaveBeenCalledWith(upload)
+      expect(mocks.save.mock.calls[0][0].cover.name).toBe('shortcut.webp')
+    }
+  )
+  it('leaves text-field paste alone and ignores image shortcuts while disabled', async () => {
+    const view = await openAlbum()
+    const upload = new File(['shortcut'], 'shortcut.png', { type: 'image/png' })
+    const paste = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(paste, 'clipboardData', { value: { files: [upload] } })
+    const calls = vi.mocked(URL.createObjectURL).mock.calls.length
+    document.querySelector('#camera-favorite-code')!.dispatchEvent(paste)
+    await flushPromises()
+    expect(paste.defaultPrevented).toBe(false)
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(calls)
+    await view.setProps({ disabled: true })
+    for (const type of ['drop', 'paste']) {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      Object.defineProperty(event, type === 'drop' ? 'dataTransfer' : 'clipboardData', {
+        value: { files: [upload] }
+      })
+      document.querySelector('.camera-cover-dropzone')!.dispatchEvent(event)
+    }
+    await flushPromises()
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(calls)
+  })
   it('waits for a mobile cover snapshot and saves using the copied bytes', async () => {
     vi.stubGlobal(
       'matchMedia',

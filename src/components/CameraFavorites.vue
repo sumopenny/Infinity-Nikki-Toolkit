@@ -128,6 +128,7 @@ let originalCover: Blob | null = null
 const previewUrl = ref('')
 const compact = useCompactLayout()
 const coverReading = ref(false)
+const coverDragging = ref(false)
 const coverReadFailed = ref(false)
 let coverReadGeneration = 0
 const detail = shallowRef<CameraFavorite | null>(null)
@@ -511,6 +512,7 @@ async function reload() {
   })
 }
 function setCover(file: Blob | null, filename = '') {
+  coverDragging.value = false
   coverReadGeneration += 1
   coverReading.value = false
   coverReadFailed.value = false
@@ -624,12 +626,32 @@ function handleCoverPreviewError() {
   coverReadFailed.value = true
   emit('status', error.value, 'error')
 }
-async function selectCover(event: Event) {
+function selectCover(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file || busy.value) {
+  void selectCoverFile(file)
+  input.value = ''
+}
+function dropCover(event: DragEvent) {
+  coverDragging.value = false
+  const file = Array.from(event.dataTransfer?.files ?? []).find((file) =>
+    file.type.startsWith('image/')
+  )
+  void selectCoverFile(file)
+}
+function pasteCover(event: ClipboardEvent) {
+  if (event.defaultPrevented || !editor.value || busy.value) return
+  if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]'))
     return
-  }
+  const file = Array.from(event.clipboardData?.files ?? []).find((file) =>
+    file.type.startsWith('image/')
+  )
+  if (!file) return
+  event.preventDefault()
+  void selectCoverFile(file)
+}
+async function selectCoverFile(file?: File) {
+  if (!file || busy.value || !editor.value || disposed) return
   error.value = ''
   // 失败时保留旧封面或空封面，封面可选，不因一次失败锁死保存。
   // 移动布局立即读取原始字节；重选、关闭和卸载后不得采用旧任务结果。
@@ -638,9 +660,7 @@ async function selectCover(event: Event) {
   coverReadFailed.value = false
   emit('status', t('正在读取图片…', 'Reading image…'), 'info')
   try {
-    const reading = compact.value ? snapshotImageFile(file) : Promise.resolve(file)
-    input.value = ''
-    const snapshot = await reading
+    const snapshot = compact.value ? await snapshotImageFile(file) : file
 
     await validateSelectedImage(snapshot)
     if (disposed || !editor.value || run !== coverReadGeneration) {
@@ -1063,15 +1083,17 @@ function handleImportChoices(value: typeof choices.value) {
             :class="{ 'is-image-only': compactResourceCover }"
           >
             <div v-for="group in cardResources(item.result)" :key="group.kind">
-              <img
-                v-image-skeleton
-                v-if="group.imageUrl"
-                :src="group.imageUrl"
-                :alt="group.name"
-                loading="lazy"
-                @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
-              />
-              <ScanSearch v-else :size="24" aria-hidden="true" />
+              <span class="camera-resource-image">
+                <img
+                  v-image-skeleton
+                  v-if="group.imageUrl"
+                  :src="group.imageUrl"
+                  :alt="group.name"
+                  loading="lazy"
+                  @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
+                />
+                <ScanSearch v-else :size="24" aria-hidden="true" />
+              </span>
               <template v-if="!compactResourceCover">
                 <small>{{ group.title }}</small
                 ><strong>{{ group.name }}</strong>
@@ -1181,6 +1203,7 @@ function handleImportChoices(value: typeof choices.value) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="camera-editor-title"
+          @paste="pasteCover"
           @submit.prevent="save"
         >
           <header>
@@ -1203,9 +1226,14 @@ function handleImportChoices(value: typeof choices.value) {
               <label id="camera-cover-label">{{ t('封面（可选）', 'Cover (optional)') }}</label>
               <button
                 class="outfit-image-dropzone camera-cover-dropzone"
+                :class="{ 'is-dragging': coverDragging }"
                 type="button"
                 aria-labelledby="camera-cover-label"
                 @click="coverInput?.click()"
+                @dragenter.prevent="coverDragging = !busy"
+                @dragover.prevent="coverDragging = !busy"
+                @dragleave.prevent="coverDragging = false"
+                @drop.prevent="dropCover"
               >
                 <img
                   v-if="previewUrl"
@@ -1216,7 +1244,12 @@ function handleImportChoices(value: typeof choices.value) {
                 />
                 <span v-else class="outfit-image-prompt"
                   ><ImagePlus :size="30" aria-hidden="true" />{{
-                    t('点击选择封面图片', 'Click to choose a cover')
+                    compact
+                      ? t('点击选择封面图片', 'Click to choose a cover')
+                      : t(
+                          '点击选择、拖入图片或 Ctrl+V 粘贴',
+                          'Click, drop an image, or press Ctrl+V'
+                        )
                   }}</span
                 >
                 <span v-if="previewUrl" class="outfit-replace-image"
@@ -1510,8 +1543,10 @@ function handleImportChoices(value: typeof choices.value) {
   opacity: 0.5;
 }
 .camera-resources {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 8px;
   width: 100%;
@@ -1521,31 +1556,39 @@ function handleImportChoices(value: typeof choices.value) {
 .camera-resources > div {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   flex-direction: column;
   gap: 7px;
   text-align: center;
 }
-.camera-resources img {
+.camera-resource-image {
+  flex: 1;
+  min-height: 0;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.camera-resources img {
+  width: auto;
   height: auto;
-  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 10px;
 }
 /* 图标封面填满固定比例区域，避免资源文字的最小高度撑高小图。 */
 .camera-resources.is-image-only {
-  position: absolute;
-  inset: 0;
   gap: 6px;
   padding: 6px;
 }
 .camera-resources.is-image-only > div {
   height: 100%;
 }
-.camera-resources.is-image-only img {
-  height: 100%;
-  max-height: 100%;
+.camera-resources small,
+.camera-resources strong {
+  flex-shrink: 0;
 }
 .camera-resources small {
   font-size: 10px;
