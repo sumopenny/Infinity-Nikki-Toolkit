@@ -7,31 +7,57 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.13 更新',
+  currentDate: '2026.11.16 更新',
   currentItems: [
     {
-      title: '新增头像模拟器。',
-      text: '在“工具 → 头像模拟器”中选择喜欢的头像框，上传照片后即可拖动调整位置、缩放并保存为 PNG 图片。电脑端还支持从已打开的相册选图，预览区支持滚轮缩放。'
+      title: '新增图片旋转功能。',
+      text: '大图预览支持旋转图片，旋转后会保存到原文件。'
     },
     {
-      title: '手机顶栏新增“工具”菜单。',
-      text: '参数/搭配码解析、头像模拟器、抽卡吉时统一收纳到“工具”中，查找更方便。'
+      title: '主题支持跟随系统。',
+      text: '可选择随系统自动切换浅色、深色主题，也可以继续使用固定主题。'
     },
     {
-      title: '优化相册浏览性能。',
-      text: '调整缩略图生成、加载和缓存方式，减少浏览大量照片时的内存占用，改善滚动体验。'
+      title: '相机参数收藏添加封面更方便。',
+      text: '支持拖入图片或 Ctrl+V 粘贴剪贴板中的图片。'
     },
     {
-      title: '自动记住上次浏览的模块。',
-      text: '刷新或重新打开网站时，可恢复到上次使用的页面。'
+      title: '完善相机参数解析。',
+      text: '更新后的新增参数支持展示参数中包含的暖暖动作信息。'
     },
     {
-      title: '完善备份导入与数据提示。',
-      text: '导入时增加备份类型检查，选错文件时提供更明确的提示。'
+      title: '优化加载体验与使用稳定性。',
+      text: '优化美鸭梨导入速度，完善衣橱、图鉴及数据导入的失败提示。同时优化备份、目录权限和照片导出后的移动处理，并调整部分手机端布局。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.7.1',
+      date: '2026.11.13',
+      items: [
+        {
+          title: '新增头像模拟器。',
+          text: '在“工具 → 头像模拟器”中选择喜欢的头像框，上传照片后即可拖动调整位置、缩放并保存为 PNG 图片。电脑端还支持从已打开的相册选图，预览区支持滚轮缩放。'
+        },
+        {
+          title: '手机顶栏新增“工具”菜单。',
+          text: '参数/搭配码解析、头像模拟器、抽卡吉时统一收纳到“工具”中，查找更方便。'
+        },
+        {
+          title: '优化相册浏览性能。',
+          text: '调整缩略图生成、加载和缓存方式，减少浏览大量照片时的内存占用，改善滚动体验。'
+        },
+        {
+          title: '自动记住上次浏览的模块。',
+          text: '刷新或重新打开网站时，可恢复到上次使用的页面。'
+        },
+        {
+          title: '完善备份导入与数据提示。',
+          text: '导入时增加备份类型检查，选错文件时提供更明确的提示。'
+        }
+      ]
+    },
     {
       version: 'v2.7',
       date: '2026.11.11',
@@ -828,31 +854,57 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.13',
+  currentDate: 'Updated 2026.11.16',
   currentItems: [
     {
-      title: 'New Avatar Simulator.',
-      text: 'Choose a frame under Tools → Avatar Simulator, upload a photo, drag to reposition it, adjust the zoom, and save it as a PNG image. On desktop, you can also choose a photo from an open album and use the mouse wheel to zoom in the preview.'
+      title: 'Image rotation added.',
+      text: 'Rotate images in the full-size preview and save the changes to the original file.'
     },
     {
-      title: 'New Tools menu in the mobile header.',
-      text: 'The parameter / outfit-code parser, Avatar Simulator, and Lucky pull times are now grouped under Tools for easier access.'
+      title: 'Follow your system theme.',
+      text: 'Automatically switch between light and dark themes with your system, or keep using a fixed theme.'
     },
     {
-      title: 'Improved album browsing performance.',
-      text: 'Updated thumbnail generation, loading, and caching to reduce memory use when browsing large photo collections and improve scrolling.'
+      title: 'Add covers to camera parameter favorites more easily.',
+      text: 'Drag in an image or press Ctrl+V to paste one from the clipboard.'
     },
     {
-      title: 'Resume your last viewed section.',
-      text: 'Refreshing or reopening the site restores the section you last visited.'
+      title: 'Improved camera parameter parsing.',
+      text: 'New parameters added after the update can display the Nikki pose information they contain.'
     },
     {
-      title: 'Clearer backup import and data messages.',
-      text: 'Backup imports now check the backup type and provide clearer guidance when you select the wrong file.'
+      title: 'Improved loading and reliability.',
+      text: 'Improved Pear-Pal import speed and failure messages for the wardrobe, catalogs, and data imports. Also improved backups, folder permissions, and moving original photos after export, with adjustments to mobile layouts.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.7.1',
+      date: '2026.11.13',
+      items: [
+        {
+          title: 'New Avatar Simulator.',
+          text: 'Choose a frame under Tools → Avatar Simulator, upload a photo, drag to reposition it, adjust the zoom, and save it as a PNG image. On desktop, you can also choose a photo from an open album and use the mouse wheel to zoom in the preview.'
+        },
+        {
+          title: 'New Tools menu in the mobile header.',
+          text: 'The parameter / outfit-code parser, Avatar Simulator, and Lucky pull times are now grouped under Tools for easier access.'
+        },
+        {
+          title: 'Improved album browsing performance.',
+          text: 'Updated thumbnail generation, loading, and caching to reduce memory use when browsing large photo collections and improve scrolling.'
+        },
+        {
+          title: 'Resume your last viewed section.',
+          text: 'Refreshing or reopening the site restores the section you last visited.'
+        },
+        {
+          title: 'Clearer backup import and data messages.',
+          text: 'Backup imports now check the backup type and provide clearer guidance when you select the wrong file.'
+        }
+      ]
+    },
     {
       version: 'v2.7',
       date: '2026.11.11',
