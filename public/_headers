@@ -1,2 +1,6 @@
 /scripts/pearpal-cookie.user.js
   Content-Type: text/plain; charset=utf-8
+
+/assets/*
+  Access-Control-Allow-Origin: *
+  X-Content-Type-Options: nosniff

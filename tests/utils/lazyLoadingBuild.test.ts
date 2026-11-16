@@ -1,8 +1,10 @@
 import { build } from 'vite'
 import type { OutputChunk } from 'rollup'
-import { expect, it } from 'vitest'
+import { expect, it, vi, afterEach } from 'vitest'
+afterEach(() => vi.unstubAllEnvs())
 
 it('includes static components in the initial production dependency graph and keeps optional features separate', async () => {
+  vi.stubEnv('CF_PAGES_URL', 'https://abcdef12.example.pages.dev')
   const result = await build({ logLevel: 'silent', build: { write: false } })
   if (Array.isArray(result) || !('output' in result))
     throw new Error('Expected a single app bundle')
@@ -13,6 +15,10 @@ it('includes static components in the initial production dependency graph and ke
   )
   const entry = [...chunks.values()].find((chunk) => chunk.isEntry)!
   expect(entry).toBeDefined()
+  expect(entry.code).toContain('https://abcdef12.example.pages.dev/assets/')
+  expect(
+    result.output.some((item) => item.type === 'asset' && item.fileName.endsWith('.json'))
+  ).toBe(true)
   const initial = new Set<OutputChunk>()
   function visit(chunk: OutputChunk) {
     if (initial.has(chunk)) return
@@ -58,7 +64,7 @@ it('includes static components in the initial production dependency graph and ke
   }
   const catalogPrefix = '/data/gongeo/'
   const initialCatalogFiles = modules
-    .filter((id) => id.includes(catalogPrefix))
+    .filter((id) => id.includes(catalogPrefix) && !id.endsWith('?url'))
     .map((id) => id.split(catalogPrefix)[1])
   expect(initialCatalogFiles.sort()).toEqual([
     'banners.json',

@@ -64,6 +64,7 @@ export interface FullLocaleMessages {
     importCompleted: (succeeded: number, failed: number) => string
     exportCompleted: (succeeded: number, failed: number) => string
     exportCancelled: (completed: number) => string
+    exportMoveSourceFailed: string
     exportMoveSourceTitle: string
     exportMoveSourceConfirm: (count: number) => string
     exportTargetInvalid: string

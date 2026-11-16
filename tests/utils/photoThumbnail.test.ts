@@ -108,7 +108,7 @@ it('limits active decodes, cancels queued work and discards a completed obsolete
     second = new AbortController()
   const p1 = cache.load(photo('a'), first.signal).catch((error) => error.name)
   const p2 = cache.load(photo('b'), second.signal).catch((error) => error.name)
-  expect(generate).toHaveBeenCalledTimes(1)
+  await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1))
   second.abort()
   expect(await p2).toBe('AbortError')
   first.abort()
@@ -172,4 +172,87 @@ it('keeps multiple size tiers of retained photos but clears all tiers of removed
   cache.retainPhotos(new Set())
   expect(cache.stats().count).toBe(0)
   cache.dispose()
+})
+
+it('starts ten jobs by default and lets visible cards overtake queued prefetch work', async () => {
+  const started: string[] = []
+  const finishes: Array<() => void> = []
+  const cache = createPhotoThumbnailCache({
+    generate: (item) => {
+      started.push(item.id)
+      return new Promise<Blob>((resolve) => finishes.push(() => resolve(new Blob(['ok']))))
+    }
+  })
+  const controllers = Array.from({ length: 12 }, () => new AbortController())
+  let lastVisible = false
+  const pending = controllers.map((c, i) =>
+    cache.load(photo(String(i)), c.signal, 768, () =>
+      i === 9 || (i === 11 && lastVisible) ? 2 : 0
+    )
+  )
+  await vi.waitFor(() => expect(started).toHaveLength(10))
+  expect(started[0]).toBe('9')
+  expect(cache.stats().running).toBe(10)
+  lastVisible = true
+  finishes.shift()!()
+  await vi.waitFor(() => expect(started).toHaveLength(11))
+  expect(started[10]).toBe('11')
+  // Resolve the remaining first wave, then the final queued work.
+  finishes.splice(0).forEach((finish) => finish())
+  await vi.waitFor(() => expect(started).toHaveLength(12))
+  finishes.splice(0).forEach((finish) => finish())
+  await Promise.all(pending)
+  controllers.forEach((c) => c.abort())
+  cache.dispose()
+})
+
+it('preserves cached thumbnails after all card consumers unmount but invalidates a changed file', async () => {
+  const generate = vi.fn(async () => new Blob(['cached']))
+  const cache = createPhotoThumbnailCache({ generate })
+  const item = { ...photo('a'), fileSize: 10, lastModified: 1 }
+  const first = new AbortController()
+  const url = await cache.load(item, first.signal)
+  first.abort()
+  const second = new AbortController()
+  expect(await cache.load(item, second.signal)).toBe(url)
+  expect(generate).toHaveBeenCalledTimes(1)
+  second.abort()
+  item.lastModified = 2
+  const third = new AbortController()
+  expect(await cache.load(item, third.signal)).not.toBe(url)
+  expect(generate).toHaveBeenCalledTimes(2)
+  third.abort()
+  cache.dispose()
+})
+
+it('does not measure queued priorities while all decode slots are occupied', async () => {
+  vi.useFakeTimers()
+  let finish!: (blob: Blob) => void
+  const generate = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<Blob>((resolve) => {
+          finish = resolve
+        })
+    )
+    .mockResolvedValue(new Blob(['second']))
+  const cache = createPhotoThumbnailCache({ concurrency: 1, generate })
+  const controller = new AbortController()
+  try {
+    const first = cache.load(photo('first'), controller.signal)
+    await vi.advanceTimersByTimeAsync(1)
+    const priority = vi.fn(() => 2)
+    const second = cache.load(photo('second'), controller.signal, 768, priority)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(priority).not.toHaveBeenCalled()
+    finish(new Blob(['first']))
+    await vi.advanceTimersByTimeAsync(1)
+    await Promise.all([first, second])
+    expect(priority).toHaveBeenCalledOnce()
+  } finally {
+    controller.abort()
+    cache.dispose()
+    vi.useRealTimers()
+  }
 })

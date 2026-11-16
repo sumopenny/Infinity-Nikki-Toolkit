@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isResourceFailure } from '../utils/resourceRecovery'
 import {
   reportError as captureDiagnosticError,
   trackDiagnostic,
@@ -219,7 +220,9 @@ function selectFile(event: Event) {
           (error) => ({ error })
         )
 }
+
 function report(cause: unknown) {
+  const resourceFailed = isResourceFailure(cause)
   if (!(
     cause instanceof SyntaxError &&
     method.value === 'file' &&
@@ -247,31 +250,31 @@ function report(cause: unknown) {
     emit('notice', t.value.regionMismatch, 'error')
     return
   }
-  const errorMessage = [
-    'PEARPAL_NETWORK_FAILED',
-    'PEARPAL_HTTP_ERROR',
-    'PEARPAL_NOTEBOOK_DECODE_FAILED',
-    'PEARPAL_RESPONSE_INVALID',
-    'PEARPAL_RESPONSE_CODE_INVALID'
-  ].includes(diagnosticCode ?? '')
-    ? t.value.importError
-    : diagnosticCode === 'PEARPAL_ROLE_MISSING' || diagnosticCode === 'PEARPAL_UID_MISSING'
-      ? t.value.authFailed
-      : message === PEARPAL_UID_MISMATCH
-        ? t.value.uidMismatch
-        : message === PEARPAL_AUTH_FAILED
-          ? t.value.authFailed
-          : message === 'LOCAL_CHANGED'
-            ? text(
-                '记录已在其他页面变更，请重新获取预览。',
-                'Records changed in another tab. Preview again.'
-              )
-            : confirming.value
-              ? t.value.saveError
-              : method.value === 'file'
-                ? t.value.fileInvalid
-                : t.value.importError
-  emit('notice', errorMessage, 'error')
+  const errorMessage = () => {
+    if (
+      resourceFailed ||
+      [
+        'PEARPAL_NETWORK_FAILED',
+        'PEARPAL_HTTP_ERROR',
+        'PEARPAL_NOTEBOOK_DECODE_FAILED',
+        'PEARPAL_RESPONSE_INVALID',
+        'PEARPAL_RESPONSE_CODE_INVALID'
+      ].includes(diagnosticCode ?? '')
+    )
+      return t.value.importError
+    if (diagnosticCode === 'PEARPAL_ROLE_MISSING' || diagnosticCode === 'PEARPAL_UID_MISSING')
+      return t.value.authFailed
+    if (message === PEARPAL_UID_MISMATCH) return t.value.uidMismatch
+    if (message === PEARPAL_AUTH_FAILED) return t.value.authFailed
+    if (message === 'LOCAL_CHANGED')
+      return text(
+        '记录已在其他页面变更，请重新获取预览。',
+        'Records changed in another tab. Preview again.'
+      )
+    if (confirming.value) return t.value.saveError
+    return method.value === 'file' ? t.value.fileInvalid : t.value.importError
+  }
+  emit('notice', errorMessage(), 'error')
 }
 async function createPreview() {
   if (props.disabled || importing.value || confirming.value) return

@@ -14,6 +14,7 @@ import * as resonanceImport from '../../src/utils/resonance/resonanceImport'
 import { encodeSnappyLiteral } from '../utils/resonanceSnappyFixture'
 import { saveResonanceRecords } from '../../src/utils/resonance/resonanceStorage'
 import { parseDataPreview } from '../../src/utils/unifiedDataImport'
+import * as unifiedDataImport from '../../src/utils/unifiedDataImport'
 import { updateWardrobe } from '../../src/utils/wardrobe/wardrobeStorage'
 
 let wrapper: VueWrapper
@@ -495,4 +496,18 @@ it('defaults to userscript on mobile each time the import window opens', async (
   await wrapper.setProps({ visible: false })
   await wrapper.setProps({ visible: true })
   expect(scriptTab().getAttribute('aria-pressed')).toBe('true')
+})
+
+it('uses the generic import message instead of blaming a valid file when catalog loading fails', async () => {
+  const error = diagnosticReporter.annotateDiagnosticError(new Error('resource unavailable'), {
+    type: 'resource',
+    code: 'CATALOG_RESOURCE_FAILED'
+  })
+  vi.spyOn(unifiedDataImport, 'parseDataPreview').mockRejectedValue(error)
+  await selectProgressFile(async () => JSON.stringify(raw))
+  submit().click()
+  await vi.waitFor(() =>
+    expect(wrapper.emitted('notice')?.at(-1)).toEqual(['导入失败，请重试。', 'error'])
+  )
+  expect(wrapper.emitted('imported')).toBeUndefined()
 })

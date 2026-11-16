@@ -1,3 +1,4 @@
+import { loadResonanceCatalog } from './resonanceCatalog'
 import { annotateDiagnosticError } from '../errorReporting/errorReporter'
 import {
   pearpalObject,
@@ -241,7 +242,6 @@ export async function parsePearpalResonance(
     byBanner.set(bannerId, list)
   }
 
-  const { loadResonanceCatalog } = await import('./resonanceCatalog')
   const { loadResonanceBanners, normalizeBannerPulls, buildResonanceRecords } =
     await loadResonanceCatalog()
   throwIfSignalAborted(signal)

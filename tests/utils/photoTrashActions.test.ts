@@ -176,3 +176,37 @@ it('reuses retained trash objects and releases URLs for removed entries during r
   expect(releasePhotoUrl).toHaveBeenCalledWith(removed)
   expect([...s.trashSelectedIds.value]).toEqual(['ta'])
 })
+
+it('keeps exported originals on a rejected move and allows a successful retry', async () => {
+  const s = setup()
+  const original = s.photos.value[0]!
+  vi.mocked(movePhotosToRecentlyDeleted)
+    .mockRejectedValueOnce(new DOMException('write denied', 'NoModificationAllowedError'))
+    .mockResolvedValueOnce({ succeeded: [original], movedPhotos: [trash('ta')], failedNames: [] })
+  await s.actions.moveExportedPhotosToTrash([original])
+  expect(s.confirm).toHaveBeenCalledWith(
+    expect.objectContaining({ title: messages.zh.app.exportMoveSourceTitle })
+  )
+  expect(s.photos.value).toHaveLength(2)
+  expect(s.statusState.value).toMatchObject({
+    type: 'custom',
+    message: messages.zh.app.exportMoveSourceFailed,
+    tone: 'error'
+  })
+  expect('loading' in s.statusState.value && s.statusState.value.loading).not.toBe(true)
+  expect(s.activeOperation.value).toBeNull()
+  await s.actions.moveExportedPhotosToTrash([original])
+  expect(s.photos.value.map((p) => p.id)).toEqual(['b'])
+  expect(s.activeOperation.value).toBeNull()
+  expect(s.statusState.value).toMatchObject({ tone: 'success' })
+})
+
+it('does not move exported originals after cancellation or when another operation is busy', async () => {
+  const s = setup()
+  s.confirm.mockResolvedValueOnce(false)
+  await s.actions.moveExportedPhotosToTrash(s.photos.value)
+  s.activeOperation.value = 'all-data-backup'
+  await s.actions.moveExportedPhotosToTrash(s.photos.value)
+  expect(movePhotosToRecentlyDeleted).not.toHaveBeenCalled()
+  expect(s.photos.value).toHaveLength(2)
+})

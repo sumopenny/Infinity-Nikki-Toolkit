@@ -1,4 +1,4 @@
-import { reportError } from '../errorReporting/errorReporter'
+import { reportError, annotateDiagnosticError } from '../errorReporting/errorReporter'
 import { PHOTO_IMAGE_EXTENSIONS as IMAGE_EXTENSIONS } from './imageFormats'
 import { isDirectoryPhoto } from '../photoGrouping'
 // 相册回收站：负责最近删除照片的读取、移动、恢复、永久删除和安全清空。
@@ -145,10 +145,25 @@ export async function movePhotosToRecentlyDeleted(
   if (writablePhotos.length !== photos.length)
     throw new DOMException('Read-only album', 'NotAllowedError')
   const albumDirectoryHandle = writablePhotos[0].directoryHandle
-  await readAlbumMetadata(albumDirectoryHandle)
-  const trashDirectoryHandle = await albumDirectoryHandle.getDirectoryHandle(TRASH_DIRECTORY_NAME, {
-    create: true
-  })
+  let prepareStage = 'read-metadata'
+  const started = performance.now()
+  let trashDirectoryHandle: FileSystemDirectoryHandle
+  try {
+    await readAlbumMetadata(albumDirectoryHandle)
+    prepareStage = 'create-trash-directory'
+    trashDirectoryHandle = await albumDirectoryHandle.getDirectoryHandle(TRASH_DIRECTORY_NAME, {
+      create: true
+    })
+  } catch (error) {
+    throw annotateDiagnosticError(error, {
+      stage: prepareStage,
+      context: {
+        operation: 'move-to-trash',
+        durationMs: Math.round(performance.now() - started),
+        targetCount: photos.length
+      }
+    })
+  }
 
   const results = await runWithConcurrency(
     writablePhotos,
@@ -156,18 +171,25 @@ export async function movePhotosToRecentlyDeleted(
       const deletedAt = Date.now()
       const wasFavorite = favoriteIds.has(photo.id)
       const trashName = createTrashFileName(photo, wasFavorite, deletedAt)
+      let stage = 'read-source'
       try {
         const sourceFile = await photo.fileHandle.getFile()
+        stage = 'create-trash-file'
         const targetHandle = await trashDirectoryHandle.getFileHandle(trashName, { create: true })
         let note = photo.note ?? ''
         try {
+          stage = 'copy-to-trash'
           await copyFileToHandle(sourceFile, targetHandle)
+          stage = 'transfer-note'
           note = await transferPhotoNote(
             albumDirectoryHandle,
             photo.name,
             `trash/${trashName}`,
             '',
-            () => photo.directoryHandle.removeEntry(photo.name)
+            () => {
+              stage = 'remove-source'
+              return photo.directoryHandle.removeEntry(photo.name)
+            }
           )
         } catch (error) {
           if (!(error && typeof error === 'object' && 'preserveTarget' in error))
@@ -197,7 +219,7 @@ export async function movePhotosToRecentlyDeleted(
           } satisfies RecentlyDeletedPhoto
         }
       } catch (error) {
-        reportError(error, { module: 'album-trash', action: 'move' })
+        reportError(error, { module: 'album-trash', action: 'move', stage })
         return { source: photo, moved: null }
       }
     },

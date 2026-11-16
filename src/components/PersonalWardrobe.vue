@@ -387,6 +387,16 @@ async function reload(): Promise<boolean> {
   loaded.value = false
   snapshotRead.value = false
   loadFailed.value = false
+  const loadStarted = performance.now()
+  let stageStarted = loadStarted
+  let loadStage = 'read-storage'
+  const stageTimes: Record<string, number> = {}
+  const advance = (stage: string) => {
+    if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
+    stageTimes[loadStage] = (stageTimes[loadStage] ?? 0) + Math.round(performance.now() - stageStarted)
+    loadStage = stage
+    stageStarted = performance.now()
+  }
   let timeout: ReturnType<typeof setTimeout> | undefined
   // 限制等待时间；重试或离开页面后，旧请求不得覆盖当前状态。
   const deadline = new Promise<never>((_, reject) => {
@@ -399,13 +409,15 @@ async function reload(): Promise<boolean> {
   try {
     // 先读取本地存档；未导入时无需等待图鉴或工具栏动画。
     const prepare = async () => {
-      const saved = await loadWardrobe()
+      const saved = await loadWardrobe(advance)
       if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
       snapshot.value = saved
       snapshotRead.value = true
       if (!hasWardrobeSnapshot(saved)) return { data: null, saved }
+      advance('wait-animation')
       await archiveReady
       if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
+      advance('load-catalog')
       const data = await loadWardrobeCatalog()
       return { data, saved }
     }
@@ -417,7 +429,19 @@ async function reload(): Promise<boolean> {
     return true
   } catch (cause) {
     if (version !== loadVersion) return false
-    captureDiagnosticError(cause, { module: 'wardrobe', action: 'load' })
+    ++loadVersion
+    cancelLoad = undefined
+    captureDiagnosticError(cause, {
+      module: 'wardrobe',
+      action: 'load',
+      stage: loadStage,
+      context: {
+        loadStage,
+        durationMs: Math.round(performance.now() - loadStarted),
+        stageDurationMs: Math.round(performance.now() - stageStarted),
+        stageTimes
+      }
+    })
     loadFailed.value = true
     return false
   } finally {

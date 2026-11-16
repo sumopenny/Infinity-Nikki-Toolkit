@@ -118,6 +118,11 @@ export default defineConfig(({ mode, command }) => {
   assertDiagnosticsBuild({ ...process.env, ...loadEnv(mode, process.cwd(), '') }, command)
   const diagnosticBuild = errorBuildInfo()
   const remoteApiOrigin = getRemoteApiOrigin(mode)
+  const deploymentUrl = command === 'build' ? process.env.CF_PAGES_URL : undefined
+  const assetOrigin =
+    deploymentUrl && /^https:\/\/[a-f0-9]{8,64}\.[a-z0-9-]+\.pages\.dev\/?$/i.test(deploymentUrl)
+      ? new URL(deploymentUrl).origin
+      : undefined
   const outfitCodeProxy = {
     target: 'https://x6cn-clothdiydata.nuanpaper.com',
     changeOrigin: true,
@@ -155,6 +160,12 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     plugins: [vue(), localPearpalApi(), pearpalUserscript()],
+    experimental: {
+      renderBuiltUrl(filename) {
+        if (assetOrigin && filename.startsWith('assets/')) return `${assetOrigin}/${filename}`
+        return { relative: true }
+      }
+    },
     define: { __ERROR_BUILD__: JSON.stringify(diagnosticBuild) },
     build: { sourcemap: false },
     server: {

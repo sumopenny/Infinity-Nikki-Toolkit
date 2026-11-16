@@ -77,6 +77,7 @@ interface Entry {
   users: number
   used: number
   bytes: number
+  priorities: Set<() => number>
   retained?: boolean
   url?: string
   promise: Promise<string>
@@ -98,6 +99,8 @@ export function createPhotoThumbnailCache(
   let running = 0
   let clock = 0
   let disposed = false
+  let drainTimer: ReturnType<typeof setTimeout> | undefined
+  const concurrency = options.concurrency ?? 10
   const generate = options.generate ?? generatePhotoThumbnail
   const remove = (entry: Entry) => {
     entries.delete(entry)
@@ -119,7 +122,14 @@ export function createPhotoThumbnailCache(
     }
   }
   const drain = () => {
-    while (!disposed && running < (options.concurrency ?? 2) && queue.length) {
+    drainTimer = undefined
+    if (disposed || running >= concurrency) return
+    // Evaluate current viewport positions when work starts, including after scrolling.
+    const priorities = new Map(
+      queue.map((entry) => [entry, Math.max(0, ...[...entry.priorities].map((read) => read()))])
+    )
+    queue.sort((a, b) => priorities.get(b)! - priorities.get(a)!)
+    while (!disposed && running < concurrency && queue.length) {
       const entry = queue.shift()!
       if (!entry.users) {
         remove(entry)
@@ -148,11 +158,21 @@ export function createPhotoThumbnailCache(
         )
         .finally(() => {
           running--
-          drain()
+          scheduleDrain()
         })
     }
   }
-  const load = (photo: PhotoDisplayItem, signal: AbortSignal, size = 768): Promise<string> => {
+  const scheduleDrain = () => {
+    // Batch observer callbacks so prefetch requests cannot jump ahead of visible cards.
+    if (!disposed && running < concurrency && queue.length && drainTimer === undefined)
+      drainTimer = setTimeout(drain, 0)
+  }
+  const load = (
+    photo: PhotoDisplayItem,
+    signal: AbortSignal,
+    size = 768,
+    getPriority?: () => number
+  ): Promise<string> => {
     if (disposed || signal.aborted) return Promise.reject(cancelled())
     const fingerprint = `${photo.fileSize ?? ''}:${photo.lastModified ?? ''}`
     let entry = [...entries].find(
@@ -167,15 +187,29 @@ export function createPhotoThumbnailCache(
         resolve = yes
         reject = no
       })
-      entry = { photo, size, fingerprint, users: 0, used: 0, bytes: 0, promise, resolve, reject }
+      entry = {
+        photo,
+        size,
+        fingerprint,
+        users: 0,
+        used: 0,
+        bytes: 0,
+        priorities: new Set(),
+        promise,
+        resolve,
+        reject
+      }
       entries.add(entry)
       queue.push(entry)
     }
     const current = entry
+    const priority = () => getPriority?.() ?? 1
+    current.priorities.add(priority)
     current.users++
     current.used = ++clock
     const result = new Promise<string>((resolve, reject) => {
       const release = () => {
+        current.priorities.delete(priority)
         current.users--
         reject(cancelled())
         if (!current.users && current.url && current.retained === false) remove(current)
@@ -195,13 +229,14 @@ export function createPhotoThumbnailCache(
           if (!signal.aborted) resolve(url)
         },
         (error) => {
+          current.priorities.delete(priority)
           signal.removeEventListener('abort', release)
           if (!signal.aborted) current.users--
           reject(error)
         }
       )
     })
-    drain()
+    scheduleDrain()
     return result
   }
   return {
@@ -214,6 +249,8 @@ export function createPhotoThumbnailCache(
     },
     dispose() {
       disposed = true
+      clearTimeout(drainTimer)
+      drainTimer = undefined
       for (const entry of entries) {
         entry.reject(cancelled())
         remove(entry)

@@ -7,6 +7,7 @@ import {
   createWardrobeBackup,
   emptyWardrobe,
   loadWardrobe,
+  readWardrobeSnapshot,
   parseWardrobeBackup,
   updateWardrobe,
   resolveUnknownWardrobeSuits
@@ -154,4 +155,25 @@ it('resolves newly catalogued suits on load, persists them, and retains unresolv
       byId: new Map([['10347', incomplete]])
     })
   ).toBe(snapshot)
+})
+
+it('reports catalog resolution and storage writes at their actual boundaries', async () => {
+  await updateWardrobe((snapshot) => ({ ...snapshot, unknownSuitIds: ['10347'] }))
+  const stages: string[] = []
+  const result = await loadWardrobe((stage) => stages.push(stage))
+  expect(stages).toEqual(['read-storage', 'load-catalog', 'resolve-suits', 'write-storage'])
+  expect(result.unknownSuitIds).toEqual([])
+  expect(Object.keys(result.entries).length).toBeGreaterThan(0)
+  expect((await readWardrobeSnapshot()).entries).toEqual(result.entries)
+})
+
+it('does not write resolved suits when the caller invalidates the load after catalog loading', async () => {
+  await updateWardrobe((snapshot) => ({ ...snapshot, unknownSuitIds: ['10347'] }))
+  const before = await readWardrobeSnapshot()
+  await expect(
+    loadWardrobe((stage) => {
+      if (stage === 'resolve-suits') throw new Error('WARDROBE_LOAD_CANCELLED')
+    })
+  ).rejects.toThrow('WARDROBE_LOAD_CANCELLED')
+  expect(await readWardrobeSnapshot()).toEqual(before)
 })

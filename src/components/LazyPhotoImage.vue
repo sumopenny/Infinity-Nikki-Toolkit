@@ -6,7 +6,11 @@ import type { PhotoDisplayItem } from '../utils/photoGrouping'
 const props = withDefaults(
   defineProps<{
     photo: PhotoDisplayItem
-    loadPhoto: (photo: PhotoDisplayItem, signal?: AbortSignal) => Promise<string>
+    loadPhoto: (
+      photo: PhotoDisplayItem,
+      signal?: AbortSignal,
+      getPriority?: () => number
+    ) => Promise<string>
     failureText: string
     useSourceUrl?: boolean
   }>(),
@@ -37,7 +41,16 @@ async function startLoading(): Promise<void> {
     controller = abortController
 
   try {
-    const url = await props.loadPhoto(photo, controller.signal)
+    const url = await props.loadPhoto(photo, controller.signal, () => {
+      const rect = rootRef.value?.getBoundingClientRect()
+      if (!rect) return 0
+      return rect.bottom > 0 &&
+        rect.top < window.innerHeight &&
+        rect.right > 0 &&
+        rect.left < window.innerWidth
+        ? 2
+        : 0
+    })
     if (controller.signal.aborted || props.photo !== photo) return
     displayedUrl.value = url
     loadState.value = 'loaded'

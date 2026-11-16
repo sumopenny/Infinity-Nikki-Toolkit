@@ -1,5 +1,5 @@
 import { isDirectoryPhoto } from '../utils/photoGrouping'
-import { reportPartialFailure } from '../utils/errorReporting/errorReporter'
+import { reportPartialFailure, reportError } from '../utils/errorReporting/errorReporter'
 import type { Ref, ComputedRef } from 'vue'
 import type { LocaleMessages } from '../i18n'
 import type { PhotoItem, PhotoDisplayItem, RecentlyDeletedPhoto } from '../utils/photoGrouping'
@@ -99,7 +99,11 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
    * 将普通照片移动到最近删除。
    * 参数：targets 为目标照片，keepPreviewOpen 表示删除预览图后是否继续预览相邻照片。
    */
-  async function movePhotosToTrash(targets: PhotoItem[], keepPreviewOpen = false) {
+  async function movePhotosToTrash(
+    targets: PhotoItem[],
+    keepPreviewOpen = false,
+    afterExport = false
+  ) {
     if (
       !albumDirectoryHandle.value ||
       !targets.length ||
@@ -108,13 +112,17 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
     )
       return
     const confirmed = await openConfirmDialog({
-      title: locale.value.trash.moveDialogTitle,
-      message: locale.value.trash.confirmMove(targets.length),
+      title: afterExport
+        ? locale.value.app.exportMoveSourceTitle
+        : locale.value.trash.moveDialogTitle,
+      message: afterExport
+        ? locale.value.app.exportMoveSourceConfirm(targets.length)
+        : locale.value.trash.confirmMove(targets.length),
       tone: 'warning',
       confirmLabel: locale.value.app.dialogConfirm,
       cancelLabel: locale.value.app.dialogCancel
     })
-    if (!confirmed) return
+    if (!confirmed || isAnyFileOperationBusy.value) return
 
     activeOperation.value = 'deleting'
     statusState.value = {
@@ -134,12 +142,19 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
       }
       reportPartialFailure(
         'album-trash',
-        activeOperation.value ?? 'operation',
+        afterExport ? 'move-after-export' : 'deleting',
         result.failedNames.length,
         { succeededCount: result.succeeded.length }
       )
     } catch (error) {
-      statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      if (afterExport) {
+        reportError(error, { module: 'album-trash', action: 'move-after-export' })
+        statusState.value = {
+          type: 'custom',
+          message: locale.value.app.exportMoveSourceFailed,
+          tone: 'error'
+        }
+      } else statusState.value = createErrorStatus(error, { type: 'readFailed' })
     } finally {
       if (activeOperation.value === 'deleting') activeOperation.value = null
     }
@@ -296,7 +311,7 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
 
   return {
     mergeRecentlyDeleted,
-    applyMovedPhotosResult,
+    moveExportedPhotosToTrash: (targets: PhotoItem[]) => movePhotosToTrash(targets, false, true),
     movePhotosToTrash,
     restoreTrashPhotos,
     permanentlyDeleteTrashPhotos,

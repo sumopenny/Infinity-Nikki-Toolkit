@@ -66,6 +66,7 @@ export const appZh: LocaleMessages['app'] = {
     `已导出 ${succeeded} 张照片${failed ? `，${failed} 张失败` : ''}。`,
   exportCancelled: (completed) =>
     `导出已取消，已保留 ${completed} 个已完成的目标文件，源照片未修改。`,
+  exportMoveSourceFailed: '照片已导出，但原照片移到最近删除失败。请检查原相册目录是否可写，或稍后重试。',
   exportMoveSourceTitle: '移动源照片',
   exportMoveSourceConfirm: (count) => `导出成功。是否将 ${count} 张成功导出的源照片移入最近删除？`,
   exportTargetInvalid: '不能选择当前相册目录或其 trash 目录作为导出目标。',
@@ -202,6 +203,7 @@ export const appEn: LocaleMessages['app'] = {
     `Exported ${succeeded} photos${failed ? `; ${failed} failed` : ''}.`,
   exportCancelled: (completed) =>
     `Export cancelled. ${completed} completed target files were kept and source photos were unchanged.`,
+  exportMoveSourceFailed: 'Photos were exported, but moving the originals to Recently Deleted failed. Check that the original album is writable, or try again later.',
   exportMoveSourceTitle: 'Move source photos',
   exportMoveSourceConfirm: (count) =>
     `Export completed. Move ${count} successfully exported source photos to Recently Deleted?`,

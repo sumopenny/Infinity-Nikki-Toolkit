@@ -4,12 +4,12 @@ import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
 import { optimizedImageKitUrl } from '../utils/imagekit'
 import { vCardReveal } from '../utils/cardReveal'
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed } from 'vue'
 import { Check, Edit3, Heart, ScanSearch, Share2 } from 'lucide-vue-next'
 import type { LocaleMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 import type { ActionGroup, DateGroup, PhotoItem, PhotoDisplayItem } from '../utils/photoGrouping'
-import { createPhotoThumbnailCache } from '../utils/photoThumbnail'
+import type { createPhotoThumbnailCache } from '../utils/photoThumbnail'
 import LazyPhotoImage from './LazyPhotoImage.vue'
 import WindowedPhotoBatch from './WindowedPhotoBatch.vue'
 const batches = (photos: PhotoItem[]) =>
@@ -30,6 +30,7 @@ const props = defineProps<{
   thumbnailSize?: ThumbnailSize
   isFavoritesView: boolean
   messages: LocaleMessages['grid']
+  thumbnailCache: ReturnType<typeof createPhotoThumbnailCache>
 }>()
 
 const emit = defineEmits<{
@@ -43,11 +44,10 @@ const emit = defineEmits<{
   sharePhoto: [photo: PhotoItem]
 }>()
 
-const thumbnailCache = createPhotoThumbnailCache()
 const loadThumbnail = computed(() => {
   const size = props.thumbnailSize === 'small' ? 512 : props.thumbnailSize === 'large' ? 1024 : 768
-  return (photo: PhotoDisplayItem, signal?: AbortSignal) =>
-    thumbnailCache.load(photo, signal!, size)
+  return (photo: PhotoDisplayItem, signal?: AbortSignal, getPriority?: () => number) =>
+    props.thumbnailCache.load(photo, signal!, size, getPriority)
 })
 
 const renderGroups = computed(() =>
@@ -83,11 +83,6 @@ const selectedGroups = computed(
         .map((group) => group.key)
     )
 )
-watch(
-  renderGroups,
-  (groups) => thumbnailCache.retainPhotos(new Set(groups.flatMap((group) => group.photos))),
-  { flush: 'post' }
-)
 
 function toggleGroup(group: { key: string; photos: PhotoItem[]; isAction: boolean }) {
   if (group.isAction)
@@ -110,8 +105,6 @@ function handleFavoriteClick(photoId: string, event: MouseEvent) {
   emit('toggleFavorite', photoId)
   ;(event.currentTarget as HTMLButtonElement).blur()
 }
-
-onBeforeUnmount(() => thumbnailCache.dispose())
 </script>
 
 <template>

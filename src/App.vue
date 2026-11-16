@@ -20,6 +20,7 @@ import { lazyFeature } from './utils/lazyFeature'
 import { isAlbumPhoto, isDirectoryPhoto } from './utils/photoGrouping'
 import { rotateDirectoryPhoto, rotateStoredPhoto } from './utils/rotatePhotoSource'
 import { formatFileSize } from './utils/file-system/photoUrl'
+import { createPhotoThumbnailCache } from './utils/photoThumbnail'
 import { outfitBackupMessage } from './utils/outfit/outfitBackupMessage'
 import { readCompatibleAlbum } from './utils/file-system/compatibleAlbum'
 import { exportCompatiblePhotos } from './utils/file-system/compatiblePhotoExport'
@@ -148,10 +149,7 @@ import {
   type AlbumDirectoryResult,
   type RefreshAlbumResult
 } from './utils/file-system/albumFileSystem'
-import {
-  listRecentlyDeleted,
-  movePhotosToRecentlyDeleted
-} from './utils/file-system/trashFileSystem'
+import { listRecentlyDeleted } from './utils/file-system/trashFileSystem'
 import {
   listGamePlayPhotoAccounts,
   isProtectedAlbumDirectory,
@@ -222,6 +220,9 @@ let suppressLocalPersistence = false
 const storedAboutState = readStoredAboutState()
 
 const photos = ref<PhotoItem[]>([])
+const albumThumbnailCache = createPhotoThumbnailCache()
+// Retain the whole album, not just the current search/date/favorites results.
+watch(photos, items => albumThumbnailCache.retainPhotos(new Set(items)), { flush: 'post' })
 const outfits = ref<OutfitItem[]>([])
 const unreadableOutfitCount = ref(0)
 const homeSchemesCount = ref(0)
@@ -827,7 +828,7 @@ const {
 })
 const {
   mergeRecentlyDeleted,
-  applyMovedPhotosResult,
+  moveExportedPhotosToTrash,
   movePhotosToTrash,
   restoreTrashPhotos,
   permanentlyDeleteTrashPhotos,
@@ -2146,32 +2147,7 @@ async function closePhotoTransfer() {
   if (photoTransfer.phase === 'running' || photoTransfer.phase === 'preparing') return
   const succeededPhotos = takePhotoTransferMovePending()
   if (isCompatibleAlbum.value || !succeededPhotos?.length) return
-  const confirmed = await openConfirmDialog({
-    title: locale.value.app.exportMoveSourceTitle,
-    message: locale.value.app.exportMoveSourceConfirm(succeededPhotos.length),
-    tone: 'warning',
-    confirmLabel: locale.value.app.dialogConfirm,
-    cancelLabel: locale.value.app.dialogCancel
-  })
-  if (!confirmed) return
-  activeOperation.value = 'deleting'
-  try {
-    statusState.value = {
-      type: 'custom',
-      message: locale.value.app.movingPhotosToTrash,
-      tone: 'info',
-      loading: true
-    }
-    const moved = await movePhotosToRecentlyDeleted(succeededPhotos, favoriteIds.value)
-    applyMovedPhotosResult(moved)
-    statusState.value = {
-      type: 'custom',
-      message: locale.value.trash.movedStatus(moved.succeeded.length, moved.failedNames),
-      tone: moved.failedNames.length ? 'warning' : 'success'
-    }
-  } finally {
-    if (activeOperation.value === 'deleting') activeOperation.value = null
-  }
+  await moveExportedPhotosToTrash(succeededPhotos)
 }
 
 /** 将当前普通视图的选中照片移到最近删除。参数：无。 */
@@ -2323,6 +2299,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   appDisposed = true
+  albumThumbnailCache.dispose()
   outfitLoadGeneration++
   invalidatePendingRefreshes()
   disposeStatusNotice()
@@ -3021,6 +2998,7 @@ function importAllDataFromMenu() {
           @toggle-outfit="toggleOutfit"
         />
         <PhotoGrid
+          :thumbnail-cache="albumThumbnailCache"
           :language="language"
           v-else-if="hasAlbum && !isCameraFavoritesView"
           :read-only="isCompatibleAlbum || notesBlocked"

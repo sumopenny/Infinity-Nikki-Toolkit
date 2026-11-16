@@ -17,13 +17,21 @@ export async function readWardrobeSnapshot(): Promise<WardrobeSnapshot> {
   return value === undefined ? emptyWardrobe() : validateWardrobe(value)
 }
 
-export async function loadWardrobe(): Promise<WardrobeSnapshot> {
+export type WardrobeLoadStage = 'read-storage' | 'load-catalog' | 'resolve-suits' | 'write-storage'
+
+export async function loadWardrobe(
+  onStage?: (stage: WardrobeLoadStage) => void
+): Promise<WardrobeSnapshot> {
+  onStage?.('read-storage')
   const snapshot = await readWardrobeSnapshot()
   if (!snapshot.unknownSuitIds.length) return snapshot
+  onStage?.('load-catalog')
   const { loadWardrobeCatalog } = await import('./wardrobeCatalog')
   const catalog = await loadWardrobeCatalog()
+  onStage?.('resolve-suits')
   if (resolveUnknownWardrobeSuits(snapshot, catalog) === snapshot) return snapshot
   // Re-read inside the transaction so another tab's import is never overwritten.
+  onStage?.('write-storage')
   return updateWardrobe((latest) => resolveUnknownWardrobeSuits(latest, catalog))
 }
 
