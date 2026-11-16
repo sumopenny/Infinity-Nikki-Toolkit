@@ -15,7 +15,15 @@ it('includes static components in the initial production dependency graph and ke
   )
   const entry = [...chunks.values()].find((chunk) => chunk.isEntry)!
   expect(entry).toBeDefined()
-  expect(entry.code).toContain('https://abcdef12.example.pages.dev/assets/')
+  // Deployment domains may require Cloudflare Access; public assets must stay same-origin.
+  for (const item of result.output) {
+    const content = item.type === 'chunk' ? item.code : String(item.source)
+    expect(content, item.fileName).not.toContain('https://abcdef12.example.pages.dev')
+  }
+  const html = result.output.find((item) => item.type === 'asset' && item.fileName === 'index.html')
+  expect(html && html.type === 'asset' && String(html.source)).toMatch(
+    /src="\/assets\/index-[^"]+\.js"/
+  )
   expect(
     result.output.some((item) => item.type === 'asset' && item.fileName.endsWith('.json'))
   ).toBe(true)

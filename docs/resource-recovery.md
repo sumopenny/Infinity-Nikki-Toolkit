@@ -1,8 +1,8 @@
 # 资源发布与错误恢复
 
-Cloudflare Pages 自动构建提供 `CF_PAGES_URL`（当前部署 URL）。构建只接受带 8–64 位十六进制部署前缀的 pages.dev 地址，把 assets 地址绑定到该部署，避免旧页面随主域名切换到新版本后请求丢失的哈希资源。参考：https://developers.cloudflare.com/pages/configuration/build-configuration/
+构建资源使用同源 `/assets/` 路径，不使用 `CF_PAGES_URL` 作为资源域名。部署子域名可能启用 Cloudflare Access；将公开首页的脚本和样式指向它会返回登录页并导致白屏。即使构建环境提供部署 URL，资源也必须保持同源。
 
-旧部署仍须保留且允许公开读取静态资源；删除历史部署或对部署地址启用访问验证，会使旧页面无法继续获取资源。没有部署 URL 的本地构建保持相对地址；手动上传需在构建前提供实际可访问的不可变部署地址，否则只能依赖刷新恢复。此变更不能追溯修复已经打开的旧版本页面。
+新版本发布后，旧页面请求已不存在的哈希资源时，通过现有资源错误提示和确认刷新恢复；不保证旧版本资源永久可用。
 
 `public/assets/404.html` 利用 Pages 最近一级 404 页面规则，让缺失资源返回不可缓存的 404，避免回退为应用首页；其他路径仍保持 SPA 回退。`public/_routes.json` 仅让 `/api/*` 进入 Functions，静态资源不消耗 Functions 调用。CORS 和 nosniff 由 `public/_headers` 设置。构建会把这三份静态配置一并复制到 dist。规则已通过本地 Wrangler 静态资源处理器验证；其他静态托管需要配置等效的 404 行为。参考：https://developers.cloudflare.com/pages/configuration/serving-pages/
 
