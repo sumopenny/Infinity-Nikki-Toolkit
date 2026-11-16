@@ -38,6 +38,53 @@ function createPhoto(name: string): PhotoItem {
 }
 
 describe('Lightbox preview navigation', () => {
+  it('rotates once, blocks navigation and deletion while saving, and reports the saved result', async () => {
+    let finish!: () => void
+    const rotateSource = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
+    loadPhotoMock.mockResolvedValue('blob:photo')
+    const wrapper = mount(Lightbox, {
+      props: { photo:createPhoto('rotate.png'), hasPrevious:true, hasNext:true,
+        isDeleting:false, isFavorite:false, keyboardEnabled:true, mode:'album', rotateSource,
+        messages:messages.zh.lightbox, dateMessages:messages.zh.date },
+      global:{ stubs:{ Teleport:true } }
+    })
+    try {
+      await flushPromises()
+      const button = wrapper.get(`[aria-label="${messages.zh.lightbox.rotateSource}"]`)
+      await button.trigger('click'); await button.trigger('click')
+      expect(rotateSource).toHaveBeenCalledOnce()
+      expect(button.attributes('disabled')).toBeDefined()
+      for (const key of ['ArrowRight','ArrowLeft','Escape','Delete'])
+        window.dispatchEvent(new KeyboardEvent('keydown',{key}))
+      expect(wrapper.emitted('next')).toBeUndefined()
+      expect(wrapper.emitted('previous')).toBeUndefined()
+      expect(wrapper.emitted('close')).toBeUndefined()
+      expect(wrapper.emitted('deleteCurrent')).toBeUndefined()
+      finish(); await flushPromises()
+      expect(wrapper.get('[role="status"]').text()).toBe(messages.zh.lightbox.rotateSaved)
+      expect(button.attributes('disabled')).toBeUndefined()
+      rotateSource.mockRejectedValueOnce(new Error('rotation_conflict'))
+      await button.trigger('click'); await flushPromises()
+      expect(wrapper.get('[role="status"]').text()).toBe(messages.zh.lightbox.rotateConflict)
+    } finally { wrapper.unmount() }
+  })
+
+  it('disables source rotation for read-only previews', async () => {
+    loadPhotoMock.mockResolvedValue('blob:photo')
+    const rotateSource = vi.fn()
+    const wrapper = mount(Lightbox, {
+      props: { photo:createPhoto('rotate.png'), hasPrevious:false, hasNext:false,
+        isDeleting:false, isFavorite:false, keyboardEnabled:true, mode:'album', rotateSource, readOnly:true,
+        messages:messages.zh.lightbox, dateMessages:messages.zh.date },
+      global:{ stubs:{ Teleport:true } }
+    })
+    try {
+      await flushPromises()
+      await wrapper.get(`[aria-label="${messages.zh.lightbox.rotateSource}"]`).trigger('click')
+      expect(rotateSource).not.toHaveBeenCalled()
+    } finally { wrapper.unmount() }
+  })
+
   beforeEach(() => {
     loadPhotoMock.mockReset()
   })

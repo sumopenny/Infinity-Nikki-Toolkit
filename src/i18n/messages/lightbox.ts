@@ -2,6 +2,14 @@
 import type { LocaleMessages } from '../types'
 
 export const lightboxZh: LocaleMessages['lightbox'] = {
+  rotateSource: '顺时针旋转 90° 并保存原图',
+  rotating: '正在旋转并保存…',
+  rotateSaved: '已旋转并保存',
+  rotateFailed: '旋转保存失败，请重试。',
+  rotateUnsupported: '此图片暂不支持安全旋转。原文件支持静态 JPG、PNG，本地封面还支持 WebP。',
+  rotateConflict: '图片已发生变化，请刷新后重试。',
+  rotatePermission: '请允许修改相册文件后重试。',
+  rotateRefreshFailed: '图片已保存，预览刷新失败，请重新打开。',
   previousAria: '查看上一张图片',
   nextAria: '查看下一张图片',
   closeAria: '关闭预览',
@@ -18,6 +26,15 @@ export const lightboxZh: LocaleMessages['lightbox'] = {
   parsePhoto: '解析照片参数'
 }
 export const lightboxEn: LocaleMessages['lightbox'] = {
+  rotateSource: 'Rotate 90° clockwise and save source',
+  rotating: 'Rotating and saving…',
+  rotateSaved: 'Rotated and saved',
+  rotateFailed: 'Could not save rotation. Please try again.',
+  rotateUnsupported:
+    'Cannot safely rotate this image. Source files support static JPG/PNG; stored covers also support WebP.',
+  rotateConflict: 'The image has changed. Refresh and try again.',
+  rotatePermission: 'Allow access to modify album files and try again.',
+  rotateRefreshFailed: 'Image saved, but preview refresh failed. Please reopen it.',
   previousAria: 'View previous photo',
   nextAria: 'View next photo',
   closeAria: 'Close preview',

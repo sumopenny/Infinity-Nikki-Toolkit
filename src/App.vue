@@ -17,7 +17,9 @@ import {
 import { browserBaseline } from './utils/directory-backup/repository'
 import { currentVersion } from './i18n/version'
 import { lazyFeature } from './utils/lazyFeature'
-import { isAlbumPhoto } from './utils/photoGrouping'
+import { isAlbumPhoto, isDirectoryPhoto } from './utils/photoGrouping'
+import { rotateDirectoryPhoto, rotateStoredPhoto } from './utils/rotatePhotoSource'
+import { formatFileSize } from './utils/file-system/photoUrl'
 import { outfitBackupMessage } from './utils/outfit/outfitBackupMessage'
 import { readCompatibleAlbum } from './utils/file-system/compatibleAlbum'
 import { exportCompatiblePhotos } from './utils/file-system/compatiblePhotoExport'
@@ -1407,6 +1409,28 @@ async function clearData() {
  * 应用增量刷新结果并清理失效状态。
  * 参数：result 为文件系统扫描结果。
  */
+async function rotatePreviewSource() {
+  const photo = currentPreview.value
+  if (!photo || isAnyFileOperationBusy.value) return
+  const outfit = currentPreviewOutfit.value
+  activeOperation.value = 'rotating-photo'
+  try {
+    if (activeView.value === 'outfits' && outfit?.image) {
+      await rotateStoredPhoto('outfit', outfit.id, outfit.updatedAt)
+      try { await reloadOutfitCollection() } catch { throw new Error('rotation_refresh') }
+    } else if (activeView.value !== 'trash' && isAlbumPhoto(photo) && isDirectoryPhoto(photo)) {
+      const file = await rotateDirectoryPhoto(photo)
+      const replacement = { ...photo, url: null, fileSize: file.size,
+        fileSizeText: formatFileSize(file.size), lastModified: file.lastModified }
+      photos.value = photos.value.map(item => item.id === photo.id ? replacement : item)
+      currentPreview.value = replacement
+      releasePhotoUrl(photo)
+    }
+  } finally {
+    activeOperation.value = null
+  }
+}
+
 function applyRefreshResult(result: RefreshAlbumResult) {
   albumNotes.value = result.notes
   for (const photo of result.removedPhotos) releasePhotoUrl(photo)
@@ -3096,12 +3120,13 @@ function importAllDataFromMenu() {
     />
 
     <Lightbox
+      :rotate-source="activeView === 'trash' || (activeView === 'outfits' && !currentPreviewOutfit?.image) ? undefined : rotatePreviewSource"
       :read-only="(isCompatibleAlbum || notesBlocked) && activeView !== 'outfits'"
       :read-only-hint="notesBlocked ? noteLockedHint : compatibleMessages.writeDisabled"
       :photo="currentPreview"
       :has-previous="hasPreviousPreview"
       :has-next="hasNextPreview"
-      :is-deleting="isDeleting || isTrashBusy"
+      :is-deleting="isAnyFileOperationBusy || isDeleting || isTrashBusy"
       :keyboard-enabled="
         !confirmDialog.visible &&
         !isOutfitEditorVisible &&

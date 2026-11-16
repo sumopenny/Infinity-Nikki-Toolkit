@@ -18,6 +18,7 @@ export interface OperationNoticeItem {
 }
 
 export type ActiveOperation =
+  | 'rotating-photo'
   | 'loading'
   | 'refreshing'
   | 'deleting'

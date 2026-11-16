@@ -367,3 +367,18 @@
     height: 38px;
   }
 }
+.lightbox-rotation-notice {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 8px 14px;
+  border-radius: 12px;
+  color: white;
+  background: rgb(0 0 0 / 75%);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}

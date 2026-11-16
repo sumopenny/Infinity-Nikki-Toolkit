@@ -8,6 +8,7 @@ import {
   Heart,
   Pencil,
   RotateCcw,
+  RotateCw,
   ScanSearch,
   Trash2,
   X,
@@ -24,6 +25,7 @@ import type { HomeSchemeItem } from '../utils/homeBuild/homeSchemeTypes'
 import type { HomeSchemeMessages } from '../i18n/messages/homeScheme'
 import { loadImageUrlWithSize, loadPhotoWithRetryAndSize } from '../utils/photoLoader'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
+import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
 
 const { glassFilterId, refractsBackdrop } = useGlassSurface()
 const glassSurfaceAttributes = {
@@ -41,6 +43,7 @@ const props = defineProps<{
   hasNext: boolean
   readOnly?: boolean
   readOnlyHint?: string
+  rotateSource?: () => Promise<void>
   isDeleting: boolean
   isFavorite: boolean
   keyboardEnabled: boolean
@@ -71,6 +74,35 @@ const emit = defineEmits<{
 }>()
 
 const displayedPhoto = ref<PhotoItem | PreviewPhoto | null>(null)
+const decodingPreview = ref(false)
+const rotating = ref(false)
+const rotationNotice = ref('')
+async function rotateCurrent() {
+  if (!props.rotateSource || props.readOnly || photoActionsDisabled.value) return
+  rotating.value = true
+  rotationNotice.value = ''
+  showControls()
+  try {
+    await props.rotateSource()
+    rotationNotice.value = props.messages.rotateSaved
+  } catch (error) {
+    captureDiagnosticError(error, { module: 'lightbox', action: 'rotate-source' })
+    const code = error instanceof Error ? error.message : ''
+    rotationNotice.value =
+      code === 'rotation_unsupported'
+        ? props.messages.rotateUnsupported
+        : code === 'rotation_conflict'
+          ? props.messages.rotateConflict
+          : code === 'rotation_permission'
+            ? props.messages.rotatePermission
+            : code === 'rotation_refresh'
+              ? props.messages.rotateRefreshFailed
+              : props.messages.rotateFailed
+  } finally {
+    rotating.value = false
+    showControls()
+  }
+}
 const imageAspectRatio = ref<number | null>(null)
 const viewportSize = ref({ width: 0, height: 0 })
 const controlsVisible = ref(true)
@@ -84,16 +116,20 @@ function showControls() {
   controlsVisible.value = true
   clearControlsTimer()
   if (!props.photo) return
-  controlsTimer = setTimeout(() => {
-    if (
-      toolbarHovered ||
-      !props.keyboardEnabled ||
-      (document.activeElement?.matches(':focus-visible') &&
-        document.activeElement.closest('.lightbox-footer'))
-    )
-      return
-    controlsVisible.value = false
-  }, 680)
+  controlsTimer = setTimeout(
+    () => {
+      if (
+        toolbarHovered ||
+        rotating.value ||
+        !props.keyboardEnabled ||
+        (document.activeElement?.matches(':focus-visible') &&
+          document.activeElement.closest('.lightbox-footer'))
+      )
+        return
+      controlsVisible.value = false
+    },
+    rotationNotice.value ? 5000 : 680
+  )
 }
 function enterToolbar() {
   toolbarHovered = true
@@ -108,6 +144,7 @@ const { zoom, imageTransform, resetTransform, setZoom, handleWheel, startDrag, m
   useImageZoom(
     () => true,
     (direction) => {
+      if (rotating.value) return
       if (direction === 'next' && props.hasNext) emit('next')
       if (direction === 'previous' && props.hasPrevious) emit('previous')
     },
@@ -117,10 +154,12 @@ let previewLoadToken = 0
 let previewAbortController: AbortController | null = null
 
 const isPreviewLoading = computed(() =>
-  Boolean(props.photo && displayedPhoto.value?.id !== props.photo.id)
+  Boolean(props.photo && (decodingPreview.value || displayedPhoto.value?.id !== props.photo.id))
 )
 // 加载下一张时仍显示上一张，所有针对当前记录的操作必须等预览就绪。
-const photoActionsDisabled = computed(() => props.isDeleting || isPreviewLoading.value)
+const photoActionsDisabled = computed(
+  () => props.isDeleting || rotating.value || isPreviewLoading.value
+)
 const imageOrientation = computed(() => {
   if (!imageAspectRatio.value) return 'pending'
   if (imageAspectRatio.value < 0.95) return 'portrait'
@@ -169,6 +208,7 @@ function updateViewportSize() {
 
 /** 优先读取并解码用户主动打开的原图；尺寸直接复用解码结果，不再二次探测。参数：nextPhoto 为待显示照片。 */
 async function updateDisplayedPhoto(nextPhoto: PhotoItem | PreviewPhoto): Promise<void> {
+  decodingPreview.value = true
   const opening = !displayedPhoto.value
   const currentToken = ++previewLoadToken
   previewAbortController?.abort()
@@ -187,12 +227,15 @@ async function updateDisplayedPhoto(nextPhoto: PhotoItem | PreviewPhoto): Promis
     if (error instanceof DOMException && error.name === 'AbortError') return
     // 解码失败仍打开预览面板，由失败占位呈现
     if (currentToken === previewLoadToken) displayedPhoto.value = nextPhoto
+  } finally {
+    if (currentToken === previewLoadToken) decodingPreview.value = false
   }
 }
 
 watch(
   () => props.photo,
   (nextPhoto, previousPhoto) => {
+    if (nextPhoto?.id !== previousPhoto?.id) rotationNotice.value = ''
     updateViewportSize()
     resetTransform()
     if (!previousPhoto || !nextPhoto) {
@@ -204,6 +247,7 @@ watch(
       previewAbortController?.abort()
       previewAbortController = null
       displayedPhoto.value = null
+      decodingPreview.value = false
       imageAspectRatio.value = null
       return
     }
@@ -214,7 +258,7 @@ watch(
 
 /** 处理预览快捷键；确认弹窗等上层弹窗打开时不响应。参数：event 为键盘事件。 */
 function handleKeydown(event: KeyboardEvent) {
-  if (event.defaultPrevented || !props.photo || !props.keyboardEnabled) return
+  if (event.defaultPrevented || !props.photo || !props.keyboardEnabled || rotating.value) return
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') showControls()
   if (event.key === 'Escape') emit('close')
   if (event.key === 'ArrowLeft' && props.hasPrevious) emit('previous')
@@ -233,12 +277,12 @@ function handleKeydown(event: KeyboardEvent) {
 
 /** 恢复当前回收照片，切图加载期间忽略点击。参数：无。 */
 function handleRestoreClick() {
-  if (!props.readOnly && !props.isDeleting && !isPreviewLoading.value) emit('restoreCurrent')
+  if (!props.readOnly && !photoActionsDisabled.value) emit('restoreCurrent')
 }
 
 /** 删除当前预览照片，切图加载期间忽略点击。参数：无。 */
 function handleDeleteClick() {
-  if (props.readOnly || props.isDeleting || isPreviewLoading.value) return
+  if (props.readOnly || photoActionsDisabled.value) return
   if (props.mode === 'home') return
   props.mode === 'trash' ? emit('permanentlyDeleteCurrent') : emit('deleteCurrent')
 }
@@ -268,7 +312,7 @@ onUnmounted(() => {
         class="lightbox"
         role="dialog"
         aria-modal="true"
-        @click.self="emit('close')"
+        @click.self="!rotating && emit('close')"
       >
         <GlassSurfaceFilter v-if="refractsBackdrop" :filter-id="glassFilterId" />
         <div class="lightbox-header">
@@ -289,6 +333,7 @@ onUnmounted(() => {
             type="button"
             :title="messages.closeAria"
             :aria-label="messages.closeAria"
+            :disabled="rotating"
             @click="emit('close')"
           >
             <X :size="19" />
@@ -322,6 +367,7 @@ onUnmounted(() => {
             type="button"
             :title="messages.previousAria"
             :aria-label="messages.previousAria"
+            :disabled="rotating"
             @pointerdown="handleNavigationPointerDown"
             @click="emit('previous')"
           >
@@ -336,6 +382,7 @@ onUnmounted(() => {
             type="button"
             :title="messages.nextAria"
             :aria-label="messages.nextAria"
+            :disabled="rotating"
             @pointerdown="handleNavigationPointerDown"
             @click="emit('next')"
           >
@@ -351,6 +398,9 @@ onUnmounted(() => {
           @focusin="showControls"
           @focusout="showControls"
         >
+          <span v-if="rotating || rotationNotice" role="status" class="lightbox-rotation-notice">{{
+            rotating ? messages.rotating : rotationNotice
+          }}</span>
           <div
             class="lightbox-toolbar material-surface preview-material"
             v-bind="glassSurfaceAttributes"
@@ -416,6 +466,17 @@ onUnmounted(() => {
                 <ZoomIn :size="17" />
               </button>
             </div>
+            <button
+              v-if="rotateSource"
+              type="button"
+              :title="readOnly ? readOnlyHint : messages.rotateSource"
+              :aria-label="messages.rotateSource"
+              :aria-busy="rotating"
+              :disabled="readOnly || photoActionsDisabled"
+              @click="rotateCurrent"
+            >
+              <RotateCw :size="17" />
+            </button>
             <slot name="actions" :disabled="photoActionsDisabled" />
             <template v-if="mode === 'outfit' && outfitMessages">
               <button
@@ -488,7 +549,7 @@ onUnmounted(() => {
               v-else-if="mode === 'trash'"
               type="button"
               :class="{ 'is-preview-loading': isPreviewLoading }"
-              :disabled="isDeleting || readOnly"
+              :disabled="isDeleting || rotating || readOnly"
               :aria-disabled="isPreviewLoading || undefined"
               :title="messages.restoreCurrent"
               @click="handleRestoreClick"
@@ -500,7 +561,7 @@ onUnmounted(() => {
               class="lightbox-delete"
               type="button"
               :class="{ 'is-preview-loading': isPreviewLoading }"
-              :disabled="isDeleting || readOnly"
+              :disabled="isDeleting || rotating || readOnly"
               :aria-disabled="isPreviewLoading || undefined"
               :title="
                 readOnly

@@ -61,6 +61,7 @@ import {
   type HomeSchemeType
 } from '../utils/homeBuild/homeSchemeTypes'
 import Lightbox from './Lightbox.vue'
+import { rotateStoredPhoto } from '../utils/rotatePhotoSource'
 import SelectionBar from './SelectionBar.vue'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 
@@ -200,6 +201,23 @@ onBeforeUnmount(() => {
 function operationError(error: unknown, operation: string): string {
   captureDiagnosticError(error, { module: 'home-schemes', action: operation })
   return describeHomeSchemeError(error, props.messages, operation)
+}
+
+async function rotatePreviewSource() {
+  const item = previewScheme.value
+  if (!item?.image || isBusy.value) return
+  return trackOperation(async () => {
+    busy.value = true
+    try {
+      await rotateStoredPhoto('home', item.id, item.updatedAt)
+      try {
+        const result = await readHomeSchemeLibrary()
+        schemes.value = result.schemes
+        tags.value = result.tags
+        previewScheme.value = result.schemes.find(scheme => scheme.id === item.id) ?? null
+      } catch { throw new Error('rotation_refresh') }
+    } finally { busy.value = false }
+  })
 }
 
 async function loadLibrary() {
@@ -1171,6 +1189,7 @@ function handleAddTag(value: string) {
     />
 
     <Lightbox
+      :rotate-source="previewScheme?.image ? rotatePreviewSource : undefined"
       :photo="previewPhoto"
       :has-previous="hasPreviousPreview"
       :has-next="hasNextPreview"

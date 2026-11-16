@@ -12,6 +12,7 @@ import {
 } from '../utils/photoGrouping'
 import { releasePhotoUrl } from '../utils/file-system/photoUrl'
 import Lightbox from './Lightbox.vue'
+import { rotateStoredPhoto } from '../utils/rotatePhotoSource'
 
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import { downloadBackupBlob } from '../utils/backup/zipBackup'
@@ -490,6 +491,20 @@ function report(caught: unknown, action = 'operation') {
   emit('status', message, 'error')
 }
 /** 列表只读取收藏元数据，封面由可见卡片按需读取。 */
+async function rotatePreviewSource() {
+  const item = previewRecord.value
+  if (!item?.cover || busy.value) return
+  return trackOperation(async () => {
+    busy.value = true
+    try {
+      await rotateStoredPhoto('camera', item.id, item.updatedAt)
+      try {
+        library.value = await readCameraFavorites(false)
+      } catch { throw new Error('rotation_refresh') }
+    } finally { busy.value = false }
+  })
+}
+
 async function reload() {
   return trackOperation(async () => {
     const run = ++loadGeneration
@@ -1402,6 +1417,7 @@ function handleImportChoices(value: typeof choices.value) {
     @cancel="importPlan = null"
   />
   <Lightbox
+    :rotate-source="previewRecord?.cover ? rotatePreviewSource : undefined"
     :photo="previewPhoto"
     :has-previous="previewIndex > 0"
     :has-next="previewIndex >= 0 && previewIndex < previewRecords.length - 1"

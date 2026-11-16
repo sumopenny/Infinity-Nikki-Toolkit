@@ -344,6 +344,14 @@ export interface FullLocaleMessages {
     actionCount: (count: number) => string
   }
   lightbox: {
+    rotateSource: string
+    rotating: string
+    rotateSaved: string
+    rotateFailed: string
+    rotateUnsupported: string
+    rotateConflict: string
+    rotatePermission: string
+    rotateRefreshFailed: string
     previousAria: string
     nextAria: string
     closeAria: string
