@@ -41,6 +41,33 @@ const outfitParts = (outfitId: string) => {
 
 afterEach(() => vi.unstubAllGlobals())
 
+it('does not retry or fall back to the proxy after a direct network failure', async () => {
+  const fetcher = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+  vi.stubGlobal('fetch', fetcher)
+  const controller = new AbortController()
+  await expect(fetchPearpalSnapshot(CREDENTIALS, controller.signal)).rejects.toThrow(
+    'Failed to fetch'
+  )
+  expect(fetcher).toHaveBeenCalledOnce()
+  expect(String(fetcher.mock.calls[0][0])).toBe(
+    'https://myl-api.nuanpaper.com/v1/strategy/user/info/get'
+  )
+  expect(fetcher.mock.calls[0][1].signal).toBe(controller.signal)
+})
+
+it('accepts direct upstream responses without a proxy no-store response header', async () => {
+  const notebook = { info_from_self: { suit_list: [] } }
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ code: 0, data: { role: { uid: CREDENTIALS.roleid } } }))
+    .mockResolvedValueOnce(
+      new Response(encodeSnappyLiteral(JSON.stringify(notebook)).buffer as ArrayBuffer)
+    )
+  vi.stubGlobal('fetch', fetcher)
+  expect(await fetchPearpalSnapshot(CREDENTIALS)).toEqual(notebook)
+  expect(fetcher).toHaveBeenCalledTimes(2)
+})
+
 describe('resonance catalog', () => {
   it('loads bilingual banner names in descending banner ID order', () => {
     const banners = loadResonanceBanners()
@@ -224,7 +251,7 @@ describe('Pearpal import', () => {
     )
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input), 'https://local.test')
-      if (url.searchParams.get('action') === 'verify') {
+      if (url.pathname.endsWith('/user/info/get')) {
         return Response.json(
           { code: 0, data: { role: { uid: 123456, zone_id: 1 } } },
           { headers: { 'cache-control': 'no-store' } }
@@ -247,9 +274,9 @@ describe('Pearpal import', () => {
     expect(record?.sets[1].parts.find((part) => part.id === HAIR)?.pullNumber).toBe(1)
     expect(fetchMock).toHaveBeenCalledTimes(2)
     const verifyBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
-    expect(verifyBody).toEqual({ region: 'cn', token: 'test-token', openid: 'test-openid' })
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('action=verify')
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('action=snapshot')
+    expect(verifyBody).toEqual({ client_id: 1106, token: 'test-token', openid: 'test-openid' })
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/user/info/get')
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/user/note/book/info')
   })
 
   it('stops before reading the notebook when the server UID does not match', async () => {
@@ -289,7 +316,7 @@ describe('Pearpal import', () => {
       'fetch',
       vi.fn<typeof fetch>(async (input) =>
         Response.json(
-          new URL(String(input), 'https://local.test').searchParams.get('action') === 'verify'
+          new URL(String(input), 'https://local.test').pathname.endsWith('/user/info/get')
             ? { code: 0, data: { role: { uid: '123456', zone_id: 1 } } }
             : { code: 1801, info: 'need login.' },
           { headers: { 'cache-control': 'no-store' } }
@@ -319,7 +346,7 @@ describe('Pearpal import', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>(async (input) =>
-        new URL(String(input), 'https://local.test').searchParams.get('action') === 'verify'
+        new URL(String(input), 'https://local.test').pathname.endsWith('/user/info/get')
           ? Response.json(
               { code: 0, data: { role: { uid: '123456', zone_id: 1 } } },
               { headers: { 'cache-control': 'no-store' } }
@@ -340,7 +367,11 @@ describe('Pearpal import', () => {
 
   it('rejects a missing or malformed gacha list', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
-      const action = new URL(String(input), 'https://local.test').searchParams.get('action')
+      const action = new URL(String(input), 'https://local.test').pathname.endsWith(
+        '/user/info/get'
+      )
+        ? 'verify'
+        : 'snapshot'
       return action === 'verify'
         ? Response.json(
             { code: 0, data: { role: { uid: '123456', zone_id: 1 } } },
@@ -468,9 +499,15 @@ describe('international notebook import', () => {
     vi.stubGlobal('fetch', fetchMock)
     expect(await fetchPearpalSnapshot(CREDENTIALS, undefined, region)).toEqual(notebook)
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    for (const [, init] of fetchMock.mock.calls) {
+    for (const [input, init] of fetchMock.mock.calls) {
+      expect(new URL(String(input)).origin).toBe(
+        region === 'cn' ? 'https://myl-api.nuanpaper.com' : 'https://pearpal-api.infoldgames.com'
+      )
+      expect(init?.credentials).toBe('omit')
+      expect(init?.cache).toBe('no-store')
+      expect(new Headers(init?.headers).has('cache-control')).toBe(false)
       expect(JSON.parse(String(init?.body))).toEqual({
-        region,
+        client_id: region === 'cn' ? 1106 : 1116,
         token: CREDENTIALS.token,
         openid: CREDENTIALS.id
       })

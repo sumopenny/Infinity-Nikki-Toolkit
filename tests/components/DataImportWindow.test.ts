@@ -297,7 +297,9 @@ it('retains the failed format stage and recovers with a new file', async () => {
       '检查数据格式'
     )
   )
-  expect(document.querySelector('.data-import-progress')?.textContent).toContain('此阶段失败')
+  expect(document.querySelector('.data-import-progress')?.textContent).toContain(
+    '可点击“获取预览”重试，或稍后再试。'
+  )
   await selectProgressFile(async () => JSON.stringify({ 77: [['2026-01-01', '1020100347']] }))
   expect(document.querySelector('.data-import-progress')).toBeNull()
   submit().click()
@@ -417,6 +419,26 @@ it('reports a Pearpal credential failure at the UI boundary without changing its
   )
   expect(wrapper.emitted('notice')?.at(-1)?.[0]).toContain('请前往美鸭梨网站重新登录并获取新凭据')
   expect(wrapper.emitted('imported')).toBeUndefined()
+})
+
+it.each([
+  'PEARPAL_NETWORK_FAILED',
+  'PEARPAL_HTTP_ERROR',
+  'PEARPAL_NOTEBOOK_DECODE_FAILED',
+  'PEARPAL_RESPONSE_INVALID',
+  'PEARPAL_RESPONSE_CODE_INVALID'
+])('reuses the generic import notice for %s and permits retry', async (code) => {
+  const error = diagnosticReporter.annotateDiagnosticError(new Error('upstream failure'), { code })
+  const fetcher = vi.spyOn(resonanceImport, 'fetchPearpalSnapshot').mockRejectedValue(error)
+  await pasteCredentials()
+  submit().click()
+  await vi.waitFor(() =>
+    expect(wrapper.emitted('notice')?.at(-1)).toEqual(['导入失败，请重试。', 'error'])
+  )
+  expect(wrapper.emitted('imported')).toBeUndefined()
+  await vi.waitFor(() => expect(submit().disabled).toBe(false))
+  submit().click()
+  await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2))
 })
 
 it('offers a generic userscript link and desktop tutorials in both languages', async () => {

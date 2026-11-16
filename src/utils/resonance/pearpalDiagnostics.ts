@@ -44,7 +44,8 @@ export function pearpalDiagnosticFailure(
     context: {
       region,
       upstreamAction: action,
-      endpoint: `/api/resonance/pearpal`,
+      endpoint:
+        action === 'verify' ? '/v1/strategy/user/info/get' : '/v1/strategy/user/note/book/info',
       upstreamHost: new URL(PEARPAL_REGIONS[region].api).hostname,
       httpStatus: response?.status ?? null,
       requestId: response?.headers.get('X-Request-Id') ?? null,

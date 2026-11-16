@@ -247,35 +247,30 @@ function report(cause: unknown) {
     emit('notice', t.value.regionMismatch, 'error')
     return
   }
-  const errorMessage =
-    method.value === 'pearpal' &&
-    [
-      'PEARPAL_RESPONSE_INVALID',
-      'PEARPAL_NOTEBOOK_DECODE_FAILED',
-      'PEARPAL_RESPONSE_CODE_INVALID'
-    ].includes(diagnosticCode ?? '')
-      ? text(
-          '美鸭梨返回的数据格式暂时无法识别，请稍后重试；持续出现时请反馈给站点维护者。',
-          'Pear-Pal returned data in an unrecognized format. Try again later; if it persists, contact the site maintainer.'
-        )
-      : diagnosticCode === 'PEARPAL_ROLE_MISSING' || diagnosticCode === 'PEARPAL_UID_MISSING'
-        ? t.value.authFailed
-        : diagnosticCode === 'PEARPAL_HTTP_ERROR' || diagnosticCode === 'PEARPAL_NETWORK_FAILED'
-          ? text('美鸭梨连接失败，请稍后重试。', 'Could not connect to Pear-Pal. Try again later.')
-          : message === PEARPAL_UID_MISMATCH
-            ? t.value.uidMismatch
-            : message === PEARPAL_AUTH_FAILED
-              ? t.value.authFailed
-              : message === 'LOCAL_CHANGED'
-                ? text(
-                    '记录已在其他页面变更，请重新获取预览。',
-                    'Records changed in another tab. Preview again.'
-                  )
-                : confirming.value
-                  ? t.value.saveError
-                  : method.value === 'file'
-                    ? t.value.fileInvalid
-                    : t.value.importError
+  const errorMessage = [
+    'PEARPAL_NETWORK_FAILED',
+    'PEARPAL_HTTP_ERROR',
+    'PEARPAL_NOTEBOOK_DECODE_FAILED',
+    'PEARPAL_RESPONSE_INVALID',
+    'PEARPAL_RESPONSE_CODE_INVALID'
+  ].includes(diagnosticCode ?? '')
+    ? t.value.importError
+    : diagnosticCode === 'PEARPAL_ROLE_MISSING' || diagnosticCode === 'PEARPAL_UID_MISSING'
+      ? t.value.authFailed
+      : message === PEARPAL_UID_MISMATCH
+        ? t.value.uidMismatch
+        : message === PEARPAL_AUTH_FAILED
+          ? t.value.authFailed
+          : message === 'LOCAL_CHANGED'
+            ? text(
+                '记录已在其他页面变更，请重新获取预览。',
+                'Records changed in another tab. Preview again.'
+              )
+            : confirming.value
+              ? t.value.saveError
+              : method.value === 'file'
+                ? t.value.fileInvalid
+                : t.value.importError
   emit('notice', errorMessage, 'error')
 }
 async function createPreview() {
@@ -488,7 +483,10 @@ async function copyScript(kind: 'bookmark' | 'console') {
         ></span>
       </div>
       <p v-if="progress.failed">{{
-        text('此阶段失败。网络服务经常波动，可点击“获取预览”重试，或稍后再试。', 'This stage failed. Please retry.')
+        text(
+          '可点击“获取预览”重试，或稍后再试。',
+          'Click “Get preview” to retry, or try again later.'
+        )
       }}</p>
     </section>
     <p v-if="error" class="data-import-error" role="alert">{{ error }}</p>

@@ -42,12 +42,20 @@ async function postPearpal(
 ): Promise<Response> {
   let response: Response
   try {
-    response = await diagnosticFetch(`/api/resonance/pearpal?action=${action}`, {
+    const config = PEARPAL_REGIONS[region]
+    const path =
+      action === 'verify' ? '/v1/strategy/user/info/get' : '/v1/strategy/user/note/book/info'
+    response = await diagnosticFetch(new URL(path, config.api), {
       method: 'POST',
       signal,
       cache: 'no-store',
-      headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
-      body: JSON.stringify({ region, token: credentials.token, openid: credentials.id })
+      credentials: 'omit',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_id: config.clientId,
+        token: credentials.token,
+        openid: credentials.id
+      })
     })
   } catch (error) {
     throw annotateDiagnosticError(error, {
@@ -61,17 +69,6 @@ async function postPearpal(
     throw pearpalDiagnosticFailure(
       `Pearpal request failed (${response.status})`,
       'PEARPAL_HTTP_ERROR',
-      action,
-      region,
-      response,
-      {},
-      'error'
-    )
-  }
-  if (response.headers.get('cache-control')?.includes('no-store') !== true) {
-    throw pearpalDiagnosticFailure(
-      'Pearpal response caching is not allowed',
-      'PEARPAL_UNEXPECTED_CACHE',
       action,
       region,
       response,
