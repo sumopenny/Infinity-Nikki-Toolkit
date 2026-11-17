@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch, watchEffect } from 'vue'
-import { Download, ImagePlus, Images, LoaderCircle, Quote, Sparkles, X } from 'lucide-vue-next'
+import {
+  Download,
+  ImagePlus,
+  Images,
+  LoaderCircle,
+  Pause,
+  Play,
+  Quote,
+  Sparkles,
+  X
+} from 'lucide-vue-next'
 import { useModalFocus } from '../composables/useModalFocus'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { requestBlobDownload } from '../utils/backup/downloadFallback'
@@ -10,10 +20,11 @@ import { readPhotoBlob } from '../utils/file-system/photoUrl'
 import { createPhotoThumbnailCache } from '../utils/photoThumbnail'
 import type { PhotoDisplayItem } from '../utils/photoGrouping'
 import type { Language } from '../i18n/types'
-import frames from '../data/profile/headFrameImageMap.json'
 import zh from '../data/profile/locales/zh/headFrames.json'
 import en from '../data/profile/locales/en/headFrames.json'
 import LazyPhotoImage from './LazyPhotoImage.vue'
+import { headFrames } from '../utils/animatedHeadFrames'
+import { useAnimatedHeadFrame } from '../composables/useAnimatedHeadFrame'
 
 const props = defineProps<{ photos: PhotoDisplayItem[]; language: Language }>()
 const emit = defineEmits<{ close: [] }>()
@@ -27,11 +38,11 @@ useModalFocus(active, panel, close)
 useBodyScrollLock(active)
 
 const catalog = computed(() =>
-  Object.entries(frames).map(([id, file]) => ({
+  Object.entries(headFrames).map(([id, frame]) => ({
     id,
     name: (props.language === 'zh' ? zh : en)[id as keyof typeof zh].name,
     description: (props.language === 'zh' ? zh : en)[id as keyof typeof zh].description,
-    url: IMAGEKIT_IMAGES + 'headframes/' + encodeImagePath(file)
+    url: IMAGEKIT_IMAGES + 'headframes/' + encodeImagePath(frame.image) + '?tr=f-webp'
   }))
 )
 const selected = ref('1070020004')
@@ -55,6 +66,24 @@ const saving = ref(false)
 const retry = ref(0)
 let photoRequest = 0
 let disposed = false
+const animation = computed(() => headFrames[selected.value]?.animation)
+const {
+  canvas: animatedCanvas,
+  failed: animationFailed,
+  paused,
+  togglePause
+} = useAnimatedHeadFrame(animation, active, retry, repaint)
+const displayedFrame = computed(() =>
+  animation.value && !animationFailed.value ? animatedCanvas.value : frame.value
+)
+const animationLoading = computed(
+  () => !!animation.value && !animatedCanvas.value && !animationFailed.value
+)
+
+function repaint() {
+  if (canvas.value)
+    drawAvatar(canvas.value, photo.value, displayedFrame.value, zoom.value, x.value, y.value)
+}
 
 watch(
   [() => current.value.url, retry],
@@ -127,8 +156,7 @@ function zoomWithWheel(event: WheelEvent) {
 }
 watchEffect(
   () => {
-    if (canvas.value)
-      drawAvatar(canvas.value, photo.value, frame.value, zoom.value, x.value, y.value)
+    repaint()
   },
   { flush: 'post' }
 )
@@ -152,11 +180,12 @@ function endDrag(event: PointerEvent) {
   if (drag?.id === event.pointerId) drag = null
 }
 async function save() {
-  if (!canvas.value || !photo.value || !frame.value || saving.value) return
+  if (!canvas.value || !photo.value || !displayedFrame.value || saving.value) return
   const name = current.value.name
   saving.value = true
   saveFailed.value = false
   try {
+    repaint()
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.value!.toBlob(resolve, 'image/png')
     )
@@ -195,6 +224,9 @@ onBeforeUnmount(() => {
             <div class="editor">
               <div class="preview-summary">
                 <div class="stage" @wheel="zoomWithWheel">
+                  <span v-if="animationLoading" class="animation-loading" role="status">
+                    <LoaderCircle :size="18" />{{ t('动画加载中…', 'Loading animation…') }}
+                  </span>
                   <canvas
                     ref="canvas"
                     :width="avatarSize"
@@ -232,13 +264,39 @@ onBeforeUnmount(() => {
                   <button
                     class="confirm-dialog-button ghost dialog-action-control upload-photo"
                     @click="input?.click()"
-                    ><ImagePlus :size="16" />{{ t('上传照片', 'Upload photo') }}</button
+                    ><ImagePlus :size="16" />{{ t('上传', 'Upload') }}</button
                   >
+                  <button
+                    v-if="animation"
+                    class="confirm-dialog-button ghost dialog-action-control animation-toggle"
+                    :disabled="!animatedCanvas"
+                    :aria-label="
+                      animationLoading
+                        ? t('动画加载中', 'Loading animation')
+                        : paused
+                          ? t('播放动画', 'Play animation')
+                          : t('暂停动画', 'Pause animation')
+                    "
+                    :title="
+                      paused ? t('播放动画', 'Play animation') : t('暂停动画', 'Pause animation')
+                    "
+                    :aria-pressed="paused"
+                    @click="togglePause"
+                  >
+                    <LoaderCircle
+                      v-if="animationLoading"
+                      class="saving-spinner"
+                      :size="16"
+                      aria-hidden="true"
+                    />
+                    <Play v-else-if="paused" :size="16" aria-hidden="true" />
+                    <Pause v-else :size="16" aria-hidden="true" />
+                  </button>
                   <input ref="input" type="file" hidden accept="image/*" @change="upload" />
                 </div>
                 <button
                   class="primary-button save-avatar"
-                  :disabled="!photo || !frame || saving"
+                  :disabled="!photo || !displayedFrame || saving"
                   :aria-busy="saving"
                   @click="save"
                   ><LoaderCircle
@@ -272,13 +330,22 @@ onBeforeUnmount(() => {
                       /> </span
                   ></label>
                 </div>
+                <p role="status" v-if="animationFailed">
+                  {{
+                    t(
+                      '动画加载失败，已显示静态头像框。',
+                      'Animation unavailable. Showing the still frame.'
+                    )
+                  }}
+                  <button @click="retry++">{{ t('重试', 'Retry') }}</button>
+                </p>
                 <p role="status" v-if="photoFailed">{{
                   t(
                     '照片读取失败，请重新选择。',
                     'Could not read this photo. Choose another image.'
                   )
                 }}</p>
-                <p role="status" v-if="frameFailed"
+                <p role="status" v-if="frameFailed && !animatedCanvas"
                   >{{ t('头像框加载失败。', 'Could not load this frame.') }}
                   <button @click="retry++">{{ t('重试', 'Retry') }}</button></p
                 >
@@ -345,6 +412,9 @@ onBeforeUnmount(() => {
   z-index: 160;
 }
 .avatar-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   color: var(--text);
   height: min(720px, calc(100dvh - 48px));
 }
@@ -357,7 +427,7 @@ onBeforeUnmount(() => {
 .avatar-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(280px, 26%) minmax(0, 1fr);
 }
@@ -367,6 +437,7 @@ onBeforeUnmount(() => {
   padding: 20px 24px 24px;
 }
 .stage {
+  position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 1;
@@ -432,6 +503,24 @@ onBeforeUnmount(() => {
 .editor-controls > p {
   order: 1;
 }
+.animation-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+  font-size: 12px;
+  background: var(--surface-accent-subtle);
+}
+.editor {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.items {
+  scrollbar-gutter: stable;
+}
 .editor-controls .save-avatar {
   order: 2;
 }
@@ -440,7 +529,7 @@ onBeforeUnmount(() => {
   margin-top: 12px;
 }
 .actions {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .actions .confirm-dialog-button {
   flex: 1;
@@ -699,6 +788,9 @@ onBeforeUnmount(() => {
     min-height: 0;
     padding: 14px;
   }
+  .editor {
+    max-height: 55dvh;
+  }
   .library {
     border-left: 0;
     border-top: 1px solid var(--line);
@@ -732,7 +824,7 @@ onBeforeUnmount(() => {
   }
   .editor-controls {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr);
     align-items: center;
     gap: 8px;
     margin-top: 12px;
@@ -745,6 +837,7 @@ onBeforeUnmount(() => {
     display: none;
   }
   .editor-controls .upload-photo,
+  .editor-controls .animation-toggle,
   .editor-controls .save-avatar {
     height: 36px;
     min-height: 36px;
@@ -760,7 +853,7 @@ onBeforeUnmount(() => {
   }
   .editor-controls .save-avatar {
     grid-row: 1;
-    grid-column: 2;
+    grid-column: 3;
     width: auto;
     margin-top: 0;
     padding-inline: 10px;
@@ -768,17 +861,29 @@ onBeforeUnmount(() => {
     white-space: nowrap;
   }
   .editor-controls .crop-controls {
-    grid-row: 1;
-    grid-column: 3;
+    grid-row: 2;
+    grid-column: 1 / -1;
     min-width: 0;
     margin-top: 0;
   }
   .editor-controls > p {
     grid-column: 1 / -1;
   }
+  .editor-controls .animation-toggle {
+    grid-row: 1;
+    grid-column: 2;
+    width: 36px;
+    margin-top: 0;
+  }
   .stage canvas {
     max-width: 100%;
     max-height: none;
   }
+}
+.actions .animation-toggle {
+  flex: 0 0 40px;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
 }
 </style>

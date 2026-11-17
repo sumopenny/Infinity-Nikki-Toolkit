@@ -13,7 +13,7 @@ export function cropBounds(photo: HTMLImageElement, zoom: number) {
 export function drawAvatar(
   canvas: HTMLCanvasElement,
   photo: HTMLImageElement | null,
-  frame: HTMLImageElement | null,
+  frame: HTMLImageElement | HTMLCanvasElement | null,
   zoom: number,
   x: number,
   y: number

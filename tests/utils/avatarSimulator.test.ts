@@ -52,3 +52,11 @@ describe('avatar photo composition', () => {
     }
   })
 })
+
+it('composites the current animation canvas above the photo for PNG export', () => {
+  const context = { clearRect: vi.fn(), drawImage: vi.fn() }
+  const canvas = { getContext: () => context } as unknown as HTMLCanvasElement
+  const animation = { width: 512, height: 512 } as HTMLCanvasElement
+  drawAvatar(canvas, null, animation, 1, 0, 0)
+  expect(context.drawImage).toHaveBeenCalledWith(animation, 0, 0, avatarSize, avatarSize)
+})
