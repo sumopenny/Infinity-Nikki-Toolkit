@@ -1,4 +1,12 @@
 export const avatarSize = 1024
+export const avatarPadding = 128
+export const avatarCanvasSize = avatarSize + avatarPadding * 2
+
+export interface AvatarPhotoCrop {
+  centerX: number
+  centerY: number
+  radius: number
+}
 
 // Keep the photo crop independent of each frame's decorative transparent margins.
 export const avatarPhotoRadius = 376
@@ -16,26 +24,34 @@ export function drawAvatar(
   frame: HTMLImageElement | HTMLCanvasElement | null,
   zoom: number,
   x: number,
-  y: number
+  y: number,
+  expandedAnimation = false,
+  photoCrop?: AvatarPhotoCrop
 ) {
   const ctx = canvas.getContext('2d')!
-  const center = avatarSize / 2
-  ctx.clearRect(0, 0, avatarSize, avatarSize)
+  const centerX = avatarPadding + (photoCrop?.centerX ?? avatarSize / 2)
+  const centerY = avatarPadding + (photoCrop?.centerY ?? avatarSize / 2)
+  const radius = photoCrop?.radius ?? avatarPhotoRadius
+  ctx.clearRect(0, 0, avatarCanvasSize, avatarCanvasSize)
   if (photo) {
     const { width, height } = cropBounds(photo, zoom)
-    const diameter = avatarPhotoRadius * 2
+    const diameter = radius * 2
     ctx.save()
     ctx.beginPath()
-    ctx.arc(center, center, avatarPhotoRadius, 0, Math.PI * 2)
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
     ctx.clip()
     ctx.drawImage(
       photo,
-      center + (x - width / 2) * diameter,
-      center + (y - height / 2) * diameter,
+      centerX + (x - width / 2) * diameter,
+      centerY + (y - height / 2) * diameter,
       width * diameter,
       height * diameter
     )
     ctx.restore()
   }
-  if (frame) ctx.drawImage(frame, 0, 0, avatarSize, avatarSize)
+  if (frame) {
+    const offset = expandedAnimation ? 0 : avatarPadding
+    const size = expandedAnimation ? avatarCanvasSize : avatarSize
+    ctx.drawImage(frame, offset, offset, size, size)
+  }
 }

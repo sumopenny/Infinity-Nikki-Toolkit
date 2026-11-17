@@ -1,3 +1,4 @@
+import type { AvatarPhotoCrop } from './avatarSimulator'
 import entries from '../data/profile/headFrames.json'
 import { IMAGEKIT_IMAGES, encodeImagePath } from './imagekit'
 
@@ -7,6 +8,7 @@ export interface AnimatedHeadFrame {
   defaultAnimation: string
   textures: string[]
   artboardSize: number
+  photoCrop?: AvatarPhotoCrop
 }
 
 export interface HeadFrame {

@@ -161,7 +161,12 @@
       "textures": [
         "Spine_HeadFrame_S10162.png"
       ],
-      "artboardSize": 1024
+      "artboardSize": 1100,
+      "photoCrop": {
+        "centerX": 562.119,
+        "centerY": 562.471,
+        "radius": 399.355
+      }
     }
   },
   "1070020020": {

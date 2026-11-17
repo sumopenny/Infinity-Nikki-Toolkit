@@ -15,7 +15,13 @@ import { useModalFocus } from '../composables/useModalFocus'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { requestBlobDownload } from '../utils/backup/downloadFallback'
 import { IMAGEKIT_IMAGES, encodeImagePath } from '../utils/imagekit'
-import { avatarPhotoRadius, avatarSize, cropBounds, drawAvatar } from '../utils/avatarSimulator'
+import {
+  avatarCanvasSize,
+  avatarPhotoRadius,
+  avatarSize,
+  cropBounds,
+  drawAvatar
+} from '../utils/avatarSimulator'
 import { readPhotoBlob } from '../utils/file-system/photoUrl'
 import { createPhotoThumbnailCache } from '../utils/photoThumbnail'
 import type { PhotoDisplayItem } from '../utils/photoGrouping'
@@ -80,9 +86,24 @@ const animationLoading = computed(
   () => !!animation.value && !animatedCanvas.value && !animationFailed.value
 )
 
+const photoCrop = computed(() =>
+  animatedCanvas.value && displayedFrame.value === animatedCanvas.value
+    ? animation.value?.photoCrop
+    : undefined
+)
+
 function repaint() {
   if (canvas.value)
-    drawAvatar(canvas.value, photo.value, displayedFrame.value, zoom.value, x.value, y.value)
+    drawAvatar(
+      canvas.value,
+      photo.value,
+      displayedFrame.value,
+      zoom.value,
+      x.value,
+      y.value,
+      !!animatedCanvas.value && displayedFrame.value === animatedCanvas.value,
+      photoCrop.value
+    )
 }
 
 watch(
@@ -169,7 +190,11 @@ function startDrag(e: PointerEvent) {
 }
 function move(e: PointerEvent) {
   if (!drag || e.pointerId !== drag.id || !canvas.value) return
-  const factor = avatarSize / (canvas.value.getBoundingClientRect().width * avatarPhotoRadius * 2)
+  const factor =
+    avatarCanvasSize /
+    (canvas.value.getBoundingClientRect().width *
+      (photoCrop.value?.radius ?? avatarPhotoRadius) *
+      2)
   x.value += (e.clientX - drag.x) * factor
   y.value += (e.clientY - drag.y) * factor
   drag.x = e.clientX
@@ -229,8 +254,8 @@ onBeforeUnmount(() => {
                   </span>
                   <canvas
                     ref="canvas"
-                    :width="avatarSize"
-                    :height="avatarSize"
+                    :width="avatarCanvasSize"
+                    :height="avatarCanvasSize"
                     :aria-label="t('头像预览', 'Avatar preview')"
                     @pointerdown="startDrag"
                     @pointermove="move"
@@ -411,7 +436,11 @@ onBeforeUnmount(() => {
 .avatar-overlay {
   z-index: 160;
 }
+.avatar-overlay {
+  padding-inline: 12px;
+}
 .avatar-panel {
+  width: min(1136px, 100%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -429,18 +458,34 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(280px, 26%) minmax(0, 1fr);
+  grid-template-columns: max(296px, calc((100% - 16px) * 0.26 + 16px)) minmax(0, 1fr);
 }
 .editor,
 .library {
   min-width: 0;
   padding: 20px 24px 24px;
 }
+/* The wider panel absorbs the restored editor padding, preserving preview size. */
+.editor {
+  padding-inline: 24px;
+}
+.preview-summary {
+  margin-inline: 8px;
+  padding-top: 8px;
+}
 .stage {
   position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 1;
+  isolation: isolate;
+}
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+  pointer-events: none;
   background: var(--icon-button-bg);
   border-radius: var(--radius-lg);
 }
@@ -452,6 +497,7 @@ onBeforeUnmount(() => {
   aspect-ratio: 1;
   touch-action: none;
   cursor: grab;
+  transform: scale(1.25);
 }
 .stage canvas:active {
   cursor: grabbing;
@@ -461,7 +507,7 @@ onBeforeUnmount(() => {
   grid-template-rows: 20px minmax(0, 1fr) 17px;
   gap: 5px;
   height: 144px;
-  margin: 12px 0 0;
+  margin: 20px -8px 0;
   padding: 12px;
   border-radius: var(--radius-md);
   background: var(--surface-accent-subtle);
@@ -505,14 +551,16 @@ onBeforeUnmount(() => {
 }
 .animation-loading {
   position: absolute;
-  inset: 0;
+  inset: -8px;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   pointer-events: none;
   font-size: 12px;
-  background: var(--surface-accent-subtle);
+  background: var(--icon-button-bg);
+  border-radius: var(--radius-lg);
 }
 .editor {
   overflow-y: auto;
@@ -550,6 +598,15 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+.actions button > svg,
+.save-avatar > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+.actions .album-toggle {
+  flex: 1 0 auto;
 }
 .avatar-body button:disabled {
   opacity: 0.55;
@@ -789,6 +846,7 @@ onBeforeUnmount(() => {
     padding: 14px;
   }
   .editor {
+    padding-inline: 14px;
     max-height: 55dvh;
   }
   .library {
@@ -813,14 +871,18 @@ onBeforeUnmount(() => {
     display: grid;
     grid-template-columns: min(42%, 144px) minmax(0, 1fr);
     align-items: stretch;
-    gap: 12px;
+    gap: 20px;
+    padding-bottom: 8px;
   }
   .frame-description {
     min-width: 0;
     height: auto;
     min-height: 0;
-    margin-top: 0;
+    margin: -8px -8px -8px 0;
     contain: size;
+  }
+  .frame-description p {
+    font-size: 11px;
   }
   .editor-controls {
     display: grid;
@@ -828,6 +890,12 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 8px;
     margin-top: 12px;
+  }
+  .editor-controls:not(:has(.animation-toggle)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .editor-controls:not(:has(.animation-toggle)) .save-avatar {
+    grid-column: 2;
   }
   .editor-controls .actions {
     display: contents;
