@@ -49,7 +49,7 @@ onMounted(() => {
           v-if="loaded"
           :src="animationPlayerUrl(selected)"
           :title="name(selected)"
-          allow="fullscreen; picture-in-picture"
+          allow="fullscreen https://player.bilibili.com https://www.bilibili.com; picture-in-picture"
           allowfullscreen
         />
         <button

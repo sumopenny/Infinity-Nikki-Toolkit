@@ -74,7 +74,18 @@ describe('evolution animations', () => {
     const wrapper = mount(EvolutionAnimations, {
       props: { selectedPage: 22, loadOnEntry: true, language: 'en' }
     })
-    expect(wrapper.get('iframe').attributes('src')).toContain('p=22&autoplay=0')
+    const iframe = wrapper.get('iframe')
+    expect(iframe.attributes('src')).toContain('p=22&autoplay=0')
+    // Mobile playback navigates to www.bilibili.com; allow overrides allowfullscreen.
+    const fullscreenOrigins = (iframe.attributes('allow') ?? '')
+      .split(';')
+      .find((directive) => directive.trim().startsWith('fullscreen'))
+      ?.trim()
+      .split(/\s+/)
+      .slice(1)
+    expect(fullscreenOrigins).toContain(new URL(iframe.element.src).origin)
+    expect(fullscreenOrigins).toContain('https://www.bilibili.com')
+    expect(iframe.attributes()).toHaveProperty('allowfullscreen')
     await wrapper.get('.animation-card img').trigger('error')
     expect(wrapper.findAll('.animation-card')).toHaveLength(43)
     expect(wrapper.get('.animation-card button').text()).toContain(animations[0].nameEn)
