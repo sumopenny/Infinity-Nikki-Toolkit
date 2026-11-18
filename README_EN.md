@@ -322,6 +322,10 @@ Open Resonance records, Personal wardrobe or Makeup catalog from Nikki Archive i
 - Check the replacement rules in [Backup and Migration](#backup-and-migration) before importing.
 
 
+### Evolution animations
+
+Open **Evolution animations** in Nikki Archive to browse 43 outfits grouped by version, newest first. Click the cover or a card below the player to load Bilibili. Matching outfit details include a shortcut to the animation, and each video links to its original Bilibili part.
+
 ### Makeup catalog and backgrounds
 
 <div align="center">

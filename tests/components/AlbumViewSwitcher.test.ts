@@ -90,13 +90,15 @@ it('localizes the resonance submenu and updates it when the language changes', a
     expect(item.findAll('[role="menuitem"]').map((button) => button.text())).toEqual([
       'Resonance records',
       'Personal wardrobe',
-      'Makeup catalog'
+      'Makeup catalog',
+      'Evolution animations'
     ])
     await wrapper.setProps({ messages: messages.zh.viewNav })
     expect(item.findAll('[role="menuitem"]').map((button) => button.text())).toEqual([
       '共鸣记录',
       '个人衣橱',
-      '妆容图鉴'
+      '妆容图鉴',
+      '满进动画'
     ])
     await item.findAll('[role="menuitem"]')[1]!.trigger('click')
     expect(wrapper.emitted('changeView')).toEqual([['wardrobe']])

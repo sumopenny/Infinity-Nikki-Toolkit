@@ -74,7 +74,8 @@ onBeforeUnmount(cancelPress)
       :class="{ 'is-pressed': pressedView === entry.view }"
       :aria-current="
         activeView === entry.view ||
-        (entry.view === 'resonance' && (activeView === 'wardrobe' || activeView === 'makeup'))
+        (entry.view === 'resonance' &&
+          (activeView === 'wardrobe' || activeView === 'makeup' || activeView === 'animations'))
           ? 'page'
           : undefined
       "

@@ -7,31 +7,49 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.16 更新',
+  currentDate: '2026.11.18 更新',
   currentItems: [
     {
-      title: '新增图片旋转功能。',
-      text: '大图预览支持旋转图片，旋转后会保存到原文件。'
+      title: '暖暖档案新增「满进动画」。',
+      text: '收录 43 套套装的满进动画，点选套装即可在站内观看，也可跳转到 B 站对应分 P。已收录的套装可从详情页点击「观看满进动画」直达对应视频。'
     },
     {
-      title: '主题支持跟随系统。',
-      text: '可选择随系统自动切换浅色、深色主题，也可以继续使用固定主题。'
+      title: '头像模拟器支持动态头像框。',
+      text: '在「工具 → 头像模拟器」中选择支持动画的头像框，即可预览效果，随时暂停或继续播放。同步优化照片裁剪和头像框显示，给边缘特效留出更多空间。'
     },
     {
-      title: '相机参数收藏添加封面更方便。',
-      text: '支持拖入图片或 Ctrl+V 粘贴剪贴板中的图片。'
-    },
-    {
-      title: '完善相机参数解析。',
-      text: '更新后的新增参数支持展示参数中包含的暖暖动作信息。'
-    },
-    {
-      title: '优化加载体验与使用稳定性。',
-      text: '优化美鸭梨导入速度，完善衣橱、图鉴及数据导入的失败提示。同时优化备份、目录权限和照片导出后的移动处理，并调整部分手机端布局。'
+      title: '优化手机端暖暖档案布局。',
+      text: '调整档案页签和分类按钮的布局。个人衣橱的收集数量移到「进化形态」开关旁，妆容图鉴的全妆或部件总数移到筛选栏。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.7.2',
+      date: '2026.11.16',
+      items: [
+        {
+          title: '新增图片旋转功能。',
+          text: '大图预览支持旋转图片，旋转后会保存到原文件。'
+        },
+        {
+          title: '主题支持跟随系统。',
+          text: '可选择随系统自动切换浅色、深色主题，也可以继续使用固定主题。'
+        },
+        {
+          title: '相机参数收藏添加封面更方便。',
+          text: '支持拖入图片或 Ctrl+V 粘贴剪贴板中的图片。'
+        },
+        {
+          title: '完善相机参数解析。',
+          text: '更新后的新增参数支持展示参数中包含的暖暖动作信息。'
+        },
+        {
+          title: '优化加载体验与使用稳定性。',
+          text: '优化美鸭梨导入速度，完善衣橱、图鉴及数据导入的失败提示。同时优化备份、目录权限和照片导出后的移动处理，并调整部分手机端布局。'
+        }
+      ]
+    },
     {
       version: 'v2.7.1',
       date: '2026.11.13',
@@ -854,31 +872,49 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.16',
+  currentDate: 'Updated 2026.11.18',
   currentItems: [
     {
-      title: 'Image rotation added.',
-      text: 'Rotate images in the full-size preview and save the changes to the original file.'
+      title: 'Evolution animations added to Nikki Archive.',
+      text: 'Watch full evolution animations for 43 outfits. Choose an outfit to watch on the site, or open the corresponding part on Bilibili. For outfits in the collection, select “Watch evolution animation” in the outfit details to open the matching video.'
     },
     {
-      title: 'Follow your system theme.',
-      text: 'Automatically switch between light and dark themes with your system, or keep using a fixed theme.'
+      title: 'Avatar Simulator supports animated frames.',
+      text: 'Choose an animated frame under Tools → Avatar Simulator to preview it, and pause or resume playback at any time. Photo cropping and frame rendering have also been refined to give effects around the edges more room.'
     },
     {
-      title: 'Add covers to camera parameter favorites more easily.',
-      text: 'Drag in an image or press Ctrl+V to paste one from the clipboard.'
-    },
-    {
-      title: 'Improved camera parameter parsing.',
-      text: 'New parameters added after the update can display the Nikki pose information they contain.'
-    },
-    {
-      title: 'Improved loading and reliability.',
-      text: 'Improved Pear-Pal import speed and failure messages for the wardrobe, catalogs, and data imports. Also improved backups, folder permissions, and moving original photos after export, with adjustments to mobile layouts.'
+      title: 'Updated the mobile layout of Nikki Archive.',
+      text: 'Rearranged the archive tabs and category buttons. Collection counts in Personal wardrobe now appear next to “Show evolution forms”, and the total number of full makeup looks or pieces in Makeup catalog now appears in the filter bar.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.7.2',
+      date: '2026.11.16',
+      items: [
+        {
+          title: 'Image rotation added.',
+          text: 'Rotate images in the full-size preview and save the changes to the original file.'
+        },
+        {
+          title: 'Follow your system theme.',
+          text: 'Automatically switch between light and dark themes with your system, or keep using a fixed theme.'
+        },
+        {
+          title: 'Add covers to camera parameter favorites more easily.',
+          text: 'Drag in an image or press Ctrl+V to paste one from the clipboard.'
+        },
+        {
+          title: 'Improved camera parameter parsing.',
+          text: 'New parameters added after the update can display the Nikki pose information they contain.'
+        },
+        {
+          title: 'Improved loading and reliability.',
+          text: 'Improved Pear-Pal import speed and failure messages for the wardrobe, catalogs, and data imports. Also improved backups, folder permissions, and moving original photos after export, with adjustments to mobile layouts.'
+        }
+      ]
+    },
     {
       version: 'v2.7.1',
       date: '2026.11.13',

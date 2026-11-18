@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { animationForOutfit, openAnimationKey } from '../utils/evolutionAnimations'
 import CatalogImage from './CatalogImage.vue'
 import WardrobeFormNav from './WardrobeFormNav.vue'
 import { catalogResources } from '../utils/gongeo/catalogResources'
@@ -6,7 +7,7 @@ import { loadMakeupCatalog, type MakeupCatalogData } from '../utils/loadMakeupCa
 import type { MakeupEntry } from '../utils/makeupCatalog'
 import { wardrobeSourceLabel } from '../utils/wardrobe/wardrobeFilters'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
-import { computed, ref, shallowRef, toRef, watch } from 'vue'
+import { computed, inject, ref, shallowRef, toRef, watch } from 'vue'
 import {
   CalendarDays,
   ChevronRight,
@@ -41,6 +42,13 @@ const props = defineProps<{
   language: Language
   layer?: number
 }>()
+const openAnimation = inject(openAnimationKey, undefined)
+const animation = computed(() => animationForOutfit(props.detail))
+function watchAnimation() {
+  if (!animation.value || !openAnimation) return
+  emit('closeAll')
+  openAnimation(animation.value.page)
+}
 const hasForms = computed(
   () =>
     !!props.detail &&
@@ -50,6 +58,7 @@ const hasForms = computed(
 )
 const emit = defineEmits<{
   close: []
+  closeAll: []
   openOutfit: [outfit: WardrobeEntry]
   openMakeup: [entry: MakeupEntry, data: MakeupCatalogData]
 }>()
@@ -259,23 +268,38 @@ useModalFocus(dialogOpen, panel, closeDialog)
                     />
                   </div>
                   <div class="wardrobe-suit-copy">
-                    <button
-                      v-if="makeupIds.length"
-                      type="button"
-                      class="wardrobe-makeup-link"
-                      :disabled="makeupLoading"
-                      @click="openMakeup"
+                    <h3 v-if="!makeupIds.length">{{ name(detail) }}</h3>
+                    <div
+                      v-if="makeupIds.length || (animation && openAnimation)"
+                      class="wardrobe-detail-links"
+                      :lang="language"
                     >
-                      {{
-                        makeupLoading
-                          ? text('正在加载妆容…', 'Loading makeup…')
-                          : makeupFailed
-                            ? text('加载失败，点击重试', 'Load failed. Retry')
-                            : text('查看对应妆容', 'View matching makeup')
-                      }}
-                      <ChevronRight :size="18" aria-hidden="true" />
-                    </button>
-                    <h3 v-else>{{ name(detail) }}</h3>
+                      <button
+                        v-if="makeupIds.length"
+                        type="button"
+                        class="wardrobe-makeup-link"
+                        :disabled="makeupLoading"
+                        @click="openMakeup"
+                      >
+                        {{
+                          makeupLoading
+                            ? text('正在加载妆容…', 'Loading makeup…')
+                            : makeupFailed
+                              ? text('加载失败，点击重试', 'Load failed. Retry')
+                              : text('查看对应妆容', 'View matching makeup')
+                        }}
+                        <ChevronRight :size="18" aria-hidden="true" />
+                      </button>
+                      <button
+                        v-if="animation && openAnimation"
+                        type="button"
+                        class="wardrobe-makeup-link"
+                        @click="watchAnimation"
+                      >
+                        {{ text('观看满进动画', 'Watch evolution animation') }}
+                        <ChevronRight :size="18" aria-hidden="true" />
+                      </button>
+                    </div>
                     <p
                       class="wardrobe-suit-message"
                       :class="{ 'is-complete': detailProgress.complete }"
@@ -644,6 +668,28 @@ useModalFocus(dialogOpen, panel, closeDialog)
   gap: 10px;
   padding: 18px 16px 18px 10px;
   overflow: hidden;
+}
+.wardrobe-detail-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+@media (min-width: 900px) {
+  .wardrobe-detail-links {
+    container-type: inline-size;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .wardrobe-detail-links:has(> button + button) .wardrobe-makeup-link {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: clamp(14px, calc((100cqi - 72px) / 12), 16px);
+    gap: 4px;
+  }
+  .wardrobe-detail-links:lang(en):has(> button + button) .wardrobe-makeup-link {
+    font-size: min(16px, calc((100cqi - 64px) / 30));
+  }
 }
 .wardrobe-makeup-link {
   display: inline-flex;

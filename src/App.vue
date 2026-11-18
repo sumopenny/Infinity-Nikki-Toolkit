@@ -1,4 +1,18 @@
 <script setup lang="ts">
+import { animations, openAnimationKey } from './utils/evolutionAnimations'
+const EvolutionAnimations = lazyFeature(
+  () => import('./components/EvolutionAnimations.vue'),
+  () => language.value
+)
+const selectedAnimationPage = ref(animations[0].page)
+const loadAnimationOnEntry = ref(false)
+provide(openAnimationKey, (page: number) => {
+  if (navigationBusy.value) return
+  selectedAnimationPage.value = page
+  loadAnimationOnEntry.value = true
+  changeAlbumView('animations')
+})
+
 import { migrateHomeSchemeLibrary } from './utils/homeBuild/homeSchemeMigration'
 import { vSegmentedIndicator } from './utils/segmentedIndicator'
 import SkeletonSweep from './components/SkeletonSweep.vue'
@@ -222,7 +236,7 @@ const storedAboutState = readStoredAboutState()
 const photos = ref<PhotoItem[]>([])
 const albumThumbnailCache = createPhotoThumbnailCache()
 // Retain the whole album, not just the current search/date/favorites results.
-watch(photos, items => albumThumbnailCache.retainPhotos(new Set(items)), { flush: 'post' })
+watch(photos, (items) => albumThumbnailCache.retainPhotos(new Set(items)), { flush: 'post' })
 const outfits = ref<OutfitItem[]>([])
 const unreadableOutfitCount = ref(0)
 const homeSchemesCount = ref(0)
@@ -337,9 +351,17 @@ const ACTIVE_VIEW_STORAGE_KEY = 'infinity-nikki-active-view'
 function isAlbumView(value: string | null): value is AlbumView {
   return (
     value !== null &&
-    ['all', 'outfits', 'home', 'resonance', 'wardrobe', 'makeup', 'favorites', 'trash'].includes(
-      value
-    )
+    [
+      'all',
+      'outfits',
+      'home',
+      'resonance',
+      'wardrobe',
+      'makeup',
+      'animations',
+      'favorites',
+      'trash'
+    ].includes(value)
   )
 }
 function viewForLayout(view: AlbumView): AlbumView {
@@ -354,7 +376,9 @@ watch(
   },
   { immediate: true, flush: 'sync' }
 )
-const isArchiveView = computed(() => ['resonance', 'wardrobe', 'makeup'].includes(activeView.value))
+const isArchiveView = computed(() =>
+  ['resonance', 'wardrobe', 'makeup', 'animations'].includes(activeView.value)
+)
 const archiveToolbarClosing = ref(false)
 const archiveToolbarMotionDeadline = ref(0)
 provide(archiveMotionDeadlineKey, archiveToolbarMotionDeadline)
@@ -1418,12 +1442,21 @@ async function rotatePreviewSource() {
   try {
     if (activeView.value === 'outfits' && outfit?.image) {
       await rotateStoredPhoto('outfit', outfit.id, outfit.updatedAt)
-      try { await reloadOutfitCollection() } catch { throw new Error('rotation_refresh') }
+      try {
+        await reloadOutfitCollection()
+      } catch {
+        throw new Error('rotation_refresh')
+      }
     } else if (activeView.value !== 'trash' && isAlbumPhoto(photo) && isDirectoryPhoto(photo)) {
       const file = await rotateDirectoryPhoto(photo)
-      const replacement = { ...photo, url: null, fileSize: file.size,
-        fileSizeText: formatFileSize(file.size), lastModified: file.lastModified }
-      photos.value = photos.value.map(item => item.id === photo.id ? replacement : item)
+      const replacement = {
+        ...photo,
+        url: null,
+        fileSize: file.size,
+        fileSizeText: formatFileSize(file.size),
+        lastModified: file.lastModified
+      }
+      photos.value = photos.value.map((item) => (item.id === photo.id ? replacement : item))
       currentPreview.value = replacement
       releasePhotoUrl(photo)
     }
@@ -1707,7 +1740,7 @@ function changeAlbumView(view: AlbumView, afterArchiveExit = false) {
     const animateArchive =
       compactLayout.value &&
       view !== activeView.value &&
-      ['resonance', 'wardrobe', 'makeup'].includes(view) &&
+      ['resonance', 'wardrobe', 'makeup', 'animations'].includes(view) &&
       !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     archiveToolbarMotionDeadline.value = animateArchive ? Date.now() + archiveMotionLoadDelay : 0
   }
@@ -1731,6 +1764,7 @@ function changeAlbumView(view: AlbumView, afterArchiveExit = false) {
   const isEnteringOutfits = view === 'outfits' && isViewChanged
   // 点击收藏夹入口时默认显示相机参数。
   if (view === 'favorites' && favoriteTab.value !== 'camera') changeFavoriteTab('camera')
+  if (isViewChanged && view !== 'animations') loadAnimationOnEntry.value = false
   activeView.value = view
   currentPreview.value = null
   // 视图真正变化时清空所有选中状态，避免上个视图的选中残留；重复点击当前视图不受影响
@@ -2440,6 +2474,7 @@ function importAllDataFromMenu() {
           activeView !== 'resonance' &&
           activeView !== 'wardrobe' &&
           activeView !== 'makeup' &&
+          activeView !== 'animations' &&
           !isCameraFavoritesView
       }"
     >
@@ -2477,7 +2512,7 @@ function importAllDataFromMenu() {
           :aria-label="mobileText('妆容筛选', 'Makeup filters')"
         ></aside>
         <AdaptiveFilterPanel
-          v-if="activeView !== 'wardrobe' && activeView !== 'makeup'"
+          v-if="activeView !== 'wardrobe' && activeView !== 'makeup' && activeView !== 'animations'"
           :compact="compactLayout"
           :open="mobileFiltersOpen"
           :tag-picker="mobileCollectionPicker"
@@ -2597,11 +2632,23 @@ function importAllDataFromMenu() {
               @click="changeAlbumView('makeup')"
               >{{ locale.viewNav.makeup }}</button
             >
+            <button
+              type="button"
+              class="resonance-choice"
+              :disabled="operations.isBusy.value"
+              :aria-pressed="activeView === 'animations'"
+              @click="changeAlbumView('animations')"
+              >{{ locale.viewNav.animations }}</button
+            >
           </nav>
           <div
             class="archive-category-slot"
-            :aria-hidden="archiveToolbarClosing || activeView === 'resonance'"
-            :inert="archiveToolbarClosing || activeView === 'resonance'"
+            :aria-hidden="
+              archiveToolbarClosing || activeView === 'resonance' || activeView === 'animations'
+            "
+            :inert="
+              archiveToolbarClosing || activeView === 'resonance' || activeView === 'animations'
+            "
           >
             <div class="archive-category-content" :key="activeView">
               <div
@@ -2624,6 +2671,7 @@ function importAllDataFromMenu() {
             activeView !== 'resonance' &&
             activeView !== 'wardrobe' &&
             activeView !== 'makeup' &&
+            activeView !== 'animations' &&
             activeView !== 'trash' &&
             !isCameraFavoritesView
           "
@@ -2736,6 +2784,7 @@ function importAllDataFromMenu() {
             activeView !== 'resonance' &&
             activeView !== 'wardrobe' &&
             activeView !== 'makeup' &&
+            activeView !== 'animations' &&
             !isCameraFavoritesView
           "
           class="empty-album-start"
@@ -2775,6 +2824,7 @@ function importAllDataFromMenu() {
             activeView !== 'resonance' &&
             activeView !== 'wardrobe' &&
             activeView !== 'makeup' &&
+            activeView !== 'animations' &&
             activeView !== 'favorites'
           "
           class="gallery-header"
@@ -2938,6 +2988,12 @@ function importAllDataFromMenu() {
           @status="handleHomeSchemeStatus"
           @count-change="handleHomeSchemeCount"
         />
+        <EvolutionAnimations
+          v-else-if="activeView === 'animations'"
+          v-model:selected-page="selectedAnimationPage"
+          :load-on-entry="loadAnimationOnEntry"
+          :language="language"
+        />
         <MakeupCatalog
           v-else-if="activeView === 'makeup'"
           sidebar-target="#makeup-sidebar"
@@ -3040,6 +3096,7 @@ function importAllDataFromMenu() {
         activeView !== 'resonance' &&
         activeView !== 'wardrobe' &&
         activeView !== 'makeup' &&
+        activeView !== 'animations' &&
         !isCameraFavoritesView
       "
       :mode="
@@ -3098,7 +3155,11 @@ function importAllDataFromMenu() {
     />
 
     <Lightbox
-      :rotate-source="activeView === 'trash' || (activeView === 'outfits' && !currentPreviewOutfit?.image) ? undefined : rotatePreviewSource"
+      :rotate-source="
+        activeView === 'trash' || (activeView === 'outfits' && !currentPreviewOutfit?.image)
+          ? undefined
+          : rotatePreviewSource
+      "
       :read-only="(isCompatibleAlbum || notesBlocked) && activeView !== 'outfits'"
       :read-only-hint="notesBlocked ? noteLockedHint : compatibleMessages.writeDisabled"
       :photo="currentPreview"

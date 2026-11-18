@@ -73,9 +73,10 @@ const activeLabel = computed(() =>
         @click="$emit('clear')"
         ><X :size="16" aria-hidden="true"
       /></button>
-      <span class="collection-tag-count">{{
-        language === 'zh' ? `${count} 项` : `${count} items`
-      }}</span>
+      <span class="collection-tag-count"
+        >{{ language === 'zh' ? `${count} 项` : `${count} items`
+        }}<template v-if="$slots['count-detail']"> · <slot name="count-detail" /></template
+      ></span>
       <div v-if="actionsId" :id="actionsId" class="collection-filter-actions"></div>
     </template>
     <template v-else>

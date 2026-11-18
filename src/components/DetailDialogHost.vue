@@ -81,6 +81,7 @@ function close() {
     :language="language"
     :layer="layer"
     @close="close"
+    @close-all="emit('close')"
     @open-outfit="selectOutfit"
     @open-makeup="openMakeup"
   />

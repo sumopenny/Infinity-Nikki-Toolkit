@@ -89,8 +89,8 @@ export const wardrobeEvolutionMessages: Record<Language, WardrobeEvolutionMessag
     collapseShort: '收起',
     collapse: '收起形态',
     forms: '进化形态',
-    enabledHint: '开启时：界面显示套装所有形态',
-    disabledHint: '关闭时：每个套装系列合并为一张卡片'
+    enabledHint: '开启：界面显示套装所有形态',
+    disabledHint: '关闭：每个套装系列合并为一张卡片'
   },
   en: {
     label: 'Show evolution forms',

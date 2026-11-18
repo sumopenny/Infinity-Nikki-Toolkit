@@ -393,7 +393,8 @@ async function reload(): Promise<boolean> {
   const stageTimes: Record<string, number> = {}
   const advance = (stage: string) => {
     if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
-    stageTimes[loadStage] = (stageTimes[loadStage] ?? 0) + Math.round(performance.now() - stageStarted)
+    stageTimes[loadStage] =
+      (stageTimes[loadStage] ?? 0) + Math.round(performance.now() - stageStarted)
     loadStage = stage
     stageStarted = performance.now()
   }
@@ -620,12 +621,16 @@ async function clearRecords() {
       @open="mobileFiltersOpen = true"
       @clear="resetFilters"
     />
-    <WardrobeEvolutionSwitch
-      v-if="compact"
-      v-model="showEvolutions"
-      :language="language"
-      :disabled="blocked"
-    />
+    <div v-if="compact" class="wardrobe-evolution-row">
+      <WardrobeEvolutionSwitch v-model="showEvolutions" :language="language" :disabled="blocked" />
+      <span class="wardrobe-mobile-summary">
+        {{ tab === 'outfit' ? text('已集齐', 'Complete') : text('已拥有', 'Owned') }}
+        <strong>{{
+          loaded ? (tab === 'outfit' ? stats.outfits : stats.items).toLocaleString(language) : '—'
+        }}</strong>
+        {{ tab === 'outfit' ? text('套', 'outfits') : text('件', 'pieces') }}
+      </span>
+    </div>
     <Teleport v-if="compact" to="#wardrobe-mobile-category-target" defer>
       <button
         type="button"
@@ -641,13 +646,6 @@ async function clearRecords() {
           tab === 'outfit' ? text('部件', 'Pieces') : text('套装', 'Outfits')
         }}</button
       >
-      <p class="wardrobe-mobile-summary">
-        {{ tab === 'outfit' ? text('已集齐', 'Complete') : text('已拥有', 'Owned') }}
-        <strong>{{
-          loaded ? (tab === 'outfit' ? stats.outfits : stats.items).toLocaleString(language) : '—'
-        }}</strong>
-        {{ tab === 'outfit' ? text('套', 'outfits') : text('件', 'pieces') }}
-      </p>
     </Teleport>
     <AdaptiveFilterPanel
       v-if="compact && loaded && hasRecords"

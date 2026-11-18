@@ -994,9 +994,8 @@
     flex: 1;
     min-height: var(--mobile-control-size);
   }
-  /* Keep one right-hand slot so data loading and module swaps cannot resize the tabs. */
+  /* 分类区按按钮实际宽度占位，剩余空间交给主标签。 */
   .archive-main-toolbar {
-    --archive-category-width: calc(12em + 28px);
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
@@ -1012,18 +1011,17 @@
     opacity: 0;
     font-size: clamp(10px, 2.8vw, 12px);
     transition:
-      width 220ms cubic-bezier(0.22, 1, 0.36, 1) 40ms,
       margin-left 220ms cubic-bezier(0.22, 1, 0.36, 1) 40ms,
       opacity 120ms ease;
   }
   .archive-main-toolbar.has-category .archive-category-slot {
-    width: var(--archive-category-width);
+    width: max-content;
     margin-left: 6px;
     opacity: 1;
-    transition-delay: 0ms, 0ms, 40ms;
+    transition-delay: 0ms, 40ms;
   }
   .archive-category-content {
-    width: var(--archive-category-width);
+    width: max-content;
     padding-block: 4px;
   }
   .archive-main-toolbar.has-category .archive-category-content {
@@ -1101,8 +1099,9 @@
   }
   /* 档案页签直接复用导入窗口的分段按钮；只为手机内容区补足自适应宽高。 */
   .archive-main-tabs.resonance-choice-row {
+    --archive-tab-index: 0;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
     max-width: 100%;
     height: var(--mobile-control-size);
@@ -1110,6 +1109,28 @@
     margin: 0 0 8px;
     flex-wrap: nowrap;
     border-radius: 16px;
+  }
+  /* 等宽标签按当前网格定位滑块，宽度变化时无需等待像素测量追赶。 */
+  .archive-main-tabs.segmented-control::before {
+    width: calc((100% - 20px) / 4);
+    transform: translate(calc(4px + var(--archive-tab-index) * (100% + 4px)), 4px);
+  }
+  .archive-main-tabs.segmented-animate::before {
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .archive-main-tabs:has(> button:nth-child(2)[aria-pressed='true']) {
+    --archive-tab-index: 1;
+  }
+  .archive-main-tabs:has(> button:nth-child(3)[aria-pressed='true']) {
+    --archive-tab-index: 2;
+  }
+  .archive-main-tabs:has(> button:nth-child(4)[aria-pressed='true']) {
+    --archive-tab-index: 3;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .archive-main-tabs.segmented-animate::before {
+      transition: none;
+    }
   }
   .archive-main-tabs .resonance-choice {
     display: flex;
@@ -1751,6 +1772,21 @@
     outline: 2px solid var(--pink-deep);
     outline-offset: 3px;
   }
+  .wardrobe-evolution-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .wardrobe-evolution-row > .wardrobe-mobile-evolution {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+  }
+  .wardrobe-evolution-row > .wardrobe-mobile-summary {
+    margin-left: auto;
+    text-align: right;
+  }
   .wardrobe-mobile-evolution-title {
     flex-shrink: 0;
     color: var(--heading);
@@ -1897,5 +1933,16 @@
   :root[data-mobile-nav-style='capsule'] .mobile-navigation button {
     border-radius: 999px;
     font-size: 10px;
+  }
+}
+
+@media (max-width: 899px) {
+  .makeup-mobile-filter-bar .collection-tag-count {
+    max-width: 45%;
+    overflow: visible;
+    white-space: normal;
+  }
+  .makeup-mobile-filter-bar .makeup-mobile-summary {
+    white-space: normal;
   }
 }

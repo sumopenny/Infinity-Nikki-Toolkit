@@ -117,7 +117,7 @@ const FEEDBACK_URL = 'https://v.wjx.cn/vm/tUM7gga.aspx'
 
 const compact = useCompactLayout()
 const isArchiveView = computed(() =>
-  ['resonance', 'wardrobe', 'makeup'].includes(props.activeView ?? '')
+  ['resonance', 'wardrobe', 'makeup', 'animations'].includes(props.activeView ?? '')
 )
 const { selectedBackground, selectBackground } = useArchiveBackground()
 const mobileLikeTarget = inject('mobileLikeTarget', ref<HTMLElement | null>(null))
@@ -416,6 +416,7 @@ function openDonate() {
 
     <div v-show="compact" class="mobile-header-row">
       <button
+        v-if="activeView !== 'animations'"
         ref="mobileSearchTrigger"
         type="button"
         :class="{ 'has-search': searchQuery?.trim() }"
@@ -513,7 +514,7 @@ function openDonate() {
           :messages="{ like: messages.like, likeTooltip: messages.likeTooltip }"
         />
       </Teleport>
-      <div class="header-search">
+      <div v-if="activeView !== 'animations'" class="header-search">
         <input
           :value="searchQuery ?? ''"
           type="search"
@@ -788,7 +789,9 @@ function openDonate() {
                   </button>
                 </div>
               </template>
-              <template v-if="isArchiveView && activeView !== 'makeup'">
+              <template
+                v-if="isArchiveView && activeView !== 'makeup' && activeView !== 'animations'"
+              >
                 <div class="menu-section-label">{{
                   language === 'zh' ? '背景图风格' : 'Background style'
                 }}</div>

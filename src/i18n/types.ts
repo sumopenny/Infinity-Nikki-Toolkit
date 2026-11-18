@@ -297,6 +297,7 @@ export interface FullLocaleMessages {
     resonanceRecords: string
     wardrobe: string
     makeup: string
+    animations: string
     comingSoon: string
     favorites: string
     recentlyDeleted: string

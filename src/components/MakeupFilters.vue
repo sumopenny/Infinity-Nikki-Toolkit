@@ -119,6 +119,7 @@ onBeforeUnmount(() => document.removeEventListener('click', outside))
 
 <template>
   <CollectionFilterBar
+    class="makeup-mobile-filter-bar"
     v-if="compact"
     tag-picker
     :entries="[
@@ -133,7 +134,9 @@ onBeforeUnmount(() => document.removeEventListener('click', outside))
     :select-label="text('筛选妆容：', 'Filter makeup: ')"
     @open="mobileOpen = true"
     @clear="reset"
-  />
+  >
+    <template v-if="$slots['count-detail']" #count-detail><slot name="count-detail" /></template>
+  </CollectionFilterBar>
   <Teleport :to="sidebarTarget || 'body'" :disabled="compact || !sidebarTarget" defer>
     <AdaptiveFilterPanel
       :compact="compact"

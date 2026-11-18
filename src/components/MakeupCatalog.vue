@@ -218,10 +218,6 @@ const filtered = computed(() => {
           tab === 'full' ? text('部件', 'Pieces') : text('全妆', 'Full makeup')
         }}
       </button>
-      <p class="makeup-mobile-summary"
-        >{{ tab === 'full' ? text('全妆', 'Full makeup') : text('部件', 'Pieces') }}
-        <strong>{{ loading || failed ? '—' : currentEntries.length }}</strong> {{ unit }}</p
-      >
     </Teleport>
     <MakeupFilters
       :key="tab"
@@ -240,9 +236,16 @@ const filtered = computed(() => {
       :sources="sourceOptions"
       @reset="resetFilters"
     >
+      <template #count-detail>
+        <span class="makeup-mobile-summary"
+          >{{ tab === 'full' ? text('全妆', 'Full makeup') : text('部件', 'Pieces') }}
+          <strong>{{ loading || failed ? '—' : currentEntries.length }}</strong> {{ unit }}</span
+        >
+      </template>
       <template #category>
         <nav
-          v-segmented-indicator class="sidebar-mode-switch makeup-category-tabs"
+          v-segmented-indicator
+          class="sidebar-mode-switch makeup-category-tabs"
           :aria-label="text('妆容分类', 'Makeup category')"
         >
           <button
@@ -264,7 +267,10 @@ const filtered = computed(() => {
         </nav>
       </template>
     </MakeupFilters>
-    <ContentLoadingSurface :loading="loading" :label="text('正在加载妆容图鉴…', 'Loading makeup catalog…')">
+    <ContentLoadingSurface
+      :loading="loading"
+      :label="text('正在加载妆容图鉴…', 'Loading makeup catalog…')"
+    >
       <template #skeleton>
         <div class="makeup-grid" :class="{ 'is-pieces': tab === 'part' }">
           <article v-for="index in 6" :key="index" class="makeup-card" data-skeleton-card>
@@ -276,63 +282,63 @@ const filtered = computed(() => {
           </article>
         </div>
       </template>
-    <div v-if="failed" class="makeup-empty" role="alert">
-      <p>{{
-        text('妆容图鉴加载失败，请重试。', 'Could not load the makeup catalog. Please retry.')
+      <div v-if="failed" class="makeup-empty" role="alert">
+        <p>{{
+          text('妆容图鉴加载失败，请重试。', 'Could not load the makeup catalog. Please retry.')
+        }}</p>
+        <button type="button" @click="load">{{ text('重新加载', 'Retry') }}</button>
+      </div>
+      <div v-else-if="filtered.length" class="makeup-grid" :class="{ 'is-pieces': tab === 'part' }">
+        <article
+          v-for="(entry, index) in filtered"
+          :key="entry.id"
+          v-card-reveal="`makeup:${entry.id}`"
+          class="makeup-card is-openable"
+          role="button"
+          tabindex="0"
+          :aria-label="
+            (tab === 'full'
+              ? text('查看全妆详情：', 'View makeup details: ')
+              : text('查看部件详情：', 'View piece details: ')) + entry.name[language]
+          "
+          @click="selectedMakeup = entry"
+          @keydown.enter.self.prevent="selectedMakeup = entry"
+          @keydown.space.self.prevent="selectedMakeup = entry"
+        >
+          <div class="makeup-cover" data-load-block>
+            <span v-if="entry.image === catalogImagePlaceholder" class="makeup-missing">{{
+              text('暂无图片', 'Image unavailable')
+            }}</span>
+            <CatalogImage
+              v-else
+              :src="entry.image"
+              width="520"
+              height="724"
+              :alt="entry.name[language]"
+              :language="language"
+              :index="index"
+            />
+            <span class="makeup-variant">{{
+              tab === 'part'
+                ? categoryLabels[language][entry.category]
+                : entry.variant === null
+                  ? text('全妆', 'Full makeup')
+                  : wardrobeVariantLabels[language][entry.variant]
+            }}</span>
+          </div>
+          <div class="makeup-card-body" data-load-block>
+            <h3 :title="entry.name[language]">{{ entry.name[language] }}</h3>
+            <small v-if="entry.quality !== undefined" class="makeup-card-rarity"
+              >{{ entry.quality }} ★</small
+            >
+          </div>
+        </article>
+      </div>
+      <p v-else class="makeup-empty" role="status">{{
+        tab === 'full'
+          ? text('没有符合条件的妆容', 'No matching makeup')
+          : text('没有符合条件的妆容部件', 'No matching makeup pieces')
       }}</p>
-      <button type="button" @click="load">{{ text('重新加载', 'Retry') }}</button>
-    </div>
-    <div v-else-if="filtered.length" class="makeup-grid" :class="{ 'is-pieces': tab === 'part' }">
-      <article
-        v-for="(entry, index) in filtered"
-        :key="entry.id"
-        v-card-reveal="`makeup:${entry.id}`"
-        class="makeup-card is-openable"
-        role="button"
-        tabindex="0"
-        :aria-label="
-          (tab === 'full'
-            ? text('查看全妆详情：', 'View makeup details: ')
-            : text('查看部件详情：', 'View piece details: ')) + entry.name[language]
-        "
-        @click="selectedMakeup = entry"
-        @keydown.enter.self.prevent="selectedMakeup = entry"
-        @keydown.space.self.prevent="selectedMakeup = entry"
-      >
-        <div class="makeup-cover" data-load-block>
-          <span v-if="entry.image === catalogImagePlaceholder" class="makeup-missing">{{
-            text('暂无图片', 'Image unavailable')
-          }}</span>
-          <CatalogImage
-            v-else
-            :src="entry.image"
-            width="520"
-            height="724"
-            :alt="entry.name[language]"
-            :language="language"
-            :index="index"
-          />
-          <span class="makeup-variant">{{
-            tab === 'part'
-              ? categoryLabels[language][entry.category]
-              : entry.variant === null
-                ? text('全妆', 'Full makeup')
-                : wardrobeVariantLabels[language][entry.variant]
-          }}</span>
-        </div>
-        <div class="makeup-card-body" data-load-block>
-          <h3 :title="entry.name[language]">{{ entry.name[language] }}</h3>
-          <small v-if="entry.quality !== undefined" class="makeup-card-rarity"
-            >{{ entry.quality }} ★</small
-          >
-        </div>
-      </article>
-    </div>
-    <p v-else class="makeup-empty" role="status">{{
-      tab === 'full'
-        ? text('没有符合条件的妆容', 'No matching makeup')
-        : text('没有符合条件的妆容部件', 'No matching makeup pieces')
-    }}</p>
     </ContentLoadingSurface>
   </section>
   <MakeupDetailDialog

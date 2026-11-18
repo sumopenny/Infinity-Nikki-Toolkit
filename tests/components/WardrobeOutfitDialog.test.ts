@@ -1,3 +1,4 @@
+import { animations, openAnimationKey } from '../../src/utils/evolutionAnimations'
 import { flushPromises, mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 import WardrobeOutfitDialog from '../../src/components/WardrobeOutfitDialog.vue'
@@ -130,4 +131,45 @@ it('opens the matching makeup, preserves the outfit, and follows variant changes
   } finally {
     wrapper.unmount()
   }
+})
+
+it('opens the animation for base and evolved outfits and closes the detail host', async () => {
+  const open = vi.fn()
+  const item = animations[0]
+  const detail: WardrobeEntry = {
+    id: item.outfitId,
+    kind: 'outfit',
+    name: { zh: item.name, en: item.nameEn },
+    quality: 5,
+    variant: 0,
+    category: 0,
+    familyRootId: item.outfitId,
+    style: null,
+    labels: [],
+    obtainType: null,
+    version: item.version,
+    sourceDetails: [],
+    image: '/outfit.png',
+    parts: []
+  }
+  const wrapper = mount(WardrobeOutfitDialog, {
+    props: { detail, catalog: null, snapshot: emptyWardrobe(), language: 'zh' },
+    global: {
+      provide: { [openAnimationKey as symbol]: open },
+      stubs: { Teleport: true, Transition: true }
+    }
+  })
+  for (const id of [item.outfitId, item.outfitId + '04']) {
+    await wrapper.setProps({ detail: { ...detail, id } })
+    const button = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('观看满进动画'))!
+    expect(button).toBeDefined()
+    await button.trigger('click')
+    expect(open).toHaveBeenLastCalledWith(item.page)
+  }
+  expect(wrapper.emitted('close')).toHaveLength(2)
+  await wrapper.setProps({ detail: { ...detail, id: 'unknown', familyRootId: null } })
+  expect(wrapper.text()).not.toContain('观看满进动画')
+  wrapper.unmount()
 })
