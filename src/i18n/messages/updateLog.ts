@@ -7,23 +7,53 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.18 更新',
+  currentDate: '2026.11.20 更新',
   currentItems: [
     {
-      title: '暖暖档案新增「满进动画」。',
-      text: '收录 43 套套装的满进动画，点选套装即可在站内观看，也可跳转到 B 站对应分 P。已收录的套装可从详情页点击「观看满进动画」直达对应视频。'
+      title: '「搭配总结」新增可视化概览。',
+      text: '可查看每月收藏趋势、标签分布和搭配码解析进度。点击标签可查看对应搭配，服装和妆容排行新增单品的出现数占比。'
     },
     {
-      title: '头像模拟器支持动态头像框。',
-      text: '在「工具 → 头像模拟器」中选择支持动画的头像框，即可预览效果，随时暂停或继续播放。同步优化照片裁剪和头像框显示，给边缘特效留出更多空间。'
+      title: '调整更多菜单样式。',
+      text: '手机端「更多」改为侧边栏展开，菜单内容结构优化，按数据备份、应用维护和关于暖立方分组，使用帮助和更新记录置于底部。'
     },
     {
-      title: '优化手机端暖暖档案布局。',
-      text: '调整档案页签和分类按钮的布局。个人衣橱的收集数量移到「进化形态」开关旁，妆容图鉴的全妆或部件总数移到筛选栏。'
+      title: '新增「返回顶部」按钮。',
+      text: '页面向下滚动后，点击右下角箭头即可回到顶部。'
+    },
+    {
+      title: '重新整理「使用帮助」。',
+      text: '新版使用帮助按任务提供指引，方便直观查看手势、快捷键和安装方法。'
+    },
+    {
+      title: '更新提示可以永久关闭。',
+      text: '可选择仅关闭当前版本的提示，或关闭后续所有版本的自动弹窗。仍可从「更多」手动打开更新记录。'
+    },
+    {
+      title: '优化使用体验。',
+      text: '优化「最近删除」的缩略图加载、拍照动作解析、数据导入和备份恢复。相机收藏分包导出中途失败时，已生成的文件仍可从通知下载。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.8',
+      date: '2026.11.18',
+      items: [
+        {
+          title: '暖暖档案新增「满进动画」。',
+          text: '收录 43 套套装的满进动画，点选套装即可在站内观看，也可跳转到 B 站对应分 P。已收录的套装可从详情页点击「观看满进动画」直达对应视频。'
+        },
+        {
+          title: '头像模拟器支持动态头像框。',
+          text: '在「工具 → 头像模拟器」中选择支持动画的头像框，即可预览效果，随时暂停或继续播放。同步优化照片裁剪和头像框显示，给边缘特效留出更多空间。'
+        },
+        {
+          title: '优化手机端暖暖档案布局。',
+          text: '调整档案页签和分类按钮的布局。个人衣橱的收集数量移到「进化形态」开关旁，妆容图鉴的全妆或部件总数移到筛选栏。'
+        }
+      ]
+    },
     {
       version: 'v2.7.2',
       date: '2026.11.16',
@@ -873,23 +903,53 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.18',
+  currentDate: 'Updated 2026.11.20',
   currentItems: [
     {
-      title: 'Evolution animations added to Nikki Archive.',
-      text: 'Watch full evolution animations for 43 outfits. Choose an outfit to watch on the site, or open the corresponding part on Bilibili. For outfits in the collection, select “Watch evolution animation” in the outfit details to open the matching video.'
+      title: 'Outfit summary has a new visual overview.',
+      text: 'See monthly save history, tag distribution, and outfit-code parsing progress. Select a tag to view its outfits. Clothing and makeup rankings now show the share of parsed outfits that use each item.'
     },
     {
-      title: 'Avatar Simulator supports animated frames.',
-      text: 'Choose an animated frame under Tools → Avatar Simulator to preview it, and pause or resume playback at any time. Photo cropping and frame rendering have also been refined to give effects around the edges more room.'
+      title: 'Updated the More menu layout.',
+      text: 'On mobile, More now opens as a side panel. The menu groups actions under Data backup, App maintenance, and About NikkiCube, with Help and Release history at the bottom.'
     },
     {
-      title: 'Updated the mobile layout of Nikki Archive.',
-      text: 'Rearranged the archive tabs and category buttons. Collection counts in Personal wardrobe now appear next to “Show evolution forms”, and the total number of full makeup looks or pieces in Makeup catalog now appears in the filter bar.'
+      title: 'Added a Back to top button.',
+      text: 'After scrolling down, select the arrow in the lower-right corner to return to the top.'
+    },
+    {
+      title: 'Reorganized Help.',
+      text: 'The new Help groups instructions by task so you can quickly find gestures, keyboard shortcuts, and installation steps.'
+    },
+    {
+      title: 'Update pop-ups can be turned off permanently.',
+      text: 'Dismiss the pop-up for this version or turn it off for all future versions. You can still open Release history from More.'
+    },
+    {
+      title: 'Improved everyday use.',
+      text: 'Improved thumbnail loading in Recently Deleted, capture action parsing, data imports, and backup restoration. If an export of camera favorites fails partway through, you can still download completed files from the notification.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.8',
+      date: '2026.11.18',
+      items: [
+        {
+          title: 'Evolution animations added to Nikki Archive.',
+          text: 'Watch full evolution animations for 43 outfits. Choose an outfit to watch on the site, or open the corresponding part on Bilibili. For outfits in the collection, select “Watch evolution animation” in the outfit details to open the matching video.'
+        },
+        {
+          title: 'Avatar Simulator supports animated frames.',
+          text: 'Choose an animated frame under Tools → Avatar Simulator to preview it, and pause or resume playback at any time. Photo cropping and frame rendering have also been refined to give effects around the edges more room.'
+        },
+        {
+          title: 'Updated the mobile layout of Nikki Archive.',
+          text: 'Rearranged the archive tabs and category buttons. Collection counts in Personal wardrobe now appear next to “Show evolution forms”, and the total number of full makeup looks or pieces in Makeup catalog now appears in the filter bar.'
+        }
+      ]
+    },
     {
       version: 'v2.7.2',
       date: '2026.11.16',
