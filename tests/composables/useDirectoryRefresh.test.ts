@@ -36,7 +36,9 @@ function setup() {
             refreshingMessage: () => 'refreshing',
             locale: computed(() => messages.zh),
             activeOperation: ref<ActiveOperation | null>(null),
-            statusState,
+            publishStatus: (status) => {
+              statusState.value = status
+            },
             apply,
             migrate,
             refreshCollections,

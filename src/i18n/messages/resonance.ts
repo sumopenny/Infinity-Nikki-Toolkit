@@ -31,7 +31,6 @@ export interface ResonanceMessages {
   noFileSelected: string
   fileRequired: string
   fileInvalid: string
-  fileEmpty: string
   addTitle: string
   close: string
   loginPearpal: string
@@ -81,7 +80,6 @@ export interface ResonanceMessages {
   copyCodeSuccess: string
   pasteHere: string
   pasteSuccess: string
-  pasteSuccessNoUid: string
   pasteFailed: string
   roleId: string
   token: string
@@ -90,10 +88,8 @@ export interface ResonanceMessages {
   uidMismatch: string
   regionMismatch: string
   authFailed: string
-  processBanner: (current: number, total: number) => string
   import: string
   previewTitle: string
-  replaceAllNotice: string
   previewBanner: string
   previewOutfit: string
   previewRarity: string
@@ -101,11 +97,9 @@ export interface ResonanceMessages {
   confirmImport: string
   importing: string
   saving: string
-  importSuccess: (count: number) => string
   partialImport: (count: number) => string
   importError: string
   saveError: string
-  noRecords: string
   pulls: (count: number) => string
   average: (count: string) => string
   setSelection: string
@@ -152,7 +146,6 @@ export const resonanceZh: ResonanceMessages = {
   noFileSelected: '尚未选择文件',
   fileRequired: '请先选择 JSON 文件。',
   fileInvalid: '文件不是受支持的共鸣 JSON 格式。',
-  fileEmpty: '文件中没有可识别的共鸣记录。',
   addTitle: '添加共鸣数据',
   close: '关闭',
   loginPearpal: '登录美鸭梨网站',
@@ -230,7 +223,6 @@ export const resonanceZh: ResonanceMessages = {
   copyCodeSuccess: '代码已复制',
   pasteHere: '粘贴完整登录凭据 JSON',
   pasteSuccess: '数据粘贴成功！',
-  pasteSuccessNoUid: '请填写游戏内 UID',
   pasteFailed: '解析输入数据失败，请确认格式正确。',
   roleId: '游戏内 UID',
   token: 'Momo Token',
@@ -240,10 +232,8 @@ export const resonanceZh: ResonanceMessages = {
   regionMismatch: '无法确认角色属于所选服务器。请在美鸭梨切换到正确角色，再重新获取凭据。',
   authFailed:
     '当前凭据已过期或失效，请前往美鸭梨网站重新登录并获取新凭据，返回本页粘贴后重试。若仍然报错，请在浏览器无痕窗口中登录美鸭梨，重新获取凭据后重试。',
-  processBanner: (current, total) => `正在处理第 ${current} 个卡池，共 ${total} 个`,
   import: '获取预览',
   previewTitle: '导入预览',
-  replaceAllNotice: '确认导入后，本次预览将替换全部本地共鸣记录；未包含的旧记录将被删除。',
   previewBanner: '卡池',
   previewOutfit: '套装',
   previewRarity: '稀有度',
@@ -251,12 +241,10 @@ export const resonanceZh: ResonanceMessages = {
   confirmImport: '确认导入',
   importing: '正在获取共鸣数据，请稍候…',
   saving: '正在保存…',
-  importSuccess: (count) => `已导入 ${count} 套记录`,
   partialImport: (count) =>
     `${count} 个卡池未能解析；确认导入只保存成功解析的记录，这些卡池的旧记录也将被删除。`,
   importError: '导入失败，请重试。',
   saveError: '保存失败，请检查浏览器存储空间和 IndexedDB 状态后重试。',
-  noRecords: '奇想手账中没有找到可识别的卡池抽卡记录。',
   pulls: (count) => `总抽数：${count}`,
   average: (count) => `平均抽数：${count}`,
   setSelection: '选择套数',
@@ -305,7 +293,6 @@ export const resonanceEn: ResonanceMessages = {
   noFileSelected: 'No file selected',
   fileRequired: 'Choose a JSON file first.',
   fileInvalid: 'This is not a supported resonance JSON file.',
-  fileEmpty: 'No supported resonance records were found in the file.',
   addTitle: 'Add resonance data',
   close: 'Close',
   loginPearpal: 'Sign in to Pear-Pal',
@@ -389,7 +376,6 @@ export const resonanceEn: ResonanceMessages = {
   copyCodeSuccess: 'Code copied',
   pasteHere: 'Paste the complete sign-in credentials JSON',
   pasteSuccess: 'Data pasted successfully!',
-  pasteSuccessNoUid: 'Enter your in-game UID',
   pasteFailed: 'Could not parse the input. Check that it uses the expected format.',
   roleId: 'In-game UID',
   token: 'Momo Token',
@@ -400,11 +386,8 @@ export const resonanceEn: ResonanceMessages = {
     'The role could not be verified for the selected server. Select the correct role on Pear-Pal and get fresh credentials.',
   authFailed:
     'Your credentials have expired or are no longer valid. Sign in to the Pear-Pal website again to obtain fresh credentials, then paste them here and retry. If the error persists, sign in to Pear-Pal in a private browser window, get new credentials, and try again.',
-  processBanner: (current, total) => `Processing banner ${current} of ${total}`,
   import: 'Preview import',
   previewTitle: 'Import preview',
-  replaceAllNotice:
-    'Confirming this import replaces all local resonance records with this preview. Previous records missing from the preview will be deleted.',
   previewBanner: 'Banner',
   previewOutfit: 'Outfit',
   previewRarity: 'Rarity',
@@ -412,12 +395,10 @@ export const resonanceEn: ResonanceMessages = {
   confirmImport: 'Confirm import',
   importing: 'Fetching resonance data, please wait…',
   saving: 'Saving…',
-  importSuccess: (count) => `Imported ${count} outfit records`,
   partialImport: (count) =>
     `${count} banners could not be parsed. Confirming saves only parsed records and also deletes previous records for these banners.`,
   importError: 'Import failed. Try again.',
   saveError: 'Save failed. Check browser storage and IndexedDB, then try again.',
-  noRecords: 'No supported banner pull records were found in Whim-Log.',
   pulls: (count) => `Total pulls: ${count}`,
   average: (count) => `Average pulls: ${count}`,
   setSelection: 'Select set',

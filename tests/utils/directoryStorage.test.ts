@@ -1,11 +1,9 @@
 import 'fake-indexeddb/auto'
-import { DB_VERSION } from '../../src/utils/file-system/database'
+import { clearAllBrowserData, DB_VERSION } from '../../src/utils/file-system/database'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   clearSavedAlbumDirectoryHandle,
-  clearSavedHomeSchemeParseResults,
   clearSavedOutfitParseResults,
-  clearSavedX6GameDirectoryHandle,
   getSavedAlbumDirectoryHandle,
   getSavedHomeSchemeParseResult,
   getSavedOutfitParseResult,
@@ -16,12 +14,7 @@ import {
   saveX6GameDirectoryHandle
 } from '../../src/utils/file-system/directoryStorage'
 
-afterEach(async () => {
-  await clearSavedAlbumDirectoryHandle().catch(() => undefined)
-  await clearSavedX6GameDirectoryHandle().catch(() => undefined)
-  await clearSavedOutfitParseResults().catch(() => undefined)
-  await clearSavedHomeSchemeParseResults().catch(() => undefined)
-})
+afterEach(clearAllBrowserData)
 const handle = (name: string) => ({ name }) as unknown as FileSystemDirectoryHandle
 
 describe('directoryStorage', () => {
@@ -90,7 +83,7 @@ describe('directoryStorage', () => {
     expect(remainingKeys).not.toContain(`outfit-code-parse:${code}`)
   })
 
-  it('clears home-scheme parse results without removing other browser data', async () => {
+  it('stores home-scheme parse results independently of other browser data', async () => {
     const homeResult = { code: 'home123', parserVersion: 'wire-v1' }
     const outfitResult = { code: 'outfit123' }
     await saveAlbumDirectoryHandle(handle('album'))
@@ -98,9 +91,6 @@ describe('directoryStorage', () => {
     await saveOutfitParseResult(outfitResult.code, outfitResult)
     expect(await getSavedHomeSchemeParseResult(homeResult.code)).toEqual(homeResult)
 
-    await clearSavedHomeSchemeParseResults()
-
-    expect(await getSavedHomeSchemeParseResult(homeResult.code)).toBeUndefined()
     expect(await getSavedOutfitParseResult(outfitResult.code)).toEqual(outfitResult)
     expect((await getSavedAlbumDirectoryHandle())?.name).toBe('album')
   })

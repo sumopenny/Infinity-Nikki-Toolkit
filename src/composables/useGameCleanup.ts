@@ -36,7 +36,7 @@ interface GameCleanupOptions {
   locale: ComputedRef<LocaleMessages>
   activeOperation: Ref<ActiveOperation | null>
   isAnyFileOperationBusy: ComputedRef<boolean>
-  statusState: Ref<StatusState>
+  publishStatus: (status: StatusState) => void
   createErrorStatus: ReturnType<typeof useOperationNotice>['createErrorStatus']
   openConfirmDialog: ReturnType<typeof useConfirmDialog>['openConfirmDialog']
 }
@@ -49,7 +49,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
     locale,
     activeOperation,
     isAnyFileOperationBusy,
-    statusState,
+    publishStatus,
     createErrorStatus,
     openConfirmDialog
   } = options
@@ -113,14 +113,13 @@ export function useGameCleanup(options: GameCleanupOptions) {
       })
       cleanupX6GameHandle.value = handle
       hasX6GameAuthorization.value = true
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.app.authorizeX6GameStatus,
         tone: 'success'
-      }
+      })
     } catch (error) {
-      if (!didCancelDirectoryPrompt)
-        statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      if (!didCancelDirectoryPrompt) publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     }
   }
   function resolveCleanupAccounts(accountIds: string[] | null, remember = false, choice = '') {
@@ -157,22 +156,22 @@ export function useGameCleanup(options: GameCleanupOptions) {
   async function cleanLowQualityPhotos(x6GameHandle: FileSystemDirectoryHandle) {
     const accountIds = await resolveCleanupAccountIds(x6GameHandle)
     if (!accountIds) {
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.app.relatedCleanupCancelledStatus,
         tone: 'info'
-      }
+      })
       return
     }
     const plan = await prepareSpecialCleanup(x6GameHandle, 'lowQuality', accountIds, {
       skipDirectoryHandle: albumDirectoryHandle.value ?? undefined
     })
     if (!plan.fileCount) {
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.app.noRelatedPhotos(plan.missingDirectories),
         tone: plan.missingDirectories.length ? 'warning' : 'info'
-      }
+      })
       return
     }
     // 当前相册本身是清理目标时，在确认文案中说明本次只清理另一个目录。
@@ -197,15 +196,15 @@ export function useGameCleanup(options: GameCleanupOptions) {
       cancelLabel: locale.value.app.dialogCancel
     })
     if (!confirmed) {
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.app.relatedCleanupCancelledStatus,
         tone: 'info'
-      }
+      })
       return
     }
     const result = await executeSpecialCleanup(plan)
-    statusState.value = {
+    publishStatus({
       type: 'custom',
       message: locale.value.app.relatedCleanupStatus(
         result.deletedCount,
@@ -214,7 +213,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
         result.missingDirectories
       ),
       tone: result.failures.length || result.missingDirectories.length ? 'warning' : 'success'
-    }
+    })
   }
   async function cleanSpecialDirectory(
     x6GameHandle: FileSystemDirectoryHandle,
@@ -223,11 +222,11 @@ export function useGameCleanup(options: GameCleanupOptions) {
     const itemTitle = locale.value.cleanup.items[item].title
     const plan = await prepareSpecialCleanup(x6GameHandle, item)
     if (!plan.fileCount) {
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.cleanup.noDirectoryFilesToClean(itemTitle, plan.missingDirectories),
         tone: plan.missingDirectories.length ? 'warning' : 'info'
-      }
+      })
       return
     }
     const sizeText = `${formatFileSize(plan.totalBytes)}${plan.totalBytesKnown ? '' : language.value === 'zh' ? '（部分文件大小未知）' : ' (some file sizes unknown)'}`
@@ -239,15 +238,15 @@ export function useGameCleanup(options: GameCleanupOptions) {
       cancelLabel: locale.value.app.dialogCancel
     })
     if (!confirmed) {
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.app.relatedCleanupCancelledStatus,
         tone: 'info'
-      }
+      })
       return
     }
     const result = await executeSpecialCleanup(plan)
-    statusState.value = {
+    publishStatus({
       type: 'custom',
       message: locale.value.cleanup.directoryCleanupStatus(
         itemTitle,
@@ -257,7 +256,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
         result.missingDirectories
       ),
       tone: result.failures.length || result.missingDirectories.length ? 'warning' : 'success'
-    }
+    })
   }
   async function cleanSpecialItem(item: SpecialCleanupItem) {
     const x6GameHandle = cleanupX6GameHandle.value
@@ -268,7 +267,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
       if (item === 'lowQuality') await cleanLowQualityPhotos(x6GameHandle)
       else await cleanSpecialDirectory(x6GameHandle, item)
     } catch (error) {
-      statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {
       cleaningItem.value = null
       if (activeOperation.value === 'cleanup') activeOperation.value = null
@@ -281,12 +280,12 @@ export function useGameCleanup(options: GameCleanupOptions) {
     if (!albumHandle || !targets.length || isAnyFileOperationBusy.value) return
 
     activeOperation.value = 'cleanup'
-    statusState.value = {
+    publishStatus({
       type: 'custom',
       message: locale.value.app.permanentlyDeletingPhotos,
       tone: 'info',
       loading: true
-    }
+    })
     let cancelledAuthorization = false
     try {
       const { directoryHandle: x6GameHandle, accountDirectoryName } =
@@ -321,14 +320,14 @@ export function useGameCleanup(options: GameCleanupOptions) {
         albumHandle
       )
       if (!plan.matchedCount) {
-        statusState.value = {
+        publishStatus({
           type: 'custom',
           message: locale.value.app.noMatchingRelatedPhotos(
             plan.missingDirectories,
             plan.skippedDirectories
           ),
           tone: plan.missingDirectories.length ? 'warning' : 'info'
-        }
+        })
         return
       }
       const confirmed = await openConfirmDialog({
@@ -342,27 +341,27 @@ export function useGameCleanup(options: GameCleanupOptions) {
         cancelLabel: locale.value.app.dialogCancel
       })
       if (!confirmed) {
-        statusState.value = {
+        publishStatus({
           type: 'custom',
           message: locale.value.app.relatedPhotoDeleteCancelledStatus,
           tone: 'info'
-        }
+        })
         return
       }
       const result = await executeMatchingPhotoCleanup(plan)
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.app.relatedPhotoDeleteStatus(result.deletedCount, result.failures),
         tone: result.failures.length ? 'warning' : 'success'
-      }
+      })
     } catch (error) {
       if (cancelledAuthorization)
-        statusState.value = {
+        publishStatus({
           type: 'custom',
           message: locale.value.app.relatedPhotoDeleteCancelledStatus,
           tone: 'info'
-        }
-      else statusState.value = createErrorStatus(error, { type: 'readFailed' })
+        })
+      else publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {
       if (activeOperation.value === 'cleanup') activeOperation.value = null
     }

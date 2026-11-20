@@ -232,19 +232,6 @@ export function deleteHomeScheme(
   return deleteHomeSchemes([item], confirmed)
 }
 
-export async function saveHomeSchemeTags(values: string[]): Promise<string[]> {
-  const tags = normalizeHomeSchemeTags(values)
-  return homeTransaction([HOME_SCHEMES_STORE, HOME_TAGS_STORE], 'readwrite', async (tx) => {
-    const records = (await homeRequest(
-      tx.objectStore(HOME_SCHEMES_STORE).getAll()
-    )) as HomeSchemeRecord[]
-    if (records.some((record) => record.tags.some((tag) => !tags.includes(tag))))
-      throw new Error('home_scheme_tag_in_use')
-    tx.objectStore(HOME_TAGS_STORE).put(tags, 'default')
-    return tags
-  })
-}
-
 /** 新增标签时读取事务中的最新列表，保留其他页面刚添加的未使用标签。 */
 export async function addHomeSchemeTag(value: string): Promise<string[]> {
   return homeTransaction([HOME_TAGS_STORE], 'readwrite', async (tx) => {

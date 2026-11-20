@@ -1,3 +1,4 @@
+import * as albumNotesApi from '../src/utils/file-system/photoMetadata'
 import { useModuleOperation } from '../src/composables/useOperationCoordinator'
 import { useArchiveCloud, type ArchiveCloudSync } from '../src/composables/useArchiveCloudSync'
 import * as cameraStorage from '../src/utils/photo-params/favorites'
@@ -14,9 +15,13 @@ import { messages } from '../src/i18n'
 import {
   getSavedAlbumDirectoryHandle,
   readAlbumDirectory,
+  refreshAlbumPhotos,
   saveAlbumDirectoryHandle
 } from '../src/utils/file-system/albumFileSystem'
-import { listRecentlyDeleted } from '../src/utils/file-system/trashFileSystem'
+import {
+  listRecentlyDeleted,
+  movePhotosToRecentlyDeleted
+} from '../src/utils/file-system/trashFileSystem'
 import { readOutfitLibrary, type OutfitItem } from '../src/utils/outfit/outfitFileSystem'
 import { importOutfitBackup } from '../src/utils/outfit/outfitBackup'
 import { decodeCameraParams } from '../src/utils/photo-params/wasmClient'
@@ -30,13 +35,18 @@ vi.mock('../src/utils/file-system/albumFileSystem', async (importOriginal) => {
     ...actual,
     getSavedAlbumDirectoryHandle: vi.fn(),
     readAlbumDirectory: vi.fn(),
+    refreshAlbumPhotos: vi.fn(actual.refreshAlbumPhotos),
     saveAlbumDirectoryHandle: vi.fn()
   }
 })
 
 vi.mock('../src/utils/file-system/trashFileSystem', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/utils/file-system/trashFileSystem')>()
-  return { ...actual, listRecentlyDeleted: vi.fn() }
+  return {
+    ...actual,
+    listRecentlyDeleted: vi.fn(),
+    movePhotosToRecentlyDeleted: vi.fn(actual.movePhotosToRecentlyDeleted)
+  }
 })
 
 vi.mock('../src/utils/outfit/outfitFileSystem', async (importOriginal) => {
@@ -138,6 +148,103 @@ describe('App lifecycle coordination', () => {
   afterEach(() => {
     vi.useRealTimers()
     document.body.innerHTML = ''
+  })
+
+  it('discards stale album handles after a missing-directory refresh and permits reopening', async () => {
+    const { DirectoryAccessError } = await import('../src/utils/file-system/directoryErrors')
+    const directory = {
+      kind: 'directory',
+      name: 'NikkiPhotos_HighQuality'
+    } as FileSystemDirectoryHandle
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(directory)
+    readAlbumDirectoryMock.mockResolvedValue({
+      directoryHandle: directory,
+      directoryName: directory.name,
+      photos: []
+    })
+    vi.mocked(refreshAlbumPhotos).mockRejectedValueOnce(
+      new DirectoryAccessError(
+        'read-failed',
+        messages.zh.fileSystem.readFailed,
+        new DOMException('missing', 'NotFoundError')
+      )
+    )
+    const wrapper = mount(App)
+    try {
+      await flushPromises()
+      await vi.waitFor(() =>
+        expect(wrapper.getComponent({ name: 'TopBar' }).props('directoryName')).toBe(directory.name)
+      )
+      window.dispatchEvent(new Event('focus'))
+      await vi.waitFor(() =>
+        expect(wrapper.getComponent({ name: 'TopBar' }).props('directoryName')).not.toBe(
+          directory.name
+        )
+      )
+      expect(document.body.textContent).toContain(messages.zh.app.restorePathFailedStatus)
+      const calls = vi.mocked(refreshAlbumPhotos).mock.calls.length
+      window.dispatchEvent(new Event('focus'))
+      await new Promise((resolve) => setTimeout(resolve, 450))
+      expect(refreshAlbumPhotos).toHaveBeenCalledTimes(calls)
+      wrapper.getComponent({ name: 'TopBar' }).vm.$emit('chooseDirectory')
+      await flushPromises()
+      await vi.waitFor(() =>
+        expect(wrapper.getComponent({ name: 'TopBar' }).props('directoryName')).toBe(directory.name)
+      )
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('invalidates the album when confirmed deletion cannot find the trash parent directory', async () => {
+    const { annotateDiagnosticError } = await import('../src/utils/errorReporting/errorReporter')
+    const directory = { kind: 'directory', name: 'Album' } as FileSystemDirectoryHandle
+    const photo = {
+      id: 'photo',
+      name: 'photo.jpg',
+      directoryHandle: directory,
+      fileHandle: {} as FileSystemFileHandle,
+      url: null,
+      timestamp: 1,
+      dateKey: '2026-11-19',
+      year: '2026',
+      monthDay: '11月19日',
+      displayDate: '2026年11月19日',
+      timeText: '12:00',
+      fileSizeText: '1 KB'
+    }
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(directory)
+    readAlbumDirectoryMock.mockResolvedValue({
+      directoryHandle: directory,
+      directoryName: directory.name,
+      photos: [photo]
+    })
+    vi.mocked(movePhotosToRecentlyDeleted).mockRejectedValueOnce(
+      annotateDiagnosticError(new DOMException('missing', 'NotFoundError'), {
+        stage: 'create-trash-directory'
+      })
+    )
+    const wrapper = mount(App, { global: { stubs: { PhotoGrid: true } } })
+    try {
+      await flushPromises()
+      await vi.waitFor(() =>
+        expect(wrapper.findComponent({ name: 'PhotoGrid' }).exists()).toBe(true)
+      )
+      wrapper.getComponent({ name: 'PhotoGrid' }).vm.$emit('togglePhoto', photo.id)
+      await nextTick()
+      wrapper.getComponent({ name: 'SelectionBar' }).vm.$emit('delete')
+      await nextTick()
+      wrapper.getComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+      await flushPromises()
+      expect(movePhotosToRecentlyDeleted).toHaveBeenCalled()
+      expect(wrapper.getComponent({ name: 'TopBar' }).props('directoryName')).not.toBe(
+        directory.name
+      )
+      expect(wrapper.findComponent({ name: 'PhotoGrid' }).exists()).toBe(false)
+      expect(document.body.textContent).toContain(messages.zh.app.restorePathFailedStatus)
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it.each([
@@ -1528,4 +1635,73 @@ it('warns after cloud restore if wardrobe refresh reports a failure', async () =
       ])
     )
   )
+})
+
+it('locks note editing and duplicate saves until the pending write settles', async () => {
+  localStorage.clear()
+  vi.clearAllMocks()
+  getSavedX6GameDirectoryHandleMock.mockResolvedValue(null)
+  readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [], unreadableCount: 0 })
+  listRecentlyDeletedMock.mockResolvedValue([])
+  countHomeSchemesMock.mockResolvedValue(0)
+  readOutfitLibraryMock.mockResolvedValue({
+    outfits: [],
+    tags: [],
+    importedSharedCount: 0,
+    failedCount: 0
+  })
+  const directory = { kind: 'directory', name: 'Album' } as FileSystemDirectoryHandle
+  const photo = {
+    id: 'note-photo',
+    name: '2026_11_19_12_00_00.jpg',
+    note: '',
+    url: null,
+    timestamp: 1,
+    dateKey: '2026-11-19',
+    year: '2026',
+    monthDay: '11月19日',
+    displayDate: '2026年11月19日',
+    timeText: '12:00',
+    fileHandle: {},
+    directoryHandle: directory
+  }
+  getSavedAlbumDirectoryHandleMock.mockResolvedValue(directory)
+  readAlbumDirectoryMock.mockResolvedValue({
+    directoryName: 'Album',
+    directoryHandle: directory,
+    photos: [photo]
+  } as never)
+  const read = vi
+    .spyOn(albumNotesApi, 'readAlbumMetadata')
+    .mockResolvedValue({ version: 1, photos: {} } as never)
+  const pending = deferred<string>()
+  const save = vi.spyOn(albumNotesApi, 'savePhotoNote').mockReturnValue(pending.promise)
+  const wrapper = mount(App, { global: { stubs: { CameraFavorites: true, PhotoGrid: true } } })
+  try {
+    await flushPromises()
+    const nav = wrapper.getComponent({ name: 'AlbumViewSwitcher' })
+    await vi.waitFor(() => expect(nav.props('disabled')).toBe(false))
+    nav.vm.$emit('changeView', 'all')
+    await flushPromises()
+    wrapper.getComponent({ name: 'PhotoGrid' }).vm.$emit('editNote', photo)
+    await flushPromises()
+    const dialog = wrapper.getComponent({ name: 'NoteDialog' })
+    expect(dialog.props('visible')).toBe(true)
+    dialog.vm.$emit('save', 'saved note')
+    await nextTick()
+    expect(dialog.props('busy')).toBe(true)
+    dialog.vm.$emit('cancel')
+    dialog.vm.$emit('save', 'duplicate')
+    await nextTick()
+    expect(dialog.props('visible')).toBe(true)
+    expect(save).toHaveBeenCalledOnce()
+    pending.resolve('saved note')
+    await flushPromises()
+    expect(dialog.props('visible')).toBe(false)
+    expect(dialog.props('busy')).toBe(false)
+  } finally {
+    wrapper.unmount()
+    read.mockRestore()
+    save.mockRestore()
+  }
 })

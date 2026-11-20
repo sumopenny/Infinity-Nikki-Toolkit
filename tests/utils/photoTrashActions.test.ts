@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { usePhotoTrashActions } from '../../src/composables/usePhotoTrashActions'
 import { messages } from '../../src/i18n'
 import type { ActiveOperation, StatusState } from '../../src/composables/useOperationNotice'
@@ -54,7 +54,9 @@ function setup() {
     favoriteIds,
     currentPreview,
     activeOperation,
-    statusState,
+    publishStatus: (state) => {
+      statusState.value = state
+    },
     albumDirectoryHandle: ref({ name: 'Album' } as FileSystemDirectoryHandle),
     visiblePhotos: computed(() => photos.value),
     currentPreviewIndex: computed(() => 0),
@@ -123,6 +125,40 @@ it('does not mutate files or state when deletion is cancelled or another operati
   await s.actions.restoreTrashPhotos([trash('ta')])
   expect(restoreRecentlyDeletedPhotos).not.toHaveBeenCalled()
   expect(s.photos.value).toHaveLength(2)
+})
+
+it('publishes one favorite update for a mixed restore batch and preserves unrelated favorites', async () => {
+  const s = setup()
+  const first = trash('first'),
+    second = trash('second'),
+    unstarred = { ...trash('unstarred'), wasFavorite: false },
+    failed = trash('failed')
+  s.recentlyDeleted.value = [first, second, unstarred, failed]
+  const changed = vi.fn()
+  const stop = watch(s.favoriteIds, changed, { flush: 'sync' })
+  vi.mocked(restoreRecentlyDeletedPhotos).mockResolvedValue({
+    succeeded: [first, second, unstarred],
+    restoredPhotos: [
+      photo('restored-first'),
+      photo('restored-second'),
+      photo('restored-unstarred')
+    ],
+    failedNames: [failed.name]
+  })
+  try {
+    await s.actions.restoreTrashPhotos(s.recentlyDeleted.value)
+    expect([...s.favoriteIds.value]).toEqual([
+      'a',
+      'b',
+      'other-album',
+      'restored-first',
+      'restored-second'
+    ])
+    expect(changed).toHaveBeenCalledOnce()
+    expect(s.recentlyDeleted.value.map((item) => item.id)).toEqual(['failed'])
+  } finally {
+    stop()
+  }
 })
 
 it('confirms clear-all once and preserves failed entries and their selection', async () => {

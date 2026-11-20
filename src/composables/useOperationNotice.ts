@@ -2,7 +2,7 @@ import { isDatabaseConnectionLost, isDatabaseVersionMismatch } from '../utils/fi
 import { reportError } from '../utils/errorReporting/errorReporter'
 import { createOperationCoordinator, type OperationCoordinator } from './useOperationCoordinator'
 // 操作通知状态机：统一管理操作忙碌状态、提示文案、错误映射和通知生命周期。
-import { computed, ref, watch, type ComputedRef } from 'vue'
+import { computed, ref, type ComputedRef } from 'vue'
 import type { LocaleMessages, StatusPrefix, StatusSuffix } from '../i18n'
 import type { OperationNoticeTone } from '../components/OperationNotice.vue'
 import { DirectoryAccessError } from '../utils/file-system/directoryErrors'
@@ -64,7 +64,6 @@ export function useOperationNotice(
   locale: ComputedRef<LocaleMessages>,
   operations: OperationCoordinator = createOperationCoordinator()
 ) {
-  const statusState = ref<StatusState>({ type: 'initial' })
   const activeOperation = operations.activeOperation
   const notices = ref<OperationNoticeItem[]>([])
   const isVisible = computed(() => notices.value.length > 0)
@@ -83,9 +82,8 @@ export function useOperationNotice(
   const isExportingPhotos = computed(() => activeOperation.value === 'exporting-photos')
   const isAnyFileOperationBusy = operations.isBusy
 
-  const statusMessage = computed(() => {
+  const formatStatusMessage = (state: StatusState) => {
     const app = locale.value.app
-    const state = statusState.value
     switch (state.type) {
       case 'reading':
         return app.readingStatus
@@ -106,29 +104,7 @@ export function useOperationNotice(
       default:
         return app.initialStatus
     }
-  })
-
-  const statusTone = computed<StatusTone>(() => {
-    const state = statusState.value
-    if (
-      state.type === 'restoreFailed' ||
-      state.type === 'restorePathFailed' ||
-      state.type === 'readFailed'
-    )
-      return 'error'
-    if (state.type === 'success' || state.type === 'cleared') return 'success'
-    if (state.type === 'custom') return state.tone ?? 'info'
-    return 'info'
-  })
-
-  const isStatusLoading = computed(() => {
-    const state = statusState.value
-    return (
-      state.type === 'reading' ||
-      state.type === 'restoring' ||
-      (state.type === 'custom' && Boolean(state.loading))
-    )
-  })
+  }
 
   const closeNotice = (id = notices.value.at(-1)?.id) => {
     if (id === undefined) return
@@ -147,16 +123,19 @@ export function useOperationNotice(
     clock.deadline = Date.now() + duration
     clock.timer = window.setTimeout(() => closeNotice(id), duration)
   }
-  const showNotice = (options: { loading?: boolean; duration?: number } = {}) => {
-    const state = statusState.value
-    const source = state.type === 'custom' ? state.source : undefined
+  const appendNotice = ({
+    message,
+    tone = 'info',
+    loading = false,
+    source,
+    downloadFiles = []
+  }: ConfirmableStatus) => {
     // A completed operation retires its own loading notice while leaving other results intact.
     for (const notice of [...notices.value]) {
       if (notice.loading && notice.source === source) closeNotice(notice.id)
     }
-    const downloadFiles =
-      state.type === 'custom' && !options.loading ? (state.downloadFiles ?? []) : []
-    if (downloadFiles.length) {
+    const files = loading ? [] : downloadFiles
+    if (files.length) {
       for (const notice of [...notices.value]) {
         if (notice.downloadFiles?.length && notice.source === source) closeNotice(notice.id)
       }
@@ -164,17 +143,44 @@ export function useOperationNotice(
     const id = ++nextId
     notices.value.push({
       id,
-      message: statusMessage.value,
-      tone: statusTone.value,
-      loading: !!options.loading,
-      ...(downloadFiles.length ? { downloadFiles } : {}),
-      source
+      message,
+      tone,
+      loading,
+      source,
+      ...(files.length ? { downloadFiles: files } : {})
     })
-    // Only the notice owns the retained files, so closing it can release them.
-    if (state.type === 'custom') state.downloadFiles = undefined
     timers.set(id, { deadline: 0, remaining: 0, paused: false })
-    if (!options.loading && options.duration !== undefined)
-      hideAfter(id, downloadFiles.length ? 6000 : options.duration)
+    const duration =
+      files.length || tone === 'error' || tone === 'warning'
+        ? 6000
+        : tone === 'success'
+          ? 3000
+          : 5200
+    if (!loading) hideAfter(id, duration)
+  }
+  /** 将当前语言下的状态直接发布成通知，不保留另一份中间状态。 */
+  const publishStatus = (state: StatusState) => {
+    if (state.type === 'initial') {
+      dispose()
+      return
+    }
+    if (state.type === 'custom') {
+      appendNotice(state)
+      return
+    }
+    const tone =
+      state.type === 'restoreFailed' ||
+      state.type === 'restorePathFailed' ||
+      state.type === 'readFailed'
+        ? 'error'
+        : state.type === 'success' || state.type === 'cleared'
+          ? 'success'
+          : 'info'
+    appendNotice({
+      message: formatStatusMessage(state),
+      tone,
+      loading: state.type === 'reading' || state.type === 'restoring'
+    })
   }
   /** 更新同一条顶部进度通知，不随每张照片产生新通知；结束时仅移除该任务通知。 */
   const updateLoadingNotice = (source: string, message: string | null) => {
@@ -223,11 +229,11 @@ export function useOperationNotice(
       )
     )
       return
-    statusState.value = { type: 'custom', message, tone, loading, source, downloadFiles }
+    appendNotice({ message, tone, loading, source, downloadFiles })
   }
   const clearStatus = (source?: string) => {
     if (!source) {
-      statusState.value = { type: 'initial' }
+      dispose()
       return
     }
     for (const notice of [...notices.value]) {
@@ -260,30 +266,9 @@ export function useOperationNotice(
     return { type: 'custom', message: error.message, tone: 'error' }
   }
 
-  watch(
-    statusState,
-    (nextStatus) => {
-      if (nextStatus.type === 'initial') {
-        dispose()
-        return
-      }
-      const duration =
-        statusTone.value === 'error' || statusTone.value === 'warning'
-          ? 6000
-          : statusTone.value === 'success'
-            ? 3000
-            : 5200
-      showNotice({ loading: isStatusLoading.value, duration })
-    },
-    { flush: 'sync' }
-  )
-
   return {
     notices,
-    statusState,
-    statusMessage,
-    statusTone,
-    isStatusLoading,
+    publishStatus,
     activeOperation,
     isLoading,
     isDeleting,
@@ -298,7 +283,6 @@ export function useOperationNotice(
     showStatus,
     updateLoadingNotice,
     clearStatus,
-    showNotice,
     closeNotice,
     pauseNotice,
     resumeNotice,

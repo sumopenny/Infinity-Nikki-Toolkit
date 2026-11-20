@@ -8,7 +8,6 @@ import type { Language } from '../i18n'
 import type { PhotoActionInfo, PhotoItem } from '../utils/photoGrouping'
 import {
   getSavedPhotoActionCaches,
-  savePhotoActionCache,
   savePhotoActionCaches,
   type PhotoActionCacheEntry
 } from '../utils/file-system/directoryStorage'
@@ -155,98 +154,66 @@ export function usePhotoActionParsing(options: {
 
       candidateUids = await getUids()
       if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
-      const parsed = candidateUids.length
-        ? await runWithConcurrency(
-            pending,
+      // Bound both pending results and database work; cancellation or cache clearing
+      // prevents the next batch from starting, while tracked writes finish before clearing.
+      const batchSize = 128
+      for (let offset = 0; offset < pending.length; offset += batchSize) {
+        if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
+        const batch = pending.slice(offset, offset + batchSize)
+        const entries: [string, PhotoActionCacheEntry][] = []
+        const recordResult = (photo: PhotoItem, result: PhotoActionInfo) => {
+          if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
+          const fingerprint = photoActionFingerprint(albumKey, photo)
+          actionInfo.value.set(photo.id, { ...result, fingerprint })
+          progress.value = {
+            ...progress.value,
+            completed: progress.value.completed + 1,
+            failed: progress.value.failed + (result.status === 'unparsed' ? 1 : 0)
+          }
+          if (result.status !== 'unparsed' || cacheableFailures.has(result.errorCode ?? '')) {
+            entries.push([
+              photo.name,
+              {
+                fingerprint,
+                parserVersion: PHOTO_ACTION_PARSER_VERSION,
+                catalogVersion: PHOTO_ACTION_CATALOG_VERSION,
+                status: result.status as PhotoActionCacheEntry['status'],
+                actionId: result.actionId,
+                actionName: result.actionName,
+                actionImageUrl: result.actionImageUrl,
+                errorCode: result.errorCode,
+                parsedAt: result.parsedAt ?? Date.now(),
+                ...(result.status === 'unparsed' && uidDependentFailures.has(result.errorCode ?? '')
+                  ? { uidSignature: uidSignature(candidateUids ?? []) }
+                  : {})
+              }
+            ])
+          }
+        }
+        if (candidateUids.length) {
+          await runWithConcurrency(
+            batch,
             (photo) => parsePhotoAction(photo, candidateUids ?? [], options.language.value),
             {
               concurrency: 15,
               signal,
-              onItemComplete: (photo, _index, result) => {
-                if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
-                const fingerprint = photoActionFingerprint(albumKey, photo)
-                const info = { ...result, fingerprint }
-                actionInfo.value.set(photo.id, info)
-                progress.value = {
-                  ...progress.value,
-                  completed: progress.value.completed + 1,
-                  failed: progress.value.failed + (result.status === 'unparsed' ? 1 : 0)
-                }
-                if (result.status !== 'unparsed' || cacheableFailures.has(result.errorCode ?? '')) {
-                  void persistCacheIfCurrent(generation, () =>
-                    savePhotoActionCache(albumKey, photo.name, {
-                      fingerprint,
-                      parserVersion: PHOTO_ACTION_PARSER_VERSION,
-                      catalogVersion: PHOTO_ACTION_CATALOG_VERSION,
-                      status: result.status as PhotoActionCacheEntry['status'],
-                      actionId: result.actionId,
-                      actionName: result.actionName,
-                      actionImageUrl: result.actionImageUrl,
-                      errorCode: result.errorCode,
-                      parsedAt: result.parsedAt ?? Date.now(),
-                      ...(result.status === 'unparsed' &&
-                      uidDependentFailures.has(result.errorCode ?? '')
-                        ? { uidSignature: uidSignature(candidateUids ?? []) }
-                        : {})
-                    })
-                  ).catch(() => undefined)
-                }
-              }
+              onItemComplete: (photo, _index, result) => recordResult(photo, result)
             }
           )
-        : []
-      if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
-      if (!candidateUids.length) {
-        const updated = new Map(actionInfo.value)
-        for (const photo of pending) {
-          const fingerprint = photoActionFingerprint(albumKey, photo)
-          const info: PhotoActionInfo = {
-            status: 'unparsed',
-            fingerprint,
-            errorCode: 'uid_missing',
-            parsedAt: Date.now()
-          }
-          updated.set(photo.id, info)
+        } else {
+          for (const photo of batch)
+            recordResult(photo, {
+              status: 'unparsed',
+              errorCode: 'uid_missing',
+              parsedAt: Date.now()
+            })
         }
-        actionInfo.value = updated
-        // Missing UID is a stable result until credentials change or the user retries.
-        // 串行提交小批次，取消或清缓存后不再分派，避免为每张照片同时打开数据库。
-        const batchSize = 128
-        for (let offset = 0; offset < pending.length; offset += batchSize) {
-          if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
-          const entries = pending.slice(offset, offset + batchSize).map(
-            (photo) =>
-              [
-                photo.name,
-                {
-                  fingerprint: photoActionFingerprint(albumKey, photo),
-                  parserVersion: PHOTO_ACTION_PARSER_VERSION,
-                  catalogVersion: PHOTO_ACTION_CATALOG_VERSION,
-                  status: 'unparsed',
-                  errorCode: 'uid_missing',
-                  uidSignature: uidSignature([]),
-                  parsedAt: Date.now()
-                }
-              ] as const
-          )
+        if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
+        if (entries.length) {
           await persistCacheIfCurrent(generation, () =>
             savePhotoActionCaches(albumKey, entries)
           ).catch(() => undefined)
         }
-        if (run !== runId || signal.aborted || !isCurrentCacheGeneration(generation)) return
-        progress.value = {
-          running: false,
-          completed: photos.length,
-          total: photos.length,
-          failed: pending.length
-        }
-        return
-      }
-      progress.value = {
-        running: false,
-        completed: photos.length,
-        total: photos.length,
-        failed: parsed.filter((item) => item.status === 'unparsed').length + cachedFailed
       }
     } catch (error) {
       // 旧任务失败不得覆盖新任务；准备阶段失败也应结束 pending，而不是悬挂进度。

@@ -25,6 +25,7 @@ import {
 } from '../utils/outfit/outfitFileSystem'
 
 import {
+  isReservedOutfitTag,
   isValidOutfitTag,
   MAX_OUTFIT_TAG_LENGTH,
   MAX_OUTFIT_TAGS,
@@ -47,7 +48,7 @@ interface OutfitWorkspaceOptions {
   visibleOutfits: ComputedRef<OutfitItem[]>
   outfitSidebarRef: Ref<InstanceType<typeof OutfitSidebar> | null>
   outfitEditorRef: Ref<InstanceType<typeof OutfitEditor> | null>
-  statusState: Ref<StatusState>
+  publishStatus: (status: StatusState) => void
   reloadOutfitCollection: () => Promise<void>
   applyOutfitLibraryResult: (result: OutfitLibraryResult) => void
   showOutfitStatus: (message: string, tone?: StatusTone, loading?: boolean, source?: string) => void
@@ -71,7 +72,7 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
     visibleOutfits,
     outfitSidebarRef,
     outfitEditorRef,
-    statusState,
+    publishStatus,
     reloadOutfitCollection,
     applyOutfitLibraryResult,
     showOutfitStatus,
@@ -102,12 +103,11 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
   async function addOutfitTag(rawTag: string, selectInEditor = false) {
     if (isAnyFileOperationBusy.value) return
     const tag = normalizeOutfitTag(rawTag)
-    const reserved = new Set(['全部', '待填写', '未分类', 'all', 'pending', 'uncategorized'])
     if (!isValidOutfitTag(tag)) {
       showOutfitStatus(outfitLocale.value.operations.invalidTag(MAX_OUTFIT_TAG_LENGTH), 'warning')
       return
     }
-    if (reserved.has(tag.toLowerCase()) || outfitTags.value.includes(tag)) {
+    if (isReservedOutfitTag(tag) || outfitTags.value.includes(tag)) {
       showOutfitStatus(outfitLocale.value.operations.duplicateOrReservedTag, 'warning')
       return
     }
@@ -278,7 +278,7 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
     try {
       const { exportOutfitBackup } = await import('../utils/outfit/outfitBackup')
       const result = await exportOutfitBackup()
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         source: 'outfits-export',
         downloadFiles: takeDownloadFiles('outfits'),
@@ -287,7 +287,7 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
           result.count
         ),
         tone: 'success'
-      }
+      })
     } catch (error) {
       showOutfitStorageError(error, 'outfits-export')
     } finally {
@@ -326,7 +326,10 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
       })
     } catch (error) {
       if (isBackupInputError(error))
-        showOutfitStatus(backupInputMessage(error, options.language?.value ?? 'zh', 'outfits')!, 'warning')
+        showOutfitStatus(
+          backupInputMessage(error, options.language?.value ?? 'zh', 'outfits')!,
+          'warning'
+        )
       else showOutfitStorageError(error)
     } finally {
       if (activeOperation.value === 'importing-outfits') activeOperation.value = null

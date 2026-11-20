@@ -32,7 +32,7 @@ function pearpalUserscript(): Plugin {
   }
 }
 
-/** 本地开发复用 Pages Function：只接受固定 POST 动作，并沿用凭据校验、超时与禁缓存响应。 */
+/** 本地开发复用图片代理，并为退休的手账代理保留明确的 410 响应。 */
 function localPearpalApi(): Plugin {
   return {
     name: 'local-pearpal-api',
@@ -61,32 +61,10 @@ function localPearpalApi(): Plugin {
           res.end(JSON.stringify({ error: 'method_not_allowed' }))
           return
         }
-        try {
-          const chunks: Buffer[] = []
-          let size = 0
-          for await (const chunk of req) {
-            const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-            size += bytes.length
-            if (size > 8192) {
-              res.statusCode = 413
-              res.end(JSON.stringify({ error: 'request_too_large' }))
-              return
-            }
-            chunks.push(bytes)
-          }
-          const request = new Request(`http://localhost/api/resonance/pearpal${req.url ?? ''}`, {
-            method: 'POST',
-            headers: req.headers as HeadersInit,
-            body: Buffer.concat(chunks)
-          })
-          const response = await forwardPearpalRequest({ request })
-          res.statusCode = response.status
-          response.headers.forEach((value, key) => res.setHeader(key, value))
-          res.end(Buffer.from(await response.arrayBuffer()))
-        } catch {
-          res.statusCode = 502
-          res.end(JSON.stringify({ error: 'upstream_unavailable' }))
-        }
+        const response = await forwardPearpalRequest()
+        res.statusCode = response.status
+        response.headers.forEach((value, key) => res.setHeader(key, value))
+        res.end(await response.text())
       })
     }
   }

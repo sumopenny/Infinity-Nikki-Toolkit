@@ -1276,16 +1276,6 @@
   outline-offset: 3px;
 }
 
-@supports not (color: color-mix(in srgb, black, white)) {
-  .outfit-parse-item-button:focus-visible {
-    outline-offset: 3px;
-  }
-
-  :where(:root[data-theme='dark']) .outfit-parse-item-button:focus-visible {
-    outline-offset: 3px;
-  }
-}
-
 .outfit-parse-item-button .outfit-parse-item-icon {
   transition:
     border-color 160ms ease,

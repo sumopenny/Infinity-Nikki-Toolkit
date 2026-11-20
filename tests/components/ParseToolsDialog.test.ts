@@ -1,11 +1,12 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import ParseToolsDialog from '../../src/components/ParseToolsDialog.vue'
 import { warmLookbookParser } from '../../src/utils/outfit/lookbookWasmClient'
 
 vi.mock('../../src/utils/outfit/lookbookWasmClient', () => ({
   warmLookbookParser: vi.fn(async () => undefined)
 }))
+enableAutoUnmount(afterEach)
 
 const messages = {
   title: '参数/搭配码解析',
@@ -23,6 +24,7 @@ const messages = {
 
 function mountDialog(overrides: Partial<{ visible: boolean; busy: boolean }> = {}) {
   return mount(ParseToolsDialog, {
+    attachTo: document.body,
     props: {
       visible: true,
       cameraParams: '',
@@ -94,11 +96,14 @@ describe('ParseToolsDialog', () => {
 
   it('closes from the close button, overlay, and Escape', async () => {
     const wrapper = mountDialog()
+    await flushPromises()
     await wrapper.find('header button').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
     await wrapper.find('.dialog-overlay').trigger('click.self')
     expect(wrapper.emitted('close')).toHaveLength(2)
-    await wrapper.find('.dialog-overlay').trigger('keydown', { key: 'Escape' })
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    )
     expect(wrapper.emitted('close')).toHaveLength(3)
   })
 })

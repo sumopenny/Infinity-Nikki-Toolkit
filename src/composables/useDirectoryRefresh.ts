@@ -12,7 +12,7 @@ interface DirectoryRefreshOptions {
   refreshingMessage: () => string
   locale: ComputedRef<LocaleMessages>
   activeOperation: Ref<ActiveOperation | null>
-  statusState: Ref<StatusState>
+  publishStatus: (status: StatusState) => void
   apply: (result: RefreshAlbumResult) => void
   migrate: (directory: FileSystemDirectoryHandle) => Promise<StatusState | null>
   refreshCollections: () => Promise<void>
@@ -20,7 +20,7 @@ interface DirectoryRefreshOptions {
 }
 /** Owns refresh generations and focus scheduling; collection state stays with its owner. */
 export function useDirectoryRefresh(options: DirectoryRefreshOptions) {
-  const { locale, activeOperation, statusState } = options
+  const { locale, activeOperation, publishStatus } = options
   let focusRefreshTimer: number | undefined
   let focusRefreshGeneration = 0
   let latestRefreshToken = 0
@@ -37,28 +37,32 @@ export function useDirectoryRefresh(options: DirectoryRefreshOptions) {
     const refreshToken = ++latestRefreshToken
     activeOperation.value = 'refreshing'
     if (manual) {
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: options.refreshingMessage(),
         tone: 'info',
         loading: true
-      }
+      })
     }
     try {
       const albumResult = await refreshAlbumPhotos(directoryHandle, options.photos(), {
-        requestPermission: manual, messages: locale.value.fileSystem
+        requestPermission: manual,
+        messages: locale.value.fileSystem
       })
-      const trashResult = await listRecentlyDeleted(directoryHandle, albumResult.notes?.metadata.photos)
+      const trashResult = await listRecentlyDeleted(
+        directoryHandle,
+        albumResult.notes?.metadata.photos
+      )
       if (refreshToken !== latestRefreshToken || directoryHandle !== options.directory()) return
       const result: RefreshAlbumResult = { ...albumResult, recentlyDeleted: trashResult }
       options.apply(result)
       const migrationStatus = await options.migrate(directoryHandle)
       if (refreshToken !== latestRefreshToken || directoryHandle !== options.directory()) return
       const refreshStatus = migrationStatus ?? createRefreshResultStatus(result, manual)
-      if (refreshStatus) statusState.value = refreshStatus
+      if (refreshStatus) publishStatus(refreshStatus)
     } catch (error) {
       if (refreshToken !== latestRefreshToken || directoryHandle !== options.directory()) return
-      statusState.value = options.createErrorStatus(error, { type: 'readFailed' })
+      publishStatus(options.createErrorStatus(error, { type: 'readFailed' }))
     } finally {
       if (activeOperation.value === 'refreshing') activeOperation.value = null
     }

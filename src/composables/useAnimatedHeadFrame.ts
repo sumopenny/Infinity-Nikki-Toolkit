@@ -26,9 +26,11 @@ export function useAnimatedHeadFrame(
       let stale = false
       let instance: SpinePlayer | undefined
       let host: HTMLDivElement | undefined
+      const controller = new AbortController()
       const timeout = window.setTimeout(() => fail(), 30000)
       const release = () => {
         window.clearTimeout(timeout)
+        controller.abort()
         const gl = instance?.context?.gl
         instance?.dispose()
         // 连续切换时立即释放 WebGL 上下文，避免触及浏览器的活跃上下文数量上限。
@@ -53,13 +55,25 @@ export function useAnimatedHeadFrame(
       try {
         const { SpinePlayer } = await import('@esotericsoftware/spine-player')
         if (stale || failed.value) return
+        // 先校验 JSON，避免播放器将网络失败的空响应当作成功并在异步回调中抛错。
+        const assets = headFramePlayerAssets(frame)
+        const response = await fetch(assets.jsonUrl, { signal: controller.signal })
+        if (!response.ok) throw new Error('Head frame resource unavailable')
+        const skeleton = await response.json()
+        if (!skeleton || typeof skeleton !== 'object' || !Array.isArray(skeleton.bones))
+          throw new Error('Invalid head frame skeleton')
+        if (stale || failed.value) return
         host = document.createElement('div')
         host.setAttribute('aria-hidden', 'true')
         host.style.cssText =
           'position:fixed;left:-10000px;top:0;width:512px;height:512px;pointer-events:none'
         document.body.append(host)
         instance = new SpinePlayer(host, {
-          ...headFramePlayerAssets(frame),
+          ...assets,
+          rawDataURIs: {
+            ...assets.rawDataURIs,
+            [assets.jsonUrl]: 'data:application/json,' + JSON.stringify(skeleton)
+          },
           animation: frame.defaultAnimation,
           alpha: true,
           backgroundColor: '#00000000',

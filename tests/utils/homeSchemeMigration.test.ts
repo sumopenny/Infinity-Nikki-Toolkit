@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   DB_NAME,
   HOME_SCHEMES_STORE,
+  HOME_TAGS_STORE,
   HOME_MIGRATION_ENTRIES_STORE,
   runStoreRequest
 } from '../../src/utils/file-system/database'
@@ -11,8 +12,7 @@ import { migrateHomeSchemeLibrary } from '../../src/utils/homeBuild/homeSchemeMi
 import {
   deleteHomeScheme,
   deleteHomeSchemeTag,
-  readHomeSchemeSnapshot,
-  saveHomeSchemeTags
+  readHomeSchemeSnapshot
 } from '../../src/utils/homeBuild/homeSchemeStorage'
 import { createEmptyHomeSchemeMetadata } from '../helpers/homeSchemeMetadata'
 
@@ -213,7 +213,12 @@ it('rolls replacement and marker back on transaction failure, then succeeds on r
 })
 
 it('retries tag overflow and does not reintroduce tags deleted after migration', async () => {
-  await saveHomeSchemeTags(Array.from({ length: 40 }, (_, i) => `T${i}`))
+  await runStoreRequest(HOME_TAGS_STORE, 'readwrite', (store) =>
+    store.put(
+      Array.from({ length: 40 }, (_, i) => `T${i}`),
+      'default'
+    )
+  )
   const source = album()
   source.home!.json('one.json', record('one', 'CODE1'))
   expect(await migrateHomeSchemeLibrary(handle(source))).toMatchObject({

@@ -44,7 +44,9 @@ function setup() {
         cleanup = useGameCleanup({
           albumDirectoryHandle,
           activeOperation,
-          statusState,
+          publishStatus: (status) => {
+            statusState.value = status
+          },
           hasX6GameAuthorization: ref(false),
           language: ref('zh'),
           locale: computed(() => messages.zh),

@@ -19,7 +19,7 @@ interface DirectorySessionOptions {
   language?: Ref<'zh' | 'en'>
   activeOperation: Ref<ActiveOperation | null>
   isAnyFileOperationBusy: ComputedRef<boolean>
-  statusState: Ref<StatusState>
+  publishStatus: (status: StatusState) => void
   locale: ComputedRef<LocaleMessages>
   directoryState: Ref<DirectoryState>
   photos: Ref<PhotoItem[]>
@@ -36,7 +36,7 @@ export function useDirectorySession(options: DirectorySessionOptions) {
   const {
     activeOperation,
     isAnyFileOperationBusy,
-    statusState,
+    publishStatus,
     locale,
     directoryState,
     photos,
@@ -49,11 +49,11 @@ export function useDirectorySession(options: DirectorySessionOptions) {
     activeOperation.value = 'loading'
     try {
       if (readLocalStorage(ALBUM_ACCESS_MODE_KEY) === 'compatible') {
-        statusState.value = {
+        publishStatus({
           type: 'custom',
           message: compatibleAlbumMessages[options.language?.value ?? 'zh'].restore,
           tone: 'info'
-        }
+        })
         return
       }
       const savedHandle = await getSavedAlbumDirectoryHandle()
@@ -65,7 +65,7 @@ export function useDirectorySession(options: DirectorySessionOptions) {
       })
       await replaceAlbum(result, { type: 'initial' }, { preserveView: true })
     } catch (error) {
-      statusState.value = createErrorStatus(error, { type: 'restoreFailed' })
+      publishStatus(createErrorStatus(error, { type: 'restoreFailed' }))
     } finally {
       if (activeOperation.value === 'loading') activeOperation.value = null
     }
@@ -89,7 +89,7 @@ export function useDirectorySession(options: DirectorySessionOptions) {
   async function chooseDirectory() {
     if (isAnyFileOperationBusy.value) return
     activeOperation.value = 'loading'
-    statusState.value = { type: 'reading' }
+    publishStatus({ type: 'reading' })
     try {
       const savedHandle = await getSavedAlbumDirectoryHandle()
       if (savedHandle && !photos.value.length) {
@@ -102,9 +102,13 @@ export function useDirectorySession(options: DirectorySessionOptions) {
           return
         } catch (error) {
           if (!(error instanceof DirectoryAccessError) || error.code === 'read-failed') {
-            reportError(error, { module: 'album', action: 'restore-directory', stage: 'before-picker' })
+            reportError(error, {
+              module: 'album',
+              action: 'restore-directory',
+              stage: 'before-picker'
+            })
           }
-          statusState.value = { type: 'restorePathFailed' }
+          publishStatus({ type: 'restorePathFailed' })
         }
       }
       const result = await pickAlbumDirectory(locale.value.fileSystem)
@@ -115,7 +119,7 @@ export function useDirectorySession(options: DirectorySessionOptions) {
         suffix: 'remembered'
       })
     } catch (error) {
-      statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {
       if (activeOperation.value === 'loading') activeOperation.value = null
     }

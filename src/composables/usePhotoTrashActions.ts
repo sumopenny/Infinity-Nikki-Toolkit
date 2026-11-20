@@ -1,5 +1,5 @@
 import { isDirectoryPhoto } from '../utils/photoGrouping'
-import { reportPartialFailure, reportError } from '../utils/errorReporting/errorReporter'
+import { reportPartialFailure } from '../utils/errorReporting/errorReporter'
 import type { Ref, ComputedRef } from 'vue'
 import type { LocaleMessages } from '../i18n'
 import type { PhotoItem, PhotoDisplayItem, RecentlyDeletedPhoto } from '../utils/photoGrouping'
@@ -26,7 +26,7 @@ interface PhotoTrashActionsOptions {
   locale: ComputedRef<LocaleMessages>
   activeOperation: Ref<ActiveOperation | null>
   isAnyFileOperationBusy: ComputedRef<boolean>
-  statusState: Ref<StatusState>
+  publishStatus: (status: StatusState) => void
   createErrorStatus: ReturnType<typeof useOperationNotice>['createErrorStatus']
   openConfirmDialog: ReturnType<typeof useConfirmDialog>['openConfirmDialog']
 }
@@ -45,7 +45,7 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
     locale,
     activeOperation,
     isAnyFileOperationBusy,
-    statusState,
+    publishStatus,
     createErrorStatus,
     openConfirmDialog
   } = options
@@ -125,21 +125,21 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
     if (!confirmed || isAnyFileOperationBusy.value) return
 
     activeOperation.value = 'deleting'
-    statusState.value = {
+    publishStatus({
       type: 'custom',
       message: locale.value.app.movingPhotosToTrash,
       tone: 'info',
       loading: true
-    }
+    })
     const previewIndex = currentPreviewIndex.value
     try {
       const result = await movePhotosToRecentlyDeleted(targets, favoriteIds.value)
       applyMovedPhotosResult(result, keepPreviewOpen, previewIndex)
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.trash.movedStatus(result.succeeded.length, result.failedNames),
         tone: result.failedNames.length ? 'warning' : 'success'
-      }
+      })
       reportPartialFailure(
         'album-trash',
         afterExport ? 'move-after-export' : 'deleting',
@@ -147,14 +147,14 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
         { succeededCount: result.succeeded.length }
       )
     } catch (error) {
+      const failureStatus = createErrorStatus(error, { type: 'readFailed' })
       if (afterExport) {
-        reportError(error, { module: 'album-trash', action: 'move-after-export' })
-        statusState.value = {
+        publishStatus({
           type: 'custom',
           message: locale.value.app.exportMoveSourceFailed,
           tone: 'error'
-        }
-      } else statusState.value = createErrorStatus(error, { type: 'readFailed' })
+        })
+      } else publishStatus(failureStatus)
     } finally {
       if (activeOperation.value === 'deleting') activeOperation.value = null
     }
@@ -168,12 +168,12 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
     const directoryHandle = albumDirectoryHandle.value
     if (!directoryHandle || !targets.length || isAnyFileOperationBusy.value) return
     activeOperation.value = 'trash'
-    statusState.value = {
+    publishStatus({
       type: 'custom',
       message: locale.value.app.restoringPhotos,
       tone: 'info',
       loading: true
-    }
+    })
     const previewIndex = currentPreviewIndex.value
     try {
       const result = await restoreRecentlyDeletedPhotos(targets, directoryHandle)
@@ -187,22 +187,23 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
       photos.value = [...photos.value, ...result.restoredPhotos].sort(
         (a, b) => b.timestamp - a.timestamp
       )
+      const restoredFavorites = new Set(favoriteIds.value)
       result.succeeded.forEach((source, index) => {
         const restored = result.restoredPhotos[index]
-        if (source.wasFavorite && restored)
-          favoriteIds.value = new Set([...favoriteIds.value, restored.id])
+        if (source.wasFavorite && restored) restoredFavorites.add(restored.id)
       })
+      if (restoredFavorites.size !== favoriteIds.value.size) favoriteIds.value = restoredFavorites
       if (currentPreview.value && restoredTrashIds.has(currentPreview.value.id)) {
         currentPreview.value = keepPreviewOpen
           ? (recentlyDeleted.value[Math.min(previewIndex, recentlyDeleted.value.length - 1)] ??
             null)
           : null
       }
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.trash.restoredStatus(result.succeeded.length, result.failedNames),
         tone: result.failedNames.length ? 'warning' : 'success'
-      }
+      })
       reportPartialFailure(
         'album-trash',
         activeOperation.value ?? 'operation',
@@ -210,7 +211,7 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
         { succeededCount: result.succeeded.length }
       )
     } catch (error) {
-      statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {
       if (activeOperation.value === 'trash') activeOperation.value = null
     }
@@ -247,12 +248,12 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
     }
 
     activeOperation.value = 'trash'
-    statusState.value = {
+    publishStatus({
       type: 'custom',
       message: locale.value.app.permanentlyDeletingPhotos,
       tone: 'info',
       loading: true
-    }
+    })
     const previewIndex = currentPreviewIndex.value
     const keepPreviewOpen = options.keepPreviewOpen ?? false
     try {
@@ -271,14 +272,14 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
             null)
           : null
       }
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.trash.permanentlyDeletedStatus(
           result.succeeded.length,
           result.failedNames
         ),
         tone: result.failedNames.length ? 'warning' : 'success'
-      }
+      })
       reportPartialFailure(
         'album-trash',
         activeOperation.value ?? 'operation',
@@ -286,7 +287,7 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
         { succeededCount: result.succeeded.length }
       )
     } catch (error) {
-      statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {
       if (activeOperation.value === 'trash') activeOperation.value = null
     }

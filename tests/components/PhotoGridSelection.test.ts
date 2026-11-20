@@ -116,6 +116,7 @@ it('photo grid previews on click and selects through the circle or Space', async
 })
 
 it('recently deleted uses the same preview and independent selection behavior', async () => {
+  const cache = createPhotoThumbnailCache()
   const deleted: RecentlyDeletedPhoto = {
     ...photo,
     trashName: 'trash.jpg',
@@ -126,6 +127,7 @@ it('recently deleted uses the same preview and independent selection behavior', 
   }
   const view = mount(RecentlyDeletedGrid, {
     props: {
+      thumbnailCache: cache,
       photos: [deleted],
       selectedIds: new Set<string>(),
       thumbnailMode: 'wide',
@@ -147,5 +149,6 @@ it('recently deleted uses the same preview and independent selection behavior', 
     expect(view.get('.selected-badge').attributes('aria-label')).toBe('Deselect photo')
   } finally {
     view.unmount()
+    cache.dispose()
   }
 })

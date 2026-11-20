@@ -9,13 +9,13 @@ describe('useOperationNotice', () => {
   it('auto closes and preserves the remaining duration while paused', () => {
     vi.useFakeTimers()
     const notice = useOperationNotice(computed(() => messages.zh))
-    notice.showNotice({ duration: 1000 })
+    notice.showStatus({ message: 'Saved', tone: 'success' })
     vi.advanceTimersByTime(400)
     notice.pauseNotice()
     vi.advanceTimersByTime(1000)
     expect(notice.isVisible.value).toBe(true)
     notice.resumeNotice()
-    vi.advanceTimersByTime(599)
+    vi.advanceTimersByTime(2599)
     expect(notice.isVisible.value).toBe(true)
     vi.advanceTimersByTime(1)
     expect(notice.isVisible.value).toBe(false)
@@ -44,7 +44,7 @@ describe('useOperationNotice', () => {
   it('keeps loading notices visible until explicitly closed', () => {
     vi.useFakeTimers()
     const notice = useOperationNotice(computed(() => messages.zh))
-    notice.showNotice({ loading: true, duration: 10 })
+    notice.publishStatus({ type: 'reading' })
     vi.advanceTimersByTime(100)
     expect(notice.isVisible.value).toBe(true)
     notice.closeNotice()
@@ -128,10 +128,10 @@ it('deduplicates visible notices, clears only the matching source, and disposes 
   expect(vi.getTimerCount()).toBe(0)
 })
 
-it('keeps direct status-state writes in the notification stack', () => {
+it('publishes typed statuses directly into the notification stack', () => {
   vi.useFakeTimers()
   const notice = useOperationNotice(computed(() => messages.zh))
-  notice.statusState.value = { type: 'readFailed' }
+  notice.publishStatus({ type: 'readFailed' })
   notice.showStatus({ message: 'Copied' })
   expect(notice.notices.value).toHaveLength(2)
   notice.clearStatus()

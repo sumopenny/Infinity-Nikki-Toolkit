@@ -153,11 +153,6 @@ export async function saveHomeSchemeParseResult(code: string, result: unknown): 
   )
 }
 
-/** 仅删除家园方案解析缓存，不触碰相册授权句柄、搭配码缓存或方案文件。 */
-export function clearSavedHomeSchemeParseResults(): Promise<void> {
-  return clearCachePrefixes([HOME_SCHEME_PARSE_CACHE_KEY_PREFIX])
-}
-
 /** One readonly transaction for an album instead of one connection per photo. */
 export async function getSavedPhotoActionCaches(
   albumKey: string

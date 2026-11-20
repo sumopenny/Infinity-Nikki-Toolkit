@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { usePhotoActionParsing } from '../../src/composables/usePhotoActionParsing'
 import {
   getSavedPhotoActionCaches,
-  savePhotoActionCache,
   savePhotoActionCaches
 } from '../../src/utils/file-system/directoryStorage'
 import {
@@ -13,10 +12,10 @@ import {
 } from '../../src/utils/photo-params/photoActionParser'
 import { PHOTO_ACTION_CATALOG_VERSION } from '../../src/utils/photo-params/resourceManifest'
 import type { PhotoItem } from '../../src/utils/photoGrouping'
+import { invalidateCacheWrites } from '../../src/utils/cacheLifecycle'
 
 vi.mock('../../src/utils/file-system/directoryStorage', () => ({
   getSavedPhotoActionCaches: vi.fn(),
-  savePhotoActionCache: vi.fn().mockResolvedValue(undefined),
   savePhotoActionCaches: vi.fn().mockResolvedValue(undefined)
 }))
 vi.mock('../../src/utils/photo-params/photoActionParser', async (importOriginal) => ({
@@ -55,7 +54,7 @@ describe('photo action cache with automatic parsing disabled', () => {
       expect(parser.progress.value.running).toBe(false)
       expect(resolveUid).not.toHaveBeenCalled()
       expect(parsePhotoAction).not.toHaveBeenCalled()
-      expect(savePhotoActionCache).not.toHaveBeenCalled()
+      expect(savePhotoActionCaches).not.toHaveBeenCalled()
     }
   )
 
@@ -115,7 +114,7 @@ it('cancels queued tasks and discards all late results without saving cache', as
   finish()
   await run
   expect(parsePhotoAction).toHaveBeenCalledTimes(15)
-  expect(savePhotoActionCache).not.toHaveBeenCalled()
+  expect(savePhotoActionCaches).not.toHaveBeenCalled()
   expect(parser.progress.value.running).toBe(false)
   parser.reset()
   expect(parser.actionInfo.value.size).toBe(0)
@@ -180,7 +179,7 @@ it('does not let an old preparation rejection end a newer task', async () => {
 
 it('ignores another worker finishing after the current parse batch fails', async () => {
   vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map())
-  vi.mocked(savePhotoActionCache).mockClear()
+  vi.mocked(savePhotoActionCaches).mockClear()
   let late!: (value: { status: 'none' }) => void
   vi.mocked(parsePhotoAction)
     .mockReset()
@@ -198,7 +197,7 @@ it('ignores another worker finishing after the current parse batch fails', async
   await Promise.resolve()
   await Promise.resolve()
   expect(parser.progress.value).toMatchObject({ running: false, completed: 2, failed: 2 })
-  expect(savePhotoActionCache).not.toHaveBeenCalled()
+  expect(savePhotoActionCaches).not.toHaveBeenCalled()
 })
 
 describe('persistent failed action results and explicit retry', () => {
@@ -206,8 +205,8 @@ describe('persistent failed action results and explicit retry', () => {
     vi.clearAllMocks()
     const entries = new Map<string, any>()
     vi.mocked(getSavedPhotoActionCaches).mockImplementation(async () => new Map(entries))
-    vi.mocked(savePhotoActionCache).mockImplementation(async (_album, name, entry) => {
-      entries.set(name, entry)
+    vi.mocked(savePhotoActionCaches).mockImplementation(async (_album, batch) => {
+      for (const [name, entry] of batch) entries.set(name, entry)
     })
   })
 
@@ -219,7 +218,7 @@ describe('persistent failed action results and explicit retry', () => {
     const parser = usePhotoActionParsing({ language: ref('zh') })
     const uid = vi.fn().mockResolvedValue(['123'])
     await parser.start([missing], 'album', uid)
-    await vi.waitFor(() => expect(savePhotoActionCache).toHaveBeenCalled())
+    await vi.waitFor(() => expect(savePhotoActionCaches).toHaveBeenCalled())
     await parser.start([missing], 'album', uid)
     expect(parsePhotoAction).toHaveBeenCalledTimes(1)
     await parser.start([missing], 'album', uid, false)
@@ -235,7 +234,7 @@ describe('persistent failed action results and explicit retry', () => {
     })
     const parser = usePhotoActionParsing({ language: ref('zh') })
     await parser.start([missing], 'album', async () => ['123'])
-    await vi.waitFor(() => expect(savePhotoActionCache).toHaveBeenCalled())
+    await vi.waitFor(() => expect(savePhotoActionCaches).toHaveBeenCalled())
     await parser.start([{ ...missing, fileSize: 101 }], 'album', async () => ['123'])
     expect(parsePhotoAction).toHaveBeenCalledTimes(2)
   })
@@ -247,7 +246,7 @@ describe('persistent failed action results and explicit retry', () => {
     })
     const parser = usePhotoActionParsing({ language: ref('zh') })
     await parser.start([missing], 'album', async () => ['123'])
-    await vi.waitFor(() => expect(savePhotoActionCache).toHaveBeenCalled())
+    await vi.waitFor(() => expect(savePhotoActionCaches).toHaveBeenCalled())
     await parser.start([missing], 'album', async () => ['123'])
     expect(parsePhotoAction).toHaveBeenCalledTimes(1)
     await parser.start([missing], 'album', async () => ['456'])
@@ -263,7 +262,7 @@ describe('persistent failed action results and explicit retry', () => {
     await parser.start([missing], 'album', async () => ['123'])
     await parser.start([missing], 'album', async () => ['123'])
     expect(parsePhotoAction).toHaveBeenCalledTimes(2)
-    expect(savePhotoActionCache).not.toHaveBeenCalled()
+    expect(savePhotoActionCaches).not.toHaveBeenCalled()
   })
 })
 
@@ -282,56 +281,81 @@ it('retries failed photos cached by the previous parser version', async () => {
   await parser.start([cached], 'album', async () => ['123'], true)
   expect(parsePhotoAction).toHaveBeenCalledTimes(1)
   expect(parser.actionInfo.value.get(cached.id)?.status).toBe('none')
-  expect(savePhotoActionCache).toHaveBeenCalled()
+  expect(savePhotoActionCaches).toHaveBeenCalled()
 })
 
-it('writes missing-UID results in serial batches rather than one transaction per photo', async () => {
-  vi.clearAllMocks()
-  vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map())
-  let active = 0,
-    maximum = 0
-  vi.mocked(savePhotoActionCaches).mockImplementation(async () => {
-    maximum = Math.max(maximum, ++active)
+it.each([{ uids: [] }, { uids: ['123'] }])(
+  'writes results in serial batches for UIDs $uids',
+  async ({ uids }) => {
+    vi.clearAllMocks()
+    vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map())
+    vi.mocked(parsePhotoAction).mockReset().mockResolvedValue({ status: 'none' })
+    let active = 0,
+      maximum = 0
+    vi.mocked(savePhotoActionCaches).mockImplementation(async () => {
+      maximum = Math.max(maximum, ++active)
+      await Promise.resolve()
+      active--
+    })
+    const photos = Array.from({ length: 1000 }, (_, index) => photo(`${index}.jpg`))
+    const parser = usePhotoActionParsing({ language: ref('zh') })
+    await parser.start(photos, 'album', async () => uids)
+    const calls = vi.mocked(savePhotoActionCaches).mock.calls
+    expect(calls.length).toBeGreaterThan(1)
+    expect(calls.length).toBeLessThan(photos.length)
+    expect(calls.flatMap(([, entries]) => entries.map(([name]) => name))).toEqual(
+      photos.map((p) => p.name)
+    )
+    expect(
+      calls.every(([, entries]) =>
+        entries.every(([, entry]) =>
+          uids.length ? entry.status === 'none' : entry.errorCode === 'uid_missing'
+        )
+      )
+    ).toBe(true)
+    expect(maximum).toBe(1)
+    expect(parser.progress.value).toMatchObject({
+      running: false,
+      completed: 1000,
+      failed: uids.length ? 0 : 1000
+    })
+  }
+)
+
+it.each(['cancel', 'clear'] as const)(
+  'stops parsed cache batches after %s and drains the active write',
+  async (action) => {
+    vi.clearAllMocks()
+    vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map())
+    vi.mocked(parsePhotoAction).mockReset().mockResolvedValue({ status: 'none' })
+    let finish!: () => void
+    vi.mocked(savePhotoActionCaches).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        })
+    )
+    const parser = usePhotoActionParsing({ language: ref('zh') })
+    const run = parser.start(
+      Array.from({ length: 1000 }, (_, index) => photo(`${index}.jpg`)),
+      'album',
+      async () => ['123']
+    )
+    await vi.waitFor(() => expect(savePhotoActionCaches).toHaveBeenCalledTimes(1))
+    let cleared = false
+    const clearing =
+      action === 'clear'
+        ? invalidateCacheWrites().then(() => {
+            cleared = true
+          })
+        : Promise.resolve(parser.cancel())
     await Promise.resolve()
-    active--
-  })
-  const photos = Array.from({ length: 1000 }, (_, index) => photo(`${index}.jpg`))
-  const parser = usePhotoActionParsing({ language: ref('zh') })
-  await parser.start(photos, 'album', async () => [])
-  const calls = vi.mocked(savePhotoActionCaches).mock.calls
-  expect(calls.length).toBeGreaterThan(1)
-  expect(calls.length).toBeLessThan(photos.length)
-  expect(calls.flatMap(([, entries]) => entries.map(([name]) => name))).toEqual(
-    photos.map((p) => p.name)
-  )
-  expect(
-    calls.every(([, entries]) => entries.every(([, entry]) => entry.errorCode === 'uid_missing'))
-  ).toBe(true)
-  expect(maximum).toBe(1)
-  expect(savePhotoActionCache).not.toHaveBeenCalled()
-  expect(parser.progress.value).toMatchObject({ running: false, completed: 1000, failed: 1000 })
-})
-
-it('stops dispatching missing-UID cache batches after cancellation', async () => {
-  vi.clearAllMocks()
-  vi.mocked(getSavedPhotoActionCaches).mockResolvedValue(new Map())
-  let finish!: () => void
-  vi.mocked(savePhotoActionCaches).mockImplementationOnce(
-    () =>
-      new Promise<void>((resolve) => {
-        finish = resolve
-      })
-  )
-  const parser = usePhotoActionParsing({ language: ref('zh') })
-  const run = parser.start(
-    Array.from({ length: 1000 }, (_, index) => photo(`${index}.jpg`)),
-    'album',
-    async () => []
-  )
-  await vi.waitFor(() => expect(savePhotoActionCaches).toHaveBeenCalledTimes(1))
-  parser.cancel()
-  finish()
-  await run
-  expect(savePhotoActionCaches).toHaveBeenCalledTimes(1)
-  expect(parser.progress.value.running).toBe(false)
-})
+    if (action === 'clear') expect(cleared).toBe(false)
+    finish()
+    await Promise.all([run, clearing])
+    expect(savePhotoActionCaches).toHaveBeenCalledTimes(1)
+    expect(parsePhotoAction).toHaveBeenCalledTimes(128)
+    if (action === 'clear') expect(cleared).toBe(true)
+    expect(parser.progress.value.running).toBe(false)
+  }
+)

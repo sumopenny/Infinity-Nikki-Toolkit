@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, toRef } from 'vue'
 import {
   Archive,
   Images,
@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-vue-next'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
+import { useModalFocus } from '../composables/useModalFocus'
 import type { FullLocaleMessages } from '../i18n'
 
 const props = defineProps<{
@@ -28,6 +29,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 const panelRef = ref<HTMLElement | null>(null)
+const closeButtonRef = ref<HTMLButtonElement | null>(null)
 const featureIcons = {
   images: Images,
   outfit: Shirt,
@@ -44,48 +46,13 @@ const featureIcons = {
 const operationIcons = { mouse: MousePointer2, keyboard: Keyboard, touch: Hand }
 // 跟随 App 的统一布局状态，不另行判断设备；窗口打开期间也可切换两端教程。
 const content = computed(() => (props.compact ? props.messages.mobile : props.messages.desktop))
-let previousActiveElement: HTMLElement | null = null
-useBodyScrollLock(computed(() => props.visible))
+const visible = toRef(props, 'visible')
+useBodyScrollLock(visible)
+useModalFocus(visible, panelRef, closeDialog, undefined, closeButtonRef)
 
 function closeDialog() {
   emit('close')
 }
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    closeDialog()
-    return
-  }
-  if (event.key !== 'Tab' || !panelRef.value) return
-  const focusable = [
-    ...panelRef.value.querySelectorAll<HTMLElement>(
-      'button, input, [href], [tabindex]:not([tabindex="-1"])'
-    )
-  ]
-  if (!focusable.length) return
-  const first = focusable[0],
-    last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-watch(
-  () => props.visible,
-  (visible) => {
-    if (visible) {
-      previousActiveElement =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null
-      void nextTick(() => panelRef.value?.querySelector<HTMLElement>('button')?.focus())
-    } else {
-      previousActiveElement?.focus()
-      previousActiveElement = null
-    }
-  },
-  { immediate: true }
-)
 </script>
 
 <template>
@@ -98,12 +65,12 @@ watch(
         aria-modal="true"
         :aria-label="messages.title"
         @click.self="closeDialog"
-        @keydown="handleKeydown"
       >
         <section ref="panelRef" class="dialog-panel help-about-panel">
           <header class="help-about-header">
             <h2>{{ messages.title }}</h2>
             <button
+              ref="closeButtonRef"
               type="button"
               :title="messages.closeAria"
               :aria-label="messages.closeAria"

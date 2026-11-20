@@ -13,7 +13,7 @@ import {
   deleteHomeScheme,
   readHomeSchemeSnapshot,
   saveHomeScheme,
-  saveHomeSchemeTags
+  addHomeSchemeTag
 } from '../../src/utils/homeBuild/homeSchemeStorage'
 import { createEmptyHomeSchemeMetadata } from '../helpers/homeSchemeMetadata'
 
@@ -75,7 +75,7 @@ describe('home scheme ZIP backup', () => {
   it.each([false, true])(
     'round-trips version-1 metadata and image bytes (prepared=%s)',
     async (prepared) => {
-      await saveHomeSchemeTags(['庭院'])
+      await addHomeSchemeTag('庭院')
       const saved = await saveHomeScheme({
         ...input(),
         imageFile: new File(['RIFF0000WEBPcontent'], 'cover.webp', { type: 'image/webp' })

@@ -104,7 +104,6 @@ export interface OutfitMessages {
     confirmPermanentDelete: string
     permanentlyDelete: string
     outfitDeleted: string
-    deleteIncomplete: string
     deletingSelected: string
     deletedSelected: (deletedCount: number, failedCount: number) => string
     exportSucceeded: (fileName: string, count: number) => string
@@ -231,7 +230,6 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
       confirmPermanentDelete: '确定永久删除选中搭配码吗？删除后不可恢复。',
       permanentlyDelete: '永久删除',
       outfitDeleted: '删除成功。',
-      deleteIncomplete: '方案删除失败，请刷新后重试。',
       deletingSelected: '正在永久删除搭配方案…',
       deletedSelected: (deletedCount, failedCount) =>
         `已永久删除 ${deletedCount} 个搭配方案${failedCount ? `，${failedCount} 个删除失败。` : '。'}`,
@@ -384,7 +382,6 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
       confirmPermanentDelete: 'Permanently delete this outfit code? This cannot be undone.',
       permanentlyDelete: 'Delete permanently',
       outfitDeleted: 'Outfit deleted.',
-      deleteIncomplete: 'Unable to delete outfits. Refresh and retry.',
       deletingSelected: 'Permanently deleting outfits…',
       deletedSelected: (deletedCount, failedCount) =>
         `Permanently deleted ${deletedCount} outfit(s)${failedCount ? `; ${failedCount} failed.` : '.'}`,

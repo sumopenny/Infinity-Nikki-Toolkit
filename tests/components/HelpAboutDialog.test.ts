@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import HelpAboutDialog from '../../src/components/HelpAboutDialog.vue'
 import { helpAboutZh, helpAboutEn } from '../../src/i18n/messages/helpAbout'
@@ -7,6 +7,7 @@ const messages = { zh: { helpAbout: helpAboutZh }, en: { helpAbout: helpAboutEn 
 const wrappers: Array<ReturnType<typeof mount>> = []
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
+  vi.restoreAllMocks()
   document.body.innerHTML = ''
 })
 
@@ -98,6 +99,8 @@ describe('device-specific help', () => {
     await flushPromises()
     const close = document.querySelector<HTMLButtonElement>('.help-about-header button')!
     const confirm = document.querySelector<HTMLButtonElement>('.help-about-footer button')!
+    for (const button of [close, confirm])
+      vi.spyOn(button, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList)
     expect(document.activeElement).toBe(close)
     const shiftTab = new KeyboardEvent('keydown', {
       key: 'Tab',
@@ -120,12 +123,13 @@ describe('device-specific help', () => {
 
   it('closes through confirm, Escape or the backdrop, but not a content click', async () => {
     const wrapper = create('en', false)
+    await flushPromises()
     document.querySelector<HTMLElement>('.help-about-panel')!.click()
     expect(wrapper.emitted('close')).toBeUndefined()
     document.querySelector<HTMLButtonElement>('.help-about-footer button')!.click()
-    document
-      .querySelector<HTMLElement>('.help-about-dialog')!
-      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    )
     document.querySelector<HTMLElement>('.help-about-dialog')!.click()
     expect(wrapper.emitted('close')).toHaveLength(3)
   })

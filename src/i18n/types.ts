@@ -41,7 +41,6 @@ export interface FullLocaleMessages {
     copySucceeded: string
     copyFailed: (value: string) => string
     operationNoticeCloseAria: string
-    preferencesUpdating: string
     clearCacheDialogTitle: string
     clearCacheConfirmMessage: string
     clearCacheStatus: string
@@ -62,8 +61,6 @@ export interface FullLocaleMessages {
     importingPhotos: string
     exportingPhotos: string
     importCompleted: (succeeded: number, failed: number) => string
-    exportCompleted: (succeeded: number, failed: number) => string
-    exportCancelled: (completed: number) => string
     exportMoveSourceFailed: string
     exportMoveSourceTitle: string
     exportMoveSourceConfirm: (count: number) => string
@@ -298,7 +295,6 @@ export interface FullLocaleMessages {
     wardrobe: string
     makeup: string
     animations: string
-    comingSoon: string
     favorites: string
     recentlyDeleted: string
     count: (count: number) => string
@@ -330,7 +326,6 @@ export interface FullLocaleMessages {
     removeFavorite: string
     imageLoadFailed: string
     editNote: string
-    notePrompt: string
     noteSaved: string
     noteSaveErrors: Record<'invalid' | 'changed' | 'lockUnavailable' | 'verificationFailed', string>
     noteLabel: string
@@ -343,7 +338,6 @@ export interface FullLocaleMessages {
     parsePhoto: string
     autoParseActions: string
     autoParseActionsHint: string
-    actionCount: (count: number) => string
   }
   lightbox: {
     rotateSource: string

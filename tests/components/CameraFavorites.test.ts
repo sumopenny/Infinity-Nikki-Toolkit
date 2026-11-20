@@ -10,6 +10,7 @@ import MobileEmptyScreenshot from '../../src/components/MobileEmptyScreenshot.vu
 import { zh } from '../../src/i18n'
 import type { CameraFavorite } from '../../src/utils/photo-params/favorites'
 import type { PhotoParamsResult } from '../../src/utils/photo-params/types'
+import { takeDownloadFiles } from '../../src/utils/backup/downloadFallback'
 
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
@@ -124,11 +125,82 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn()
 })
 afterEach(() => {
+  takeDownloadFiles('camera')
   wrapper?.unmount()
   wrapper = null
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
   vi.useRealTimers()
+})
+
+it.each([1, 3])(
+  'exports %s part(s) through the result notice without retaining extra URLs',
+  async (count) => {
+    const backup = await import('../../src/utils/photo-params/favoritesBackup')
+    const parts = Array.from({ length: count }, (_, index) => ({
+      fileName: `camera-${index + 1}.zip`,
+      blob: new Blob([`part-${index + 1}`], { type: 'application/zip' })
+    }))
+    const exporter = vi.spyOn(backup, 'exportCameraBackup').mockImplementation(async function* () {
+      yield* parts
+    })
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    mocks.read.mockResolvedValue({ records: [item], covers: new Map() })
+    const view = create()
+    try {
+      await flushPromises()
+      button('导出').click()
+      await flushPromises()
+      const [message, tone, files] = view.emitted('status')!.at(-1)! as [string, string, File[]]
+      expect(message).toBe(`已生成 ${count} 个备份文件`)
+      expect(tone).toBe('success')
+      expect(files.map((file) => file.name)).toEqual(parts.map((part) => part.fileName))
+      expect(files.map((file) => file.size)).toEqual(parts.map((part) => part.blob.size))
+      expect(click).toHaveBeenCalledTimes(count)
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(count)
+      expect(takeDownloadFiles('camera')).toEqual([])
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(URL.revokeObjectURL).toHaveBeenCalledTimes(count)
+    } finally {
+      exporter.mockRestore()
+      click.mockRestore()
+    }
+  }
+)
+
+it('keeps completed parts available in a failed export notice and allows a clean retry', async () => {
+  const backup = await import('../../src/utils/photo-params/favoritesBackup')
+  const part = { fileName: 'camera-1.zip', blob: new Blob(['part']) }
+  const exporter = vi
+    .spyOn(backup, 'exportCameraBackup')
+    .mockImplementationOnce(async function* () {
+      yield part
+      throw new Error('export interrupted')
+    })
+    .mockImplementation(async function* () {
+      yield part
+    })
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  mocks.read.mockResolvedValue({ records: [item], covers: new Map() })
+  const view = create()
+  try {
+    await flushPromises()
+    button('导出').click()
+    await flushPromises()
+    const failure = view.emitted('status')!.at(-1)!
+    expect(failure.slice(0, 2)).toEqual(['export interrupted', 'error'])
+    expect((failure[2] as File[]).map((file) => file.name)).toEqual([part.fileName])
+    expect(button('导出').disabled).toBe(false)
+    button('导出').click()
+    await flushPromises()
+    const retried = view.emitted('status')!.at(-1)!
+    expect(retried.slice(0, 2)).toEqual(['已生成 1 个备份文件', 'success'])
+    expect(retried[2]).toHaveLength(1)
+    expect(takeDownloadFiles('camera')).toEqual([])
+  } finally {
+    exporter.mockRestore()
+    click.mockRestore()
+  }
 })
 
 describe('camera favorite UI', () => {

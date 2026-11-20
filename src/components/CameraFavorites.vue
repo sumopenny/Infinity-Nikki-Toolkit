@@ -138,11 +138,6 @@ const importPlan = shallowRef<ImportPlan | null>(null)
 const choices = ref<Record<string, 'local' | 'incoming'>>({})
 const coverInput = ref<HTMLInputElement | null>(null)
 const backupInput = ref<HTMLInputElement | null>(null)
-const backupDownloads = ref<Array<{ fileName: string; url: string }>>([])
-function releaseBackupDownloads() {
-  for (const download of backupDownloads.value) URL.revokeObjectURL(download.url)
-  backupDownloads.value = []
-}
 const form = ref<HTMLElement | null>(null)
 const tagFilter = ref<OutfitFilter>('all')
 const tagOrder = ref<string[]>([])
@@ -471,7 +466,7 @@ async function removeSelected() {
     }
   })
 }
-function report(caught: unknown, action = 'operation') {
+function report(caught: unknown, action = 'operation', downloadFiles?: File[]) {
   if (!(caught instanceof DuplicateCameraCodeError))
     captureDiagnosticError(caught, { module: 'camera-favorites', action })
   const message =
@@ -488,7 +483,8 @@ function report(caught: unknown, action = 'operation') {
           ? caught.message
           : String(caught)
   error.value = caught instanceof DuplicateCameraCodeError ? '' : message
-  emit('status', message, 'error')
+  if (downloadFiles?.length) emit('status', message, 'error', downloadFiles)
+  else emit('status', message, 'error')
 }
 /** 列表只读取收藏元数据，封面由可见卡片按需读取。 */
 async function rotatePreviewSource() {
@@ -500,8 +496,12 @@ async function rotatePreviewSource() {
       await rotateStoredPhoto('camera', item.id, item.updatedAt)
       try {
         library.value = await readCameraFavorites(false)
-      } catch { throw new Error('rotation_refresh') }
-    } finally { busy.value = false }
+      } catch {
+        throw new Error('rotation_refresh')
+      }
+    } finally {
+      busy.value = false
+    }
   })
 }
 
@@ -814,25 +814,22 @@ async function exportBackup() {
   return trackOperation(async () => {
     busy.value = true
     try {
-      releaseBackupDownloads()
       const { exportCameraBackup } = await import('../utils/photo-params/favoritesBackup')
       for await (const part of exportCameraBackup(await readCameraFavorites())) {
-        const url = URL.createObjectURL(part.blob)
-        backupDownloads.value.push({ fileName: part.fileName, url })
         downloadBackupBlob(part.fileName, part.blob, 'camera')
       }
+      const downloadFiles = takeDownloadFiles('camera')
       emit(
         'status',
         t(
-          '已生成 ' + backupDownloads.value.length + ' 个备份文件',
-          'Created ' + backupDownloads.value.length + ' backup file(s)'
+          '已生成 ' + downloadFiles.length + ' 个备份文件',
+          'Created ' + downloadFiles.length + ' backup file(s)'
         ),
         'success',
-        takeDownloadFiles('camera')
+        downloadFiles
       )
     } catch (caught) {
-      report(caught, 'exportBackup')
-      takeDownloadFiles('camera')
+      report(caught, 'exportBackup', takeDownloadFiles('camera'))
     } finally {
       busy.value = false
     }
@@ -945,7 +942,6 @@ onBeforeUnmount(() => {
   cancelAutoParse()
   loadGeneration++
   channel?.close()
-  releaseBackupDownloads()
   document.removeEventListener('pointerdown', tagOutsideClick)
   window.removeEventListener('resize', updateTagPosition)
   window.removeEventListener('scroll', updateTagPosition, true)
@@ -985,22 +981,6 @@ function handleImportChoices(value: typeof choices.value) {
     class="camera-favorites"
     :class="`thumbnail-size-${thumbnailSize ?? 'medium'}`"
   >
-    <div v-if="backupDownloads.length > 1" class="camera-backup-downloads">
-      <p>{{
-        t(
-          '备份已自动分包；如浏览器未下载全部文件，请逐个点击保存。每个 ZIP 均可独立导入。',
-          'The backup was split. If your browser blocked downloads, save each file below. Each ZIP can be imported independently.'
-        )
-      }}</p>
-      <a
-        v-for="part in backupDownloads"
-        :key="part.fileName"
-        :href="part.url"
-        :download="part.fileName"
-        >{{ part.fileName }}</a
-      >
-      <button type="button" @click="releaseBackupDownloads">{{ t('关闭', 'Close') }}</button>
-    </div>
     <!-- 操作按钮移至收藏夹标签行，保持组件内的原有事件和状态。 -->
     <Teleport v-if="active" :to="actionsTarget || 'body'" :disabled="!actionsTarget" defer>
       <CollectionActions
@@ -1483,14 +1463,6 @@ function handleImportChoices(value: typeof choices.value) {
 <style scoped>
 .camera-source-tag {
   display: contents;
-}
-.camera-backup-downloads {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--ui-radius);
 }
 .camera-favorites {
   min-width: 0;

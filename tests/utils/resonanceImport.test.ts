@@ -5,7 +5,7 @@ import {
   loadResonanceCatalog,
   type ResonanceCatalog
 } from '../../src/utils/resonance/resonanceCatalog'
-import { loadResonanceBanners } from '../../src/utils/resonance/resonanceBanners'
+import { getBannerMeta, loadResonanceBanners } from '../../src/utils/resonance/resonanceBanners'
 import { sortResonanceParts, sortResonanceRecords } from '../../src/utils/resonance/resonanceView'
 let buildResonanceRecords: ResonanceCatalog['buildResonanceRecords']
 let normalizeBannerPulls: ResonanceCatalog['normalizeBannerPulls']
@@ -69,6 +69,15 @@ it('accepts direct upstream responses without a proxy no-store response header',
 })
 
 describe('resonance catalog', () => {
+  it('keeps banner lookup and ordering intact when callers reorder their list', () => {
+    const banners = loadResonanceBanners()
+    const originalOrder = banners.map((banner) => banner.bannerId)
+    for (const banner of banners) expect(getBannerMeta(banner.bannerId)).toEqual(banner)
+    banners.reverse().pop()
+    expect(loadResonanceBanners().map((banner) => banner.bannerId)).toEqual(originalOrder)
+    expect(getBannerMeta('unknown')).toBeUndefined()
+  })
+
   it('loads bilingual banner names in descending banner ID order', () => {
     const banners = loadResonanceBanners()
     expect(banners.length).toBeGreaterThan(0)

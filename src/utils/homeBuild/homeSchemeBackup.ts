@@ -23,6 +23,7 @@ import {
   normalizeHomeSchemeRecord,
   normalizeHomeSchemeCode,
   normalizeHomeSchemeTag,
+  isSafeHomeSchemeId,
   type HomeSchemeRecord,
   type HomeSchemeItem,
   type HomeSchemeMetadata
@@ -64,28 +65,6 @@ function isSafePath(path: string): boolean {
     !path.includes('\0') &&
     path.split('/').every((part) => part && part !== '.' && part !== '..')
   )
-}
-
-function isSafeId(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    value.length <= 128 &&
-    value !== '.' &&
-    value !== '..' &&
-    !/[\\/\0]/.test(value)
-  )
-}
-
-function normalizeBackupMetadata(value: unknown): HomeSchemeMetadata {
-  const raw = value && typeof value === 'object' ? (value as Partial<HomeSchemeMetadata>) : {}
-  return {
-    version: typeof raw.version === 'string' ? raw.version : null,
-    furnitureCount: typeof raw.furnitureCount === 'number' ? raw.furnitureCount : null,
-    server: typeof raw.server === 'number' ? raw.server : null,
-    lastModifyTime: typeof raw.lastModifyTime === 'number' ? raw.lastModifyTime : null,
-    coverImageUrl: typeof raw.coverImageUrl === 'string' ? raw.coverImageUrl : null
-  }
 }
 
 function normalizeBackupDate(value: unknown, fallback: string): string {
@@ -245,7 +224,7 @@ function parseManifest(entries: Map<string, Uint8Array>): BackupManifest {
   for (const item of manifest.homeSchemes) {
     if (
       !item ||
-      !isSafeId(item.id) ||
+      !isSafeHomeSchemeId(item.id) ||
       typeof item.name !== 'string' ||
       typeof item.code !== 'string' ||
       (item.schemeType !== 'home' && item.schemeType !== 'combo') ||
@@ -293,7 +272,6 @@ async function readHomeSchemeBackup(backupFile: File) {
             .map(normalizeHomeSchemeTag)
             .filter((tag) => tag && [...tag].length <= 5)
             .slice(0, 1),
-          metadata: normalizeBackupMetadata(raw.metadata),
           createdAt,
           updatedAt: normalizeBackupDate(raw.updatedAt, createdAt)
         }),

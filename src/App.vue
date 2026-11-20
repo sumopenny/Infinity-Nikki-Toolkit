@@ -43,8 +43,10 @@ import { compatibleAlbumMessages, ALBUM_ACCESS_MODE_KEY } from './i18n/messages/
 
 import {
   reportError as captureDiagnosticError,
+  diagnosticMetadata,
   setDiagnosticModule
 } from './utils/errorReporting/errorReporter'
+import { DirectoryAccessError } from './utils/file-system/directoryErrors'
 import { usePhotoFavorites } from './composables/usePhotoFavorites'
 import { useAppPreferences } from './composables/useAppPreferences'
 import { readLocalStorage, writeLocalStorage, removeLocalStorage } from './utils/localStorage'
@@ -235,8 +237,6 @@ const storedAboutState = readStoredAboutState()
 
 const photos = ref<PhotoItem[]>([])
 const albumThumbnailCache = createPhotoThumbnailCache()
-// Retain the whole album, not just the current search/date/favorites results.
-watch(photos, (items) => albumThumbnailCache.retainPhotos(new Set(items)), { flush: 'post' })
 const outfits = ref<OutfitItem[]>([])
 const unreadableOutfitCount = ref(0)
 const homeSchemesCount = ref(0)
@@ -283,6 +283,12 @@ const outfitEditorRef = ref<InstanceType<typeof OutfitEditor> | null>(null)
 const outfitImportInput = ref<HTMLInputElement | null>(null)
 const photoImportInput = ref<HTMLInputElement | null>(null)
 const recentlyDeleted = ref<RecentlyDeletedPhoto[]>([])
+// Retain album and trash thumbnails across view changes under one cache budget.
+watch(
+  [photos, recentlyDeleted],
+  ([items, deleted]) => albumThumbnailCache.retainPhotos(new Set([...items, ...deleted])),
+  { flush: 'post' }
+)
 const selectedIds = ref<Set<string>>(new Set())
 const selectedOutfitIds = ref<Set<string>>(new Set())
 const trashSelectedIds = ref<Set<string>>(new Set())
@@ -332,7 +338,7 @@ const {
   compactLayout,
   canPersist: () => !suppressLocalPersistence,
   onStatus: (status) => {
-    statusState.value = status
+    publishStatus(status)
   }
 })
 const directorySupported = supportsDirectoryAuthorization()
@@ -444,11 +450,26 @@ async function reloadResonanceState() {
   if (resonanceRecordsRef.value) return resonanceRecordsRef.value.reload()
   resonanceRecords.value = await loadResonanceRecords()
 }
-function refreshArchiveViews() {
-  return Promise.allSettled([wardrobeRef.value?.reload(), reloadResonanceState()])
-}
-function hasRefreshFailure(updates: PromiseSettledResult<unknown>[]) {
-  return updates.some((update) => update.status === 'rejected' || update.value === false)
+async function refreshModules(modules: string[], message: string, source?: string) {
+  const refreshers: Record<string, () => unknown> = {
+    outfits: () => {
+      selectedOutfitIds.value = new Set()
+      if (currentPreview.value && 'code' in currentPreview.value) currentPreview.value = null
+      return reloadOutfitCollection()
+    },
+    home: refreshHomeAfterImport,
+    camera: () =>
+      cameraFavoritesRef.value ? cameraFavoritesRef.value.reload() : refreshCameraFavoriteCodes(),
+    wardrobe: () => wardrobeRef.value?.reload(),
+    resonance: reloadResonanceState
+  }
+  const updates = await Promise.allSettled(
+    [...new Set(modules)]
+      .filter((key) => key in refreshers)
+      .map((key) => Promise.resolve().then(refreshers[key]))
+  )
+  if (updates.some((update) => update.status === 'rejected' || update.value === false))
+    showStatus({ message, tone: 'warning', source })
 }
 async function refreshHomeAfterImport() {
   const result = await homeWorkspaceRef.value?.reload()
@@ -456,62 +477,34 @@ async function refreshHomeAfterImport() {
   if (result === undefined || result === 'deferred') await updateHomeSchemeCount()
   return result
 }
-/** 两份本地存档提交后统一刷新；共鸣也参与衣橱拥有状态的推导。 */
-async function refreshAfterArchiveSync() {
-  const updates = await refreshArchiveViews()
-  if (hasRefreshFailure(updates))
-    showStatus({
-      message:
-        language.value === 'zh'
-          ? '档案已保存，部分界面刷新失败，请重新加载页面。'
-          : 'Saves restored, but some views could not refresh. Reload the page.',
-      tone: 'warning',
-      source: 'archive-cloud'
-    })
+/** 两份存档共同参与衣橱推导，因此云恢复同时刷新两者。 */
+function refreshAfterArchiveSync() {
+  return refreshModules(
+    ['wardrobe', 'resonance'],
+    language.value === 'zh'
+      ? '档案已保存，部分界面刷新失败，请重新加载页面。'
+      : 'Saves restored, but some views could not refresh. Reload the page.',
+    'archive-cloud'
+  )
 }
 /** 目录恢复只刷新所选模块，保留其他模块的编辑状态。 */
-async function refreshAfterDirectoryRestore(event: Event) {
-  const modules = (event as CustomEvent<string[]>).detail ?? []
-  const tasks: Promise<unknown>[] = []
-  if (modules.includes('outfits')) {
-    selectedOutfitIds.value = new Set()
-    if (currentPreview.value && 'code' in currentPreview.value) currentPreview.value = null
-    tasks.push(reloadOutfitCollection())
-  }
-  if (modules.includes('home')) tasks.push(refreshHomeAfterImport())
-  if (modules.includes('camera'))
-    tasks.push(
-      cameraFavoritesRef.value ? cameraFavoritesRef.value.reload() : refreshCameraFavoriteCodes()
-    )
-  const results = await Promise.allSettled(tasks)
-  if (hasRefreshFailure(results))
-    showStatus({
-      message:
-        language.value === 'zh'
-          ? '数据恢复成功，部分界面刷新失败，请重新加载页面查看。'
-          : 'Data restored; some views could not refresh. Reload to view them.',
-      tone: 'warning'
-    })
+function refreshAfterDirectoryRestore(event: Event) {
+  return refreshModules(
+    ((event as CustomEvent<string[]>).detail ?? []).filter((key) =>
+      ['outfits', 'home', 'camera'].includes(key)
+    ),
+    language.value === 'zh'
+      ? '数据恢复成功，部分界面刷新失败，请重新加载页面查看。'
+      : 'Data restored; some views could not refresh. Reload to view them.'
+  )
 }
-async function refreshAfterAllImport() {
-  selectedOutfitIds.value = new Set()
-  if (currentPreview.value && 'code' in currentPreview.value) currentPreview.value = null
-  const [moduleUpdates, archiveUpdates] = await Promise.all([
-    Promise.allSettled([
-      reloadOutfitCollection(),
-      refreshHomeAfterImport(),
-      cameraFavoritesRef.value ? cameraFavoritesRef.value.reload() : refreshCameraFavoriteCodes()
-    ]),
-    refreshArchiveViews()
-  ])
-  if (hasRefreshFailure([...moduleUpdates, ...archiveUpdates]))
-    showStatus({
-      message:
-        language.value === 'zh'
-          ? '部分模块界面刷新失败，请刷新页面核对导入结果。'
-          : 'Some views could not refresh. Reload to check the import results.',
-      tone: 'warning'
-    })
+function refreshAfterAllImport() {
+  return refreshModules(
+    ['outfits', 'home', 'camera', 'wardrobe', 'resonance'],
+    language.value === 'zh'
+      ? '部分模块界面刷新失败，请刷新页面核对导入结果。'
+      : 'Some views could not refresh. Reload to check the import results.'
+  )
 }
 const cameraFavoriteCodes = ref<string[]>([])
 const cameraFavoriteModal = ref(false)
@@ -582,7 +575,7 @@ const photoParams = usePhotoParams({ language, messages: photoParamsMessages })
 const photoActionParsing = usePhotoActionParsing({
   language,
   onError: (error) => {
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   }
 })
 const { actionInfo, progress: actionParseProgress } = photoActionParsing
@@ -597,7 +590,7 @@ const {
 } = photoParams
 retainDialogAfterOpen('PhotoParamsDialog', isPhotoParamsVisible)
 const {
-  statusState,
+  publishStatus,
   notices: statusNotices,
   activeOperation,
   isLoading,
@@ -615,10 +608,31 @@ const {
   closeNotice: closeStatusNotice,
   pauseNotice: pauseStatusNoticeTimer,
   resumeNotice: resumeStatusNoticeTimer,
-  createErrorStatus,
+  createErrorStatus: describeOperationError,
   isUserCancelledFilePicker,
   dispose: disposeStatusNotice
 } = useOperationNotice(locale, operations)
+
+function createErrorStatus(error: unknown, fallback: StatusState): StatusState {
+  const status = describeOperationError(error, fallback)
+  const directoryMissing =
+    error instanceof DirectoryAccessError &&
+    error.code === 'read-failed' &&
+    error.cause instanceof DOMException &&
+    error.cause.name === 'NotFoundError'
+  const trashParentMissing =
+    error instanceof DOMException &&
+    error.name === 'NotFoundError' &&
+    diagnosticMetadata(error).stage === 'create-trash-directory'
+  if ((directoryMissing && activeOperation.value === 'refreshing') || trashParentMissing) {
+    // 丢弃失效的文件引用，后续操作必须通过已有入口重新选择并扫描相册。
+    resetLoadedAlbumState({ clearSharedOutfit: false })
+    albumDirectoryHandle.value = null
+    directoryState.value = { type: 'none' }
+    return { type: 'restorePathFailed' }
+  }
+  return status
+}
 // 电脑原始数据备份复用全站顶部通知；同一来源只保留一条持续加载提示。
 type BackupNoticeDetail = {
   source: string
@@ -870,7 +884,7 @@ const {
   locale,
   activeOperation,
   isAnyFileOperationBusy: computed(() => isAnyFileOperationBusy.value || notesBlocked.value),
-  statusState,
+  publishStatus,
   createErrorStatus,
   openConfirmDialog
 })
@@ -894,7 +908,7 @@ const {
   locale,
   activeOperation,
   isAnyFileOperationBusy,
-  statusState,
+  publishStatus,
   createErrorStatus,
   openConfirmDialog
 })
@@ -1065,13 +1079,17 @@ async function replaceAlbum(
     albumNotes.value = result.notes
     albumDirectoryHandle.value = result.directoryHandle
     directoryState.value = { type: 'selected', name: result.directoryName }
-    statusState.value = outfitResult.failedCount
-      ? {
-          type: 'custom',
-          message: outfitLocale.value.operations.albumOpenedWithFailures(outfitResult.failedCount),
-          tone: 'warning'
-        }
-      : nextStatus
+    publishStatus(
+      outfitResult.failedCount
+        ? {
+            type: 'custom',
+            message: outfitLocale.value.operations.albumOpenedWithFailures(
+              outfitResult.failedCount
+            ),
+            tone: 'warning'
+          }
+        : nextStatus
+    )
     if (
       outfitResult.migration &&
       (outfitResult.migration.addedCount ||
@@ -1082,7 +1100,7 @@ async function replaceAlbum(
     )
       showOutfitRefreshResult(outfitResult, false)
     const migrationStatus = await migrateHomeSchemes(result.directoryHandle)
-    if (migrationStatus) statusState.value = migrationStatus
+    if (migrationStatus) publishStatus(migrationStatus)
   } finally {
     if (restoring && activeOperation.value === 'updating-outfits') activeOperation.value = 'loading'
   }
@@ -1099,7 +1117,7 @@ const { refreshAlbum, scheduleFocusRefresh, invalidatePendingRefreshes, suppress
       activeView.value === 'outfits' ? outfitLocale.value.updating : locale.value.topBar.refreshing,
     locale,
     activeOperation,
-    statusState,
+    publishStatus,
     createErrorStatus,
     apply: applyRefreshResult,
     migrate: migrateHomeSchemes,
@@ -1114,7 +1132,7 @@ const { restoreSavedDirectory, restoreSavedX6GameAuthorization, chooseDirectory 
     language,
     activeOperation,
     isAnyFileOperationBusy,
-    statusState,
+    publishStatus,
     locale,
     directoryState,
     photos,
@@ -1210,7 +1228,7 @@ async function loadCompatibleAlbum(event: Event) {
     writeLocalStorage(ALBUM_ACCESS_MODE_KEY, 'compatible')
     showStatus({ message: compatibleMessages.value.hint, tone: 'success' })
   } catch (error) {
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   } finally {
     if (activeOperation.value === 'loading') activeOperation.value = null
   }
@@ -1257,7 +1275,7 @@ async function downloadCompatiblePhotos(source: PhotoItem[]) {
       })
     } else {
       markPhotoTransferCompleted()
-      statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     }
     if (downloads.length)
       showStatus({
@@ -1297,7 +1315,7 @@ async function clearDirectory() {
   try {
     await clearSavedAlbumDirectoryHandle()
   } catch (error) {
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     return
   }
   resetLoadedAlbumState({ clearSharedOutfit: false })
@@ -1306,7 +1324,7 @@ async function clearDirectory() {
   removeLocalStorage(ALBUM_ACCESS_MODE_KEY)
   activeView.value = 'all'
   directoryState.value = { type: 'none' }
-  statusState.value = { type: 'cleared' }
+  publishStatus({ type: 'cleared' })
 }
 
 /** 标记搭配码界面不再自动弹出 X6Game 授权窗口。参数：无。 */
@@ -1314,11 +1332,11 @@ function dismissX6GameAutoPrompt() {
   isX6GameAutoPromptDismissed.value = true
   didCancelX6GameAutoPrompt.value = true
   if (!suppressLocalPersistence) writeLocalStorage(X6GAME_AUTO_PROMPT_DISMISSED_KEY, 'true')
-  statusState.value = {
+  publishStatus({
     type: 'custom',
     message: locale.value.app.x6GameAuthorizationCancelledStatus,
     tone: 'info'
-  }
+  })
 }
 
 /** 清除浏览器中的解析缓存。参数：无。 */
@@ -1337,13 +1355,13 @@ async function clearCache() {
     photoActionParsing.reset()
     await invalidateCacheWrites()
     await clearSavedParseCaches()
-    statusState.value = {
+    publishStatus({
       type: 'custom',
       message: locale.value.app.clearCacheStatus,
       tone: 'success'
-    }
+    })
   } catch (error) {
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   }
 }
 
@@ -1369,7 +1387,7 @@ async function clearData() {
   try {
     resetBaseline = await browserBaseline()
   } catch (error) {
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     return
   }
   const stillClear = () =>
@@ -1415,15 +1433,15 @@ async function clearData() {
       await pauseBackupsForBrowserReset(() => clearAllBrowserData(), resetBaseline)
       localStorage.clear()
       sessionStorage.clear()
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.app.clearDataStatus,
         tone: 'success'
-      }
+      })
       // 整页重新初始化，避免收藏、筛选、目录句柄和解析器继续使用旧的内存状态。
       location.reload()
     } catch (error) {
-      statusState.value = createErrorStatus(error, { type: 'readFailed' })
+      publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {
       suppressLocalPersistence = false
     }
@@ -1564,11 +1582,11 @@ async function authorizeX6GameDirectory() {
   if (isAnyFileOperationBusy.value) return
   const source = await ensureSharedOutfitSource(true, false, hasX6GameAuthorization.value)
   if (!source) return
-  statusState.value = {
+  publishStatus({
     type: 'custom',
     message: locale.value.app.authorizeX6GameStatus,
     tone: 'success'
-  }
+  })
   await updateOutfitLibrary(false, false)
 }
 
@@ -1636,14 +1654,16 @@ function showOutfitStorageError(error: unknown, source?: string) {
   if (message) showOutfitStatus(message, 'warning', false, source)
   else {
     const status = createErrorStatus(error, { type: 'readFailed' })
-    statusState.value = source
-      ? {
-          type: 'custom',
-          message: status.type === 'custom' ? status.message : locale.value.app.readFailedStatus,
-          tone: status.type === 'custom' ? status.tone : 'error',
-          source
-        }
-      : status
+    publishStatus(
+      source
+        ? {
+            type: 'custom',
+            message: status.type === 'custom' ? status.message : locale.value.app.readFailedStatus,
+            tone: status.type === 'custom' ? status.tone : 'error',
+            source
+          }
+        : status
+    )
   }
 }
 
@@ -1724,7 +1744,7 @@ async function updateOutfitLibrary(announce = true, promptSharedAccess = announc
     if (didCancelX6GameAutoPrompt.value) return
     showOutfitRefreshResult(result, announce)
   } catch (error) {
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   } finally {
     if (activeOperation.value === 'updating-outfits') activeOperation.value = null
   }
@@ -1858,7 +1878,7 @@ function showOutfitStatus(
   loading = false,
   source?: string
 ) {
-  statusState.value = { type: 'custom', message, tone, loading, ...(source ? { source } : {}) }
+  publishStatus({ type: 'custom', message, tone, loading, ...(source ? { source } : {}) })
 }
 
 function handleHomeSchemeStatus(
@@ -1965,7 +1985,7 @@ async function editPhotoNote(photo: PhotoDisplayItem | null) {
       captureDiagnosticError(error, { module: 'album', action: 'photo-note', stage: 'metadata' })
     if (error instanceof PhotoMetadataError)
       showStatus({ message: locale.value.grid.noteSaveErrors[error.code], tone: 'error' })
-    else statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    else publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   }
 }
 
@@ -2009,22 +2029,26 @@ async function saveNoteDialog(value: string) {
   const directory = albumDirectoryHandle.value
   const photo = noteDialogPhoto.value
   if (!directory || !photo || isAnyFileOperationBusy.value) return
-  try {
-    // 保存时核对打开编辑器时的备注；冲突不关闭窗口，保留用户输入。
-    photo.note = await savePhotoNote(directory, photo.name, value, noteDialogBaseline.value)
-    isNoteDialogVisible.value = false
-    noteDialogPhoto.value = null
-    showOutfitStatus(locale.value.grid.noteSaved)
-  } catch (error) {
-    if (error instanceof PhotoMetadataError)
-      captureDiagnosticError(error, { module: 'album', action: 'photo-note', stage: 'metadata' })
-    if (error instanceof PhotoMetadataError)
-      showStatus({ message: locale.value.grid.noteSaveErrors[error.code], tone: 'error' })
-    else statusState.value = createErrorStatus(error, { type: 'readFailed' })
-  } finally {
-    const state = await inspectAlbumNotes(directory)
-    if (directory === albumDirectoryHandle.value) albumNotes.value = state
-  }
+  return operations.run('photo-note', async () => {
+    try {
+      // 保存时核对打开编辑器时的备注；冲突不关闭窗口，保留用户输入。
+      photo.note = await savePhotoNote(directory, photo.name, value, noteDialogBaseline.value)
+      if (directory === albumDirectoryHandle.value && photo === noteDialogPhoto.value) {
+        isNoteDialogVisible.value = false
+        noteDialogPhoto.value = null
+      }
+      showOutfitStatus(locale.value.grid.noteSaved)
+    } catch (error) {
+      if (error instanceof PhotoMetadataError)
+        captureDiagnosticError(error, { module: 'album', action: 'photo-note', stage: 'metadata' })
+      if (error instanceof PhotoMetadataError)
+        showStatus({ message: locale.value.grid.noteSaveErrors[error.code], tone: 'error' })
+      else publishStatus(createErrorStatus(error, { type: 'readFailed' }))
+    } finally {
+      const state = await inspectAlbumNotes(directory)
+      if (directory === albumDirectoryHandle.value) albumNotes.value = state
+    }
+  })
 }
 
 /** 关闭搭配码编辑窗口。参数：scan 表示关闭后是否自动重扫搭配码库；自动重扫属于后台行为，无变化时保持静默。 */
@@ -2062,7 +2086,7 @@ const {
   visibleOutfits,
   outfitSidebarRef,
   outfitEditorRef,
-  statusState,
+  publishStatus,
   reloadOutfitCollection,
   applyOutfitLibraryResult,
   showOutfitStatus,
@@ -2111,7 +2135,7 @@ async function importAlbumPhotos(event: Event) {
     applyRefreshResult(refreshed)
   } catch (error) {
     markPhotoTransferCompleted()
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   } finally {
     if (activeOperation.value === 'importing-photos') activeOperation.value = null
     clearPhotoTransferController()
@@ -2142,7 +2166,7 @@ async function exportAlbumPhotos(targets: PhotoItem[], allPhotos = false) {
     if (!picked) return
     directory = picked
   } catch (error) {
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     return
   }
 
@@ -2166,7 +2190,7 @@ async function exportAlbumPhotos(targets: PhotoItem[], allPhotos = false) {
     }
   } catch (error) {
     markPhotoTransferCompleted()
-    statusState.value = createErrorStatus(error, { type: 'readFailed' })
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   } finally {
     if (activeOperation.value === 'exporting-photos') activeOperation.value = null
     clearPhotoTransferController()
@@ -2288,11 +2312,11 @@ onMounted(() => {
     if (!appDisposed)
       captureDiagnosticError(error, { module: 'home-schemes', action: 'load-count' })
     if (!appDisposed)
-      statusState.value = {
+      publishStatus({
         type: 'custom',
         message: locale.value.homeScheme.operationFailed,
         tone: 'error'
-      }
+      })
   })
   const collectionReady = reloadOutfitCollection().catch((error) => {
     if (!appDisposed) showOutfitStorageError(error)
@@ -3025,6 +3049,7 @@ function importAllDataFromMenu() {
         />
         <RecentlyDeletedGrid
           v-else-if="albumDirectoryHandle && activeView === 'trash'"
+          :thumbnail-cache="albumThumbnailCache"
           :photos="recentlyDeleted"
           :selected-ids="trashSelectedIds"
           :thumbnail-mode="thumbnailMode"

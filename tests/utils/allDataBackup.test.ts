@@ -18,7 +18,7 @@ import {
 } from '../../src/utils/outfit/outfitStorage'
 import {
   saveHomeScheme,
-  saveHomeSchemeTags,
+  addHomeSchemeTag,
   readHomeSchemeSnapshot
 } from '../../src/utils/homeBuild/homeSchemeStorage'
 import {
@@ -88,7 +88,7 @@ async function seed() {
   }))
   await saveOutfit(outfit('OUTFIT'))
   await deleteOutfit(await saveOutfit(outfit('IGNORED')))
-  await saveHomeSchemeTags(['庭院'])
+  await addHomeSchemeTag('庭院')
   await saveHomeScheme({
     code: 'HOME',
     name: '家园',

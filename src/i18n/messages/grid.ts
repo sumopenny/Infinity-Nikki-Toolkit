@@ -14,7 +14,6 @@ export const gridZh: LocaleMessages['grid'] = {
   removeFavorite: '取消收藏',
   imageLoadFailed: '图片读取失败',
   editNote: '编辑备注',
-  notePrompt: '请输入照片备注（最多15个字符）',
   noteSaved: '照片备注已保存。',
   noteSaveErrors: {
     invalid: '相册备注文件损坏或格式不受支持，已停止写入。请先备份并修复 album-metadata.json。',
@@ -34,7 +33,6 @@ export const gridZh: LocaleMessages['grid'] = {
   autoParseActions: '自动解析动作',
   autoParseActionsHint:
     '使用按拍照动作分类的功能需打开此开关，关闭后重新开启可手动重试失败照片，注意照片多时解析网页会卡顿。',
-  actionCount: (count) => `${count} 张照片`,
   photoCount: (count) => `${count} 张照片`
 }
 export const gridEn: LocaleMessages['grid'] = {
@@ -52,7 +50,6 @@ export const gridEn: LocaleMessages['grid'] = {
   removeFavorite: 'Remove from Favorites',
   imageLoadFailed: 'Failed to load image',
   editNote: 'Edit note',
-  notePrompt: 'Enter a photo note (up to 15 characters)',
   noteSaved: 'Photo note saved.',
   noteSaveErrors: {
     invalid:
@@ -74,6 +71,5 @@ export const gridEn: LocaleMessages['grid'] = {
   autoParseActions: 'Auto-parse actions',
   autoParseActionsHint:
     'Enable this switch to classify photos by capture action. Turn it off and on again to retry failed photos. Note that parsing many photos may slow down the page.',
-  actionCount: (count) => `${count} photos`,
   photoCount: (count) => `${count} photos`
 }

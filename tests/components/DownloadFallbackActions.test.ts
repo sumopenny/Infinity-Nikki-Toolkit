@@ -81,7 +81,6 @@ it('binds files explicitly, replaces only the same module and expires after six 
   expect(notices.notices.value).toHaveLength(2)
   expect(notices.notices.value.some((notice) => notice.id === first.id)).toBe(false)
   expect(notices.notices.value[1]?.downloadFiles?.[0]?.name).toBe('new.zip')
-  expect(notices.statusState.value).not.toHaveProperty('downloadFiles', expect.any(Array))
   vi.advanceTimersByTime(5999)
   expect(notices.notices.value).toHaveLength(2)
   notices.pauseNotice()

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { warmLookbookParser } from '../utils/outfit/lookbookWasmClient'
-import { computed, nextTick, ref, watch } from 'vue'
+import { ref, toRef, watch } from 'vue'
 import { ScanSearch, Upload, X } from 'lucide-vue-next'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
+import { useModalFocus } from '../composables/useModalFocus'
 
 const props = defineProps<{
   visible: boolean
@@ -36,8 +37,10 @@ const emit = defineEmits<{
 
 const panelRef = ref<HTMLElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-let previousActiveElement: HTMLElement | null = null
-useBodyScrollLock(computed(() => props.visible))
+const visible = toRef(props, 'visible')
+useBodyScrollLock(visible)
+// 保持面板初始焦点，避免打开解析窗口时唤起手机键盘。
+useModalFocus(visible, panelRef, closeDialog)
 
 function closeDialog() {
   emit('close')
@@ -53,46 +56,10 @@ function onFileChange(event: Event) {
   if (file) emit('upload', file)
 }
 
-function handleKeydown(event: KeyboardEvent) {
-  if (!props.visible) return
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    closeDialog()
-    return
-  }
-  if (event.key !== 'Tab' || !panelRef.value) return
-  const focusable = [
-    ...panelRef.value.querySelectorAll<HTMLElement>(
-      'button, input, [href], [tabindex]:not([tabindex="-1"])'
-    )
-  ].filter((element) => !element.hasAttribute('disabled'))
-  if (!focusable.length) return
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-
 watch(
-  () => props.visible,
-  (visible) => {
-    if (visible) {
-      void warmLookbookParser().catch(() => undefined)
-      previousActiveElement =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null
-      // 打开时聚焦面板，避免自动进入输入状态或唤起手机键盘。
-      void nextTick(() => {
-        if (props.visible) panelRef.value?.focus({ preventScroll: true })
-      })
-    } else {
-      previousActiveElement?.focus()
-      previousActiveElement = null
-    }
+  visible,
+  (open) => {
+    if (open) void warmLookbookParser().catch(() => undefined)
   },
   { immediate: true }
 )
@@ -108,7 +75,6 @@ watch(
         aria-modal="true"
         :aria-label="messages.title"
         @click.self="closeDialog"
-        @keydown="handleKeydown"
       >
         <section ref="panelRef" class="dialog-panel parse-tools-panel" tabindex="-1">
           <header>

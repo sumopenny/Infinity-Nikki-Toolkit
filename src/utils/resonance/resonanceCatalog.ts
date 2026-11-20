@@ -50,16 +50,15 @@ function createCatalog({
     }
   }
 
-  function getOutfitDisplayId(outfitId: string): string {
-    const outfit = (outfits as unknown as Array<unknown[]>).find((entry) => {
-      const variants = Array.isArray(entry[0]) ? entry[0] : [entry[0]]
-      return variants.map(String).includes(outfitId)
-    })
-    return outfit && Array.isArray(outfit[0]) ? String(outfit[0][0]) : outfitId
+  const outfitDisplayIds = new Map<string, string>()
+  for (const [ids] of outfits as unknown as Array<[number | number[]]>) {
+    const variants = (Array.isArray(ids) ? ids : [ids]).map(String)
+    for (const id of variants) {
+      if (!outfitDisplayIds.has(id)) outfitDisplayIds.set(id, variants[0]!)
+    }
   }
 
-  function getOutfitName(outfitId: string): ResonanceLocalizedName {
-    const displayId = getOutfitDisplayId(outfitId)
+  function getOutfitName(outfitId: string, displayId: string): ResonanceLocalizedName {
     return localizedName(
       outfitNames.zh[`outfit.${displayId}.name`],
       outfitNames.en[`outfit.${displayId}.name`],
@@ -186,14 +185,14 @@ function createCatalog({
           }
           return { setNumber, parts, totalPulls }
         }
-        const displayId = getOutfitDisplayId(id)
+        const displayId = outfitDisplayIds.get(id) ?? id
         return {
           id: `${bannerId}:${id}`,
           bannerId,
           bannerName: banner.name,
           bannerStartAt: banner.startAt,
           outfitId: id,
-          outfitName: getOutfitName(id),
+          outfitName: getOutfitName(id, displayId),
           rarity,
           outfitImageUrl: getCatalogRecordImage('outfit', displayId),
           sets: [makeSet(1), makeSet(2)]

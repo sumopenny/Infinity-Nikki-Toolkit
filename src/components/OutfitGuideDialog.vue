@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick, ref, toRef, watch } from 'vue'
+import { ref, toRef, watch } from 'vue'
 import { ScanSearch, Sparkles, X } from 'lucide-vue-next'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
+import { useModalFocus } from '../composables/useModalFocus'
 import type { OutfitMessages } from '../i18n'
 
 const props = defineProps<{
@@ -18,47 +19,19 @@ const dontShowAgain = ref(false)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 const featuredIcon = Sparkles
-let previousActiveElement: HTMLElement | null = null
-useBodyScrollLock(toRef(props, 'visible'))
+const visible = toRef(props, 'visible')
+useBodyScrollLock(visible)
+useModalFocus(visible, panelRef, closeGuide, undefined, closeButtonRef)
 
 /** 关闭搭配码引导。参数：无；同时提交当前“不再提示”选项。 */
 function closeGuide() {
   emit('close', dontShowAgain.value)
 }
 
-/** 处理引导弹窗键盘操作。参数：键盘事件；按 Escape 时关闭弹窗。 */
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') closeGuide()
-  if (event.key !== 'Tab' || !panelRef.value) return
-  const focusable = [
-    ...panelRef.value.querySelectorAll<HTMLElement>(
-      'button, input, [href], [tabindex]:not([tabindex="-1"])'
-    )
-  ].filter((element) => !element.hasAttribute('disabled'))
-  if (!focusable.length) return
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-
 watch(
-  () => props.visible,
-  (visible) => {
-    if (visible) {
-      dontShowAgain.value = props.dismissed
-      previousActiveElement =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null
-      void nextTick(() => closeButtonRef.value?.focus())
-    } else {
-      previousActiveElement?.focus()
-      previousActiveElement = null
-    }
+  visible,
+  (open) => {
+    if (open) dontShowAgain.value = props.dismissed
   },
   { immediate: true }
 )
@@ -81,7 +54,6 @@ watch(
         aria-modal="true"
         :aria-label="messages.guideTitle"
         @click.self="closeGuide"
-        @keydown="handleKeydown"
       >
         <section ref="panelRef" class="outfit-guide-panel">
           <header>

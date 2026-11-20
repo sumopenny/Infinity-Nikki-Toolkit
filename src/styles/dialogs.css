@@ -132,46 +132,6 @@
   --dialog-accent: var(--pink-deep);
   /* 外壳尺寸、间距和滚动结构全部继承抽卡吉时窗口。 */
 }
-/* 统一粉色弹窗的旧浏览器回退色；限定在这些面板，不影响使用其它强调色的确认窗口。 */
-/* :is() 保持一层 class 的优先级；:where() 避免深色主题额外提升选择器权重。 */
-@supports not (color: color-mix(in srgb, black, white)) {
-  :is(
-    .photo-params-dialog,
-    .parse-tools-panel,
-    .photo-transfer-dialog,
-    .outfit-editor-panel,
-    .resonance-cloud-panel
-  ) {
-    --compat-dialog-border: rgba(223.7242, 194.6637, 191.8434, 0.8992);
-    --compat-dialog-shadow: rgba(201, 132, 134, 0.2);
-    --compat-dialog-icon-border: rgba(201, 132, 134, 0.28);
-    --compat-dialog-icon-bg-start: rgba(201, 132, 134, 0.18);
-    --compat-dialog-icon-bg-end: rgba(201, 132, 134, 0.06);
-    --compat-dialog-icon-shadow: rgba(201, 132, 134, 0.22);
-    --compat-dialog-button-bg-start: rgba(207.48, 146.76, 148.52, 1);
-    --compat-dialog-button-shadow: rgba(201, 132, 134, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(201, 132, 134, 0.42);
-  }
-  :where(:root[data-theme='dark'])
-    :is(
-      .photo-params-dialog,
-      .parse-tools-panel,
-      .photo-transfer-dialog,
-      .outfit-editor-panel,
-      .resonance-cloud-panel
-    ) {
-    --compat-dialog-border: rgba(119.8701, 96.8096, 101.5641, 0.8992);
-    --compat-dialog-shadow: rgba(239, 176, 178, 0.2);
-    --compat-dialog-icon-border: rgba(239, 176, 178, 0.28);
-    --compat-dialog-icon-bg-start: rgba(239, 176, 178, 0.18);
-    --compat-dialog-icon-bg-end: rgba(239, 176, 178, 0.06);
-    --compat-dialog-icon-shadow: rgba(239, 176, 178, 0.22);
-    --compat-dialog-button-bg-start: rgba(240.92, 185.48, 187.24, 1);
-    --compat-dialog-button-shadow: rgba(239, 176, 178, 0.32);
-    --compat-dialog-button-hover-shadow: rgba(239, 176, 178, 0.42);
-  }
-}
-
 .photo-params-header {
   border-bottom: 1px solid var(--line-soft);
 }
@@ -1016,14 +976,6 @@
   border-radius: var(--radius-md);
   background: var(--surface-accent-subtle);
 }
-@supports not (color: color-mix(in srgb, black, white)) {
-  .help-about-intro {
-    border-radius: var(--radius-md);
-  }
-  :where(:root[data-theme='dark']) .help-about-intro {
-    border-radius: var(--radius-md);
-  }
-}
 .help-about-body p {
   margin: 8px 0 0;
   color: var(--muted);
@@ -1758,18 +1710,29 @@
 }
 
 /* 根层的过渡也持续到面板回弹结束，Vue 才会清理过渡类。 */
-:is(.dialog-overlay, .confirm-dialog, .outfit-editor, .outfit-detail-overlay, .note-dialog, .outfit-guide):not(.photo-outfit-content) {
+:is(
+  .dialog-overlay,
+  .confirm-dialog,
+  .outfit-editor,
+  .outfit-detail-overlay,
+  .note-dialog,
+  .outfit-guide
+):not(.photo-outfit-content) {
   background-color: rgb(0 0 0 / 48%);
   backdrop-filter: blur(8px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .confirm-dialog-enter-active {
-    transition: background-color 200ms ease, backdrop-filter 260ms ease;
+    transition:
+      background-color 200ms ease,
+      backdrop-filter 260ms ease;
   }
 
   .confirm-dialog-leave-active {
-    transition: background-color 200ms ease, backdrop-filter 200ms ease;
+    transition:
+      background-color 200ms ease,
+      backdrop-filter 200ms ease;
   }
 
   .confirm-dialog-enter-from:not(.photo-outfit-content),
@@ -1779,20 +1742,24 @@
   }
 
   .confirm-dialog-enter-active:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
-    transition: transform 260ms cubic-bezier(.34, 1.56, .64, 1), opacity 200ms ease-out;
+    transition:
+      transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 200ms ease-out;
   }
 
   .confirm-dialog-leave-active:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
-    transition: transform 200ms ease-in, opacity 200ms ease-in;
+    transition:
+      transform 200ms ease-in,
+      opacity 200ms ease-in;
   }
 
   .confirm-dialog-enter-from:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
-    transform: scale(.8);
+    transform: scale(0.8);
     opacity: 0;
   }
 
   .confirm-dialog-leave-to:not(.photo-outfit-content) > :is(section, form, .dialog-panel) {
-    transform: scale(.9);
+    transform: scale(0.9);
     opacity: 0;
   }
 }
@@ -2149,16 +2116,6 @@
   transition:
     border-color var(--motion-base) ease,
     background var(--motion-base) ease;
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .resonance-file-button {
-    border-radius: 10px;
-  }
-
-  :where(:root[data-theme='dark']) .resonance-file-button {
-    border-radius: 10px;
-  }
 }
 
 .resonance-file-button:hover {

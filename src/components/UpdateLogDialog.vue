@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { ref, toRef, watch } from 'vue'
 import { CircleHelp, X } from 'lucide-vue-next'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
+import { useModalFocus } from '../composables/useModalFocus'
 import type { FullLocaleMessages } from '../i18n'
 
 const props = defineProps<{
@@ -12,8 +13,9 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [dontShowAgain: boolean]; openHelp: []; afterClose: [] }>()
 const dontShowAgain = ref(false)
 const panelRef = ref<HTMLElement | null>(null)
-let previousActiveElement: HTMLElement | null = null
-useBodyScrollLock(computed(() => props.visible))
+const visible = toRef(props, 'visible')
+useBodyScrollLock(visible)
+useModalFocus(visible, panelRef, closeDialog)
 
 function closeDialog() {
   emit('close', dontShowAgain.value)
@@ -21,40 +23,10 @@ function closeDialog() {
 function openHelp() {
   emit('openHelp')
 }
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    closeDialog()
-    return
-  }
-  if (event.key !== 'Tab' || !panelRef.value) return
-  const focusable = [
-    ...panelRef.value.querySelectorAll<HTMLElement>(
-      'button, input, [href], [tabindex]:not([tabindex="-1"])'
-    )
-  ].filter((element) => !element.hasAttribute('disabled'))
-  if (!focusable.length) return
-  const first = focusable[0],
-    last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
 watch(
-  () => props.visible,
-  (visible) => {
-    if (visible) {
-      dontShowAgain.value = props.dismissed
-      previousActiveElement =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null
-      void nextTick(() => panelRef.value?.focus())
-    } else {
-      previousActiveElement?.focus()
-      previousActiveElement = null
-    }
+  visible,
+  (open) => {
+    if (open) dontShowAgain.value = props.dismissed
   },
   { immediate: true }
 )
@@ -70,7 +42,6 @@ watch(
         aria-modal="true"
         :aria-label="messages.title"
         @click.self="closeDialog"
-        @keydown="handleKeydown"
       >
         <section ref="panelRef" class="dialog-panel update-log-panel" tabindex="-1">
           <header class="update-log-header">

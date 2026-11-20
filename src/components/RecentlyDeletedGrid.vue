@@ -2,12 +2,12 @@
 import { vSelectableCard } from '../utils/selectableCard'
 import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vCardReveal } from '../utils/cardReveal'
-import { computed, onBeforeUnmount } from 'vue'
+import { computed } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
 import type { Language, LocaleMessages } from '../i18n'
 import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
-import type { RecentlyDeletedPhoto } from '../utils/photoGrouping'
-import { createPhotoLoadQueue } from '../utils/photoLoader'
+import type { PhotoDisplayItem, RecentlyDeletedPhoto } from '../utils/photoGrouping'
+import type { createPhotoThumbnailCache } from '../utils/photoThumbnail'
 import LazyPhotoImage from './LazyPhotoImage.vue'
 import WindowedPhotoBatch from './WindowedPhotoBatch.vue'
 
@@ -18,6 +18,7 @@ const props = defineProps<{
   thumbnailSize?: ThumbnailSize
   language: Language
   messages: LocaleMessages['trash']
+  thumbnailCache: ReturnType<typeof createPhotoThumbnailCache>
 }>()
 
 const emit = defineEmits<{
@@ -30,7 +31,11 @@ const batches = computed(() =>
     props.photos.slice(i * 36, (i + 1) * 36)
   )
 )
-const photoLoadQueue = createPhotoLoadQueue(3)
+const loadThumbnail = computed(() => {
+  const size = props.thumbnailSize === 'small' ? 512 : props.thumbnailSize === 'large' ? 1024 : 768
+  return (photo: PhotoDisplayItem, signal?: AbortSignal, getPriority?: () => number) =>
+    props.thumbnailCache.load(photo, signal!, size, getPriority)
+})
 
 /** 按当前语言格式化删除时间。参数：deletedAt 为删除时间戳。 */
 function formatDeletedAt(deletedAt: number): string {
@@ -42,8 +47,6 @@ function formatDeletedAt(deletedAt: number): string {
     minute: '2-digit'
   }).format(new Date(deletedAt))
 }
-
-onBeforeUnmount(() => photoLoadQueue.cancel())
 </script>
 
 <template>
@@ -61,6 +64,16 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
         v-for="(batch, index) in batches"
         :key="index"
         :count="batch.length"
+        :layout-key="`${thumbnailMode}:${thumbnailSize}`"
+        :aspect-ratio="
+          {
+            default: 1,
+            wide: 16 / 9,
+            standard: 4 / 3,
+            'portrait-wide': 9 / 16,
+            'portrait-standard': 3 / 4
+          }[thumbnailMode]
+        "
         class="trash-photo-grid"
       >
         <article
@@ -80,7 +93,8 @@ onBeforeUnmount(() => photoLoadQueue.cancel())
           <div class="photo-frame">
             <LazyPhotoImage
               :photo="photo"
-              :load-photo="photoLoadQueue.load"
+              :load-photo="loadThumbnail"
+              :use-source-url="false"
               :failure-text="messages.imageLoadFailed"
             />
             <div class="photo-overlay"

@@ -240,9 +240,6 @@ function clearNotice(id?: string) {
   emit('clearNotice')
 }
 
-function currentSet(record: ResonanceRecord) {
-  return record.sets[(selectedSet.value[record.id] ?? 1) - 1]
-}
 function outfitPulls(record: ResonanceRecord): { total: number; average: number } {
   const obtained = record.sets.flatMap((set) => set.parts).filter((part) => part.pullNumber > 0)
   const total = obtained.reduce((sum, part) => sum + part.pullNumber, 0)
@@ -262,10 +259,29 @@ function setSummary(set: ResonanceSet) {
   }
 }
 
+// 记录变化时统一统计和排序，切换套数或弹窗不重复扫描部件。
+const recordViews = computed(() =>
+  sortedRecords.value.map((record) => ({
+    record,
+    pulls: outfitPulls(record),
+    sets: record.sets.map((set) => ({
+      setNumber: set.setNumber,
+      summary: setSummary(set),
+      parts: sortResonanceParts(set.parts)
+    }))
+  }))
+)
 /** 桌面上下呈现全部套数，移动端只渲染选中套，跨断点保留手机选择。 */
-function displayedSets(record: ResonanceRecord) {
-  return compactLayout.value ? [currentSet(record)] : record.sets
-}
+const displayedRecords = computed(() =>
+  recordViews.value.map((view) => {
+    const currentSet = view.sets[(selectedSet.value[view.record.id] ?? 1) - 1]!
+    return {
+      ...view,
+      currentSet,
+      displayedSets: compactLayout.value ? [currentSet] : view.sets
+    }
+  })
+)
 
 function openDialog() {
   if (props.disabled) return
@@ -452,7 +468,7 @@ defineExpose({ reload })
 
       <div v-else class="resonance-list">
         <article
-          v-for="(record, recordIndex) in sortedRecords"
+          v-for="({ record, pulls, currentSet, displayedSets }, recordIndex) in displayedRecords"
           :id="`resonance-record-${record.id}`"
           :key="record.id"
           class="resonance-record"
@@ -492,20 +508,17 @@ defineExpose({ reload })
                 <span class="resonance-summary-label">{{
                   language === 'zh' ? '总抽数' : 'Total pulls'
                 }}</span>
-                <strong>{{ outfitPulls(record).total }}</strong>
+                <strong>{{ pulls.total }}</strong>
               </span>
               <span class="resonance-summary-group">
                 <span class="resonance-summary-label">{{
                   language === 'zh' ? '平均抽数' : 'Average pulls'
                 }}</span>
-                <strong>{{ outfitPulls(record).average.toFixed(1) }}</strong>
+                <strong>{{ pulls.average.toFixed(1) }}</strong>
               </span>
             </p>
             <p class="resonance-mobile-progress">{{
-              t.ownedProgress(
-                setSummary(currentSet(record)).owned,
-                setSummary(currentSet(record)).count
-              )
+              t.ownedProgress(currentSet.summary.owned, currentSet.summary.count)
             }}</p>
           </div>
           <!-- 切换按钮直接相对卡片定位，避免摘要入场的 transform 改变绝对定位参照。 -->
@@ -526,10 +539,10 @@ defineExpose({ reload })
           </div>
           <div class="resonance-mobile-details" data-load-block>
             <p class="resonance-set-summary" aria-live="polite">
-              <span>{{ t.setPulls(setSummary(currentSet(record)).total) }}</span>
-              <span>{{ t.knownAverage(setSummary(currentSet(record)).average) }}</span>
+              <span>{{ t.setPulls(currentSet.summary.total) }}</span>
+              <span>{{ t.knownAverage(currentSet.summary.average) }}</span>
             </p>
-            <p v-if="setSummary(currentSet(record)).manual" class="resonance-manual-note">{{
+            <p v-if="currentSet.summary.manual" class="resonance-manual-note">{{
               t.manualStatsNote
             }}</p>
           </div>
@@ -567,16 +580,12 @@ defineExpose({ reload })
               />
             </div>
             <div class="resonance-sets">
-              <section
-                v-for="set in displayedSets(record)"
-                :key="set.setNumber"
-                class="resonance-set-row"
-              >
+              <section v-for="set in displayedSets" :key="set.setNumber" class="resonance-set-row">
                 <div v-if="!compactLayout" class="resonance-desktop-set-heading">
                   <h4>{{ set.setNumber === 1 ? t.setOne : t.setTwo }}</h4>
-                  <span>{{ t.setPulls(setSummary(set).total) }}</span>
-                  <span>{{ t.knownAverage(setSummary(set).average) }}</span>
-                  <p v-if="setSummary(set).manual" class="resonance-manual-note">{{
+                  <span>{{ t.setPulls(set.summary.total) }}</span>
+                  <span>{{ t.knownAverage(set.summary.average) }}</span>
+                  <p v-if="set.summary.manual" class="resonance-manual-note">{{
                     t.manualStatsNote
                   }}</p>
                 </div>
@@ -585,7 +594,7 @@ defineExpose({ reload })
                     type="button"
                     :aria-label="displayName(part.name)"
                     @click="openPreview(part.id, 'item')"
-                    v-for="(part, partIndex) in sortResonanceParts(set.parts)"
+                    v-for="(part, partIndex) in set.parts"
                     :key="part.id"
                     v-card-reveal="`resonance:${record.id}:${set.setNumber}:${part.id}`"
                     class="resonance-part"

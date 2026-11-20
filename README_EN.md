@@ -79,7 +79,7 @@ Save outfit images and share codes, then copy, edit, or parse them.
 
 - Optionally save a source link in the editor. Pasted share text extracts a single web link; keep only one if multiple links are found. The chain icon on desktop and mobile cards opens the source, and backups preserve the link.
 - Tap “+” to add **either an image or an outfit code to save a plan**; notes and tags are optional.
-- Card actions provide Copy, Edit, Delete, and Parse. Copy and Parse require a code; double-tap a card for the large preview.
+- Card actions provide Copy, Edit, Delete, and Parse. Copy and Parse require a code; tap the image for the large preview.
 - Use the tag selector to filter or manage tags, and the page “⋯” menu for module ZIP import/export.
 
 ### Home schemes and camera parameters
@@ -93,7 +93,7 @@ Save outfit images and share codes, then copy, edit, or parse them.
 **Home schemes**
 
 - Tap “+”, enter a home code or combo code, then edit the parsed name, cover, notes, and tags before saving.
-- Card actions provide Copy, Edit, and Delete. Filter by code type or tag, and double-tap a card for the large preview.
+- Card actions provide Copy, Edit, and Delete. Filter by code type or tag, and tap the image for the large preview.
 
 **Camera parameters**
 
@@ -184,8 +184,9 @@ If normal authorization cannot open your game album, choose **Compatibility open
 
 | Action | Result |
 | --- | --- |
-| Single-click photo | Select or unselect |
-| Double-click photo | Open large preview |
+| Single-click photo | Open large preview while keeping the current selection |
+| Click the circle at the bottom right / press Space on a focused card | Select or unselect |
+| Long-press a card on touch screens | Select or unselect; scrolling cancels the long press |
 | Click the heart | Add to or remove from Favorites |
 | Click a sidebar date | Jump to that date |
 | Left / Right Arrow | Switch photos in large preview |
@@ -224,7 +225,7 @@ Create portrait or landscape share cards from photo cards or parameter windows, 
   <p><sub>Left · Outfit plans ｜ Right · Add or edit an outfit</sub></p>
 </div>
 
-- Click Add outfit to select, drag or paste an image, or enter an outfit code. **Either an image or a code is sufficient to save a plan**; notes and tags are optional. Double-click for a large preview; single-click to select multiple plans and use the bottom action bar.
+- Click Add outfit to select, drag or paste an image, or enter an outfit code. **Either an image or a code is sufficient to save a plan**; notes and tags are optional. Click the image for a large preview; use the bottom-right circle or long-press on touch screens to select multiple plans and use the bottom action bar.
 - Card actions provide Copy, Edit, Delete, and Parse. Manage categories and tag order in the sidebar. Create up to 40 user tags of up to 5 characters each, with one tag per plan.
 - View or edit notes in the editor and find them through header search. Selecting an album migrates an old `clothe` collection; check any files reported as skipped before handling them.
 
@@ -268,7 +269,7 @@ Click a parsed item to view its details. When multiple forms are available, swit
 </div>
 
 - Click Add scheme, enter a home or combo code, then edit its parsed name, cover, notes, and tags before saving.
-- Filter by code type or tag in the sidebar. Card actions provide Copy, Edit, and Delete; double-click for a large preview.
+- Filter by code type or tag in the sidebar. Card actions provide Copy, Edit, and Delete; click the image for a large preview.
 - Page actions provide module ZIP import/export. Deleting a tag does not delete its schemes.
 
 ### Camera parameters and favorites

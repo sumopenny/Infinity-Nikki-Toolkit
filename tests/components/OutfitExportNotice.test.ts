@@ -30,7 +30,7 @@ it.each([false, true])('retires the outfit export loading notice on failure=%s',
       exporting: 'Generating',
       operations: { exportSucceeded: () => 'Exported' }
     })),
-    statusState: notice.statusState,
+    publishStatus: notice.publishStatus,
     showOutfitStatus: (message: string, tone: 'info', loading: boolean, source?: string) =>
       notice.showStatus({ message, tone, loading, source }),
     showOutfitStorageError: (_error: unknown, source?: string) =>

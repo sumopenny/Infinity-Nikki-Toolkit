@@ -1,6 +1,6 @@
 import { effectScope, nextTick, ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useAnimatedHeadFrame } from '../../src/composables/useAnimatedHeadFrame'
 import {
   headFrames,
@@ -31,7 +31,14 @@ vi.mock('@esotericsoftware/spine-player', () => ({
   }
 }))
 
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => Response.json({ bones: [{ name: 'root' }] }))
+  )
+})
 afterEach(() => {
+  vi.unstubAllGlobals()
   mocks.instances.length = 0
   vi.useRealTimers()
   document.body.replaceChildren()
@@ -60,6 +67,7 @@ it('composites rendered frames, supports pause, and releases the player on selec
   try {
     await flushPromises()
     const first = mocks.instances[0]
+    expect(first.config.rawDataURIs[first.config.jsonUrl]).toContain('"bones"')
     first.config.success(first)
     expect(first.setAnimation).toHaveBeenCalledWith(selection.value.defaultAnimation, true)
     first.config.draw(first)
@@ -84,6 +92,59 @@ it('composites rendered frames, supports pause, and releases the player on selec
     await flushPromises()
     scope.stop()
     expect(mocks.instances[2].dispose).toHaveBeenCalledOnce()
+  } finally {
+    scope.stop()
+  }
+})
+
+it.each(['network', 'empty', 'http', 'invalid'])(
+  'contains %s JSON failures and permits retry',
+  async (failure) => {
+    vi.mocked(fetch).mockImplementationOnce(async () => {
+      if (failure === 'network') throw new TypeError('Failed to fetch')
+      if (failure === 'empty') return new Response('')
+      if (failure === 'http') return new Response('', { status: 503 })
+      return Response.json({ error: 'unavailable' })
+    })
+    const scope = effectScope()
+    const retry = ref(0)
+    const result = scope.run(() =>
+      useAnimatedHeadFrame(ref(animations[0]), ref(true), retry, vi.fn())
+    )!
+    try {
+      await flushPromises()
+      expect(result.failed.value).toBe(true)
+      expect(mocks.instances).toHaveLength(0)
+      retry.value++
+      await flushPromises()
+      expect(result.failed.value).toBe(false)
+      expect(mocks.instances).toHaveLength(1)
+    } finally {
+      scope.stop()
+    }
+  }
+)
+
+it('aborts a pending skeleton request when closed and discards its late result', async () => {
+  let resolve!: (response: Response) => void
+  vi.mocked(fetch).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      })
+  )
+  const scope = effectScope()
+  const active = ref(true)
+  scope.run(() => useAnimatedHeadFrame(ref(animations[0]), active, ref(0), vi.fn()))
+  try {
+    await flushPromises()
+    const signal = vi.mocked(fetch).mock.calls[0][1]!.signal!
+    active.value = false
+    await nextTick()
+    expect(signal.aborted).toBe(true)
+    resolve(Response.json({ bones: [] }))
+    await flushPromises()
+    expect(mocks.instances).toHaveLength(0)
   } finally {
     scope.stop()
   }

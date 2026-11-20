@@ -535,7 +535,7 @@ async function submit() {
 :where(:root[data-theme='dark']) .archive-cloud-intro,
 :where(:root[data-theme='dark']) .archive-cloud-selection,
 :where(:root[data-theme='dark']) .archive-cloud-warning,
-:where(:root[data-theme='dark']) :where(:root[data-theme='dark']) .archive-cloud-error,
+:where(:root[data-theme='dark']) .archive-cloud-error,
 :where(:root[data-theme='dark']) .archive-cloud-footer-count {
   --archive-secondary: #c9b9b5;
   --archive-warning: #f0d294;

@@ -17,8 +17,7 @@ import {
   deleteHomeSchemeTag,
   homeTransaction,
   readHomeSchemeSnapshot,
-  saveHomeScheme,
-  saveHomeSchemeTags
+  saveHomeScheme
 } from '../../src/utils/homeBuild/homeSchemeStorage'
 import { createEmptyHomeSchemeMetadata } from '../helpers/homeSchemeMetadata'
 
@@ -72,7 +71,7 @@ it('upgrades version 6 without replacing existing stores or records', async () =
 })
 
 it('enforces global unique codes across concurrent writers', async () => {
-  await saveHomeSchemeTags(['庭院'])
+  await addHomeSchemeTag('庭院')
   const results = await Promise.allSettled([saveHomeScheme(input()), saveHomeScheme(input())])
   expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
   const failed = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
@@ -81,7 +80,7 @@ it('enforces global unique codes across concurrent writers', async () => {
 })
 
 it('keeps images independent of source files and deletes tags without losing schemes or images', async () => {
-  await saveHomeSchemeTags(['庭院'])
+  await addHomeSchemeTag('庭院')
   const saved = await saveHomeScheme({ ...input(), imageFile: image() })
   const time = saved.createdAt
   const deletion = await deleteHomeSchemeTag('庭院')
@@ -149,7 +148,7 @@ it('rolls record and image writes back when a successful request is followed by 
 it('loads list metadata without reading image blobs, but keeps full backup snapshots', async () => {
   const { readHomeSchemeLibrary, readHomeSchemeImage } =
     await import('../../src/utils/homeBuild/homeSchemeStorage')
-  await saveHomeSchemeTags(['庭院'])
+  await addHomeSchemeTag('庭院')
   const saved = await saveHomeScheme({ ...input(), imageFile: image() })
   const reads = vi.spyOn(IDBObjectStore.prototype, 'getAll')
   const list = await readHomeSchemeLibrary()
@@ -168,7 +167,7 @@ it('loads list metadata without reading image blobs, but keeps full backup snaps
 
 // 两个页面都未刷新标签列表时，新增操作仍必须保留对方刚添加的标签。
 it('merges concurrent tag additions and keeps unused tags', async () => {
-  await saveHomeSchemeTags(['原有'])
+  await addHomeSchemeTag('原有')
   await Promise.all([addHomeSchemeTag('页面A'), addHomeSchemeTag('页面B')])
   expect((await readHomeSchemeSnapshot()).tags).toEqual(
     expect.arrayContaining(['原有', '页面A', '页面B'])
