@@ -69,10 +69,16 @@ async function returnToSummary() {
   detailTrigger?.focus({ preventScroll: true })
 }
 const tab = ref<'overview' | 'tags' | 'clothes' | 'makeup'>('overview')
-async function showTab(next: typeof tab.value) {
-  tab.value = next
-  await nextTick()
-  content.value?.querySelector<HTMLButtonElement>(`[data-summary-tab="${next}"]`)?.focus()
+async function showTab(next: typeof tab.value, focus = false) {
+  if (tab.value !== next) {
+    tab.value = next
+    part.value = null
+    collapseRanking()
+  }
+  if (focus) {
+    await nextTick()
+    content.value?.querySelector<HTMLButtonElement>(`[data-summary-tab="${next}"]`)?.focus()
+  }
 }
 const tabs = computed(() => ({
   overview: t('概览', 'Overview'),
@@ -82,20 +88,17 @@ const tabs = computed(() => ({
 }))
 const part = ref<number | null>(null)
 const expanded = ref(false)
-watch(tab, () => {
-  part.value = null
+function collapseRanking() {
   expanded.value = false
-})
-watch(part, () => {
-  expanded.value = false
-})
-watch(
-  [tab, part, expanded],
-  () => {
+  void nextTick(() => {
     if (!expanded.value && content.value) content.value.scrollTop = 0
-  },
-  { flush: 'post' }
-)
+  })
+}
+function changePart(next: typeof part.value) {
+  if (part.value === next) return
+  part.value = next
+  collapseRanking()
+}
 const catalog = shallowRef<Map<number, ItemCatalogEntry>>()
 const results = reactive(new Map<string, LookbookDecodeResult>())
 const failed = reactive(new Set<string>())
@@ -168,24 +171,21 @@ const monthFormatter = computed(() => {
     year: new Date(first).getFullYear() === new Date(last).getFullYear() ? undefined : '2-digit'
   })
 })
-const periodLabels = computed(() =>
-  periods.value.map(({ start }) => monthFormatter.value.format(start))
-)
-const periodOptions = computed(() =>
-  periods.value.map((period, index) => {
-    const end = Number.isFinite(period.end) ? period.end - 1 : 8.64e15
-    const firstMonth = periodLabels.value[index]
-    const lastMonth = monthFormatter.value.format(end)
-    const title = firstMonth === lastMonth ? firstMonth : `${firstMonth} – ${lastMonth}`
+const trendPoints = computed(() =>
+  periods.value.map(({ start, end, count }) => {
+    const axisLabel = monthFormatter.value.format(start)
+    const lastMonth = monthFormatter.value.format(Number.isFinite(end) ? end - 1 : 8.64e15)
+    const title = axisLabel === lastMonth ? axisLabel : `${axisLabel} – ${lastMonth}`
     return {
-      value: period.start,
-      label: t(`${title} · ${period.count} 套`, `${title} · ${period.count} outfits`)
+      start,
+      count,
+      axisLabel,
+      description: t(`${title} · ${count} 套`, `${title} · ${count} outfits`)
     }
   })
 )
-const periodDescriptions = computed(() => periodOptions.value.map(({ label }) => label))
 const selectedPeriodDescription = computed(
-  () => periodOptions.value.find(({ value }) => value === selectedPeriod.value)?.label ?? ''
+  () => trendPoints.value.find(({ start }) => start === selectedPeriod.value)?.description ?? ''
 )
 async function parseRemaining() {
   if (reading.value || running.value || !remaining.value) return
@@ -301,7 +301,7 @@ const ranked = computed(() => {
                     type="button"
                     :data-summary-tab="key"
                     :aria-pressed="tab === key"
-                    @click="tab = key"
+                    @click="showTab(key)"
                   >
                     {{ label }}
                   </button>
@@ -380,9 +380,7 @@ const ranked = computed(() => {
                     <template v-if="periods.length">
                       <div class="summary-chart-slot">
                         <TrendChart
-                          :periods="periods"
-                          :labels="periodLabels"
-                          :descriptions="periodDescriptions"
+                          :points="trendPoints"
                           :selected="selectedPeriod"
                           @select="selectedPeriod = $event"
                         />
@@ -403,7 +401,7 @@ const ranked = computed(() => {
                       <button
                         type="button"
                         class="confirm-dialog-button ghost"
-                        @click="showTab('tags')"
+                        @click="showTab('tags', true)"
                       >
                         {{ t('查看全部', 'View all') }}
                       </button>
@@ -440,7 +438,8 @@ const ranked = computed(() => {
                   </div>
                   <DialogChoiceMenu
                     v-if="tab !== 'tags' && types.length"
-                    v-model="part"
+                    :model-value="part"
+                    @update:model-value="changePart"
                     class="part-menu"
                     :label="t('筛选部位', 'Filter by type')"
                     :options="[
@@ -496,7 +495,7 @@ const ranked = computed(() => {
                     v-if="!reading && !rows.length && tab !== 'tags' && remaining"
                     type="button"
                     class="confirm-dialog-button ghost more"
-                    @click="showTab('overview')"
+                    @click="showTab('overview', true)"
                   >
                     {{ t('查看解析覆盖', 'View parsing coverage') }}
                   </button>
@@ -504,7 +503,7 @@ const ranked = computed(() => {
                     v-if="rows.length > 5"
                     type="button"
                     class="more confirm-dialog-button ghost"
-                    @click="expanded = !expanded"
+                    @click="expanded ? collapseRanking() : (expanded = true)"
                   >
                     {{
                       expanded

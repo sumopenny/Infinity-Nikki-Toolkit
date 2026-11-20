@@ -71,6 +71,7 @@ export interface ModulePreview {
 }
 export interface RestorePreview {
   backupId: string
+  sourceId: string
   rootFingerprint: string
   modules: ModulePreview[]
 }
@@ -318,7 +319,7 @@ export async function previewRestore(handle: FileSystemDirectoryHandle): Promise
   }
   if ((await sourceRoot(handle)).fingerprint !== rootFingerprint)
     throw new Error('来源目录身份已变化，请重新预览')
-  return { backupId: info.backupId, rootFingerprint, modules }
+  return { backupId: info.backupId, sourceId: info.sourceId, rootFingerprint, modules }
 }
 async function deleteTemp(module: BackupModule) {
   await runStoreRequest(BACKUP_RESTORE_STORE, 'readwrite', (store) =>

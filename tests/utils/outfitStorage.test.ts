@@ -100,7 +100,13 @@ it('retains creation order and notes when tags are removed, and rejects stale ed
   await saveOutfitTags(['甜美'])
   const first = await saveOutfit({ ...input('FIRST'), tag: '甜美' })
   await saveOutfit(input('SECOND'))
-  expect(await deleteOutfitTag('甜美')).toEqual({ tags: [], updatedCount: 1 })
+  expect(await deleteOutfitTag('甜美')).toMatchObject({
+    tags: [],
+    previousRecords: expect.arrayContaining([
+      expect.objectContaining({ id: first.id, tags: first.tags })
+    ]),
+    updatedRecords: [{ tags: [] }]
+  })
   const records = (await readOutfitCollection()).outfits
   expect(records.find((record) => record.id === first.id)).toMatchObject({
     note: '备注',

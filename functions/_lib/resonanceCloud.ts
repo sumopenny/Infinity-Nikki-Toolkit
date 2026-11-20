@@ -18,7 +18,7 @@ import { argon2idAsync } from '@noble/hashes/argon2.js'
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
 import { MAX_CLOUD_BYTES } from '../../src/utils/resonance/cloudSchema'
 
-import { writeResonanceCloud } from './resonanceCloudStore'
+import { resonanceRecordsSQL, writeResonanceCloud } from './resonanceCloudStore'
 import type { SnapshotStage } from './cloudSnapshot'
 
 type CloudStage =
@@ -161,11 +161,7 @@ export async function handleCloud(
         db
           .prepare('SELECT revision,updated_at,active_snapshot FROM cloud_users WHERE id=?')
           .bind(user.id),
-        db
-          .prepare(
-            'SELECT r.payload_json FROM cloud_records r JOIN cloud_users u ON u.id=r.user_id AND u.active_snapshot=r.snapshot_id WHERE u.id=? ORDER BY r.record_id'
-          )
-          .bind(user.id)
+        db.prepare(resonanceRecordsSQL).bind(user.id)
       ])
       setStage('snapshot-decode')
       return json({

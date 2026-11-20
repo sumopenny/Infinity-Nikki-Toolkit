@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, toRef, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { useModalPresence } from '../composables/useModalPresence'
@@ -12,13 +12,7 @@ const props = defineProps<{
   destructive?: boolean
 }>()
 const emit = defineEmits<{ close: []; submit: [] }>()
-const visible = ref(props.visible)
-watch(
-  () => props.visible,
-  (value) => {
-    visible.value = value
-  }
-)
+const visible = toRef(props, 'visible')
 const dialog = ref<HTMLDialogElement | null>(null)
 let opener: HTMLElement | null = null
 const modal = useModalPresence(visible, ref(true))

@@ -1596,23 +1596,26 @@ async function authorizeX6GameDirectory() {
   await updateOutfitLibrary(false, false)
 }
 
+function applyOutfitTags(tags: string[]) {
+  outfitTags.value = tags
+  if (
+    activeOutfitFilter.value.startsWith('tag:') &&
+    !tags.includes(activeOutfitFilter.value.slice(4))
+  )
+    activeOutfitFilter.value = 'all'
+}
+
 /** 重新扫描搭配方案并应用结果；提示由上层流程统一决定。 */
 function applyOutfitLibraryResult(result: OutfitLibraryResult) {
   const previousPreviewId = activeView.value === 'outfits' ? currentPreview.value?.id : null
   releasePhotoUrls(outfits.value)
   unreadableOutfitCount.value = result.unreadableCount ?? 0
   outfits.value = result.outfits
-  outfitTags.value = result.tags
+  applyOutfitTags(result.tags)
   const validOutfitIds = new Set(result.outfits.map((outfit) => outfit.id))
   selectedOutfitIds.value = new Set(
     [...selectedOutfitIds.value].filter((id) => validOutfitIds.has(id))
   )
-  if (
-    activeOutfitFilter.value.startsWith('tag:') &&
-    !result.tags.includes(activeOutfitFilter.value.slice(4))
-  ) {
-    activeOutfitFilter.value = 'all'
-  }
   if (previousPreviewId)
     currentPreview.value = result.outfits.find((outfit) => outfit.id === previousPreviewId) ?? null
 }
@@ -2098,6 +2101,7 @@ const {
   outfitEditorRef,
   publishStatus,
   reloadOutfitCollection,
+  applyOutfitTags,
   applyOutfitLibraryResult,
   showOutfitStatus,
   showOutfitStorageError,
@@ -2315,7 +2319,7 @@ watch(activeView, (view) => {
   if (view === 'outfits') void ensureInitialOutfitScan()
 })
 onMounted(() => {
-  refreshCameraFavoriteMetadata()
+  if (!cameraMounted.value) refreshCameraFavoriteMetadata()
   activeOperation.value = 'loading'
   // 计数独立读取；本地集合与目录迁移仍保持顺序，防止较旧读取覆盖迁移结果。
   void updateHomeSchemeCount().catch((error) => {

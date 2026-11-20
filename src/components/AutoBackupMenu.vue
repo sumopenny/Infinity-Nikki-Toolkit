@@ -104,7 +104,9 @@ const recoveryMode = ref<'restore' | 'inspect' | 'existing'>('restore')
 const selected = ref<BackupModule[]>([])
 const recoveryProgress = ref('')
 const recoveryError = ref('')
-const sourceOwned = ref(false)
+const sourceOwned = computed(
+  () => !!recoveryPreview.value && recoveryPreview.value.sourceId === config.value?.sourceId
+)
 let resolveConfirmation: ((value: boolean) => void) | undefined
 const icons = { outfits: Shirt, home: House, camera: Camera }
 const titleFor = (module: BackupModule) =>
@@ -184,8 +186,7 @@ const backupErrorFingerprint = () =>
   ]
     .filter(Boolean)
     .join('|')
-let lastBackupError = backupErrorFingerprint()
-watch(backupErrorFingerprint, (fingerprint) => {
+watch(backupErrorFingerprint, (fingerprint, lastBackupError) => {
   if (fingerprint && fingerprint !== lastBackupError && !manualBackupPending.value) {
     notifyBackup(
       BACKUP_RUN_SOURCE,
@@ -194,7 +195,6 @@ watch(backupErrorFingerprint, (fingerprint) => {
       'error'
     )
   }
-  lastBackupError = fingerprint
 })
 watch(
   () => [
@@ -306,13 +306,11 @@ async function showPreview(
   handle: FileSystemDirectoryHandle,
   mode: 'restore' | 'inspect' | 'existing'
 ) {
-  recoveryHandle.value = handle
-  recoveryMode.value = mode
   recoveryError.value = ''
   recoveryProgress.value = ''
-  const marker = await inspectRoot(handle)
-  sourceOwned.value = marker?.sourceId === config.value?.sourceId
   const preview = await previewRestore(handle)
+  recoveryHandle.value = handle
+  recoveryMode.value = mode
   recoveryPreview.value = preview
   selected.value = preview.modules.filter((item) => item.ready).map((item) => item.module)
   opened.value = false

@@ -168,36 +168,42 @@ function reset() {
   selectedResonance.value = selectedWardrobe.value = true
 }
 watch(visible, () => reset(), { immediate: true })
-watch([roleid, token, openid], invalidate, { flush: 'sync' })
-watch(
-  region,
-  (value) => {
-    // 同步废弃请求和预览，防止旧区服请求完成后重新出现可确认的数据。
-    invalidate()
-    cookieInput.value = roleid.value = token.value = openid.value = ''
-    writeLocalStorage(REGION_KEY, value)
-  },
-  { flush: 'sync' }
-)
-watch(cookieInput, (value) => {
+function changeRegion(value: PearpalRegion) {
+  if (value === region.value) return
   invalidate()
+  region.value = value
+  cookieInput.value = roleid.value = token.value = openid.value = ''
+  writeLocalStorage(REGION_KEY, value)
+}
+const credentialFields = { roleid, token, openid }
+function changeCredential(key: keyof typeof credentialFields, value: string) {
+  const field = credentialFields[key]
+  if (value === field.value) return
+  invalidate()
+  field.value = value
+}
+function changeCookie(value: string) {
+  if (value === cookieInput.value) return
+  invalidate()
+  cookieInput.value = value
   if (!value.trim()) return
   try {
     const parsed = parseResonanceCookie(value)
     roleid.value = parsed.roleid
     token.value = parsed.token
     openid.value = parsed.id
-
     emit('notice', t.value.pasteSuccess, 'success')
   } catch {
     error.value = t.value.pasteFailed
   }
-})
-watch(method, () => {
+}
+function changeMethod(value: typeof method.value) {
+  if (value === method.value) return
   invalidate()
+  method.value = value
   fileName.value = ''
   fileBytes = null
-})
+}
 function close() {
   if (!confirming.value) {
     reset()
@@ -411,13 +417,17 @@ async function copyScript(kind: 'bookmark' | 'console') {
     :disabled="disabled"
     :confirm-disabled="!canConfirm"
     :has-preview="!!preview"
-    v-model:cookie-input="cookieInput"
-    v-model:roleid="roleid"
-    v-model:token="token"
-    v-model:openid="openid"
+    :cookie-input="cookieInput"
+    :roleid="roleid"
+    :token="token"
+    :openid="openid"
+    @update:cookie-input="changeCookie"
+    @update:roleid="changeCredential('roleid', $event)"
+    @update:token="changeCredential('token', $event)"
+    @update:openid="changeCredential('openid', $event)"
     @panel="panel = $event"
     @close="close"
-    @select-method="method = $event"
+    @select-method="changeMethod"
     @select-cookie-method="cookieMethod = $event"
     @select-file="selectFile"
     @copy-script="copyScript"
@@ -427,7 +437,8 @@ async function copyScript(kind: 'bookmark' | 'console') {
     <template #import-options>
       <div class="data-import-region-row">
         <PearpalRegionPicker
-          v-model="region"
+          :model-value="region"
+          @update:model-value="changeRegion"
           :language="language"
           :disabled="confirming || disabled"
         />

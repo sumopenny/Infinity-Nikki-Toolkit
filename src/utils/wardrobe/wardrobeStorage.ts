@@ -1,4 +1,5 @@
-import { openDb, runStoreRequest } from '../file-system/database'
+import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runStoreRequest } from '../file-system/database'
 import type { WardrobeCatalog } from './wardrobeCatalog'
 import { wardrobeRegionScope, type WardrobeRegionScope } from './wardrobeRegion'
 
@@ -40,38 +41,16 @@ export async function updateWardrobe(
   change: (latest: WardrobeSnapshot) => WardrobeSnapshot,
   expected?: string
 ): Promise<WardrobeSnapshot> {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('wardrobe', 'readwrite')
+  return runDatabaseTransaction(['wardrobe'], 'readwrite', async (tx) => {
     const store = tx.objectStore('wardrobe')
-    let result: WardrobeSnapshot
-    let failure: unknown
-    tx.oncomplete = () => {
-      db.close()
-      resolve(result)
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(failure ?? tx.error)
-    }
-    tx.onerror = () => {
-      /* 等待事务回滚后统一报告。 */
-    }
-    const request = store.get('current')
-    request.onsuccess = () => {
-      try {
-        const current =
-          request.result === undefined ? emptyWardrobe() : validateWardrobe(request.result)
-        if (expected !== undefined && JSON.stringify(current) !== expected)
-          throw new Error('WARDROBE_CHANGED')
-        result = validateWardrobe(change(current))
-        result.updatedAt = new Date().toISOString()
-        store.put(result, 'current')
-      } catch (error) {
-        failure = error
-        tx.abort()
-      }
-    }
+    const value: unknown = await databaseRequest(store.get('current'))
+    const current = value === undefined ? emptyWardrobe() : validateWardrobe(value)
+    if (expected !== undefined && JSON.stringify(current) !== expected)
+      throw new Error('WARDROBE_CHANGED')
+    const result = validateWardrobe(change(current))
+    result.updatedAt = new Date().toISOString()
+    store.put(result, 'current')
+    return result
   })
 }
 export function createWardrobeBackup(snapshot: WardrobeSnapshot): string {

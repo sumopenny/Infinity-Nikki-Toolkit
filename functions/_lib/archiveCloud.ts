@@ -12,13 +12,14 @@ import {
   type CloudDB,
   type CloudEnv
 } from './cloudShared'
-import { prepareResonanceSnapshot } from './resonanceCloudStore'
+import { prepareResonanceSnapshot, resonanceRecordsSQL } from './resonanceCloudStore'
 import type { SnapshotStage } from './cloudSnapshot'
 import {
   decodeHead,
   decodeWardrobeSnapshot,
   headSQL,
-  prepareWardrobeSnapshot
+  prepareWardrobeSnapshot,
+  wardrobeRecordsSQL
 } from './wardrobeCloudStore'
 import {
   archiveModules,
@@ -51,27 +52,11 @@ async function readArchive(
     module === 'resonance'
       ? [
           db.prepare(resonanceHeadSQL).bind(userId),
-          ...(complete
-            ? [
-                db
-                  .prepare(
-                    'SELECT r.payload_json FROM cloud_records r JOIN cloud_users u ON u.id=r.user_id AND u.active_snapshot=r.snapshot_id WHERE u.id=? ORDER BY r.record_id'
-                  )
-                  .bind(userId)
-              ]
-            : [])
+          ...(complete ? [db.prepare(resonanceRecordsSQL).bind(userId)] : [])
         ]
       : [
           db.prepare(headSQL).bind(userId),
-          ...(complete
-            ? [
-                db
-                  .prepare(
-                    'SELECT r.record_key,r.payload_json FROM cloud_wardrobe_records r JOIN cloud_wardrobe_state s ON s.user_id=r.user_id AND s.active_snapshot=r.snapshot_id WHERE s.user_id=? ORDER BY r.record_key'
-                  )
-                  .bind(userId)
-              ]
-            : [])
+          ...(complete ? [db.prepare(wardrobeRecordsSQL).bind(userId)] : [])
         ]
   )
   const result = await db.batch(queries)

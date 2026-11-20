@@ -1,4 +1,3 @@
-export { hasAllBackupData } from './backupAvailability'
 import { backupBaseName } from './backupName'
 import { ALL_DATA_BACKUP_LIMITS } from './backupLimits'
 import {

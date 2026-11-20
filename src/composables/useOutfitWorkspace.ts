@@ -29,7 +29,8 @@ import {
   isValidOutfitTag,
   MAX_OUTFIT_TAG_LENGTH,
   MAX_OUTFIT_TAGS,
-  normalizeOutfitTag
+  normalizeOutfitTag,
+  normalizeOutfitRecord
 } from '../utils/outfit/outfitTypes'
 import { releasePhotoUrl } from '../utils/file-system/photoUrl'
 import { copyTextToClipboard } from '../utils/clipboard'
@@ -50,6 +51,7 @@ interface OutfitWorkspaceOptions {
   outfitEditorRef: Ref<InstanceType<typeof OutfitEditor> | null>
   publishStatus: (status: StatusState) => void
   reloadOutfitCollection: () => Promise<void>
+  applyOutfitTags: (tags: string[]) => void
   applyOutfitLibraryResult: (result: OutfitLibraryResult) => void
   showOutfitStatus: (message: string, tone?: StatusTone, loading?: boolean, source?: string) => void
   showOutfitStorageError: (error: unknown, source?: string) => void
@@ -74,6 +76,7 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
     outfitEditorRef,
     publishStatus,
     reloadOutfitCollection,
+    applyOutfitTags,
     applyOutfitLibraryResult,
     showOutfitStatus,
     showOutfitStorageError,
@@ -160,10 +163,24 @@ export function useOutfitWorkspace(options: OutfitWorkspaceOptions) {
     try {
       activeOperation.value = 'mutating-outfits'
       const result = await deleteOutfitTag(tag)
-      outfitTags.value = result.tags
-      await reloadOutfitCollection()
+      const byId = new Map(outfits.value.map((item) => [item.id, item]))
+      const matchesView =
+        byId.size === result.previousRecords.length &&
+        result.previousRecords.every((previous) => {
+          const item = byId.get(previous.id)
+          return item && JSON.stringify(normalizeOutfitRecord(item)) === JSON.stringify(previous)
+        })
+      if (matchesView) {
+        // 保留图片对象及当前预览，直接回填事务已提交的字段。
+        for (const { id, tags, updatedAt } of result.updatedRecords)
+          Object.assign(byId.get(id)!, { tags, updatedAt })
+        applyOutfitTags(result.tags)
+      } else {
+        await reloadOutfitCollection()
+      }
       showOutfitStatus(outfitLocale.value.operations.tagDeleted)
     } catch (error) {
+      await reloadOutfitCollection().catch(() => undefined)
       showOutfitStorageError(error)
     } finally {
       if (activeOperation.value === 'mutating-outfits') activeOperation.value = null

@@ -7,9 +7,9 @@ import { createEmptyHomeSchemeMetadata } from '../helpers/homeSchemeMetadata'
 import {
   exportAllDataBackup,
   prepareAllDataBackup,
-  applyAllDataBackup,
-  hasAllBackupData
+  applyAllDataBackup
 } from '../../src/utils/backup/allDataBackup'
+import { hasAllBackupData } from '../../src/utils/backup/backupAvailability'
 import {
   saveOutfit,
   deleteOutfit,

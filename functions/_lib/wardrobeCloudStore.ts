@@ -59,18 +59,16 @@ export function decodeHead(row?: HeadRow): WardrobeCloudHead {
   return head
 }
 
+export const wardrobeRecordsSQL =
+  'SELECT r.record_key,r.payload_json FROM cloud_wardrobe_records r JOIN cloud_wardrobe_state s ON s.user_id=r.user_id AND s.active_snapshot=r.snapshot_id WHERE s.user_id=? ORDER BY r.record_key'
+
 /** 摘要读取不扫描记录；下载在同一批事务读取指针、元数据和完整记录。 */
 export async function readWardrobeCloud(db: CloudDB, userId: string, complete: boolean) {
   if (!complete)
     return decodeHead((await db.prepare(headSQL).bind(userId).first<HeadRow>()) ?? undefined)
   const result = await db.batch([
     db.prepare(headSQL).bind(userId),
-    db
-      .prepare(
-        `SELECT r.record_key,r.payload_json FROM cloud_wardrobe_records r JOIN cloud_wardrobe_state s
-      ON s.user_id=r.user_id AND s.active_snapshot=r.snapshot_id WHERE s.user_id=? ORDER BY r.record_key`
-      )
-      .bind(userId)
+    db.prepare(wardrobeRecordsSQL).bind(userId)
   ])
   return decodeWardrobeSnapshot(result)
 }

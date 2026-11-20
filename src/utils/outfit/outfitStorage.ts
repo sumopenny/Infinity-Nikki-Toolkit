@@ -261,9 +261,7 @@ export async function saveOutfitTags(values: string[], expected?: string[]): Pro
     return tags
   })
 }
-export async function deleteOutfitTag(
-  removedTag: string
-): Promise<{ tags: string[]; updatedCount: number }> {
+export async function deleteOutfitTag(removedTag: string) {
   return outfitTransaction([OUTFITS_STORE, OUTFIT_TAGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(OUTFITS_STORE)
     const [records, rawTags] = await Promise.all([
@@ -271,15 +269,13 @@ export async function deleteOutfitTag(
       outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
     ])
     const tags = normalizeOutfitTagList(rawTags).filter((tag) => tag !== removedTag)
-    let updatedCount = 0
-    for (const raw of records) {
-      const record = normalizeOutfitRecord(raw)
-      if (!record.tags.includes(removedTag)) continue
-      store.put({ ...record, tags: [], updatedAt: new Date().toISOString() })
-      updatedCount++
-    }
+    const previousRecords = records.map(normalizeOutfitRecord)
+    const updatedRecords = previousRecords
+      .filter((record) => record.tags.includes(removedTag))
+      .map((record) => ({ ...record, tags: [], updatedAt: new Date().toISOString() }))
+    for (const record of updatedRecords) store.put(record)
     tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
-    return { tags, updatedCount }
+    return { tags, previousRecords, updatedRecords }
   })
 }
 export async function deleteOutfits(

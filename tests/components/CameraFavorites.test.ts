@@ -364,9 +364,9 @@ describe('camera favorite UI', () => {
   it('stops duplicate entry before opening the editor', async () => {
     mocks.read.mockResolvedValue({ records: [item], covers: new Map() })
     const view = create()
-    await flushPromises()
     await (view.vm as unknown as { openFromResult: Function }).openFromResult(result, null)
     await flushPromises()
+    expect(mocks.read).toHaveBeenCalledOnce()
     expect(document.querySelector('form')).toBeNull()
     expect(view.emitted('status')?.at(-1)).toEqual(['该参数已收藏', 'error'])
     expect(mocks.save).not.toHaveBeenCalled()
@@ -520,7 +520,8 @@ describe('camera favorite tags', () => {
     const untagged = { ...item, id: 'two', tag: '', name: '无标签收藏', code: 'XYZ' }
     mocks.read.mockResolvedValue({
       records: [item, { ...item, id: 'warm', code: 'WARM', tag: '暖光' }, untagged],
-      covers: new Map()
+      covers: new Map(),
+      tags: [item.tag, '暖光']
     })
     const view = create()
     await flushPromises()

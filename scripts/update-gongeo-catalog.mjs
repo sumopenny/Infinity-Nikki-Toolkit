@@ -376,9 +376,11 @@ const guardExistingEntries = (relative, current, next) => {
   }
 }
 
+const sameContent = (current, content) => current?.replace(/\r\n/gu, '\n') === content
+
 const writeIfChanged = async (file, content) => {
   const current = await readOptional(file)
-  if (current === content || current?.replace(/\r\n/gu, '\n') === content) return false
+  if (sameContent(current, content)) return false
   await mkdir(dirname(file), { recursive: true })
   const temporary = file + '.' + process.pid + '.tmp'
   try {
@@ -453,18 +455,21 @@ export async function updateGongeoCatalog(options = {}) {
     })
   )
   // Every download and check completes before the first project file is written.
+  const pendingWrites = []
   for (const [relative, value] of entries) {
-    const text = await readOptional(resolve(outputDir, relative))
-    if (text !== null) guardExistingEntries(relative, parseJson(text, relative), value)
-    else guardExistingEntries(relative, null, value)
+    const file = resolve(outputDir, relative)
+    const current = await readOptional(file)
+    guardExistingEntries(relative, current === null ? null : parseJson(current, relative), value)
+    const content = serialize(value)
+    if (!sameContent(current, content)) pendingWrites.push({ file, content })
   }
   const latestIndex = parseJson(await fetchText(indexUrl, timeoutMs), indexUrl)
   if (JSON.stringify(latestIndex) !== JSON.stringify(index)) {
     throw problem('Gongeo 索引在同步过程中发生变化，已取消写入', 'GONGEO_INCOMPLETE')
   }
   let updated = 0
-  for (const [relative, value] of entries) {
-    if (await writeIfChanged(resolve(outputDir, relative), serialize(value))) updated += 1
+  for (const { file, content } of pendingWrites) {
+    if (await writeIfChanged(file, content)) updated += 1
   }
   const source = {
     source: sourceLabel(root),

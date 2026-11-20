@@ -2,6 +2,9 @@ import { digest, fail, type CloudDB } from './cloudShared'
 import { validateCloudRecords } from '../../src/utils/resonance/cloudSchema'
 import type { PreparedSnapshot, SnapshotStage } from './cloudSnapshot'
 
+export const resonanceRecordsSQL =
+  'SELECT r.payload_json FROM cloud_records r JOIN cloud_users u ON u.id=r.user_id AND u.active_snapshot=r.snapshot_id WHERE u.id=? ORDER BY r.record_id'
+
 const enc = new TextEncoder()
 
 /** 只回收已提交且不再活跃的记录；保留小型请求回执与其他设备的暂存版本。 */

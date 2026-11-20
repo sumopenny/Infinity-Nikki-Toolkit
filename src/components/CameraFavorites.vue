@@ -140,7 +140,6 @@ const coverInput = ref<HTMLInputElement | null>(null)
 const backupInput = ref<HTMLInputElement | null>(null)
 const form = ref<HTMLElement | null>(null)
 const tagFilter = ref<OutfitFilter>('all')
-const tagOrder = ref<string[]>([])
 const sidebar = ref<InstanceType<typeof OutfitSidebar> | null>(null)
 const tagMessages = computed(() => localeMessages[props.language].outfit)
 const isAddingTag = ref(false)
@@ -162,7 +161,8 @@ async function persistTags(next: string[]) {
   return trackOperation(async () => {
     busy.value = true
     try {
-      tagOrder.value = await saveCameraFavoriteTags(next)
+      const tags = await saveCameraFavoriteTags(next)
+      library.value = { ...library.value, tags }
       channel?.postMessage('changed')
     } finally {
       busy.value = false
@@ -314,9 +314,7 @@ watch(
   },
   { flush: 'sync' }
 )
-const allTags = computed(() => [
-  ...new Set([...tagOrder.value, ...library.value.records.map((r) => r.tag).filter(Boolean)])
-])
+const allTags = computed(() => library.value.tags ?? [])
 const visibleRecords = computed(() => {
   const query = props.searchQuery.trim().toLocaleLowerCase()
   return library.value.records.filter(
@@ -505,13 +503,13 @@ async function rotatePreviewSource() {
   })
 }
 
-async function reload() {
-  return trackOperation(async () => {
+let pendingLoad: Promise<void> | undefined
+function reload() {
+  const load = trackOperation(async () => {
     const run = ++loadGeneration
     try {
       const next = await readCameraFavorites(false)
       if (disposed || run !== loadGeneration) return
-      tagOrder.value = next.tags ?? []
       library.value = next
       loadError.value = ''
       emit(
@@ -524,7 +522,11 @@ async function reload() {
       if (!disposed && run === loadGeneration)
         loadError.value = caught instanceof Error ? caught.message : String(caught)
     }
+  }).finally(() => {
+    if (pendingLoad === load) pendingLoad = undefined
   })
+  pendingLoad = load
+  return load
 }
 function setCover(file: Blob | null, filename = '') {
   coverDragging.value = false
@@ -590,7 +592,10 @@ async function openFromResult(
     if (busy.value) return
     busy.value = true
     try {
-      await reload()
+      if (!pendingLoad) void reload()
+      // 判重等待最新的读取。广播可能在首载期间启动另一轮刷新。
+      while (pendingLoad) await pendingLoad
+      if (disposed) return
       if (loadError.value) throw new Error(loadError.value)
       if (library.value.records.some((r) => r.code === normalizeCameraCode(result.rawCameraParams)))
         throw new DuplicateCameraCodeError()

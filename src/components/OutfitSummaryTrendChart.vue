@@ -4,12 +4,9 @@ import { getInstanceByDom, init, use } from 'echarts/core'
 import { BarChart } from 'echarts/charts'
 import { GridComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
-import type { OutfitSummaryPeriod } from '../utils/outfit/outfitSummary'
 
 const props = defineProps<{
-  periods: OutfitSummaryPeriod[]
-  labels: string[]
-  descriptions: string[]
+  points: { start: number; count: number; axisLabel: string; description: string }[]
   selected: number | null
 }>()
 const emit = defineEmits<{ select: [start: number | null] }>()
@@ -31,7 +28,7 @@ function draw() {
     grid,
     xAxis: {
       type: 'category',
-      data: props.labels,
+      data: props.points.map(({ axisLabel }) => axisLabel),
       axisTick: { show: false },
       axisLine: { lineStyle: { color: color('--line') } },
       axisLabel: { color: color('--text'), hideOverlap: true, fontSize: 11 }
@@ -47,7 +44,7 @@ function draw() {
       {
         type: 'bar',
         barMaxWidth: 32,
-        data: props.periods.map(({ count, start }) => ({
+        data: props.points.map(({ count, start }) => ({
           value: count,
           itemStyle: {
             color: start === props.selected ? color('--notice-warning') : color('--pink-deep'),
@@ -73,7 +70,7 @@ onMounted(() => {
   })
   draw()
 })
-watch(() => [props.periods, props.labels, props.selected], draw, { flush: 'post' })
+watch(() => [props.points, props.selected], draw, { flush: 'post' })
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   themeObserver?.disconnect()
@@ -89,11 +86,11 @@ onBeforeUnmount(() => {
     @pointerleave="$event.pointerType === 'mouse' && emit('select', null)"
   >
     <button
-      v-for="(period, index) in periods"
+      v-for="period in points"
       :key="period.start"
       type="button"
       class="trend-period-target"
-      :aria-label="descriptions[index]"
+      :aria-label="period.description"
       @pointerenter="$event.pointerType === 'mouse' && emit('select', period.start)"
       @click="emit('select', period.start)"
     ></button>
