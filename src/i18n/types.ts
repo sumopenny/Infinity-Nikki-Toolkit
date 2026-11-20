@@ -4,6 +4,7 @@ import type {
   SpecialCleanupItem
 } from '../utils/file-system/cleanupFileSystem'
 import type { OutfitMessages } from './messages/outfit'
+import type { HelpAboutMessages } from './messages/helpAbout'
 import type { PhotoParamsMessages } from './messages/photoParams'
 import type { HomeSchemeMessages } from './messages/homeScheme'
 import type { ResonanceMessages } from './messages/resonance'
@@ -11,14 +12,6 @@ import type { ThemeMode } from '../types/theme'
 export type Language = 'zh' | 'en'
 export type StatusPrefix = 'read' | 'restored'
 export type StatusSuffix = 'continued' | 'remembered'
-
-/** 按当前布局提供的帮助内容；操作分组分别承载电脑鼠标/键盘或手机触摸说明。 */
-export interface HelpAboutDeviceContent {
-  features: Array<{ icon: string; title: string; text: string }>
-  tutorialSections: Array<{ title: string; items: string[] }>
-  notes: string[]
-  operationSections: Array<{ icon: 'mouse' | 'keyboard' | 'touch'; title: string; items: string[] }>
-}
 
 export type LocaleMessages = Omit<FullLocaleMessages, 'helpAbout' | 'updateLog'>
 export interface FullLocaleMessages {
@@ -148,6 +141,9 @@ export interface FullLocaleMessages {
     albumMenuAria: string
     viewMenuAria: string
     moreMenuAria: string
+    dataBackup: string
+    appMaintenance: string
+    aboutToolkit: string
     dataStorageReminder: string
     exportAllData: string
     importAllData: string
@@ -225,23 +221,11 @@ export interface FullLocaleMessages {
       items: Array<string | { title: string; text: string; link?: { label: string; href: string } }>
     }>
     dontShowAgain: string
+    dontShowEverAgain: string
     confirm: string
     closeAria: string
   }
-  helpAbout: {
-    title: string
-    eyebrow: string
-    introTitle: string
-    intro: string
-    privacyNote: string
-    featuresTitle: string
-    tutorialTitle: string
-    notesTitle: string
-    desktop: HelpAboutDeviceContent
-    mobile: HelpAboutDeviceContent
-    confirm: string
-    closeAria: string
-  }
+  helpAbout: HelpAboutMessages
   selectionBar: {
     selected: (count: number) => string
     selectAll: string

@@ -863,6 +863,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
     }
   ],
   dontShowAgain: '当前版本不再提示',
+  dontShowEverAgain: '不再提示',
   confirm: '我知道了',
   closeAria: '关闭更新记录窗口'
 }
@@ -1744,6 +1745,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
     }
   ],
   dontShowAgain: "Don't show again for this version",
+  dontShowEverAgain: "Don't show again",
   confirm: 'Got it',
   closeAria: 'Close release history'
 }

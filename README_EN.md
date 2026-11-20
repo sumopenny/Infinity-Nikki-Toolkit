@@ -62,10 +62,10 @@ Phones, tablets, and foldable screens adjust their layout to the available width
 
 ### First use and navigation
 
-- Switch between Outfit codes, Home schemes, Camera parameters, and Nikki Archive using bottom navigation; within the archive, select Resonance, Wardrobe or Makeup catalog.
-- Search the current module with the header magnifier; View changes display, theme, and language. Header More provides parsers, lucky draw times, full-data backups, and help.
+- Use the bottom navigation to switch between Outfit codes, Home schemes, Camera parameters, and Nikki Archive. In Nikki Archive, open Resonance records, Personal wardrobe, Makeup catalog, or Evolution animations.
+- Use the header magnifier to search the current module. View changes display, theme, and language. Tools contains the parser, Avatar simulator, and Lucky pull times. Open More for full-data backups or select Help for touch gestures.
 - “+” adds data, and the page “⋯” menu manages the current module. Use tag or rarity entries to filter. Large previews support swiping, pinch-to-zoom, and panning.
-- Use a computer for album folders, automatically reading in-game outfits, and game-file cleanup. The mobile Add to Home Screen entry provides instructions; native install prompts depend on the browser.
+- Use a computer for album folders, automatically reading in-game outfits, and game-file cleanup. On a phone, open More → App maintenance → Install app for home screen instructions. Installation options depend on the browser.
 
 
 ### Outfit codes
@@ -257,7 +257,8 @@ Click a parsed item to view its details. When multiple forms are available, swit
   <p><sub>Left · Outfit summary ｜ Right · Outfit-code share card</sub></p>
 </div>
 
-- Outfit Summary ranks tags, clothing and makeup. Filter by item type, open related details, and optionally parse remaining outfit codes using cached results first.
+- Outfit Summary shows parsing coverage, save history, and tag distribution. Select a tag to open its outfits.
+- Tags include all saved outfits, including image-only entries. Clothing and makeup rankings show how often each item appears in parsed outfits. Filter by type or open an item's details. The summary reads local cached results first and sends outstanding codes for parsing only when you choose Parse or Retry.
 - Generate 9:16 share cards for saved outfits with images from a card or parser window; drag and zoom previews up to 400%.
 
 ### Home schemes
@@ -506,3 +507,4 @@ npm run preview            # Preview the build
 Reference repositories: [Nikki Albums](https://github.com/RanAxro/nikki_albums) and [Gongeo.us Nikki Tracker](https://github.com/dastrokes/gongeo.us-nikki-tracker).
 
 Please refer to the root [LICENSE](LICENSE) file for this project's license.
+See the [chart licenses](public/outfit-chart-licenses.txt) for the third-party notices for Outfit Summary.

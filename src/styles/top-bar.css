@@ -42,25 +42,16 @@
   height: 38px;
   flex: 0 0 38px;
   object-fit: contain;
-  border: 1px solid color-mix(in srgb, var(--pink-deep) 24%, #fff);
+  border: 1px solid #f2e1e2;
   border-radius: 10px;
   /* 原始 PNG 自带白底，固定白色底牌以便在深浅主题下保持一致。 */
   background: #fff;
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--pink-deep) 14%, transparent);
+  box-shadow: 0 2px 6px rgba(201, 132, 134, 0.14);
 }
 
-@supports not (color: color-mix(in srgb, black, white)) {
-  .brand-icon {
-    border: 1px solid rgba(242.04, 225.48, 225.96, 1);
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(201, 132, 134, 0.14);
-  }
-
-  :where(:root[data-theme='dark']) .brand-icon {
-    border: 1px solid rgba(251.16, 236.04, 236.52, 1);
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(239, 176, 178, 0.14);
-  }
+:root[data-theme='dark'] .brand-icon {
+  border-color: #fbeced;
+  box-shadow: 0 2px 6px rgba(239, 176, 178, 0.14);
 }
 
 .brand-copy {
@@ -348,6 +339,116 @@
 .header-dropdown-right {
   right: auto;
   left: 50%;
+}
+
+.header-dropdown.more-menu-panel {
+  display: flex;
+  flex-direction: column;
+  width: 328px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.more-menu-panel:focus {
+  outline: none;
+}
+
+.more-menu-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-accent-border) transparent;
+}
+
+.more-menu-group + .more-menu-group {
+  margin-top: 9px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.more-menu-group h3 {
+  margin: 0 8px 5px;
+  color: var(--heading);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.more-menu-group h3:has(+ .more-backup-actions) {
+  margin-bottom: 12px;
+}
+
+.more-backup-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.more-menu-panel .more-menu-group button,
+.more-menu-panel .more-menu-group a {
+  min-height: 39px;
+}
+
+.more-menu-panel .more-backup-actions button {
+  justify-content: center;
+  gap: 6px;
+  padding-inline: 5px;
+  border-color: var(--line);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  color: var(--heading);
+  font-weight: 650;
+  text-align: center;
+}
+
+.more-menu-panel .more-backup-actions button:disabled {
+  opacity: 0.5;
+}
+
+.more-menu-panel .more-menu-group svg,
+.more-menu-footer svg {
+  flex-shrink: 0;
+}
+
+.more-menu-panel .more-data-reminder {
+  color: var(--muted);
+}
+
+.more-menu-panel .more-danger-action {
+  color: var(--danger, #a94f55);
+}
+
+.more-menu-group .menu-author {
+  padding: 10px 8px 2px;
+}
+
+.more-menu-group .author-social-links {
+  padding-bottom: 0;
+}
+
+.more-menu-footer {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.more-menu-panel .more-menu-footer button {
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px 2px;
+  text-align: center;
+}
+
+.more-menu-footer button:first-child {
+  color: var(--heading);
+  font-weight: 650;
 }
 
 .header-dropdown button,

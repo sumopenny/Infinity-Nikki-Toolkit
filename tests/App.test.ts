@@ -352,7 +352,7 @@ describe('App lifecycle coordination', () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
     await flushPromises()
-    wrapper.getComponent({ name: 'TopBar' }).vm.$emit('changeView', 'home')
+    wrapper.getComponent({ name: 'AlbumViewSwitcher' }).vm.$emit('changeView', 'home')
     await nextTick()
     expect(localStorage.getItem('infinity-nikki-active-view')).toBe('home')
     wrapper.unmount()
@@ -432,14 +432,22 @@ describe('App lifecycle coordination', () => {
     }
   )
 
-  it.each([false, true])(
-    'honors the saved reminder preference without pending updates (%s)',
-    async (dismissed) => {
+  it.each([
+    [false, false],
+    [true, false],
+    [false, true]
+  ])(
+    'honors the data reminder with updates dismissed (reminder=%s, all versions=%s)',
+    async (dismissed, dismissedForever) => {
       getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
       const { currentVersion } = await import('../src/i18n/version')
       localStorage.setItem(
         'infinity-nikki-about-state',
-        JSON.stringify({ version: currentVersion.replace(/^v/, ''), dismissed: true })
+        JSON.stringify({
+          version: dismissedForever ? '0.0.0' : currentVersion.replace(/^v/, ''),
+          dismissed: !dismissedForever,
+          ...(dismissedForever ? { dismissedForever } : {})
+        })
       )
       if (dismissed) localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
       const wrapper = mount(App, { global: { stubs: { Teleport: true } } })

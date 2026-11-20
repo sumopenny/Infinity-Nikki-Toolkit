@@ -16,7 +16,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.more-menu-content {
+.view-menu-content {
   display: contents;
 }
 .collection-action-menu {
@@ -887,12 +887,19 @@
     animation: none;
     background: var(--surface-strong);
   }
-  /* 更多窗口沿用公共高度上限，仅下方菜单内容滚动。 */
   .mobile-menu-sheet.more-menu-panel {
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    overflow: hidden;
+    top: var(--visible-top, 0px);
+    right: 0;
+    bottom: auto;
+    left: auto;
+    width: min(86vw, 360px);
+    min-width: 0;
+    max-width: none;
+    height: var(--visible-height, 100dvh);
+    max-height: none;
+    padding: 0 env(safe-area-inset-right, 0px) 0 0;
+    border-radius: 0;
+    transform: none;
   }
   .mobile-menu-heading {
     display: flex;
@@ -909,13 +916,29 @@
     color: var(--heading);
     font-size: 20px;
   }
-  /* 三个手机菜单在当前可视区域居中；视图与工具标题抵消面板内边距。 */
-  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown, .more-menu-panel) {
+  /* 视图与工具菜单在当前可视区域居中。 */
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown) {
     top: calc(var(--visible-top, 0px) + var(--visible-height, 100dvh) / 2);
     bottom: auto;
     transform: translateY(-50%);
   }
-  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown) > .mobile-menu-heading {
+  .mobile-menu-sheet.view-dropdown {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+  }
+  .mobile-menu-sheet .view-menu-content {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-accent-border) transparent;
+  }
+  .mobile-menu-sheet.tools-dropdown > .mobile-menu-heading {
     position: sticky;
     top: -12px;
     z-index: 2;
@@ -936,13 +959,35 @@
   .header-dropdown .mobile-menu-heading button:hover {
     background: var(--icon-button-hover-bg);
   }
-  .mobile-menu-sheet .more-menu-content {
-    display: block;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  .more-menu-panel .mobile-menu-heading {
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+  }
+  .more-menu-panel .more-menu-group button,
+  .more-menu-panel .more-menu-group a,
+  .more-menu-panel .more-menu-footer button {
+    min-height: var(--mobile-control-size);
+  }
+  .more-menu-panel .more-menu-footer {
+    position: relative;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-menu-sheet.header-dropdown .menu-scroll-bottom {
+    position: absolute;
+    z-index: 1;
+    inset-inline-end: 12px;
+    bottom: 12px;
+    width: var(--mobile-control-size);
+    height: var(--mobile-control-size);
+    min-height: var(--mobile-control-size);
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--surface-strong);
+    box-shadow: var(--shadow);
+  }
+  .more-menu-panel .more-menu-footer .menu-scroll-bottom {
+    bottom: calc(100% + 8px);
   }
   .mobile-capability-note {
     margin: 8px;
@@ -1584,9 +1629,20 @@
     opacity: 0;
     transform: translateY(8px);
   }
-  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown, .more-menu-panel).mobile-menu-enter-from,
-  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown, .more-menu-panel).mobile-menu-leave-to {
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown).mobile-menu-enter-from,
+  .mobile-menu-sheet:is(.view-dropdown, .tools-dropdown).mobile-menu-leave-to {
     transform: translateY(calc(-50% + 8px));
+  }
+  .mobile-menu-sheet.more-menu-panel.mobile-menu-enter-from,
+  .mobile-menu-sheet.more-menu-panel.mobile-menu-leave-to {
+    opacity: 1;
+    transform: translateX(100%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-menu-sheet.more-menu-panel.mobile-menu-enter-active,
+    .mobile-menu-sheet.more-menu-panel.mobile-menu-leave-active {
+      transition: none;
+    }
   }
   .collection-action-options {
     transform-origin: top right;

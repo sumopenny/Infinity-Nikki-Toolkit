@@ -7,18 +7,23 @@ import type { FullLocaleMessages } from '../i18n'
 
 const props = defineProps<{
   visible: boolean
-  dismissed: boolean
+  dismissed: boolean | 'forever'
   messages: FullLocaleMessages['updateLog']
 }>()
-const emit = defineEmits<{ close: [dontShowAgain: boolean]; openHelp: []; afterClose: [] }>()
+const emit = defineEmits<{
+  close: [dismissal: boolean | 'forever']
+  openHelp: []
+  afterClose: []
+}>()
 const dontShowAgain = ref(false)
+const dontShowEverAgain = ref(false)
 const panelRef = ref<HTMLElement | null>(null)
 const visible = toRef(props, 'visible')
 useBodyScrollLock(visible)
 useModalFocus(visible, panelRef, closeDialog)
 
 function closeDialog() {
-  emit('close', dontShowAgain.value)
+  emit('close', dontShowEverAgain.value ? 'forever' : dontShowAgain.value)
 }
 function openHelp() {
   emit('openHelp')
@@ -26,7 +31,9 @@ function openHelp() {
 watch(
   visible,
   (open) => {
-    if (open) dontShowAgain.value = props.dismissed
+    if (!open) return
+    dontShowEverAgain.value = props.dismissed === 'forever'
+    dontShowAgain.value = props.dismissed === true
   },
   { immediate: true }
 )
@@ -122,14 +129,26 @@ watch(
             </section>
           </div>
           <footer class="update-log-footer">
-            <label class="app-checkbox-label"
-              ><input
-                v-model="dontShowAgain"
-                class="app-checkbox"
-                style="--checkbox-size: 18px"
-                type="checkbox"
-              /><span>{{ messages.dontShowAgain }}</span></label
-            >
+            <div class="update-log-options">
+              <label class="app-checkbox-label"
+                ><input
+                  v-model="dontShowAgain"
+                  class="app-checkbox"
+                  style="--checkbox-size: 18px"
+                  type="checkbox"
+                  @change="dontShowEverAgain = false"
+                /><span>{{ messages.dontShowAgain }}</span></label
+              >
+              <label class="app-checkbox-label">
+                <input
+                  v-model="dontShowEverAgain"
+                  class="app-checkbox"
+                  style="--checkbox-size: 18px"
+                  type="checkbox"
+                  @change="dontShowAgain = false"
+                /><span>{{ messages.dontShowEverAgain }}</span>
+              </label>
+            </div>
             <button class="primary-button" type="button" @click="closeDialog">{{
               messages.confirm
             }}</button>

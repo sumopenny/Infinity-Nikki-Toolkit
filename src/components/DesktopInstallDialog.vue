@@ -118,7 +118,7 @@ defineExpose({ open, installed })
             <div v-for="mobile in [true, false]" :key="String(mobile)" class="install-group">
               <button
                 type="button"
-                class="install-guide-toggle"
+                class="install-guide-toggle accordion-toggle"
                 :aria-expanded="expandedMobile === mobile"
                 :aria-controls="mobile ? 'install-mobile-steps' : 'install-desktop-steps'"
                 @click="expandedMobile = expandedMobile === mobile ? null : mobile"
@@ -128,9 +128,9 @@ defineExpose({ open, installed })
               </button>
               <div
                 :id="mobile ? 'install-mobile-steps' : 'install-desktop-steps'"
-                class="install-guide-answer"
+                class="install-guide-answer accordion-answer"
                 :class="{ expanded: expandedMobile === mobile }"
-                :inert="expandedMobile !== mobile"
+                :inert="expandedMobile === mobile ? undefined : true"
               >
                 <div>
                   <p v-if="mobile" class="install-file-warning">{{ language === 'zh' ? '部分手机浏览器安装后可能无法选择、读取或保存文件。如果遇到这种情况，请返回网页版使用' : 'Some mobile browsers may be unable to select, read, or save files after installation. If this happens, return to the web version.' }}</p>
@@ -221,15 +221,7 @@ defineExpose({ open, installed })
   cursor: pointer;
 }
 .install-guide-toggle svg { flex: none; }
-.install-guide-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
-.install-guide-answer { display: grid; grid-template-rows: 0fr; }
-.install-guide-answer.expanded { grid-template-rows: 1fr; }
-.install-guide-answer > div { min-height: 0; overflow: hidden; }
 .install-guide-answer dl { min-height: 0; overflow: hidden; margin: 0; }
-@media (prefers-reduced-motion: no-preference) {
-  .install-guide-answer { transition: grid-template-rows 240ms ease-in-out; }
-  .install-guide-toggle svg { transition: transform 240ms ease-in-out; }
-}
 .desktop-install-guide dt { margin-top: 10px; font-weight: 600; }
 .desktop-install-guide dd { margin: 2px 0 0; }
 .desktop-install-body footer {

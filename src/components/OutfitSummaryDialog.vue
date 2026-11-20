@@ -2,6 +2,7 @@
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import {
   computed,
+  defineAsyncComponent,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -15,7 +16,6 @@ import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { runWithConcurrency } from '../utils/concurrency'
 import type { OutfitItem } from '../utils/outfit/outfitTypes'
 import {
-  normalizeLookbookCode,
   parseOutfitCode,
   readCachedOutfitResult,
   type LookbookDecodeResult
@@ -27,6 +27,11 @@ import {
   type ItemCatalogEntry
 } from '../utils/outfit/itemCatalog'
 import { getClothTypeLabel, inferClothTypeFromItemId } from '../utils/outfit/clothType'
+import {
+  indexOutfitSummary,
+  outfitSummaryTrend,
+  summarizeOutfitResults
+} from '../utils/outfit/outfitSummary'
 import DialogChoiceMenu from './DialogChoiceMenu.vue'
 import CatalogImage from './CatalogImage.vue'
 import { outfitMessages } from '../i18n/messages/outfit'
@@ -37,6 +42,8 @@ import ItemDetail from './OutfitParseDialog.vue'
 const props = defineProps<{ outfits: OutfitItem[]; language: 'zh' | 'en' }>()
 const emit = defineEmits<{ close: []; tag: [tag: string] }>()
 const t = (zh: string, en: string) => (props.language === 'zh' ? zh : en)
+const TrendChart = defineAsyncComponent(() => import('./OutfitSummaryTrendChart.vue'))
+const now = new Date()
 const dialog = ref<HTMLDialogElement>()
 const selectedItem = shallowRef<Pick<ParseItemView, 'id' | 'name' | 'clothType'> | null>(null)
 let detailTrigger: HTMLButtonElement | null = null
@@ -45,7 +52,7 @@ const content = ref<HTMLElement>()
 
 function selectRow(row: { id: string | number; name: string }, event: MouseEvent) {
   if (typeof row.id === 'string') {
-    emit('tag', row.name)
+    emit('tag', row.id)
     return
   }
   detailTrigger = event.currentTarget as HTMLButtonElement
@@ -61,8 +68,14 @@ async function returnToSummary() {
   if (content.value) content.value.scrollTop = summaryScroll
   detailTrigger?.focus({ preventScroll: true })
 }
-const tab = ref<'tags' | 'clothes' | 'makeup'>('tags')
+const tab = ref<'overview' | 'tags' | 'clothes' | 'makeup'>('overview')
+async function showTab(next: typeof tab.value) {
+  tab.value = next
+  await nextTick()
+  content.value?.querySelector<HTMLButtonElement>(`[data-summary-tab="${next}"]`)?.focus()
+}
 const tabs = computed(() => ({
+  overview: t('概览', 'Overview'),
   tags: t('常用标签', 'Tags'),
   clothes: t('常穿部件', 'Clothing'),
   makeup: t('常用妆容', 'Makeup')
@@ -102,26 +115,12 @@ onBeforeUnmount(() => {
   session.abort()
   dialog.value?.close()
 })
-const library = computed(() => {
-  const tags = new Map<string, number>(),
-    codes = new Map<string, number>()
-  let missing = 0,
-    invalid = 0,
-    untagged = 0
-  for (const outfit of props.outfits) {
-    const tag = outfit.tags[0]
-    if (tag) tags.set(tag, (tags.get(tag) ?? 0) + 1)
-    else untagged++
-    const code = normalizeLookbookCode(outfit.code)
-    if (code) codes.set(code, (codes.get(code) ?? 0) + 1)
-    else if (outfit.code.trim()) invalid++
-    else missing++
-  }
-  return { tags, codes, missing, invalid, untagged }
-})
+const library = computed(() => indexOutfitSummary(props.outfits))
 watch(
-  () => Array.from(library.value.codes.keys()),
-  async (codes) => {
+  // 标签编辑不会改变缓存查询的码集合。
+  () => Array.from(library.value.codes.keys()).sort().join('\n'),
+  async (keys) => {
+    const codes = keys ? keys.split('\n') : []
     session.abort()
     session = new AbortController()
     const { signal } = session
@@ -141,21 +140,59 @@ watch(
   },
   { immediate: true }
 )
-const pending = computed(() =>
-  Array.from(library.value.codes.keys()).filter((code) => !results.has(code))
+const stats = computed(() => summarizeOutfitResults(library.value.codes, results, failed))
+const remaining = computed(() => stats.value.pending + stats.value.failed)
+const coverage = computed(() =>
+  [
+    { key: 'parsed', label: t('已解析', 'Parsed'), count: stats.value.parsed },
+    { key: 'pending', label: t('待解析', 'Awaiting parsing'), count: stats.value.pending },
+    { key: 'failed', label: t('解析失败', 'Failed'), count: stats.value.failed },
+    { key: 'invalid', label: t('格式无效', 'Invalid code'), count: library.value.invalid },
+    { key: 'missing', label: t('无搭配码', 'No code'), count: library.value.missing }
+  ].filter(({ count }) => count > 0)
 )
-const pendingCount = computed(() =>
-  pending.value.reduce((sum, code) => sum + library.value.codes.get(code)!, 0)
+const percentFormatter = computed(() => new Intl.NumberFormat(props.language, { style: 'percent' }))
+function share(count: number, total: number) {
+  return percentFormatter.value.format(total ? count / total : 0)
+}
+const periods = computed(() => outfitSummaryTrend(props.outfits, now))
+const selectedPeriod = ref<number | null>(null)
+watch(periods, (available) => {
+  if (!available.some(({ start }) => start === selectedPeriod.value)) selectedPeriod.value = null
+})
+const monthFormatter = computed(() => {
+  const first = periods.value[0]?.start ?? +now
+  const last = periods.value.at(-1)?.start ?? first
+  return new Intl.DateTimeFormat(props.language, {
+    month: 'short',
+    year: new Date(first).getFullYear() === new Date(last).getFullYear() ? undefined : '2-digit'
+  })
+})
+const periodLabels = computed(() =>
+  periods.value.map(({ start }) => monthFormatter.value.format(start))
 )
-const parsed = computed(
-  () => props.outfits.length - library.value.missing - library.value.invalid - pendingCount.value
+const periodOptions = computed(() =>
+  periods.value.map((period, index) => {
+    const end = Number.isFinite(period.end) ? period.end - 1 : 8.64e15
+    const firstMonth = periodLabels.value[index]
+    const lastMonth = monthFormatter.value.format(end)
+    const title = firstMonth === lastMonth ? firstMonth : `${firstMonth} – ${lastMonth}`
+    return {
+      value: period.start,
+      label: t(`${title} · ${period.count} 套`, `${title} · ${period.count} outfits`)
+    }
+  })
+)
+const periodDescriptions = computed(() => periodOptions.value.map(({ label }) => label))
+const selectedPeriodDescription = computed(
+  () => periodOptions.value.find(({ value }) => value === selectedPeriod.value)?.label ?? ''
 )
 async function parseRemaining() {
-  if (reading.value || running.value) return
+  if (reading.value || running.value || !remaining.value) return
   const { signal } = session
   running.value = true
   await runWithConcurrency(
-    pending.value,
+    stats.value.unresolved,
     async (code) => {
       try {
         const result = await parseOutfitCode(code)
@@ -172,14 +209,7 @@ async function parseRemaining() {
   if (!signal.aborted) running.value = false
 }
 const items = computed(() => {
-  const counts = new Map<number, number>()
-  for (const [code, result] of results) {
-    const weight = library.value.codes.get(code) ?? 0
-    for (const id of new Set(result.wearingClothes.map((item) => item.itemId))) {
-      counts.set(id, (counts.get(id) ?? 0) + weight)
-    }
-  }
-  return Array.from(counts, ([id, count]) => {
+  return Array.from(stats.value.counts, ([id, count]) => {
     const entry = catalog.value?.get(id),
       type = inferClothTypeFromItemId(id)
     return {
@@ -201,19 +231,27 @@ const types = computed(() =>
     (a, b) => a[0] - b[0]
   )
 )
+const tagRows = computed(() =>
+  Array.from(library.value.tags, ([id, count]) => ({
+    id,
+    name: id || t('未分类', 'Uncategorized'),
+    count,
+    label: '',
+    icon: ''
+  })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, props.language))
+)
+const overviewTags = computed(() => [
+  ...tagRows.value.filter(({ id }) => id).slice(0, 4),
+  ...tagRows.value.filter(({ id }) => !id)
+])
+const rankingTotal = computed(() =>
+  tab.value === 'tags' ? props.outfits.length : stats.value.parsed
+)
 const rows = computed(() => {
-  const list =
-    tab.value === 'tags'
-      ? Array.from(library.value.tags, ([name, count]) => ({
-          id: name,
-          name,
-          count,
-          label: '',
-          icon: ''
-        }))
-      : categoryItems.value.filter((x) =>
-          part.value === null ? x.type !== 86 : (x.type ?? -1) === part.value
-        )
+  if (tab.value === 'tags') return tagRows.value
+  const list = categoryItems.value.filter((x) =>
+    part.value === null ? x.type !== 86 : (x.type ?? -1) === part.value
+  )
   return list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, props.language))
 })
 const ranked = computed(() => {
@@ -236,54 +274,9 @@ const ranked = computed(() => {
         <div class="outfit-editor" @click.self="emit('close')">
           <section class="outfit-editor-panel outfit-parse-panel">
             <header>
-              <div class="summary-heading">
-                <div>
-                  <h2 id="summary-title">{{ t('搭配总结', 'Outfit summary') }}</h2>
-                  <small class="coverage" aria-live="polite">
-                    {{ t('已保存 ' + outfits.length + ' 套，', outfits.length + ' saved, ')
-                    }}{{
-                      reading
-                        ? t('正在读取解析记录…', 'reading saved results…')
-                        : t('已解析 ' + parsed + ' 套', parsed + ' parsed')
-                    }}
-                    <span v-if="library.missing"
-                      >｜
-                      {{
-                        t(library.missing + ' 套待补码', library.missing + ' without a code')
-                      }}</span
-                    >
-                    <span v-if="library.invalid"
-                      >｜
-                      {{
-                        t(
-                          library.invalid + ' 套码格式无效',
-                          library.invalid + ' with invalid codes'
-                        )
-                      }}</span
-                    >
-                    <span v-if="failed.size"
-                      >｜
-                      {{ t(failed.size + ' 个码解析失败', failed.size + ' codes failed') }}</span
-                    >
-                  </small>
-                </div>
-                <button
-                  v-if="pendingCount && !reading"
-                  class="confirm-dialog-button ghost dialog-action-control parse-action"
-                  :disabled="running"
-                  @click="parseRemaining"
-                >
-                  {{
-                    running
-                      ? t(
-                          '解析中，剩余 ' + pendingCount + ' 套',
-                          'Parsing… ' + pendingCount + ' remaining'
-                        )
-                      : failed.size
-                        ? t('重试解析', 'Retry parsing')
-                        : t('解析 ' + pendingCount + ' 套', 'Parse ' + pendingCount + ' outfits')
-                  }}
-                </button>
+              <div>
+                <h2 id="summary-title">{{ t('搭配总结', 'Outfit summary') }}</h2>
+                <small>{{ t(`已保存 ${outfits.length} 套`, `${outfits.length} saved`) }}</small>
               </div>
               <button
                 autofocus
@@ -294,51 +287,169 @@ const ranked = computed(() => {
                 <X :size="20" />
               </button>
             </header>
-            <main class="outfit-parse-content summary-content">
-              <div
-                class="summary-toolbar"
-                :class="{ 'has-part-menu': tab !== 'tags' && types.length }"
-              >
+            <main ref="content" class="outfit-parse-content summary-content">
+              <div class="summary-toolbar">
                 <nav
-                  v-segmented-indicator class="resonance-choice-row ranking-tabs"
-                  :aria-label="t('排行类别', 'Ranking category')"
+                  v-segmented-indicator
+                  class="resonance-choice-row ranking-tabs"
+                  :aria-label="t('搭配总结视图', 'Outfit summary view')"
                 >
                   <button
                     v-for="(label, key) in tabs"
                     :key="key"
                     class="resonance-choice"
                     type="button"
+                    :data-summary-tab="key"
                     :aria-pressed="tab === key"
                     @click="tab = key"
                   >
                     {{ label }}
                   </button>
                 </nav>
-                <div class="summary-part-slot">
-                  <Transition name="summary-part">
-                    <DialogChoiceMenu
-                      v-if="tab !== 'tags' && types.length"
-                      :key="tab"
-                      v-model="part"
-                      class="part-menu"
-                      :label="t('筛选部位', 'Filter by type')"
-                      :options="[
-                        { value: null, label: t('全部部位', 'All types') },
-                        ...types.map(([value, label]) => ({ value, label }))
-                      ]"
-                    />
-                  </Transition>
-                </div>
               </div>
-              <section class="ranking-panel" :aria-label="tabs[tab]">
-                <small v-if="tab === 'tags' && rows.length">{{
-                  t('点标签查看搭配', 'Select a tag to view outfits')
-                }}</small>
-                <div
-                  ref="content"
-                  class="ranking-list"
-                  :class="{ 'ranking-list-empty': !rows.length }"
+              <template v-if="tab === 'overview'">
+                <section
+                  class="summary-card coverage-panel"
+                  aria-labelledby="summary-coverage-title"
                 >
+                  <div class="summary-card-heading">
+                    <div>
+                      <h3 id="summary-coverage-title">{{ t('解析覆盖', 'Parsing coverage') }}</h3>
+                      <small v-if="reading" role="status">{{
+                        t('正在读取解析记录…', 'Reading saved results…')
+                      }}</small>
+                      <small v-else class="coverage" role="status">
+                        {{
+                          t(
+                            `已解析 ${stats.parsed} / ${outfits.length} 套`,
+                            `${stats.parsed} / ${outfits.length} outfits parsed`
+                          )
+                        }}
+                        <template v-if="outfits.length">
+                          · {{ share(stats.parsed, outfits.length) }}</template
+                        >
+                      </small>
+                    </div>
+                    <button
+                      v-if="!reading && (remaining || running)"
+                      type="button"
+                      class="confirm-dialog-button ghost dialog-action-control parse-action"
+                      :disabled="running"
+                      @click="parseRemaining"
+                    >
+                      {{
+                        running
+                          ? t(`解析中，剩余 ${remaining} 套`, `Parsing… ${remaining} remaining`)
+                          : stats.failed && !stats.pending
+                            ? t(`重试 ${remaining} 套`, `Retry ${remaining} outfits`)
+                            : t(`解析 ${remaining} 套`, `Parse ${remaining} outfits`)
+                      }}
+                    </button>
+                  </div>
+                  <template v-if="!reading && outfits.length">
+                    <div class="coverage-track" aria-hidden="true">
+                      <span
+                        v-for="status in coverage"
+                        :key="status.key"
+                        :class="`coverage-${status.key}`"
+                        :style="{ flexGrow: status.count }"
+                      />
+                    </div>
+                    <ul class="coverage-key" aria-live="polite">
+                      <li v-for="status in coverage" :key="status.key">
+                        <i :class="`coverage-${status.key}`" aria-hidden="true" />
+                        {{ status.label }} <strong>{{ status.count }}</strong>
+                      </li>
+                    </ul>
+                  </template>
+                </section>
+                <p v-if="!outfits.length" class="summary-card empty">
+                  {{
+                    t(
+                      '添加第一套搭配后，这里就会出现你的总结。',
+                      'Save an outfit to start your summary.'
+                    )
+                  }}
+                </p>
+                <div v-else class="summary-overview-grid">
+                  <section class="summary-card" aria-labelledby="summary-trend-title">
+                    <div class="summary-card-heading">
+                      <h3 id="summary-trend-title">{{ t('收藏趋势', 'Save history') }}</h3>
+                      <small v-if="periods.length">{{ t('套', 'Outfits') }}</small>
+                    </div>
+                    <template v-if="periods.length">
+                      <div class="summary-chart-slot">
+                        <TrendChart
+                          :periods="periods"
+                          :labels="periodLabels"
+                          :descriptions="periodDescriptions"
+                          :selected="selectedPeriod"
+                          @select="selectedPeriod = $event"
+                        />
+                      </div>
+                      <div class="summary-trend-detail">
+                        <small>{{
+                          t(`${outfits.length} 套收藏`, `${outfits.length} saved outfits`)
+                        }}</small>
+                        <small class="summary-period-readout" aria-live="polite">
+                          {{ selectedPeriodDescription }}
+                        </small>
+                      </div>
+                    </template>
+                  </section>
+                  <section class="summary-card" aria-labelledby="summary-tags-title">
+                    <div class="summary-card-heading">
+                      <h3 id="summary-tags-title">{{ t('标签分布', 'Tag distribution') }}</h3>
+                      <button
+                        type="button"
+                        class="confirm-dialog-button ghost"
+                        @click="showTab('tags')"
+                      >
+                        {{ t('查看全部', 'View all') }}
+                      </button>
+                    </div>
+                    <button
+                      v-for="row in overviewTags"
+                      :key="row.id"
+                      type="button"
+                      class="summary-tag-row"
+                      @click="emit('tag', row.id)"
+                    >
+                      <span>{{ row.name }}</span>
+                      <span class="track" aria-hidden="true"
+                        ><i :style="{ width: (100 * row.count) / outfits.length + '%' }"
+                      /></span>
+                      <span class="summary-row-count"
+                        >{{ t(`${row.count} 套`, `${row.count} outfits`) }} ·
+                        {{ share(row.count, outfits.length) }}</span
+                      >
+                    </button>
+                  </section>
+                </div>
+              </template>
+              <section v-else class="summary-card ranking-panel" :aria-label="tabs[tab]">
+                <div class="summary-card-heading">
+                  <div>
+                    <h3>{{ tabs[tab] }}</h3>
+                    <small v-if="tab === 'tags'">{{
+                      t(`按 ${rankingTotal} 套收藏统计`, `Based on ${rankingTotal} saved outfits`)
+                    }}</small>
+                    <small v-else-if="reading">{{
+                      t('正在读取解析记录…', 'Reading saved results…')
+                    }}</small>
+                  </div>
+                  <DialogChoiceMenu
+                    v-if="tab !== 'tags' && types.length"
+                    v-model="part"
+                    class="part-menu"
+                    :label="t('筛选部位', 'Filter by type')"
+                    :options="[
+                      { value: null, label: t('全部部位', 'All types') },
+                      ...types.map(([value, label]) => ({ value, label }))
+                    ]"
+                  />
+                </div>
+                <div class="ranking-list" :class="{ 'ranking-list-empty': !rows.length }">
                   <button
                     type="button"
                     v-for="row in ranked"
@@ -354,11 +465,14 @@ const ranked = computed(() => {
                     <span class="measure">
                       {{ row.name }}
                       <small>{{ row.label }}</small>
-                      <span class="track">
-                        <i :style="{ width: (100 * row.count) / rows[0].count + '%' }" />
+                      <span class="track" aria-hidden="true">
+                        <i :style="{ width: (100 * row.count) / rankingTotal + '%' }" />
                       </span>
                     </span>
-                    <span>{{ row.count }} {{ t('套', 'outfits') }}</span>
+                    <span class="summary-row-count">
+                      {{ t(`${row.count} 套`, `${row.count} outfits`) }} ·
+                      {{ share(row.count, rankingTotal) }}
+                    </span>
                     <ChevronRight :size="14" aria-hidden="true" />
                   </button>
                   <p v-if="!rows.length" class="empty">
@@ -368,9 +482,9 @@ const ranked = computed(() => {
                             '添加第一套搭配后，这里就会出现你的总结。',
                             'Save an outfit to start your summary.'
                           )
-                        : tab === 'tags'
-                          ? t('还没有使用标签的搭配。', 'No outfits have tags yet.')
-                          : !parsed
+                        : reading
+                          ? t('正在读取解析记录…', 'Reading saved results…')
+                          : !stats.parsed
                             ? t(
                                 '解析搭配码后，这里会显示使用排行。',
                                 'Parse outfit codes to see your ranking.'
@@ -379,7 +493,16 @@ const ranked = computed(() => {
                     }}
                   </p>
                   <button
+                    v-if="!reading && !rows.length && tab !== 'tags' && remaining"
+                    type="button"
+                    class="confirm-dialog-button ghost more"
+                    @click="showTab('overview')"
+                  >
+                    {{ t('查看解析覆盖', 'View parsing coverage') }}
+                  </button>
+                  <button
                     v-if="rows.length > 5"
+                    type="button"
                     class="more confirm-dialog-button ghost"
                     @click="expanded = !expanded"
                   >
@@ -392,18 +515,8 @@ const ranked = computed(() => {
                 </div>
               </section>
             </main>
-            <footer class="outfit-parse-footer">
-              {{
-                tab === 'tags'
-                  ? t(
-                      '另有 ' + library.untagged + ' 套未分类。',
-                      library.untagged + ' uncategorized outfits.'
-                    )
-                  : t(
-                      '按已解析的 ' + parsed + ' 套统计，同一单品每套只计一次。',
-                      'Based on ' + parsed + ' parsed outfits. Each item counts once per outfit.'
-                    )
-              }}
+            <footer v-if="tab === 'clothes' || tab === 'makeup'" class="outfit-parse-footer">
+              {{ t('同一单品每套只计一次。', 'Each item counts once per outfit.') }}
             </footer>
           </section>
         </div>
@@ -445,39 +558,153 @@ const ranked = computed(() => {
 }
 .summary-dialog .summary-content {
   flex: 1 1 auto;
-  gap: 16px;
-  overflow-y: auto;
-}
-.ranking-panel {
   display: flex;
-  flex: 1 0 auto;
   flex-direction: column;
   gap: 12px;
-  height: 0;
-  min-height: 150px;
-  --ranking-inset: clamp(10px, 2vw, 18px);
-  padding: var(--ranking-inset) 0 0 var(--ranking-inset);
-  background: var(--surface-soft);
-  border-radius: 14px;
-  overflow: hidden;
-}
-.ranking-list {
-  padding-right: var(--ranking-inset);
-  flex: 1 1 0;
-  min-height: min(56px, 35%);
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
 }
-.summary-heading {
+.summary-card {
+  min-width: 0;
+  padding: clamp(12px, 2vw, 18px);
+  background: var(--surface-soft);
+  border-radius: 14px;
+}
+.summary-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.summary-card h3 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 0.95rem;
+}
+.summary-card-heading {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 18px;
+  gap: 6px 12px;
+}
+.summary-card-heading > div:first-child {
   min-width: 0;
 }
-.summary-heading .parse-action {
+.coverage-panel .parse-action {
   flex: 0 0 auto;
+  max-width: 100%;
+}
+.coverage-track {
+  display: flex;
+  gap: 2px;
+  height: 9px;
+  margin-block: 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--line);
+}
+.coverage-track span {
+  flex-basis: 0;
+}
+.coverage-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+}
+.coverage-key li {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.coverage-key i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.coverage-parsed {
+  background: var(--pink-deep);
+}
+.coverage-pending {
+  background: var(--primary-bg);
+}
+.coverage-failed {
+  background: var(--notice-error);
+}
+.coverage-invalid {
+  background: var(--notice-warning);
+}
+.coverage-missing {
+  background: var(--line);
+}
+.summary-chart-slot {
+  position: relative;
+  min-height: 152px;
+  margin-block-start: 6px;
+}
+.summary-trend-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  min-height: 36px;
+}
+.summary-period-readout {
+  flex: 1 0 auto;
+  max-width: 100%;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.summary-tag-row {
+  display: grid;
+  grid-template-columns: minmax(0, 24%) minmax(0, 1fr) minmax(0, 23%);
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 5px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.summary-row-count {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.summary-tag-row .track {
+  margin: 0;
+}
+.summary-tag-row .summary-row-count {
+  text-align: end;
+  white-space: normal;
+}
+.summary-tag-row:hover {
+  background: var(--interactive-hover-bg);
+}
+@media (min-width: 641px) {
+  .summary-overview-grid {
+    flex: 1 1 auto;
+  }
+  .summary-overview-grid > .summary-card {
+    display: flex;
+    flex-direction: column;
+  }
+  .summary-chart-slot,
+  .summary-tag-row {
+    flex: 1 0 auto;
+  }
+  .summary-tag-row {
+    max-block-size: 64px;
+  }
 }
 .summary-dialog .outfit-parse-panel > header {
   padding-block: 16px;
@@ -505,13 +732,12 @@ const ranked = computed(() => {
 small,
 footer,
 .empty {
-  color: var(--muted);
+  color: var(--text);
 }
 
 .summary-toolbar {
-  --summary-part-width: 112px;
-  flex-wrap: nowrap;
-  gap: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   min-width: 0;
 }
 .summary-toolbar .ranking-tabs {
@@ -525,70 +751,20 @@ footer,
   min-width: 0;
   justify-content: center;
   white-space: nowrap;
-  transition:
-    padding-inline 220ms ease,
-    font-size 220ms ease,
-    background-color var(--motion-fast) ease,
-    color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease;
 }
-.summary-part-slot {
-  position: relative;
-  flex: none;
-  width: 0;
-  margin-inline-start: 0;
-  transition:
-    width 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    margin-inline-start 220ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.has-part-menu .summary-part-slot {
-  width: var(--summary-part-width);
-  margin-inline-start: 8px;
-}
-.summary-part-enter-active {
-  transition:
-    opacity 180ms ease 40ms,
-    transform 180ms ease 40ms;
-}
-.summary-part-leave-active {
-  position: absolute;
-  top: 0;
-  inset-inline-start: 0;
-  transition:
-    opacity 120ms ease,
-    transform 120ms ease;
-  pointer-events: none;
-}
-.summary-part-enter-from,
-.summary-part-leave-to {
-  opacity: 0;
-  transform: translateX(4px);
-}
-@media (prefers-reduced-motion: reduce) {
-  .summary-part-slot,
-  .ranking-tabs .resonance-choice,
-  .summary-part-enter-active,
-  .summary-part-leave-active {
-    transition: none;
-  }
-}
-.coverage span {
-  display: inline-block;
-}
-.part-menu {
-  width: var(--summary-part-width);
-  min-width: 0;
+.ranking-tabs .resonance-choice[aria-pressed='true'] {
+  color: var(--menu-hover-text);
 }
 .part-menu :deep(.cleanup-account-select) {
-  width: 100%;
+  min-width: 108px;
 }
 .part-menu :deep(.cleanup-account-menu) {
-  max-height: 400px;
+  max-height: 260px;
 }
 .summary-row {
   width: 100%;
-  column-gap: clamp(14px, 2vw, 22px);
-  padding: 12px clamp(8px, 1.5vw, 16px);
+  column-gap: clamp(6px, 1.6vw, 16px);
+  padding: 10px 0;
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
@@ -608,8 +784,8 @@ button.summary-row:hover {
   display: grid;
   flex: none;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: clamp(32px, 6vw, 48px);
+  height: clamp(32px, 6vw, 48px);
   overflow: hidden;
   border-radius: 6px;
   background: var(--frame-bg);
@@ -631,6 +807,15 @@ button.summary-row:hover {
   margin-top: 6px;
   border-radius: 4px;
 }
+.summary-row .track {
+  max-inline-size: 700px;
+}
+.summary-row .summary-row-count {
+  flex: 0 0 11%;
+  min-inline-size: 0;
+  text-align: end;
+  white-space: normal;
+}
 .track i {
   display: block;
   height: 100%;
@@ -644,34 +829,19 @@ button.summary-row:hover {
 .ranking-list-empty {
   display: grid;
   place-items: center;
-  scrollbar-gutter: auto;
 }
 .empty {
-  margin: 0;
+  margin: 12px 0;
   text-align: center;
 }
 @media (max-width: 899px) {
-  .summary-toolbar {
-    --summary-part-width: clamp(88px, 24vw, 112px);
-  }
   .ranking-tabs .resonance-choice {
     padding-inline: 4px;
-    font-size: clamp(10px, 3vw, 13px);
+    font-size: clamp(11px, 3vw, 13px);
   }
-  .has-part-menu .ranking-tabs .resonance-choice {
-    padding-inline: 1px;
-    font-size: clamp(10px, 2.8vw, 12px);
-  }
-  .part-menu :deep(.cleanup-account-select) {
-    padding-inline: 8px;
-    gap: 4px;
-    font-size: clamp(10px, 2.8vw, 12px);
-  }
-  .ranking-tabs button {
-    flex: 1;
-    min-height: var(--mobile-control-size);
-  }
-  .part-menu :deep(.cleanup-account-select) {
+  .ranking-tabs button,
+  .part-menu :deep(.cleanup-account-select),
+  .summary-tag-row {
     min-height: var(--mobile-control-size);
   }
 }
@@ -681,10 +851,11 @@ button.summary-row:hover {
     max-height: calc(100dvh - 24px);
     border-radius: 20px;
   }
-}
-@media (min-width: 641px) and (max-width: 899px) {
-  .ranking-tabs button {
-    justify-content: center;
+  .summary-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .summary-toolbar .ranking-tabs {
+    flex-basis: 100%;
   }
 }
 </style>

@@ -11,6 +11,7 @@ import {
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
+  ArrowDown,
   CircleUserRound,
   BookHeart,
   Download,
@@ -59,7 +60,6 @@ import brandIcon from '../../img/brand-mark.png'
 type OpenMenu = 'album' | 'view' | 'tools' | 'more' | 'backup' | null
 
 const props = defineProps<{
-  viewMessages?: LocaleMessages['viewNav']
   directorySupported?: boolean
   albumReadOnly?: boolean
   readOnlyHint?: string
@@ -86,7 +86,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  changeView: [view: AlbumView]
   chooseDirectory: []
   chooseCompatible: []
   clearDirectory: []
@@ -149,7 +148,6 @@ watch(
 defineExpose({ closeMenus })
 const desktopInstallDialog = ref<InstanceType<typeof DesktopInstallDialog> | null>(null)
 function openDesktopInstall() {
-  closeMenus()
   void desktopInstallDialog.value?.open()
 }
 const showDonate = ref(false)
@@ -160,8 +158,46 @@ useBodyScrollLock(
 const feedbackLoadFailed = ref(false)
 const headerRef = ref<HTMLElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
+const scrollableMenuContent = ref<HTMLElement | null>(null)
+const menuScrollButton = ref<HTMLButtonElement | null>(null)
+const canScrollMenuDown = ref(false)
 const menuTrigger = ref<HTMLElement | null>(null)
 useModalFocus(menuMotion.present, dropdownRef, closeMenus, menuTrigger)
+
+function updateMenuScroll() {
+  const content = scrollableMenuContent.value
+  const maxScroll = content ? content.scrollHeight - content.clientHeight : 0
+  const canScroll =
+    compact.value && content !== null && maxScroll > 1 && maxScroll - content.scrollTop > 1
+  const button = menuScrollButton.value
+  if (!canScroll && button && button === document.activeElement)
+    button.parentElement
+      ?.querySelector<HTMLButtonElement>('button:not(.menu-scroll-bottom)')
+      ?.focus({ preventScroll: true })
+  canScrollMenuDown.value = canScroll
+}
+
+watch(
+  scrollableMenuContent,
+  (content, _, onCleanup) => {
+    updateMenuScroll()
+    if (!content || !compact.value || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(updateMenuScroll)
+    observer.observe(content)
+    for (const group of content.children) observer.observe(group)
+    onCleanup(() => observer.disconnect())
+  },
+  { flush: 'post' }
+)
+
+function scrollMenuToBottom() {
+  const content = scrollableMenuContent.value
+  if (!content) return
+  content.scrollTo({
+    top: content.scrollHeight,
+    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+  })
+}
 const menuPosition = ref({ top: 0, left: 0 })
 const isBusy = computed(() => props.isLoading || props.isDeleting)
 let menuCloseTimer: ReturnType<typeof setTimeout> | null = null
@@ -203,12 +239,14 @@ async function toggleMenu(menu: Exclude<OpenMenu, null>, event: MouseEvent, from
   await nextTick()
   await alignOpenMenu()
   // 手机菜单获取焦点时保持背景滚动位置，避免浏览器自动将窗口滚入视野。
-  if (compact.value) dropdownRef.value?.focus({ preventScroll: true })
+  if (compact.value || (menu === 'more' && !fromHover && event.detail === 0))
+    dropdownRef.value?.focus({ preventScroll: true })
 }
 
 /** 让菜单优先在触发项下方居中，并在临近屏幕边缘时保持完整可见。参数：无。 */
 async function alignOpenMenu() {
   updateMobileSearchPosition()
+  if (compact.value && typeof ResizeObserver === 'undefined') updateMenuScroll()
   const dropdown = dropdownRef.value
   const trigger = menuTrigger.value
   if (!dropdown || !trigger || compact.value) return
@@ -346,7 +384,15 @@ function handleDocumentInteraction(event: MouseEvent | KeyboardEvent) {
     }
     if (showDonate.value) showDonate.value = false
     else if (showFeedback.value) showFeedback.value = false
-    else closeMenus()
+    else {
+      if (
+        !compact.value &&
+        openMenu.value === 'more' &&
+        dropdownRef.value?.contains(document.activeElement)
+      )
+        menuTrigger.value?.focus({ preventScroll: true })
+      closeMenus()
+    }
     return
   }
   const target = event.target as Node
@@ -388,9 +434,7 @@ onBeforeUnmount(() => {
   window.visualViewport?.removeEventListener('scroll', updateMobileSearchPosition)
   headerResizeObserver?.disconnect()
 })
-/** 关闭菜单后显示支持作者窗口，避免两层菜单同时打开。 */
 function openDonate() {
-  closeMenus()
   showDonate.value = true
 }
 </script>
@@ -451,6 +495,7 @@ function openDonate() {
       <button
         type="button"
         :aria-label="messages.moreMenuAria"
+        aria-haspopup="dialog"
         :aria-expanded="openMenu === 'more'"
         @click.stop="toggleMenu('more', $event)"
         @pointerenter="enterMenu('more', $event)"
@@ -654,7 +699,7 @@ function openDonate() {
               @pointerenter="cancelMenuClose"
               @pointerleave="leaveMenu"
               tabindex="-1"
-              :aria-label="messages.more"
+              :aria-label="messages.view"
               class="header-dropdown view-dropdown"
               :class="{ 'mobile-menu-sheet': compact }"
               :style="menuStyle"
@@ -668,197 +713,213 @@ function openDonate() {
                   @click="closeMenus"
                   ><X :size="20" /></button
               ></header>
-              <div class="view-toggle-row">
-                <div
-                  v-segmented-indicator
-                  class="view-toggle-pill"
-                  role="group"
-                  :aria-label="messages.themeToggleAria"
-                >
-                  <button
-                    type="button"
-                    class="view-toggle-option"
-                    :class="{ active: themeMode === 'light' }"
-                    :aria-pressed="themeMode === 'light'"
-                    :title="messages.themeLight"
-                    :aria-label="messages.themeLight"
-                    @click="selectTheme('light')"
-                  >
-                    <Sun :size="15" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    class="view-toggle-option"
-                    :class="{ active: themeMode === 'dark' }"
-                    :aria-pressed="themeMode === 'dark'"
-                    :title="messages.themeDark"
-                    :aria-label="messages.themeDark"
-                    @click="selectTheme('dark')"
-                  >
-                    <Moon :size="15" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    class="view-toggle-option"
-                    :class="{ active: themeMode === 'system' }"
-                    :aria-pressed="themeMode === 'system'"
-                    :title="messages.themeSystem"
-                    :aria-label="messages.themeSystem"
-                    @click="selectTheme('system')"
-                  >
-                    <Monitor :size="15" aria-hidden="true" />
-                  </button>
-                </div>
-                <div
-                  v-segmented-indicator
-                  class="view-toggle-pill"
-                  role="group"
-                  :aria-label="messages.languageToggleAria"
-                >
-                  <button
-                    type="button"
-                    class="view-toggle-option"
-                    :class="{ active: language === 'zh' }"
-                    :aria-pressed="language === 'zh'"
-                    @click="selectLanguage('zh')"
-                  >
-                    <span>{{ messages.languageZh }}</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="view-toggle-option"
-                    :class="{ active: language === 'en' }"
-                    :aria-pressed="language === 'en'"
-                    @click="selectLanguage('en')"
-                  >
-                    <span>{{ messages.languageEn }}</span>
-                  </button>
-                </div>
-              </div>
-              <div class="menu-section-label">{{
-                language === 'zh' ? '风格' : 'Material style'
-              }}</div>
               <div
-                class="thumbnail-size-options surface-style-options"
-                role="group"
-                :aria-label="language === 'zh' ? '风格' : 'Material style'"
+                ref="scrollableMenuContent"
+                class="view-menu-content"
+                @scroll.passive="updateMenuScroll"
               >
-                <button
-                  v-for="style in SURFACE_STYLES"
-                  :key="style"
-                  type="button"
-                  class="menu-radio"
-                  role="menuitemradio"
-                  :aria-checked="(surfaceStyle ?? 'frosted') === style"
-                  :class="{ active: (surfaceStyle ?? 'frosted') === style }"
-                  @click="runMenuAction(() => emit('changeSurfaceStyle', style))"
-                >
-                  <span class="radio-mark"></span>
-                  <span>{{
-                    language === 'zh'
-                      ? { opaque: '实色', frosted: '磨砂', glass: '液态玻璃' }[style]
-                      : { opaque: 'Opaque', frosted: 'Frosted', glass: 'Liquid glass' }[style]
-                  }}</span>
-                </button>
-              </div>
-              <template v-if="compact">
+                <div class="view-toggle-row">
+                  <div
+                    v-segmented-indicator
+                    class="view-toggle-pill"
+                    role="group"
+                    :aria-label="messages.themeToggleAria"
+                  >
+                    <button
+                      type="button"
+                      class="view-toggle-option"
+                      :class="{ active: themeMode === 'light' }"
+                      :aria-pressed="themeMode === 'light'"
+                      :title="messages.themeLight"
+                      :aria-label="messages.themeLight"
+                      @click="selectTheme('light')"
+                    >
+                      <Sun :size="15" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      class="view-toggle-option"
+                      :class="{ active: themeMode === 'dark' }"
+                      :aria-pressed="themeMode === 'dark'"
+                      :title="messages.themeDark"
+                      :aria-label="messages.themeDark"
+                      @click="selectTheme('dark')"
+                    >
+                      <Moon :size="15" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      class="view-toggle-option"
+                      :class="{ active: themeMode === 'system' }"
+                      :aria-pressed="themeMode === 'system'"
+                      :title="messages.themeSystem"
+                      :aria-label="messages.themeSystem"
+                      @click="selectTheme('system')"
+                    >
+                      <Monitor :size="15" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div
+                    v-segmented-indicator
+                    class="view-toggle-pill"
+                    role="group"
+                    :aria-label="messages.languageToggleAria"
+                  >
+                    <button
+                      type="button"
+                      class="view-toggle-option"
+                      :class="{ active: language === 'zh' }"
+                      :aria-pressed="language === 'zh'"
+                      @click="selectLanguage('zh')"
+                    >
+                      <span>{{ messages.languageZh }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="view-toggle-option"
+                      :class="{ active: language === 'en' }"
+                      :aria-pressed="language === 'en'"
+                      @click="selectLanguage('en')"
+                    >
+                      <span>{{ messages.languageEn }}</span>
+                    </button>
+                  </div>
+                </div>
                 <div class="menu-section-label">{{
-                  language === 'zh' ? '导航栏样式' : 'Navigation style'
+                  language === 'zh' ? '风格' : 'Material style'
                 }}</div>
                 <div
-                  class="thumbnail-options mobile-nav-style-options"
+                  class="thumbnail-size-options surface-style-options"
                   role="group"
-                  :aria-label="language === 'zh' ? '导航栏样式' : 'Navigation style'"
+                  :aria-label="language === 'zh' ? '风格' : 'Material style'"
                 >
                   <button
-                    v-for="style in MOBILE_NAV_STYLES"
+                    v-for="style in SURFACE_STYLES"
                     :key="style"
                     type="button"
                     class="menu-radio"
                     role="menuitemradio"
-                    :aria-checked="(mobileNavStyle ?? 'docked') === style"
-                    :class="{ active: (mobileNavStyle ?? 'docked') === style }"
-                    @click="runMenuAction(() => emit('changeMobileNavStyle', style))"
+                    :aria-checked="(surfaceStyle ?? 'frosted') === style"
+                    :class="{ active: (surfaceStyle ?? 'frosted') === style }"
+                    @click="runMenuAction(() => emit('changeSurfaceStyle', style))"
                   >
                     <span class="radio-mark"></span>
                     <span>{{
                       language === 'zh'
-                        ? { docked: '贴底', capsule: '悬浮胶囊' }[style]
-                        : { docked: 'Docked', capsule: 'Floating capsule' }[style]
+                        ? { opaque: '实色', frosted: '磨砂', glass: '液态玻璃' }[style]
+                        : { opaque: 'Opaque', frosted: 'Frosted', glass: 'Liquid glass' }[style]
                     }}</span>
                   </button>
                 </div>
-              </template>
-              <template
-                v-if="isArchiveView && activeView !== 'makeup' && activeView !== 'animations'"
-              >
-                <div class="menu-section-label">{{
-                  language === 'zh' ? '背景图风格' : 'Background style'
-                }}</div>
-                <div class="archive-background-options">
-                  <button
-                    v-for="background in archiveBackgrounds"
-                    :key="background.id"
-                    type="button"
-                    class="archive-background-option"
-                    :class="{ active: selectedBackground === background.id }"
-                    role="menuitemradio"
-                    :aria-checked="selectedBackground === background.id"
-                    @click="selectBackground(background.id)"
+                <template v-if="compact">
+                  <div class="menu-section-label">{{
+                    language === 'zh' ? '导航栏样式' : 'Navigation style'
+                  }}</div>
+                  <div
+                    class="thumbnail-options mobile-nav-style-options"
+                    role="group"
+                    :aria-label="language === 'zh' ? '导航栏样式' : 'Navigation style'"
                   >
-                    <span
-                      class="archive-background-preview"
-                      :style="{ '--archive-preview-source': `url('${background.url}')` }"
-                    >
-                      <span
-                        v-if="selectedBackground === background.id"
-                        class="archive-background-check"
-                        aria-hidden="true"
-                        >✓</span
-                      >
-                    </span>
-                    <span>{{ language === 'zh' ? background.label : background.en }}</span>
-                  </button>
-                </div>
-              </template>
-              <template v-else-if="!isArchiveView">
-                <div class="menu-section-label">{{ messages.thumbnailSize }}</div>
-                <div class="thumbnail-size-options">
-                  <button
-                    v-for="size in THUMBNAIL_SIZES"
-                    :key="size"
-                    class="menu-radio"
-                    :class="{ active: size === (thumbnailSize ?? 'medium') }"
-                    type="button"
-                    role="menuitemradio"
-                    :disabled="thumbnailSizeDisabled"
-                    :aria-checked="size === (thumbnailSize ?? 'medium')"
-                    @click="runMenuAction(() => emit('changeThumbnailSize', size))"
-                  >
-                    <span class="radio-mark"></span>
-                    <span>{{ messages.thumbnailSizes[size] }}</span>
-                  </button>
-                </div>
-                <template v-if="!thumbnailModeDisabled">
-                  <div class="menu-section-label">{{ messages.thumbnailRatio }}</div>
-                  <div class="thumbnail-options">
                     <button
-                      v-for="option in thumbnailModeOptions"
-                      :key="option.value"
-                      class="menu-radio"
-                      :class="{ active: option.value === thumbnailMode }"
+                      v-for="style in MOBILE_NAV_STYLES"
+                      :key="style"
                       type="button"
+                      class="menu-radio"
                       role="menuitemradio"
-                      :disabled="thumbnailModeDisabled"
-                      :aria-checked="option.value === thumbnailMode"
-                      @click="runMenuAction(() => emit('changeThumbnailMode', option.value))"
+                      :aria-checked="(mobileNavStyle ?? 'docked') === style"
+                      :class="{ active: (mobileNavStyle ?? 'docked') === style }"
+                      @click="runMenuAction(() => emit('changeMobileNavStyle', style))"
                     >
                       <span class="radio-mark"></span>
-                      <span>{{ option.label }}</span>
+                      <span>{{
+                        language === 'zh'
+                          ? { docked: '贴底', capsule: '悬浮胶囊' }[style]
+                          : { docked: 'Docked', capsule: 'Floating capsule' }[style]
+                      }}</span>
                     </button>
                   </div>
                 </template>
-              </template>
+                <template
+                  v-if="isArchiveView && activeView !== 'makeup' && activeView !== 'animations'"
+                >
+                  <div class="menu-section-label">{{
+                    language === 'zh' ? '背景图风格' : 'Background style'
+                  }}</div>
+                  <div class="archive-background-options">
+                    <button
+                      v-for="background in archiveBackgrounds"
+                      :key="background.id"
+                      type="button"
+                      class="archive-background-option"
+                      :class="{ active: selectedBackground === background.id }"
+                      role="menuitemradio"
+                      :aria-checked="selectedBackground === background.id"
+                      @click="selectBackground(background.id)"
+                    >
+                      <span
+                        class="archive-background-preview"
+                        :style="{ '--archive-preview-source': `url('${background.url}')` }"
+                      >
+                        <span
+                          v-if="selectedBackground === background.id"
+                          class="archive-background-check"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                      </span>
+                      <span>{{ language === 'zh' ? background.label : background.en }}</span>
+                    </button>
+                  </div>
+                </template>
+                <template v-else-if="!isArchiveView">
+                  <div class="menu-section-label">{{ messages.thumbnailSize }}</div>
+                  <div class="thumbnail-size-options">
+                    <button
+                      v-for="size in THUMBNAIL_SIZES"
+                      :key="size"
+                      class="menu-radio"
+                      :class="{ active: size === (thumbnailSize ?? 'medium') }"
+                      type="button"
+                      role="menuitemradio"
+                      :disabled="thumbnailSizeDisabled"
+                      :aria-checked="size === (thumbnailSize ?? 'medium')"
+                      @click="runMenuAction(() => emit('changeThumbnailSize', size))"
+                    >
+                      <span class="radio-mark"></span>
+                      <span>{{ messages.thumbnailSizes[size] }}</span>
+                    </button>
+                  </div>
+                  <template v-if="!thumbnailModeDisabled">
+                    <div class="menu-section-label">{{ messages.thumbnailRatio }}</div>
+                    <div class="thumbnail-options">
+                      <button
+                        v-for="option in thumbnailModeOptions"
+                        :key="option.value"
+                        class="menu-radio"
+                        :class="{ active: option.value === thumbnailMode }"
+                        type="button"
+                        role="menuitemradio"
+                        :disabled="thumbnailModeDisabled"
+                        :aria-checked="option.value === thumbnailMode"
+                        @click="runMenuAction(() => emit('changeThumbnailMode', option.value))"
+                      >
+                        <span class="radio-mark"></span>
+                        <span>{{ option.label }}</span>
+                      </button>
+                    </div>
+                  </template>
+                </template>
+              </div>
+              <button
+                v-if="compact && canScrollMenuDown"
+                ref="menuScrollButton"
+                class="menu-scroll-bottom"
+                type="button"
+                :aria-label="language === 'zh' ? '滚动到底部' : 'Scroll to bottom'"
+                @click="scrollMenuToBottom"
+              >
+                <ArrowDown :size="18" aria-hidden="true" />
+              </button>
             </div>
           </Transition>
         </Teleport>
@@ -975,7 +1036,7 @@ function openDonate() {
           type="button"
           :title="messages.more"
           :aria-label="messages.moreMenuAria"
-          aria-haspopup="menu"
+          aria-haspopup="dialog"
           :aria-expanded="openMenu === 'more'"
           @click.stop="toggleMenu('more', $event)"
           @pointerenter="enterMenu('more', $event)"
@@ -1007,7 +1068,8 @@ function openDonate() {
               class="header-dropdown header-dropdown-right more-menu-panel"
               :class="{ 'mobile-menu-sheet': compact }"
               :style="menuStyle"
-              role="menu"
+              role="dialog"
+              :aria-modal="compact || undefined"
             >
               <header v-if="compact" class="mobile-menu-heading"
                 ><h2>{{ messages.more }}</h2
@@ -1017,191 +1079,170 @@ function openDonate() {
                   @click="closeMenus"
                   ><X :size="20" /></button
               ></header>
-              <div class="more-menu-content">
-                <template v-if="compact">
-                  <template v-if="directorySupported !== false">
+              <div
+                ref="scrollableMenuContent"
+                class="more-menu-content"
+                @scroll.passive="updateMenuScroll"
+              >
+                <section class="more-menu-group" aria-labelledby="more-backup-heading">
+                  <h3 id="more-backup-heading">{{ messages.dataBackup }}</h3>
+                  <div class="more-backup-actions">
                     <button
                       type="button"
-                      role="menuitem"
-                      :disabled="isBusy"
-                      @click="runMenuAction(() => emit('changeView', 'all'))"
-                      >{{ viewMessages?.allPhotos }}</button
+                      :disabled="isBusy || backupDisabled || !hasBackupData"
+                      @click="runMenuAction(() => emit('exportAllData'))"
+                      ><Upload :size="16" aria-hidden="true" /><span>{{
+                        messages.exportAllData
+                      }}</span></button
                     >
                     <button
                       type="button"
-                      role="menuitem"
-                      :disabled="isBusy"
-                      @click="runMenuAction(() => emit('changeView', 'trash'))"
-                      >{{ viewMessages?.recentlyDeleted }}</button
+                      :disabled="isBusy || backupDisabled"
+                      @click="runMenuAction(() => emit('importAllData'))"
+                      ><Download :size="16" aria-hidden="true" /><span>{{
+                        messages.importAllData
+                      }}</span></button
                     >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      :disabled="isBusy"
-                      @click="runMenuAction(() => emit('chooseDirectory'))"
-                      ><FolderOpen :size="18" />{{ messages.chooseDirectory }}</button
-                    >
-                  </template>
-                  <p v-else class="mobile-capability-note">{{
-                    language === 'zh'
-                      ? '相册需在支持目录授权的电脑浏览器使用；手机可使用搭配、家园、相机参数和共鸣，并导入电脑备份。'
-                      : 'Album access requires a supported desktop browser. Use outfits, home schemes, camera parameters and resonance here, or import a desktop backup.'
-                  }}</p>
+                  </div>
+                  <button
+                    class="more-data-reminder"
+                    type="button"
+                    @click="runMenuAction(() => emit('openDataReminder'))"
+                    ><BookOpen :size="16" aria-hidden="true" /><span>{{
+                      messages.dataStorageReminder
+                    }}</span></button
+                  >
+                </section>
+                <section class="more-menu-group" aria-labelledby="more-maintenance-heading">
+                  <h3 id="more-maintenance-heading">{{ messages.appMaintenance }}</h3>
+                  <button
+                    v-if="!desktopInstallDialog?.installed"
+                    type="button"
+                    @click="runMenuAction(openDesktopInstall)"
+                  >
+                    <Smartphone :size="16" aria-hidden="true" />
+                    <span>{{ language === 'zh' ? '安装应用' : 'Install app' }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="isBusy"
+                    @click="runMenuAction(() => emit('clearCache'))"
+                  >
+                    <RotateCcw :size="16" aria-hidden="true" />
+                    <span>{{ messages.clearCache }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="more-danger-action"
+                    :disabled="isBusy"
+                    @click="runMenuAction(() => emit('clearData'))"
+                  >
+                    <Trash2 :size="16" aria-hidden="true" />
+                    <span>{{ messages.clearData }}</span>
+                  </button>
+                </section>
+                <section class="more-menu-group" aria-labelledby="more-about-heading">
+                  <h3 id="more-about-heading">{{ messages.aboutToolkit }}</h3>
                   <a
-                    class="mobile-official-link"
+                    v-if="compact"
                     href="https://nikki3.pages.dev/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    ><Globe :size="18" />{{ messages.officialSite }}</a
-                  >
-                  <div class="menu-separator"></div>
-                </template>
-                <button
-                  type="button"
-                  role="menuitem"
-                  :disabled="isBusy || backupDisabled || !hasBackupData"
-                  @click="runMenuAction(() => emit('exportAllData'))"
-                  ><Upload :size="16" /><span>{{ messages.exportAllData }}</span></button
-                >
-                <button
-                  type="button"
-                  role="menuitem"
-                  :disabled="isBusy || backupDisabled"
-                  @click="runMenuAction(() => emit('importAllData'))"
-                  ><Download :size="16" /><span>{{ messages.importAllData }}</span></button
-                >
-                <button
-                  type="button"
-                  role="menuitem"
-                  @click="runMenuAction(() => emit('openDataReminder'))"
-                >
-                  <BookOpen :size="16" /><span class="data-storage-reminder-label">{{
-                    messages.dataStorageReminder
-                  }}</span>
-                </button>
-                <div class="menu-separator"></div>
-                <button
-                  type="button"
-                  role="menuitem"
-                  :disabled="isBusy"
-                  @click="runMenuAction(() => emit('clearCache'))"
-                >
-                  <RotateCcw :size="16" />
-                  <span>{{ messages.clearCache }}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  :disabled="isBusy"
-                  @click="runMenuAction(() => emit('clearData'))"
-                >
-                  <Trash2 :size="16" />
-                  <span>{{ messages.clearData }}</span>
-                </button>
-                <div class="menu-separator"></div>
-                <button
-                  v-if="!desktopInstallDialog?.installed"
-                  type="button"
-                  role="menuitem"
-                  @click="openDesktopInstall"
-                >
-                  <Smartphone :size="16" />
-                  <span>{{ language === 'zh' ? '安装应用' : 'Install app' }}</span>
-                </button>
-                <div class="menu-separator"></div>
-                <button type="button" role="menuitem" @click="openDonate">
-                  <Heart :size="16" />
-                  <span>{{ messages.donate }}</span>
-                </button>
-                <button type="button" role="menuitem" @click="runMenuAction(openFeedback)">
-                  <Bug :size="16" />
-                  <span>{{ messages.feedback }}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  @click="runMenuAction(() => emit('openUpdateLog'))"
-                >
-                  <History :size="16" />
-                  <span>{{ messages.updateLog }}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  @click="runMenuAction(() => emit('openHelpAbout'))"
-                >
-                  <BookOpen :size="16" />
-                  <span>{{ messages.helpAbout }}</span>
-                </button>
-                <div class="menu-author">{{ messages.author }}</div>
-                <div class="author-social-links">
-                  <a
-                    class="author-social-link xiaohongshu-link"
-                    href="https://xhslink.com/m/3IEU0XhZ6e"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="menuitem"
-                    :title="messages.xiaohongshuAuthor"
-                    :aria-label="messages.xiaohongshuAuthor"
                     @click="closeMenus"
+                    ><Globe :size="16" aria-hidden="true" /><span>{{
+                      messages.officialSite
+                    }}</span></a
                   >
-                    <BookHeart :size="17" aria-hidden="true" />
-                    <span>{{ messages.xiaohongshu }}</span>
-                  </a>
-                  <a
-                    class="author-social-link douyin-link"
-                    href="https://v.douyin.com/20n3l83uJ40/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="menuitem"
-                    :title="messages.douyinAuthor"
-                    :aria-label="messages.douyinAuthor"
-                    @click="closeMenus"
-                  >
-                    <Music2 :size="17" aria-hidden="true" />
-                    <span>{{ messages.douyin }}</span>
-                  </a>
-                  <a
-                    class="author-social-link bilibili-link"
-                    href="https://space.bilibili.com/3747574722858304"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="menuitem"
-                    :title="messages.bilibiliAuthor"
-                    :aria-label="messages.bilibiliAuthor"
-                    @click="closeMenus"
-                  >
-                    <TvMinimal :size="17" aria-hidden="true" />
-                    <span>{{ messages.bilibili }}</span>
-                  </a>
-                  <a
-                    class="author-social-link repository-link"
-                    href="https://github.com/sumopenny/Infinity-Nikki-Toolkit"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="menuitem"
-                    :title="messages.githubRepo"
-                    :aria-label="messages.githubRepo"
-                    @click="closeMenus"
-                  >
-                    <Github :size="17" aria-hidden="true" />
-                    <span>{{ messages.githubText }}</span>
-                  </a>
-                  <a
-                    class="author-social-link repository-link"
-                    href="https://gitee.com/sumopenny/Infinity-Nikki-Toolkit"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="menuitem"
-                    :title="messages.giteeRepo"
-                    :aria-label="messages.giteeRepo"
-                    @click="closeMenus"
-                  >
-                    <span class="text-icon" aria-hidden="true">G</span>
-                    <span>{{ messages.giteeText }}</span>
-                  </a>
-                </div>
+                  <button type="button" @click="runMenuAction(openFeedback)">
+                    <Bug :size="16" aria-hidden="true" /><span>{{ messages.feedback }}</span>
+                  </button>
+                  <button type="button" @click="runMenuAction(openDonate)">
+                    <Heart :size="16" aria-hidden="true" />
+                    <span>{{ messages.donate }}</span>
+                  </button>
+                  <div class="menu-author">{{ messages.author }}</div>
+                  <div class="author-social-links">
+                    <a
+                      class="author-social-link xiaohongshu-link"
+                      href="https://xhslink.com/m/3IEU0XhZ6e"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="messages.xiaohongshuAuthor"
+                      :aria-label="messages.xiaohongshuAuthor"
+                      @click="closeMenus"
+                    >
+                      <BookHeart :size="17" aria-hidden="true" />
+                      <span>{{ messages.xiaohongshu }}</span>
+                    </a>
+                    <a
+                      class="author-social-link douyin-link"
+                      href="https://v.douyin.com/20n3l83uJ40/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="messages.douyinAuthor"
+                      :aria-label="messages.douyinAuthor"
+                      @click="closeMenus"
+                    >
+                      <Music2 :size="17" aria-hidden="true" />
+                      <span>{{ messages.douyin }}</span>
+                    </a>
+                    <a
+                      class="author-social-link bilibili-link"
+                      href="https://space.bilibili.com/3747574722858304"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="messages.bilibiliAuthor"
+                      :aria-label="messages.bilibiliAuthor"
+                      @click="closeMenus"
+                    >
+                      <TvMinimal :size="17" aria-hidden="true" />
+                      <span>{{ messages.bilibili }}</span>
+                    </a>
+                    <a
+                      class="author-social-link repository-link"
+                      href="https://github.com/sumopenny/Infinity-Nikki-Toolkit"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="messages.githubRepo"
+                      :aria-label="messages.githubRepo"
+                      @click="closeMenus"
+                    >
+                      <Github :size="17" aria-hidden="true" />
+                      <span>{{ messages.githubText }}</span>
+                    </a>
+                    <a
+                      class="author-social-link repository-link"
+                      href="https://gitee.com/sumopenny/Infinity-Nikki-Toolkit"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="messages.giteeRepo"
+                      :aria-label="messages.giteeRepo"
+                      @click="closeMenus"
+                    >
+                      <span class="text-icon" aria-hidden="true">G</span>
+                      <span>{{ messages.giteeText }}</span>
+                    </a>
+                  </div>
+                </section>
               </div>
+              <footer class="more-menu-footer">
+                <button type="button" @click="runMenuAction(() => emit('openHelpAbout'))">
+                  <BookOpen :size="16" aria-hidden="true" /><span>{{ messages.helpAbout }}</span>
+                </button>
+                <button type="button" @click="runMenuAction(() => emit('openUpdateLog'))">
+                  <History :size="16" aria-hidden="true" /><span>{{ messages.updateLog }}</span>
+                </button>
+                <button
+                  v-if="compact && canScrollMenuDown"
+                  ref="menuScrollButton"
+                  class="menu-scroll-bottom"
+                  type="button"
+                  :aria-label="language === 'zh' ? '滚动到底部' : 'Scroll to bottom'"
+                  @click="scrollMenuToBottom"
+                >
+                  <ArrowDown :size="18" aria-hidden="true" />
+                </button>
+              </footer>
             </div>
           </Transition>
         </Teleport>
@@ -1305,12 +1346,3 @@ function openDonate() {
     </Transition>
   </Teleport>
 </template>
-
-<style scoped>
-.data-storage-reminder-label {
-  color: #c62828;
-}
-:global(:root[data-theme='dark']) .data-storage-reminder-label {
-  color: #ff8a80;
-}
-</style>

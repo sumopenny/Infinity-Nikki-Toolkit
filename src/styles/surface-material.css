@@ -283,10 +283,18 @@
 }
 /* 材质背景由全局规则管理，独立按钮通过亮度反馈悬停，避免覆盖材质。 */
 :root[data-surface-style] :is(.lightbox-close, .lightbox-nav-button):hover {
-  filter: brightness(0.92);
+  filter: brightness(0.98);
 }
 :root[data-theme='dark'][data-surface-style] :is(.lightbox-close, .lightbox-nav-button):hover {
-  filter: brightness(1.2);
+  filter: brightness(1.4);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-surface-style] .page-back-to-top:hover {
+    filter: brightness(0.98);
+  }
+  :root[data-theme='dark'][data-surface-style] .page-back-to-top:hover {
+    filter: brightness(1.4);
+  }
 }
 
 /* 玻璃操作栏的按钮悬停沿用透光选中色，避免普通按钮的实色背景遮住材质。 */

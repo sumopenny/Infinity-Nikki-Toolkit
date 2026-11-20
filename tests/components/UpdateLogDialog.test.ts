@@ -38,6 +38,23 @@ it('focuses the panel, traps Tab, and returns the dismissal choice and opener fo
   expect(document.activeElement).toBe(opener)
 })
 
+it('keeps the two dismissal choices mutually exclusive and saves on close', async () => {
+  const wrapper = mount(UpdateLogDialog, {
+    attachTo: document.body,
+    props: { visible: true, dismissed: true, messages: updateLogZh }
+  })
+  await flushPromises()
+  const [current, forever] = document.querySelectorAll<HTMLInputElement>(
+    '.update-log-options input'
+  )
+  forever.click()
+  await flushPromises()
+  expect([current.checked, forever.checked]).toEqual([false, true])
+  expect(wrapper.emitted('close')).toBeUndefined()
+  document.querySelector<HTMLButtonElement>('.update-log-footer .primary-button')!.click()
+  expect(wrapper.emitted('close')).toEqual([['forever']])
+})
+
 it('preserves the leave event and does not take focus from the next dialog', async () => {
   const opener = document.createElement('button')
   document.body.append(opener)

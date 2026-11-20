@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import HelpAboutDialog from '../../src/components/HelpAboutDialog.vue'
 import { helpAboutZh, helpAboutEn } from '../../src/i18n/messages/helpAbout'
-const messages = { zh: { helpAbout: helpAboutZh }, en: { helpAbout: helpAboutEn } }
+import { topBarZh, topBarEn } from '../../src/i18n/messages/topBar'
 
+const messages = { zh: helpAboutZh, en: helpAboutEn }
 const wrappers: Array<ReturnType<typeof mount>> = []
+
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
   vi.restoreAllMocks()
@@ -14,83 +16,162 @@ afterEach(() => {
 function create(language: 'zh' | 'en', compact: boolean, visible = true) {
   const wrapper = mount(HelpAboutDialog, {
     attachTo: document.body,
-    props: { visible, compact, messages: messages[language].helpAbout }
+    props: { visible, compact, messages: messages[language] }
   })
   wrappers.push(wrapper)
   return wrapper
 }
 
+function helpBody() {
+  return document.querySelector<HTMLElement>('.help-about-body')!
+}
+
+function tasks() {
+  return [...helpBody().querySelectorAll<HTMLButtonElement>('button[aria-expanded]')]
+}
+
+function details(button: HTMLButtonElement) {
+  return document.getElementById(button.getAttribute('aria-controls')!)!
+}
+
+function operationHeadings() {
+  return [...helpBody().querySelectorAll('.help-about-operations h3')].map((heading) =>
+    heading.textContent?.trim()
+  )
+}
+
+function press(element: HTMLElement, key: string, shiftKey = false) {
+  const event = new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true })
+  element.dispatchEvent(event)
+  return event
+}
+
 describe('device-specific help', () => {
   it.each(['zh', 'en'] as const)(
-    'shows desktop tutorials and mouse/keyboard groups in %s',
+    'starts desktop help in %s with mouse and keyboard rows',
     (language) => {
       create(language, false)
-      const content = messages[language].helpAbout.desktop
-      expect(
-        [...document.querySelectorAll('.help-about-feature h4')].map((node) => node.textContent)
-      ).toEqual(content.features.map((feature) => feature.title))
-      expect(
-        [...document.querySelectorAll('.help-about-tutorial-grid h4')].map(
-          (node) => node.textContent
-        )
-      ).toEqual(content.tutorialSections.map((section) => section.title))
-      expect(
-        [...document.querySelectorAll('.help-about-shortcuts h3')].map((node) => node.textContent)
-      ).toEqual(content.operationSections.map((section) => section.title))
-      expect(document.querySelector('.help-about-shortcuts.is-touch')).toBeNull()
-      expect(content.features.some((feature) => feature.icon === 'home')).toBe(true)
-      expect(content.features.some((feature) => feature.icon === 'resonance')).toBe(true)
-      expect(content.features.some((feature) => feature.icon === 'backup')).toBe(true)
+      expect(helpBody().firstElementChild?.className).toBe('help-about-operations')
+      expect(operationHeadings()).toEqual(
+        language === 'zh' ? ['鼠标操作', '快捷键'] : ['Mouse controls', 'Keyboard shortcuts']
+      )
+      expect([...document.querySelectorAll('kbd')].map((key) => key.textContent)).toEqual([
+        '←',
+        '→',
+        'Esc',
+        'Enter',
+        language === 'zh' ? '空格' : 'Space',
+        'Ctrl',
+        'V',
+        'Delete'
+      ])
+      expect(tasks()).toHaveLength(7)
+      expect(tasks()[0]?.textContent).toContain(
+        language === 'zh' ? '打开游戏相册' : 'Open my game album'
+      )
+      expect(details(tasks()[0]!).textContent).toContain(
+        language === 'zh' ? '兼容打开（只读）' : 'Compatibility open (read-only)'
+      )
+      expect(details(tasks()[4]!).textContent).toContain(
+        language === 'zh' ? '自动备份' : 'Auto backup'
+      )
+      expect(tasks().every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true)
     }
   )
 
   it.each(['zh', 'en'] as const)(
-    'shows phone workflows and touch instructions in %s',
+    'starts compact help in %s with gestures and mobile paths',
     (language) => {
       create(language, true)
-      const content = messages[language].helpAbout.mobile
-      expect(
-        [...document.querySelectorAll('.help-about-feature h4')].map((node) => node.textContent)
-      ).toEqual(content.features.map((feature) => feature.title))
-      expect(
-        [...document.querySelectorAll('.help-about-tutorial-grid h4')].map(
-          (node) => node.textContent
-        )
-      ).toEqual(content.tutorialSections.map((section) => section.title))
-      expect(
-        [...document.querySelectorAll('.help-about-shortcuts h3')].map((node) => node.textContent)
-      ).toEqual(content.operationSections.map((section) => section.title))
-      expect(content.operationSections.map((section) => section.icon)).toEqual(['touch'])
-      expect(document.querySelectorAll('.help-about-shortcuts.is-touch section')).toHaveLength(1)
-      expect(document.querySelector('.help-about-shortcuts')!.textContent).not.toContain('Ctrl+V')
-      expect(document.querySelector('.help-about-tutorial-grid')!.textContent).not.toContain(
-        language === 'zh' ? '通过左侧导航' : 'Use the left navigation'
+      expect(helpBody().firstElementChild?.className).toBe('help-about-operations')
+      expect(operationHeadings()).toEqual([language === 'zh' ? '手势操作' : 'Touch gestures'])
+      expect(helpBody().querySelectorAll('.help-about-operation')).toHaveLength(5)
+      expect(helpBody().querySelector('kbd')).toBeNull()
+      expect(tasks()).toHaveLength(6)
+      expect(details(tasks()[0]!).textContent).toContain(
+        language === 'zh' ? '底部导航' : 'Bottom navigation'
       )
-      expect(
-        content.features.some((feature) => feature.icon === 'images' || feature.icon === 'cleanup')
-      ).toBe(false)
+      expect(details(tasks()[1]!).textContent).toContain(
+        language === 'zh' ? '工具 → 参数/搭配码解析' : 'Tools → Parameter / outfit-code parser'
+      )
+      expect(details(tasks()[0]!).textContent).toContain(
+        language === 'zh' ? '⋯ → 搭配总结' : '⋯ → Outfit summary'
+      )
+      expect(details(tasks()[3]!).textContent).toContain(
+        language === 'zh' ? '⋯ → 登录' : '⋯ → Log in'
+      )
+      expect(details(tasks()[4]!).textContent).toContain(
+        language === 'zh' ? '导航栏样式' : 'Navigation style'
+      )
+      const install = tasks().at(-1)!
+      expect(install.textContent?.trim()).toBe(language === 'zh' ? '安装应用' : 'Install the app')
+      expect(details(install).textContent).toContain(
+        language === 'zh' ? '手机主屏幕' : 'home screen'
+      )
     }
   )
 
-  it('switches layout and language while keeping the same help panel open', async () => {
+  it('opens one answer at a time and makes collapsed answers inert', async () => {
+    create('zh', true)
+    const [save, camera] = tasks()
+    expect(details(save!).hasAttribute('inert')).toBe(true)
+    save!.click()
+    await flushPromises()
+    expect(details(save!).classList.contains('expanded')).toBe(true)
+    expect(details(save!).hasAttribute('inert')).toBe(false)
+
+    camera!.click()
+    await flushPromises()
+    expect(save!.getAttribute('aria-expanded')).toBe('false')
+    expect(details(save!).classList.contains('expanded')).toBe(false)
+    expect(details(save!).hasAttribute('inert')).toBe(true)
+    expect(camera!.getAttribute('aria-expanded')).toBe('true')
+    expect(details(camera!).classList.contains('expanded')).toBe(true)
+
+    camera!.click()
+    await flushPromises()
+    expect(tasks().every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true)
+  })
+
+  it('keeps the expanded topic when the language changes and resets it on reopening', async () => {
+    const wrapper = create('zh', true)
+    const save = tasks()[0]!
+    save.click()
+    await flushPromises()
+    expect(save.getAttribute('aria-expanded')).toBe('true')
+    helpBody().scrollTop = 120
+
+    await wrapper.setProps({ messages: helpAboutEn })
+    expect(tasks()[0]).toBe(save)
+    expect(save.getAttribute('aria-expanded')).toBe('true')
+    expect(save.textContent).toContain('Save an outfit or home scheme')
+    expect(helpBody().scrollTop).toBe(120)
+
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true })
+    expect(tasks()[0]?.getAttribute('aria-expanded')).toBe('false')
+    expect(helpBody().scrollTop).toBe(0)
+  })
+
+  it('switches layout in the same open dialog and resets its scroll and focus', async () => {
     const wrapper = create('zh', false)
+    await flushPromises()
     const panel = document.querySelector('.help-about-panel')
+    const album = tasks()[0]!
+    album.focus()
+    album.click()
+    helpBody().scrollTop = 120
+
     await wrapper.setProps({ compact: true })
     expect(document.querySelector('.help-about-panel')).toBe(panel)
-    expect(document.querySelector('.help-about-shortcuts h3')!.textContent).toBe('触摸操作')
-    await wrapper.setProps({ messages: messages.en.helpAbout })
-    expect(document.querySelector('.help-about-shortcuts h3')!.textContent).toBe('Touch controls')
-    expect(document.querySelector('.help-about-header h2')!.textContent).toBe(
-      'Help and introduction'
-    )
-    await wrapper.setProps({ compact: false })
-    expect(
-      [...document.querySelectorAll('.help-about-shortcuts h3')].map((node) => node.textContent)
-    ).toEqual(['Mouse controls', 'Keyboard shortcuts'])
+    expect(operationHeadings()).toEqual(['手势操作'])
+    expect(helpBody().scrollTop).toBe(0)
+    expect(tasks().every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true)
+    expect(document.activeElement).toBe(document.querySelector('.help-about-header button'))
     expect(wrapper.emitted('close')).toBeUndefined()
   })
 
-  it('preserves focus trapping and returns focus to the opener after closing', async () => {
+  it('keeps keyboard focus inside the dialog and returns it to the opener', async () => {
     const opener = document.createElement('button')
     document.body.append(opener)
     const wrapper = create('zh', true, false)
@@ -98,62 +179,33 @@ describe('device-specific help', () => {
     await wrapper.setProps({ visible: true })
     await flushPromises()
     const close = document.querySelector<HTMLButtonElement>('.help-about-header button')!
-    const confirm = document.querySelector<HTMLButtonElement>('.help-about-footer button')!
-    for (const button of [close, confirm])
+    const last = tasks().at(-1)!
+    for (const button of [close, ...tasks()]) {
       vi.spyOn(button, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList)
+    }
     expect(document.activeElement).toBe(close)
-    const shiftTab = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      shiftKey: true,
-      bubbles: true,
-      cancelable: true
-    })
-    close.dispatchEvent(shiftTab)
-    expect(shiftTab.defaultPrevented).toBe(true)
-    expect(document.activeElement).toBe(confirm)
-    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
-    confirm.dispatchEvent(tab)
-    expect(tab.defaultPrevented).toBe(true)
+    expect(press(close, 'Tab', true).defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(last)
+    expect(press(last, 'Tab').defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(close)
-    close.click()
+    expect(press(close, 'Escape').defaultPrevented).toBe(true)
     expect(wrapper.emitted('close')).toHaveLength(1)
     await wrapper.setProps({ visible: false })
     expect(document.activeElement).toBe(opener)
   })
 
-  it('closes through confirm, Escape or the backdrop, but not a content click', async () => {
+  it('closes from the header or backdrop and uses the same title as the More menu', async () => {
     const wrapper = create('en', false)
     await flushPromises()
-    document.querySelector<HTMLElement>('.help-about-panel')!.click()
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
+    const title = document.getElementById(dialog.getAttribute('aria-labelledby')!)
+    expect(title?.textContent?.trim()).toBe('Help')
+    expect(helpAboutEn.title).toBe(topBarEn.helpAbout)
+    expect(helpAboutZh.title).toBe(topBarZh.helpAbout)
+    helpBody().click()
     expect(wrapper.emitted('close')).toBeUndefined()
-    document.querySelector<HTMLButtonElement>('.help-about-footer button')!.click()
-    document.activeElement!.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
-    )
-    document.querySelector<HTMLElement>('.help-about-dialog')!.click()
-    expect(wrapper.emitted('close')).toHaveLength(3)
-  })
-
-  it('keeps translated device content complete and excludes obsolete phone instructions', () => {
-    for (const device of ['desktop', 'mobile'] as const) {
-      const zh = messages.zh.helpAbout[device],
-        en = messages.en.helpAbout[device]
-      expect(zh.features.map((feature) => feature.icon)).toEqual(
-        en.features.map((feature) => feature.icon)
-      )
-      expect(zh.tutorialSections.map((section) => section.items.length)).toEqual(
-        en.tutorialSections.map((section) => section.items.length)
-      )
-      expect(zh.operationSections.map((section) => section.icon)).toEqual(
-        en.operationSections.map((section) => section.icon)
-      )
-      expect(zh.notes.length).toBe(en.notes.length)
-    }
-    const phoneCopy = JSON.stringify(messages.zh.helpAbout.mobile)
-    expect(phoneCopy).not.toContain('上下移动')
-    expect(phoneCopy).not.toContain('卡片右上角菜单')
-    expect(phoneCopy).toContain('清除数据')
-    expect(phoneCopy).toContain('永久删除当前浏览器中的全部方案')
-    expect(phoneCopy).toContain('相机参数页的图片比例固定')
+    document.querySelector<HTMLButtonElement>('.help-about-header button')!.click()
+    dialog.click()
+    expect(wrapper.emitted('close')).toHaveLength(2)
   })
 })

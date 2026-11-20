@@ -103,13 +103,30 @@ it.each([false, true, undefined])(
       expect(triggers[2].attributes('aria-expanded')).toBe('false')
       await triggers[3].trigger('click')
       await flushPromises()
-      const moreLabels = wrapper
-        .get('.header-dropdown')
-        .findAll('[role="menuitem"]')
-        .map((button) => button.text())
+      const more = wrapper.get('.more-menu-panel')
+      const moreLabels = more.findAll('button, a').map((button) => button.text())
       for (const label of [...tools, messages.zh.topBar.specialCleanup]) {
         expect(moreLabels).not.toContain(label)
       }
+      expect(moreLabels).not.toContain(messages.zh.topBar.chooseDirectory)
+      expect(more.attributes('aria-modal')).toBe('true')
+      expect(more.findAll('h3').map((heading) => heading.text())).toEqual([
+        messages.zh.topBar.dataBackup,
+        messages.zh.topBar.appMaintenance,
+        messages.zh.topBar.aboutToolkit
+      ])
+      expect(
+        more
+          .get('.more-backup-actions')
+          .findAll('button')
+          .map((button) => button.text())
+      ).toEqual([messages.zh.topBar.exportAllData, messages.zh.topBar.importAllData])
+      expect(
+        more
+          .get('.more-menu-footer')
+          .findAll('button')
+          .map((button) => button.text())
+      ).toEqual([messages.zh.topBar.helpAbout, messages.zh.topBar.updateLog])
     } finally {
       wrapper.unmount()
     }

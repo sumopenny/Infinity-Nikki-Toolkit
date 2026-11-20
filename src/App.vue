@@ -218,14 +218,19 @@ const DATA_REMINDER_DISMISSED_KEY = 'infinity-nikki-data-reminder-dismissed'
 const ABOUT_STATE_STORAGE_KEY = 'infinity-nikki-about-state'
 const currentAboutVersion = currentVersion.replace(/^v/, '')
 
-function readStoredAboutState(): { version: string; dismissed: boolean } | null {
+function readStoredAboutState() {
   try {
     const parsed = JSON.parse(readLocalStorage(ABOUT_STATE_STORAGE_KEY) ?? 'null') as {
       version?: unknown
       dismissed?: unknown
+      dismissedForever?: unknown
     } | null
     if (parsed && typeof parsed.version === 'string')
-      return { version: parsed.version, dismissed: parsed.dismissed === true }
+      return {
+        version: parsed.version,
+        dismissed: parsed.dismissed === true,
+        dismissedForever: parsed.dismissedForever === true
+      }
   } catch {
     /* invalid storage is treated as empty */
   }
@@ -270,9 +275,10 @@ let pendingDataReminder = false
 const isHelpAboutVisible = ref(false)
 // 标记使用帮助是否从更新记录窗口跳来，关闭帮助后返回更新记录窗口
 const returnToUpdateLog = ref(false)
-// 版本号变化时本地记录失效，“不再提示”勾选状态随之重置
-const isAboutDialogDismissed = ref(
-  storedAboutState?.version === currentAboutVersion && storedAboutState.dismissed === true
+const updateLogDismissal = ref<boolean | 'forever'>(
+  storedAboutState?.dismissedForever
+    ? 'forever'
+    : storedAboutState?.version === currentAboutVersion && storedAboutState.dismissed
 )
 const isX6GameAutoPromptDismissed = ref(
   readLocalStorage(X6GAME_AUTO_PROMPT_DISMISSED_KEY) === 'true'
@@ -1815,13 +1821,17 @@ function openUpdateLog() {
   isUpdateLogVisible.value = true
 }
 
-/** 关闭更新记录窗口。参数：dontShowAgain 表示当前版本是否不再自动弹出；同时把版本号和勾选状态保存到本地。 */
-function closeUpdateLog(dontShowAgain: boolean) {
-  isAboutDialogDismissed.value = dontShowAgain
+/** 关闭更新记录时，保存当前版本或跨版本的提示偏好。 */
+function closeUpdateLog(dismissal: boolean | 'forever') {
+  updateLogDismissal.value = dismissal
   if (!suppressLocalPersistence) {
     writeLocalStorage(
       ABOUT_STATE_STORAGE_KEY,
-      JSON.stringify({ version: currentAboutVersion, dismissed: dontShowAgain })
+      JSON.stringify({
+        version: currentAboutVersion,
+        dismissed: dismissal === true,
+        dismissedForever: dismissal === 'forever'
+      })
     )
   }
   isUpdateLogVisible.value = false
@@ -1911,7 +1921,7 @@ function changeOutfitFilter(filter: OutfitFilter) {
 
 function showSummaryTag(tag: string) {
   searchQuery.value = ''
-  changeOutfitFilter(`tag:${tag}`)
+  changeOutfitFilter(tag ? `tag:${tag}` : 'uncategorized')
   isOutfitSummaryVisible.value = false
 }
 
@@ -2332,12 +2342,7 @@ onMounted(() => {
   // 重型游戏目录扫描推迟到首次进入搭配码，避免打开其他模块时争用 I/O。
   void ensureInitialOutfitScan()
   pendingDataReminder = !isDataReminderDismissed.value
-  // 没有记录、版本号变化或未勾选“不再提示”时，打开网站自动显示更新记录
-  if (
-    !storedAboutState ||
-    storedAboutState.version !== currentAboutVersion ||
-    !storedAboutState.dismissed
-  ) {
+  if (!updateLogDismissal.value) {
     isUpdateLogVisible.value = true
   } else {
     showPendingDataReminder()
@@ -2380,13 +2385,14 @@ function importAllDataFromMenu() {
 <template>
   <div ref="appShellRef" class="app-shell">
     <SkeletonSweep global />
-    <PageScrollbar :label="language === 'zh' ? '页面滚动' : 'Page scroll'" />
+    <PageScrollbar
+      :label="language === 'zh' ? '页面滚动' : 'Page scroll'"
+      :back-to-top-label="language === 'zh' ? '返回顶部' : 'Back to top'"
+    />
     <TopBar
       ref="topBarRef"
       :active-view="activeView"
-      :view-messages="locale.viewNav"
       :directory-supported="directorySupported"
-      @change-view="changeAlbumView"
       :directory-name="
         isCompatibleAlbum ? `${directoryName} · ${compatibleMessages.readOnly}` : directoryName
       "
@@ -3367,7 +3373,7 @@ function importAllDataFromMenu() {
     <UpdateLogDialog
       v-if="mountedDialogs.has('UpdateLogDialog')"
       :visible="isUpdateLogVisible"
-      :dismissed="isAboutDialogDismissed"
+      :dismissed="updateLogDismissal"
       :language="language"
       @close="closeUpdateLog"
       @after-close="showPendingDataReminder"

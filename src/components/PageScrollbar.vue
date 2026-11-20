@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { ArrowUp } from 'lucide-vue-next'
 import { useCompactLayout } from '../composables/useCompactLayout'
+import { useGlassSurface } from '../composables/useGlassSurface'
+import GlassSurfaceFilter from './GlassSurfaceFilter.vue'
 
 const compactLayout = useCompactLayout()
+const { glassFilterId, refractsBackdrop } = useGlassSurface()
 
-defineProps<{ label: string }>()
+defineProps<{ label: string; backToTopLabel: string }>()
 
 const track = ref<HTMLElement | null>(null)
 const viewportHeight = ref(0)
@@ -26,6 +30,9 @@ const thumbTop = computed(() =>
 )
 const visible = computed(
   () => !compactLayout.value && maxScroll.value > 0 && trackHeight.value > 0 && !locked.value
+)
+const showBackToTop = computed(
+  () => !locked.value && maxScroll.value > 0 && scrollTop.value > Math.min(320, maxScroll.value / 2)
 )
 let frame = 0
 let resizeObserver: ResizeObserver | undefined
@@ -64,6 +71,12 @@ function scrollTo(top: number) {
   if (locked.value) return
   window.scrollTo({ top: Math.max(0, Math.min(maxScroll.value, top)), behavior: 'instant' })
   scheduleMeasure()
+}
+
+function backToTop() {
+  if (locked.value) return
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: reducedMotion ? 'instant' : 'smooth' })
 }
 
 function startDrag(event: PointerEvent) {
@@ -177,10 +190,45 @@ onBeforeUnmount(() => {
         :style="{ height: thumbHeight + 'px', transform: 'translateY(' + thumbTop + 'px)' }"
       />
     </div>
+    <GlassSurfaceFilter v-if="refractsBackdrop && showBackToTop" :filter-id="glassFilterId" />
+    <button
+      v-show="showBackToTop"
+      type="button"
+      class="page-back-to-top material-surface preview-material"
+      :data-refraction="refractsBackdrop || undefined"
+      :style="{ '--nav-glass-filter': `url(#${glassFilterId})` }"
+      :aria-label="backToTopLabel"
+      :title="backToTopLabel"
+      @click="backToTop"
+    >
+      <ArrowUp :size="20" aria-hidden="true" />
+    </button>
   </Teleport>
 </template>
 
 <style scoped>
+.page-back-to-top {
+  position: fixed;
+  z-index: 49;
+  right: max(20px, env(safe-area-inset-right, 0px));
+  bottom: 20px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+@media (max-width: 899px) {
+  .page-back-to-top {
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--mobile-nav-height, 64px) + 12px);
+  }
+}
 .page-scrollbar {
   position: fixed;
   z-index: 70;

@@ -64,12 +64,13 @@ it('includes static components in the initial production dependency graph and ke
       component
     ).toBe(true)
   }
-  for (const component of ['OutfitSummaryDialog']) {
+  for (const component of ['OutfitSummaryDialog', 'OutfitSummaryTrendChart']) {
     expect(
       modules.some((id) => id.includes(`/components/${component}.vue`)),
       component
     ).toBe(false)
   }
+  expect(modules.some((id) => id.includes('/node_modules/echarts/'))).toBe(false)
   const catalogPrefix = '/data/gongeo/'
   const initialCatalogFiles = modules
     .filter((id) => id.includes(catalogPrefix) && !id.endsWith('?url'))
