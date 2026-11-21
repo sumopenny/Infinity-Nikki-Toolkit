@@ -97,6 +97,7 @@ import {
 } from 'lucide-vue-next'
 import DataStorageReminder from './components/DataStorageReminder.vue'
 import UpdateLogDialog from './components/UpdateLogDialogContent.vue'
+import EdgeDirectoryRepairDialog from './components/EdgeDirectoryRepairDialog.vue'
 import HelpAboutDialog from './components/HelpAboutDialogContent.vue'
 import AlbumViewSwitcher, { type AlbumView } from './components/AlbumViewSwitcher.vue'
 import CleanupAccountPicker from './components/CleanupAccountPicker.vue'
@@ -268,6 +269,9 @@ const isOutfitGuideVisible = ref(false)
 const isOutfitSummaryVisible = ref(false)
 const isOutfitGuideDismissed = ref(readLocalStorage(OUTFIT_GUIDE_DISMISSED_KEY) === 'true')
 const isUpdateLogVisible = ref(false)
+const isEdgeDirectoryRepairVisible = ref(false)
+const directoryRepairDismissedKey = 'infinity-nikki-directory-repair-dismissed'
+let pendingStartupNotices = false
 const isDataReminderVisible = ref(false)
 const dataReminderOpenedFromMenu = ref(false)
 const isDataReminderDismissed = ref(readLocalStorage(DATA_REMINDER_DISMISSED_KEY) === 'true')
@@ -319,9 +323,13 @@ retainDialogAfterOpen('OutfitEditor', isOutfitEditorVisible)
 
 retainDialogAfterOpen('HelpAboutDialog', isHelpAboutVisible)
 retainDialogAfterOpen('UpdateLogDialog', isUpdateLogVisible)
+retainDialogAfterOpen('EdgeDirectoryRepairDialog', isEdgeDirectoryRepairVisible)
 retainDialogAfterOpen('OutfitGuideDialog', isOutfitGuideVisible)
 retainDialogAfterOpen('FortuneTimeDialog', isFortuneTimeVisible)
 const compactLayout = useCompactLayout()
+watch(compactLayout, (compact) => {
+  if (compact) isEdgeDirectoryRepairVisible.value = false
+})
 useVisualViewport()
 const {
   mobileNavStyle,
@@ -1840,6 +1848,30 @@ function closeUpdateLog(dismissal: boolean | 'forever') {
   isUpdateLogVisible.value = false
 }
 
+function openDirectoryRepair() {
+  if (!compactLayout.value) isEdgeDirectoryRepairVisible.value = true
+}
+
+function closeDirectoryRepair() {
+  if (!suppressLocalPersistence) writeLocalStorage(directoryRepairDismissedKey, 'true')
+  isEdgeDirectoryRepairVisible.value = false
+}
+
+function finishDirectoryRepair() {
+  if (!pendingStartupNotices || isEdgeDirectoryRepairVisible.value) return
+  pendingStartupNotices = false
+  showStartupNotices()
+}
+
+function showStartupNotices() {
+  if (appDisposed) return
+  if (!updateLogDismissal.value) {
+    isUpdateLogVisible.value = true
+  } else {
+    showPendingDataReminder()
+  }
+}
+
 // Wait for the update dialog's exit animation before handing over focus.
 function showPendingDataReminder() {
   if (
@@ -2346,10 +2378,11 @@ onMounted(() => {
   // 重型游戏目录扫描推迟到首次进入搭配码，避免打开其他模块时争用 I/O。
   void ensureInitialOutfitScan()
   pendingDataReminder = !isDataReminderDismissed.value
-  if (!updateLogDismissal.value) {
-    isUpdateLogVisible.value = true
+  if (!compactLayout.value && readLocalStorage(directoryRepairDismissedKey) !== 'true') {
+    pendingStartupNotices = true
+    openDirectoryRepair()
   } else {
-    showPendingDataReminder()
+    showStartupNotices()
   }
   nextTick(() => {
     updateSidebarStickyOffset()
@@ -2452,6 +2485,7 @@ function importAllDataFromMenu() {
       @toggle-language="toggleLanguage"
       @toggle-theme="toggleTheme"
       @open-update-log="openUpdateLog"
+      @open-directory-repair="openDirectoryRepair"
       @open-help-about="openHelpAbout"
       @open-data-reminder="openDataReminder"
       @update-search="searchQuery = $event"
@@ -3372,6 +3406,14 @@ function importAllDataFromMenu() {
       :dismissed="isOutfitGuideDismissed"
       :messages="outfitLocale"
       @close="closeOutfitGuide"
+    />
+
+    <EdgeDirectoryRepairDialog
+      v-if="mountedDialogs.has('EdgeDirectoryRepairDialog')"
+      :visible="isEdgeDirectoryRepairVisible"
+      :language="language"
+      @close="closeDirectoryRepair"
+      @after-close="finishDirectoryRepair"
     />
 
     <UpdateLogDialog

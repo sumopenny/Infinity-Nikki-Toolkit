@@ -109,6 +109,7 @@ it.each([false, true, undefined])(
         expect(moreLabels).not.toContain(label)
       }
       expect(moreLabels).not.toContain(messages.zh.topBar.chooseDirectory)
+      expect(moreLabels).not.toContain('目录加载修复教程')
       expect(more.attributes('aria-modal')).toBe('true')
       expect(more.findAll('h3').map((heading) => heading.text())).toEqual([
         messages.zh.topBar.dataBackup,
@@ -174,6 +175,7 @@ it('opens desktop menus on mouse hover and keeps the menu open across the gap', 
     await flushPromises()
     expect(tools.attributes('aria-expanded')).toBe('false')
     expect(wrapper.get('.more-menu-button').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('.more-menu-panel').text()).toContain('目录加载修复教程')
     await wrapper.get('.header-dropdown').trigger('pointerleave', { pointerType: 'mouse' })
     await vi.advanceTimersByTimeAsync(119)
     expect(wrapper.find('.header-dropdown').exists()).toBe(true)

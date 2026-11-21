@@ -113,6 +113,15 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+async function dismissStartupRepairGuide(wrapper: ReturnType<typeof mount>) {
+  const guide = wrapper.findComponent({ name: 'EdgeDirectoryRepairDialog' })
+  if (!guide.exists()) return
+  guide.vm.$emit('close')
+  await nextTick()
+  guide.vm.$emit('afterClose')
+  await nextTick()
+}
+
 beforeEach(() => {
   // jsdom 不提供浏览器广播通道；不能混用 Node 通道与 jsdom MessageEvent。
   // 跨标签页协调由独立真实浏览器测试覆盖，挂载测试不连接其他测试的通道。
@@ -390,6 +399,66 @@ describe('App lifecycle coordination', () => {
     }
   )
 
+  it.each([
+    ['Chrome/158.0 Edg/158.0', true],
+    ['Chrome/158.0', true],
+    ['Chrome/158.0 Edg/158.0', false]
+  ])('shows the directory repair guide only in wide layout (%s, wide=%s)', async (userAgent, wide) => {
+    const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent)
+    const originalMatchMedia = window.matchMedia
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(max-width: 899px)' && !wide,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    }))
+    try {
+      const wrapper = mount(App, {
+        global: {
+          stubs: {
+            Teleport: true,
+            EdgeDirectoryRepairDialog: {
+              name: 'EdgeDirectoryRepairDialog',
+              props: ['visible'],
+              template: '<div />'
+            }
+          }
+        }
+      })
+      await nextTick()
+      const guide = wrapper.findComponent({ name: 'EdgeDirectoryRepairDialog' })
+      const updates = () => wrapper.findComponent({ name: 'UpdateLogDialogContent' })
+      expect(guide.exists()).toBe(wide)
+      if (wide) {
+        expect(guide.props('visible')).toBe(true)
+        expect(updates().exists()).toBe(false)
+        guide.vm.$emit('close')
+        await nextTick()
+        expect(guide.props('visible')).toBe(false)
+        guide.vm.$emit('afterClose')
+        await nextTick()
+      }
+      expect(updates().exists()).toBe(true)
+      wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
+      await nextTick()
+      expect(guide.exists()).toBe(wide)
+      if (wide) expect(guide.props('visible')).toBe(true)
+      if (wide) {
+        expect(localStorage.getItem('infinity-nikki-directory-repair-dismissed')).toBe('true')
+        wrapper.unmount()
+        const reopened = mount(App, { global: { stubs: { Teleport: true } } })
+        await nextTick()
+        const findGuide = () => reopened.findComponent({ name: 'EdgeDirectoryRepairDialog' })
+        expect(findGuide().exists()).toBe(false)
+        reopened.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
+        await nextTick()
+        expect(findGuide().props('visible')).toBe(true)
+      }
+    } finally {
+      ua.mockRestore()
+      vi.stubGlobal('matchMedia', originalMatchMedia)
+    }
+  })
+
   it.each([false, true])(
     'queues the reminder after updates and persists dismissal=%s',
     async (dismissed) => {
@@ -407,6 +476,7 @@ describe('App lifecycle coordination', () => {
         }
       })
       await flushPromises()
+      await dismissStartupRepairGuide(wrapper)
       const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
       const reminder = wrapper.getComponent({ name: 'DataStorageReminder' })
       expect(updates.props('visible')).toBe(true)
@@ -452,6 +522,7 @@ describe('App lifecycle coordination', () => {
       if (dismissed) localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
       const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
       await flushPromises()
+      await dismissStartupRepairGuide(wrapper)
       expect(wrapper.getComponent({ name: 'DataStorageReminder' }).props('visible')).toBe(
         !dismissed
       )
@@ -470,6 +541,7 @@ describe('App lifecycle coordination', () => {
       }
     })
     await flushPromises()
+    await dismissStartupRepairGuide(wrapper)
     const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
     const reminder = wrapper.getComponent({ name: 'DataStorageReminder' })
     updates.vm.$emit('openHelp')

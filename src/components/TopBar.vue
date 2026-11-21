@@ -106,6 +106,7 @@ const emit = defineEmits<{
   changeThumbnailMode: [mode: ThumbnailMode]
   changeThumbnailSize: [size: ThumbnailSize]
   openUpdateLog: []
+  openDirectoryRepair: []
   openHelpAbout: []
   openDataReminder: []
   updateSearch: [value: string]
@@ -1115,6 +1116,16 @@ function openDonate() {
                 </section>
                 <section class="more-menu-group" aria-labelledby="more-maintenance-heading">
                   <h3 id="more-maintenance-heading">{{ messages.appMaintenance }}</h3>
+                  <button
+                    v-if="!compact"
+                    type="button"
+                    @click="runMenuAction(() => emit('openDirectoryRepair'))"
+                  >
+                    <Wrench :size="16" aria-hidden="true" />
+                    <span>{{
+                      language === 'zh' ? '目录加载修复教程' : 'Folder loading repair guide'
+                    }}</span>
+                  </button>
                   <button
                     v-if="!desktopInstallDialog?.installed"
                     type="button"

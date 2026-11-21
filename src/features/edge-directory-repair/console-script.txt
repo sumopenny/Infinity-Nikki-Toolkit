@@ -1,0 +1,74 @@
+window.nikkiCleanDirectoryState = async (apply = false) => {
+  const databaseName = 'infinity-nikki-album-manager';
+  const storeName = 'album-handles';
+  const exactKeys = new Set([
+    'current-album-directory',
+    'current-x6game-directory'
+  ]);
+  const cachePrefixes = [
+    'outfit-code-parse:',
+    'home-scheme-parse:',
+    'photo-action-parse:v1:'
+  ];
+  const settings = [
+    'infinity-nikki-album-access-mode',
+    'infinity-nikki-x6game-auto-prompt-dismissed'
+  ];
+
+  const db = await new Promise((resolve, reject) => {
+    const request = indexedDB.open(databaseName);
+    request.onupgradeneeded = () => {
+      request.transaction.abort();
+      reject(new Error('当前网址没有已有的暖立方数据库，已停止。'));
+    };
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+
+  try {
+    if (db.version !== 10 || !db.objectStoreNames.contains(storeName)) {
+      throw new Error(`数据库结构与已核对版本不同（版本 ${db.version}），未清理。`);
+    }
+
+    const mode = apply === true ? 'readwrite' : 'readonly';
+    const counts = await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, mode);
+      const store = tx.objectStore(storeName);
+      const summary = Object.fromEntries(
+        [...exactKeys, ...cachePrefixes].map(key => [key, 0])
+      );
+      tx.oncomplete = () => resolve(summary);
+      tx.onabort = () => reject(tx.error ?? new Error('清理事务已中止。'));
+
+      const request = store.openKeyCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        const key = cursor.primaryKey;
+        if (typeof key === 'string') {
+          const group = exactKeys.has(key)
+            ? key
+            : cachePrefixes.find(prefix => key.startsWith(prefix));
+          if (group) {
+            summary[group]++;
+            if (apply === true) store.delete(key);
+          }
+        }
+        cursor.continue();
+      };
+    });
+
+    const existingSettings = settings.filter(key => localStorage.getItem(key) !== null);
+    if (apply === true) {
+      for (const key of existingSettings) localStorage.removeItem(key);
+    }
+
+    console.log(location.origin, apply === true ? '清理完成' : '仅预览，未清理');
+    console.table(counts);
+    console.log('目录相关的页面设置：', existingSettings);
+  } finally {
+    db.close();
+  }
+};
+
+await window.nikkiCleanDirectoryState(true);
