@@ -159,6 +159,28 @@ describe('App lifecycle coordination', () => {
     document.body.innerHTML = ''
   })
 
+  it('keeps the directory repair notice visible until stalled startup finishes', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const pending = deferred<FileSystemDirectoryHandle | null>()
+    getSavedAlbumDirectoryHandleMock.mockReturnValueOnce(pending.promise)
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    const notice = () =>
+      wrapper
+        .getComponent({ name: 'OperationNotice' })
+        .props('notices')
+        .find((item: { id: number }) => item.id === -1)
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(4999)
+    expect(notice()).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(notice()?.message).toContain('目录加载修复教程')
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(notice()).toBeDefined()
+    pending.resolve(null)
+    await flushPromises()
+    expect(notice()).toBeUndefined()
+  })
+
   it('discards stale album handles after a missing-directory refresh and permits reopening', async () => {
     const { DirectoryAccessError } = await import('../src/utils/file-system/directoryErrors')
     const directory = {
@@ -1416,6 +1438,34 @@ describe('App lifecycle coordination', () => {
       expect(navigation.props('activeView')).toBe('home')
     } finally {
       wrapper.unmount()
+    }
+  })
+
+  it.each([false, true])('offers X6Game authorization on initial outfits view unless dismissed (%s)', async (dismissed) => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    localStorage.setItem('infinity-nikki-active-view', 'outfits')
+    localStorage.setItem(
+      'infinity-nikki-about-state',
+      JSON.stringify({ version: '0.0.0', dismissedForever: true })
+    )
+    localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
+    if (dismissed) localStorage.setItem('infinity-nikki-x6game-auto-prompt-dismissed', 'true')
+    const originalPicker = window.showDirectoryPicker
+    const picker = vi.fn()
+    vi.stubGlobal('showDirectoryPicker', picker)
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    try {
+      await flushPromises()
+      const confirm = wrapper.getComponent({ name: 'ConfirmDialog' })
+      expect(confirm.props('visible')).toBe(false)
+      await dismissStartupRepairGuide(wrapper)
+      await flushPromises()
+      expect(confirm.props('visible')).toBe(!dismissed)
+      if (!dismissed) expect(confirm.props('title')).toBe(messages.zh.app.x6GameDirectoryDialogTitle)
+      expect(picker).not.toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+      vi.stubGlobal('showDirectoryPicker', originalPicker)
     }
   })
 

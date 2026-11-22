@@ -271,11 +271,11 @@ const isOutfitGuideDismissed = ref(readLocalStorage(OUTFIT_GUIDE_DISMISSED_KEY) 
 const isUpdateLogVisible = ref(false)
 const isEdgeDirectoryRepairVisible = ref(false)
 const directoryRepairDismissedKey = 'infinity-nikki-directory-repair-dismissed'
-let pendingStartupNotices = false
+const pendingStartupNotices = ref(false)
 const isDataReminderVisible = ref(false)
 const dataReminderOpenedFromMenu = ref(false)
 const isDataReminderDismissed = ref(readLocalStorage(DATA_REMINDER_DISMISSED_KEY) === 'true')
-let pendingDataReminder = false
+const pendingDataReminder = ref(false)
 const isHelpAboutVisible = ref(false)
 // 标记使用帮助是否从更新记录窗口跳来，关闭帮助后返回更新记录窗口
 const returnToUpdateLog = ref(false)
@@ -626,6 +626,24 @@ const {
   isUserCancelledFilePicker,
   dispose: disposeStatusNotice
 } = useOperationNotice(locale, operations)
+
+const isDirectoryStartupSlow = ref(false)
+const visibleStatusNotices = computed(() =>
+  isDirectoryStartupSlow.value && isLoading.value && !compactLayout.value
+    ? [
+        {
+          id: -1,
+          tone: 'warning' as const,
+          loading: true,
+          message:
+            language.value === 'zh'
+              ? '目录加载时间较长。如果「添加」等按钮一直不可用，请打开「更多 → 应用维护 → 目录加载修复教程」。'
+              : 'Folder loading is taking longer than expected. If buttons stay disabled, go to More → App maintenance → Folder loading repair guide.'
+        },
+        ...statusNotices.value
+      ]
+    : statusNotices.value
+)
 
 function createErrorStatus(error: unknown, fallback: StatusState): StatusState {
   const status = describeOperationError(error, fallback)
@@ -1858,8 +1876,8 @@ function closeDirectoryRepair() {
 }
 
 function finishDirectoryRepair() {
-  if (!pendingStartupNotices || isEdgeDirectoryRepairVisible.value) return
-  pendingStartupNotices = false
+  if (!pendingStartupNotices.value || isEdgeDirectoryRepairVisible.value) return
+  pendingStartupNotices.value = false
   showStartupNotices()
 }
 
@@ -1875,14 +1893,14 @@ function showStartupNotices() {
 // Wait for the update dialog's exit animation before handing over focus.
 function showPendingDataReminder() {
   if (
-    !pendingDataReminder ||
+    !pendingDataReminder.value ||
     appDisposed ||
     isUpdateLogVisible.value ||
     isHelpAboutVisible.value ||
     returnToUpdateLog.value
   )
     return
-  pendingDataReminder = false
+  pendingDataReminder.value = false
   dataReminderOpenedFromMenu.value = false
   isDataReminderVisible.value = true
 }
@@ -2334,23 +2352,57 @@ function updateSidebarStickyOffset() {
 
 // 生命周期
 let startupReady: Promise<unknown> = Promise.resolve()
+let directoryStartupTimer: number | undefined
+function stopDirectoryStartupNotice() {
+  window.clearTimeout(directoryStartupTimer)
+  directoryStartupTimer = undefined
+  isDirectoryStartupSlow.value = false
+}
 let initialOutfitScanStarted = false
+let promptX6GameOnInitialOutfitScan = false
+const isStartupNoticeVisible = computed(
+  () =>
+    pendingStartupNotices.value ||
+    pendingDataReminder.value ||
+    isEdgeDirectoryRepairVisible.value ||
+    isUpdateLogVisible.value ||
+    isHelpAboutVisible.value ||
+    isDataReminderVisible.value
+)
+
 async function ensureInitialOutfitScan() {
   await startupReady
   if (
     appDisposed ||
     activeView.value !== 'outfits' ||
     initialOutfitScanStarted ||
-    isAnyFileOperationBusy.value
+    isAnyFileOperationBusy.value ||
+    confirmDialog.value.visible
   )
     return
+  const prompt =
+    promptX6GameOnInitialOutfitScan &&
+    !hasX6GameAuthorization.value &&
+    !isX6GameAutoPromptDismissed.value &&
+    supportsDirectoryAuthorization()
+  if (prompt && isStartupNoticeVisible.value) return
   initialOutfitScanStarted = true
-  await updateOutfitLibrary(false, false)
+  await updateOutfitLibrary(false, prompt)
 }
 watch(activeView, (view) => {
   if (view === 'outfits') void ensureInitialOutfitScan()
+  else promptX6GameOnInitialOutfitScan = false
 })
+watch(
+  [isStartupNoticeVisible, isAnyFileOperationBusy, () => confirmDialog.value.visible],
+  () => {
+    if (promptX6GameOnInitialOutfitScan && !initialOutfitScanStarted)
+      void ensureInitialOutfitScan()
+  },
+  { flush: 'post' }
+)
 onMounted(() => {
+  promptX6GameOnInitialOutfitScan = activeView.value === 'outfits'
   if (!cameraMounted.value) refreshCameraFavoriteMetadata()
   activeOperation.value = 'loading'
   // 计数独立读取；本地集合与目录迁移仍保持顺序，防止较旧读取覆盖迁移结果。
@@ -2375,11 +2427,15 @@ onMounted(() => {
     await restoreSavedX6GameAuthorization()
   })()
   startupReady = Promise.allSettled([collectionReady, directoryReady])
+  directoryStartupTimer = window.setTimeout(() => {
+    isDirectoryStartupSlow.value = true
+  }, 5_000)
+  void startupReady.then(stopDirectoryStartupNotice)
   // 重型游戏目录扫描推迟到首次进入搭配码，避免打开其他模块时争用 I/O。
   void ensureInitialOutfitScan()
-  pendingDataReminder = !isDataReminderDismissed.value
+  pendingDataReminder.value = !isDataReminderDismissed.value
   if (!compactLayout.value && readLocalStorage(directoryRepairDismissedKey) !== 'true') {
-    pendingStartupNotices = true
+    pendingStartupNotices.value = true
     openDirectoryRepair()
   } else {
     showStartupNotices()
@@ -2399,6 +2455,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   appDisposed = true
+  stopDirectoryStartupNotice()
   albumThumbnailCache.dispose()
   outfitLoadGeneration++
   invalidatePendingRefreshes()
@@ -3516,7 +3573,7 @@ function importAllDataFromMenu() {
 
     <OperationNotice
       :language="language"
-      :notices="statusNotices"
+      :notices="visibleStatusNotices"
       :title="locale.app.operationNoticeTitle"
       :close-label="locale.app.operationNoticeCloseAria"
       @close="closeStatusNotice"
