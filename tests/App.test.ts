@@ -721,7 +721,7 @@ describe('App lifecycle coordination', () => {
     await input.trigger('change')
     await flushPromises()
     const favorites = wrapper.get('.photo-favorites-button')
-    expect(wrapper.get('.photo-title-row .photo-trash-button').exists()).toBe(true)
+    expect(wrapper.find('.photo-title-row .photo-trash-button').exists()).toBe(true)
     expect(wrapper.get('.photo-trash-button').element.nextElementSibling).toBe(favorites.element)
     expect(wrapper.get('.photo-header-actions').text()).not.toContain('搭配总结')
     const grid = wrapper.getComponent({ name: 'PhotoGrid' })
