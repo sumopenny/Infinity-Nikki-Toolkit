@@ -28,11 +28,13 @@
 }
 
 .album-layout.is-homepage {
-  padding-bottom: 24px;
+  padding-right: 0;
+  padding-bottom: 0;
 }
 
 .is-homepage .album-content {
-  padding: 12px 0 24px 20px;
+  display: flex;
+  padding: 0;
 }
 
 .home-nav-label {
@@ -506,7 +508,9 @@
 
 .empty-album-start {
   width: 100%;
+  max-width: 780px;
   margin: auto;
+  padding-block: 24px;
   text-align: center;
 }
 
@@ -518,19 +522,142 @@
 }
 
 .empty-album-start h2 {
-  margin: 0;
+  margin: 0 0 32px;
   color: var(--heading);
   font-size: clamp(24px, 4vw, 38px);
   letter-spacing: 0;
 }
 
-.empty-album-start > p {
-  margin: 12px auto 22px;
-  color: var(--muted);
+.album-entry-recommended {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  padding: 24px;
+  border: 1px solid var(--pink-deep);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+  background: color-mix(in srgb, var(--surface) 94%, var(--pink-deep));
 }
 
-.empty-album-start > h2 + p {
+.album-entry-icon {
+  flex: none;
+  align-self: flex-start;
+  color: var(--pink-deep);
+}
+
+.album-entry-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.album-entry-copy h3,
+.album-entry-copy p {
+  margin: 0;
+}
+
+.album-entry-copy h3,
+.album-entry-copy strong {
+  color: var(--heading);
   font-size: 18px;
+  font-weight: 600;
+}
+
+.album-entry-badge {
+  display: inline-block;
+  margin-inline-start: 6px;
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: var(--pink-deep);
+  color: white;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.album-entry-alternatives {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.album-entry-alternatives.is-single {
+  grid-template-columns: 1fr;
+}
+
+.album-entry-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 24px;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.album-entry-option:focus-visible,
+.album-entry-help .accordion-toggle:focus-visible {
+  outline: 2px solid var(--pink-deep);
+  outline-offset: 3px;
+}
+
+.album-entry-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.album-entry-help {
+  margin-top: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  text-align: left;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.album-entry-help .accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--heading);
+  font: inherit;
+  font-weight: 600;
+}
+
+.album-entry-help-content > p,
+.album-entry-help-content .empty-album-guidance {
+  margin: 12px 16px;
+  max-width: none;
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .album-entry-recommended {
+    flex-wrap: wrap;
+  }
+
+  .album-entry-recommended .empty-album-action-row {
+    flex-basis: 100%;
+  }
+
+  .album-entry-alternatives {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* 游戏目录入口与其他相册入口分行，按钮共用尺寸。 */
@@ -540,10 +667,8 @@
 }
 
 .empty-album-action-row {
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  flex-wrap: wrap;
+  display: grid;
+  flex: 0 0 auto;
   gap: 12px;
 }
 
@@ -598,20 +723,15 @@
 }
 
 .empty-album-start .recommended-path {
-  margin: 18px auto 0;
   overflow-wrap: anywhere;
-  font-size: 12px;
-}
-
-.empty-album-start .recommended-path + .recommended-path {
-  margin-top: 6px;
+  font-size: 14px;
 }
 
 .empty-album-guidance {
   margin: 16px auto 0;
   max-width: 560px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
@@ -640,6 +760,14 @@
   gap: 16px;
   padding: 0 0 16px;
   border-bottom: 1px solid var(--line);
+}
+
+.collection-title-row {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 
 .gallery-header h2,

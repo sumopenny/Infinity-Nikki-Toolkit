@@ -501,6 +501,25 @@
   grid-template-columns: minmax(78px, auto) minmax(54px, 1fr);
 }
 
+:root {
+  --param-slider-track: rgba(155, 143, 139, 0.36);
+  --param-slider-thumb-shadow:
+    0 0 0 1px rgba(201, 132, 134, 0.42), 0 2px 6px rgba(201, 132, 134, 0.52);
+}
+:root[data-theme='dark'] {
+  --param-slider-track: rgba(183, 170, 165, 0.36);
+  --param-slider-thumb-shadow:
+    0 0 0 1px rgba(239, 176, 178, 0.42), 0 2px 6px rgba(239, 176, 178, 0.52);
+}
+@supports (color: color-mix(in srgb, black, white)) {
+  :root,
+  :root[data-theme='dark'] {
+    --param-slider-track: color-mix(in srgb, var(--muted) 36%, transparent);
+    --param-slider-thumb-shadow:
+      0 0 0 1px color-mix(in srgb, var(--pink-deep) 42%, transparent),
+      0 2px 6px color-mix(in srgb, var(--pink-deep) 52%, transparent);
+  }
+}
 /* ===== Photo Params Slider ===== */
 .photo-params-slider {
   position: relative;
@@ -515,19 +534,9 @@
   left: 0;
   height: 8px;
   border-radius: 99px;
-  background: color-mix(in srgb, var(--muted) 36%, transparent);
+  background: var(--param-slider-track);
   content: '';
   transform: translateY(-50%);
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .photo-params-slider::before {
-    background: rgba(155, 143, 139, 0.36);
-  }
-
-  :where(:root[data-theme='dark']) .photo-params-slider::before {
-    background: rgba(183, 170, 165, 0.36);
-  }
 }
 
 .photo-params-slider i {
@@ -543,24 +552,8 @@
   border: 2px solid var(--surface);
   border-radius: 50%;
   background: var(--pink-deep);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--pink-deep) 42%, transparent),
-    0 2px 6px color-mix(in srgb, var(--pink-deep) 52%, transparent);
+  box-shadow: var(--param-slider-thumb-shadow);
   transform: translate(-50%, -50%);
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .photo-params-slider i {
-    box-shadow:
-      0 0 0 1px rgba(201, 132, 134, 0.42),
-      0 2px 6px rgba(201, 132, 134, 0.52);
-  }
-
-  :where(:root[data-theme='dark']) .photo-params-slider i {
-    box-shadow:
-      0 0 0 1px rgba(239, 176, 178, 0.42),
-      0 2px 6px rgba(239, 176, 178, 0.52);
-  }
 }
 
 /* ===== Photo Params Resource ===== */

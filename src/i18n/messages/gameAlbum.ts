@@ -10,7 +10,6 @@ export const gameAlbumMessages = {
     reauthorizeTools: '重新授权 X6Game',
     restore: '恢复上次授权',
     restoreHint: '恢复上次授权后，即可继续打开相册。',
-    emptyDescription: '授权 X6Game 后，网站会自动找到 NikkiPhotos_HighQuality 文件夹。',
     authorizationPath: '推荐授权路径：...\\InfinityNikki Launcher\\InfinityNikki\\X6Game',
     noAccounts: '这个 X6Game 中没有可打开的高画质相册。请确认游戏内已经拍过照。',
     missingAccount: '该账号的高画质相册已找不到。可切换到其他可用账号，或重新选择X6Game。',
@@ -27,8 +26,6 @@ export const gameAlbumMessages = {
     reauthorizeTools: 'Reauthorize X6Game',
     restore: 'Restore previous access',
     restoreHint: 'Restore access to reopen your last album.',
-    emptyDescription:
-      'After you authorize X6Game, the site automatically finds the NikkiPhotos_HighQuality folder.',
     authorizationPath:
       'Recommended authorization path: ...\\InfinityNikki Launcher\\InfinityNikki\\X6Game',
     noAccounts:

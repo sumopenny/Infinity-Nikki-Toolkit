@@ -88,6 +88,7 @@ import {
   ChartNoAxesColumnIncreasing,
   CircleHelp,
   Download,
+  Folder,
   Heart,
   Plus,
   Trash2,
@@ -95,8 +96,9 @@ import {
 } from 'lucide-vue-next'
 import UpdateLogDialog from './components/UpdateLogDialogContent.vue'
 import HelpAboutDialog from './components/HelpAboutDialogContent.vue'
+import AlbumEntryHelp from './components/AlbumEntryHelp.vue'
 import AlbumViewSwitcher, { type AlbumView } from './components/AlbumViewSwitcher.vue'
-import DesktopHome, { type HomeTool } from './components/DesktopHome.vue'
+import DesktopHome from './components/DesktopHome.vue'
 import CleanupAccountPicker from './components/CleanupAccountPicker.vue'
 import CleanupDialog from './components/CleanupDialog.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
@@ -1465,28 +1467,6 @@ async function ensureSharedOutfitSource(
   }
 }
 
-/** 独立授权 X6Game 文件夹并检查游戏搭配，无需选择相册。 */
-async function authorizeX6GameDirectory() {
-  if (isAnyFileOperationBusy.value) return
-  activeOperation.value = 'loading'
-  try {
-    const source = await ensureSharedOutfitSource(true, false, hasX6GameAuthorization.value)
-    if (!source) return
-    publishStatus({
-      type: 'custom',
-      message: locale.value.app.authorizeX6GameStatus,
-      tone: 'success'
-    })
-    showOutfitRefreshResult(await refreshOutfitLibrary(false, source), false)
-  } catch (error) {
-    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
-  } finally {
-    // 目录选择器返回页面时已处理扫描，丢弃这次聚焦排队的自动刷新。
-    invalidatePendingRefreshes()
-    if (activeOperation.value === 'loading') activeOperation.value = null
-  }
-}
-
 function applyOutfitTags(tags: string[]) {
   outfitTags.value = tags
   if (
@@ -1788,16 +1768,6 @@ function closeOutfitParse() {
 
 function openParseTools() {
   isParseToolsVisible.value = true
-}
-
-function openHomeTool(tool: HomeTool) {
-  if (navigationBusy.value) return
-  if (tool === 'avatar') isAvatarSimulatorVisible.value = true
-  else if (tool === 'fortune') isFortuneTimeVisible.value = true
-  else if (tool === 'cleanup') void openCleanupDialog()
-  else if (tool === 'parse') openParseTools()
-  else if (tool === 'export') void allDataBackupRef.value?.exportData()
-  else if (tool === 'import') allDataBackupRef.value?.chooseImport()
 }
 
 function closeParseTools() {
@@ -2468,9 +2438,13 @@ function importAllDataFromMenu() {
         <DesktopHome
           :language="language"
           :disabled="navigationBusy"
-          :has-backup-data="hasBackupData"
+          :all-count="photos.length"
+          :outfits-count="outfits.length"
+          :home-schemes-count="homeSchemesCount"
+          :favorite-count="cameraFavoriteCodes.length"
           @navigate="changeAlbumView"
-          @tool="openHomeTool"
+          @open-help="openHelpAbout"
+          @status="(message, tone) => showStatus({ message, tone })"
         />
       </section>
       <section v-else class="album-content" :aria-label="locale.app.albumContentAria">
@@ -2574,12 +2548,6 @@ function importAllDataFromMenu() {
           @clear="changeMobileFilter(mobileFilterEntries[0]?.key ?? 'all')"
           @open="mobileFiltersOpen = true"
         />
-        <div
-          v-if="isCameraFavoritesView"
-          v-show="!compactLayout"
-          id="favorites-camera-actions"
-          class="camera-parameters-toolbar"
-        ></div>
         <CameraFavorites
           v-if="cameraMounted"
           @open-filters="mobileFiltersOpen = true"
@@ -2588,7 +2556,6 @@ function importAllDataFromMenu() {
           :disabled="activeOperation === 'all-data-backup'"
           ref="cameraFavoritesRef"
           sidebar-target="#album-sidebar-column"
-          actions-target="#favorites-camera-actions"
           :active="isCameraFavoritesView"
           :thumbnail-size="thumbnailSizes.camera"
           :language="language"
@@ -2616,57 +2583,84 @@ function importAllDataFromMenu() {
         >
           <div class="empty-start-mark" aria-hidden="true"></div>
           <h2>{{ locale.grid.emptyTitle }}</h2>
-          <p>{{ gameAlbumText.emptyDescription }}</p>
           <div class="empty-album-actions">
-            <div class="empty-album-action-row">
-              <button
-                v-if="canRestoreDirectory"
-                class="primary-button"
-                type="button"
-                :disabled="isAnyFileOperationBusy"
-                @click="restoreDirectoryAccess"
-              >
-                {{ gameAlbumText.restore }}
-              </button>
-              <button
-                :class="canRestoreDirectory ? 'album-compatible-button' : 'primary-button'"
-                type="button"
-                :disabled="isAnyFileOperationBusy"
-                @click="chooseGameDirectory"
-              >
-                {{ gameDirectoryActionLabel }}
-              </button>
+            <div class="album-entry-recommended">
+              <Folder :size="26" class="album-entry-icon" aria-hidden="true" />
+              <div class="album-entry-copy">
+                <h3
+                  >{{ locale.grid.gameDirectoryTitle }}
+                  <span class="album-entry-badge">{{ locale.grid.recommended }}</span></h3
+                >
+                <p>{{ locale.grid.gameDirectoryHint }}</p>
+                <p class="recommended-path album-authorization-path">{{
+                  gameAlbumText.authorizationPath
+                }}</p>
+              </div>
+              <div class="empty-album-action-row">
+                <button
+                  v-if="canRestoreDirectory"
+                  class="primary-button"
+                  type="button"
+                  :disabled="isAnyFileOperationBusy"
+                  @click="restoreDirectoryAccess"
+                >
+                  {{ gameAlbumText.restore }}
+                </button>
+                <button
+                  :class="canRestoreDirectory ? 'album-compatible-button' : 'primary-button'"
+                  type="button"
+                  :disabled="isAnyFileOperationBusy"
+                  @click="chooseGameDirectory"
+                >
+                  {{ gameDirectoryActionLabel }}
+                </button>
+              </div>
             </div>
-            <div class="empty-album-action-row">
+            <div class="album-entry-alternatives" :class="{ 'is-single': compactLayout }">
               <button
-                class="album-compatible-button"
+                class="album-compatible-button album-entry-option"
                 type="button"
                 :disabled="isAnyFileOperationBusy"
                 @click="chooseDirectory"
               >
-                {{ locale.topBar.chooseDirectory }}
+                <Folder :size="24" class="album-entry-icon" aria-hidden="true" />
+                <span class="album-entry-copy">
+                  <strong>{{ locale.topBar.chooseDirectory }}</strong>
+                  <span>{{ locale.grid.separateDirectoryHint }}</span>
+                </span>
               </button>
               <button
                 v-if="!compactLayout"
                 type="button"
-                class="album-compatible-button"
+                class="album-compatible-button album-entry-option"
                 :disabled="isAnyFileOperationBusy"
                 @click="chooseCompatibleAlbum"
-                >{{ compatibleMessages.open }}</button
               >
+                <Folder :size="24" class="album-entry-icon" aria-hidden="true" />
+                <span class="album-entry-copy">
+                  <strong>{{ compatibleMessages.open }}</strong>
+                  <span>{{ locale.grid.compatibleDirectoryHint }}</span>
+                </span>
+              </button>
             </div>
           </div>
-          <div v-if="!compactLayout" class="empty-album-guidance">
-            <p>{{
-              compatibleMessages.openingHint(
-                canRestoreDirectory ? gameAlbumText.restore : gameDirectoryActionLabel
-              )
-            }}</p>
-            <p class="empty-album-reload-hint">{{ compatibleMessages.reloadHint }}</p>
-          </div>
-          <p class="recommended-path">{{ gameAlbumText.authorizationPath }}</p>
-          <p class="recommended-path">{{ locale.grid.manualAlbumPath }}</p>
-          <p class="hidden-folder-tip">{{ locale.grid.hiddenFolderTip }}</p>
+          <AlbumEntryHelp :title="locale.grid.albumOpeningHelp">
+            <div v-if="!compactLayout" class="empty-album-guidance">
+              <p>{{
+                compatibleMessages.openingHint(
+                  canRestoreDirectory ? gameAlbumText.restore : gameDirectoryActionLabel
+                )
+              }}</p>
+              <p class="empty-album-reload-hint">{{ compatibleMessages.reloadHint }}</p>
+            </div>
+            <p class="recommended-path">
+              <span class="separate-album-hint">{{ locale.grid.separateAlbumHint }}</span
+              ><br />
+              <strong>{{ locale.grid.manualAlbumRecommendation }}</strong
+              >{{ ' ' + locale.grid.manualAlbumPath }}
+            </p>
+            <p class="hidden-folder-tip">{{ locale.grid.hiddenFolderTip }}</p>
+          </AlbumEntryHelp>
         </div>
 
         <header
@@ -2761,18 +2755,6 @@ function importAllDataFromMenu() {
                 outfitLocale.addOutfit
               }}</span> </button
             ><template #secondary>
-              <button
-                v-if="directorySupported && !gameAlbum"
-                type="button"
-                :disabled="isAnyFileOperationBusy"
-                @click="authorizeX6GameDirectory"
-              >
-                {{
-                  hasX6GameAuthorization
-                    ? gameAlbumText.reauthorizeTools
-                    : gameAlbumText.authorizeTools
-                }}
-              </button>
               <button
                 type="button"
                 :disabled="isAnyFileOperationBusy"
@@ -3373,22 +3355,6 @@ function importAllDataFromMenu() {
   width: min(15rem, calc(100vw - 9rem));
   min-width: 100%;
   white-space: normal;
-}
-.camera-parameters-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  padding-bottom: 10px;
-  margin-bottom: 22px;
-  border-bottom: 1px solid var(--line);
-}
-.camera-parameters-toolbar :deep(.outfit-header-actions) {
-  width: auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  overflow: visible;
-}
-.camera-parameters-toolbar :deep(.outfit-header-actions > button) {
-  white-space: nowrap;
 }
 .photo-trash-button {
   --action-ink: #786c85;

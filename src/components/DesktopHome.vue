@@ -1,274 +1,391 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import {
-  Archive,
-  Armchair,
-  Camera,
-  Clapperboard,
-  HardDrive,
-  Images,
-  Notebook,
-  ScanFace,
-  ScanLine,
-  Shirt,
-  Sparkles,
-  Download,
-  Upload
-} from 'lucide-vue-next'
+import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import HomeWallpaperDialog from './HomeWallpaperDialog.vue'
+import { useHomeWallpaper } from '../composables/useHomeWallpaper'
+import { ArrowRight, Camera, House, Image, ImagePlus, Sparkles } from 'lucide-vue-next'
 import type { AlbumView } from './AlbumViewSwitcher.vue'
 
-export type HomeTool = 'avatar' | 'fortune' | 'cleanup' | 'parse' | 'export' | 'import'
-const props = defineProps<{ language: 'zh' | 'en'; disabled: boolean; hasBackupData: boolean }>()
-const emit = defineEmits<{ navigate: [view: AlbumView]; tool: [tool: HomeTool] }>()
-const backupOpen = ref(false)
+const props = defineProps<{
+  language: 'zh' | 'en'
+  disabled: boolean
+  allCount: number
+  outfitsCount: number
+  homeSchemesCount: number
+  favoriteCount: number
+}>()
+const emit = defineEmits<{
+  navigate: [view: AlbumView]
+  openHelp: []
+  status: [message: string, tone: 'error']
+}>()
 const t = (zh: string, en: string) => (props.language === 'zh' ? zh : en)
 const collections = computed(() => [
-  { view: 'outfits' as const, icon: Shirt, label: t('搭配码', 'Outfits') },
-  { view: 'home' as const, icon: Armchair, label: t('家园方案', 'Home schemes') },
-  { view: 'favorites' as const, icon: Camera, label: t('相机参数', 'Camera parameters') },
-  { view: 'resonance' as const, icon: Notebook, label: t('暖暖档案', 'Nikki archive') }
+  { view: 'all' as const, icon: Image, label: t('照片', 'Photos'), count: props.allCount },
+  {
+    view: 'outfits' as const,
+    icon: null,
+    label: t('搭配码', 'Outfits'),
+    count: props.outfitsCount
+  },
+  {
+    view: 'home' as const,
+    icon: House,
+    label: t('家园方案', 'Home schemes'),
+    count: props.homeSchemesCount
+  },
+  {
+    view: 'favorites' as const,
+    icon: Camera,
+    label: t('相机参数', 'Camera parameters'),
+    count: props.favoriteCount
+  }
 ])
-function navigate(view: AlbumView) {
-  if (!props.disabled) emit('navigate', view)
+const wallpaperOpen = ref(false)
+const wallpaper = useHomeWallpaper((failure) => {
+  const messages = {
+    load: t('壁纸加载失败，请重试。', 'Wallpaper failed to load. Please retry.'),
+    upload: t(
+      '图片处理失败，请检查格式、大小后重试。',
+      'Image processing failed. Check the format and size.'
+    ),
+    storage: t(
+      '壁纸保存失败，原壁纸已保留。',
+      'Could not save wallpaper. The previous wallpaper is unchanged.'
+    )
+  }
+  emit('status', messages[failure], 'error')
+})
+const { style: wallpaperStyle, source: wallpaperSource } = wallpaper
+const wallpaperTrigger = ref<HTMLButtonElement | null>(null)
+function closeWallpaper(restoreFocus = false) {
+  wallpaper.persist()
+  wallpaperOpen.value = false
+  if (restoreFocus) void nextTick(() => wallpaperTrigger.value?.focus({ preventScroll: true }))
 }
-function tool(action: HomeTool) {
-  if (!props.disabled) emit('tool', action)
+function openWallpaper() {
+  if (wallpaperOpen.value) {
+    closeWallpaper()
+    return
+  }
+  wallpaperOpen.value = true
+  void wallpaper.prepareCustom()
 }
+function onWallpaperKey(event: KeyboardEvent) {
+  if (
+    wallpaperOpen.value &&
+    event.key === 'Escape' &&
+    !event.defaultPrevented &&
+    !document.querySelector('[aria-modal="true"], dialog[open]')
+  ) {
+    event.preventDefault()
+    closeWallpaper(true)
+  }
+}
+onMounted(() => document.addEventListener('keydown', onWallpaperKey))
+onBeforeUnmount(() => document.removeEventListener('keydown', onWallpaperKey))
+const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh' ? 'zh-CN' : 'en'))
 </script>
 
 <template>
-  <div class="desktop-home" data-testid="desktop-home">
-    <div class="home-index">
-      <div class="home-index-copy">
-        <h1>{{ t('灵感，', 'Inspiration,') }}<br />{{ t('妥善收藏。', 'kept close.') }}</h1>
-        <button
-          class="home-album-button"
-          type="button"
-          :disabled="disabled"
-          @click="navigate('all')"
-        >
-          <Images :size="19" aria-hidden="true" />{{ t('打开相册', 'Open album') }}
+  <div
+    class="desktop-home"
+    :class="{ 'has-wallpaper': wallpaperSource }"
+    :style="wallpaperStyle"
+    data-testid="desktop-home"
+    @click.self="wallpaperOpen && closeWallpaper()"
+  >
+    <div class="home-hero-copy" @click.self="wallpaperOpen && closeWallpaper()">
+      <div class="home-hero-text">
+        <p class="home-eyebrow">{{ t('无限暖暖 · 工具集', 'Infinity Nikki · Toolkit') }}</p>
+        <h1>{{ t('欢迎回到暖立方', 'Welcome back to NikkiCube') }}</h1>
+        <p class="home-description">{{
+          t(
+            '相册管理 · 搭配收藏 · 家园方案 · 相机参数 · 暖暖档案',
+            'Albums · Outfits · Home schemes · Camera parameters · Nikki archive'
+          )
+        }}</p>
+      </div>
+      <div class="home-hero-actions" @click.self="wallpaperOpen && closeWallpaper()">
+        <button class="home-guide-button" type="button" @click="emit('openHelp')">
+          <Sparkles :size="16" aria-hidden="true" />
+          {{ t('使用教程', 'User guide') }}
+          <ArrowRight :size="16" aria-hidden="true" />
         </button>
-        <nav class="home-collections" :aria-label="t('我的收藏', 'My collections')">
-          <button
-            v-for="item in collections"
-            :key="item.view"
-            type="button"
-            :disabled="disabled"
-            @click="navigate(item.view)"
-          >
-            <component :is="item.icon" :size="21" aria-hidden="true" /><span>{{ item.label }}</span>
-          </button>
-        </nav>
-      </div>
-      <figure class="home-artwork">
-        <div
-          class="home-photo-placeholder"
-          role="img"
-          :aria-label="t('照片占位，比例 16 比 10', 'Photo placeholder, 16 by 10')"
-        >
-          <Images :size="28" aria-hidden="true" />
-          <span>{{ t('照片展示位', 'Photo placeholder') }}</span>
-          <small>16 : 10</small>
-        </div>
-      </figure>
-    </div>
-    <section class="home-tools" :aria-label="t('创意与实用工具', 'Creative and practical tools')">
-      <h2>{{ t('小工具', 'Tools') }}</h2>
-      <div class="home-tool-links">
-        <button type="button" :disabled="disabled" @click="tool('avatar')"
-          ><ScanFace :size="18" aria-hidden="true" />{{
-            t('头像模拟器', 'Avatar simulator')
-          }}</button
-        >
-        <button type="button" :disabled="disabled" @click="tool('fortune')"
-          ><Sparkles :size="18" aria-hidden="true" />{{ t('抽卡时间', 'Lucky time') }}</button
-        >
-        <button type="button" :disabled="disabled" @click="navigate('animations')"
-          ><Clapperboard :size="18" aria-hidden="true" />{{
-            t('满进动画', 'Evolution animations')
-          }}</button
-        >
-        <button type="button" :disabled="disabled" @click="tool('parse')"
-          ><ScanLine :size="18" aria-hidden="true" />{{ t('照片解析', 'Photo parsing') }}</button
-        >
-        <button type="button" :disabled="disabled" @click="tool('cleanup')"
-          ><HardDrive :size="18" aria-hidden="true" />{{
-            t('电脑清理', 'Game file cleanup')
-          }}</button
-        >
         <button
+          ref="wallpaperTrigger"
+          class="home-wallpaper-button"
           type="button"
-          :disabled="disabled"
-          :aria-expanded="backupOpen"
-          aria-controls="home-backup-actions"
-          @click="backupOpen = !backupOpen"
-          ><Archive :size="18" aria-hidden="true" />{{ t('备份迁移', 'Backup & transfer') }}</button
+          :aria-expanded="wallpaperOpen"
+          aria-controls="home-wallpaper-drawer"
+          @click="openWallpaper"
         >
-        <div
-          v-if="backupOpen"
-          id="home-backup-actions"
-          class="home-backup-actions"
-          role="group"
-          :aria-label="t('备份迁移操作', 'Backup actions')"
-        >
-          <button type="button" :disabled="disabled || !hasBackupData" @click="tool('export')"
-            ><Download :size="17" aria-hidden="true" />{{
-              t('导出全部数据', 'Export all data')
-            }}</button
-          >
-          <button type="button" :disabled="disabled" @click="tool('import')"
-            ><Upload :size="17" aria-hidden="true" />{{ t('导入备份', 'Import backup') }}</button
-          >
-        </div>
+          {{ t('更换主页壁纸', 'Change home wallpaper')
+          }}<ImagePlus :size="16" aria-hidden="true" />
+        </button>
       </div>
-    </section>
+    </div>
+
+    <nav
+      class="home-overview"
+      :class="{ 'is-hidden': wallpaperOpen }"
+      :inert="wallpaperOpen || undefined"
+      :aria-hidden="wallpaperOpen || undefined"
+      :aria-label="t('收藏概览', 'Collection overview')"
+    >
+      <button
+        v-for="item in collections"
+        :key="item.view"
+        :data-view="item.view"
+        type="button"
+        :disabled="disabled"
+        @click="emit('navigate', item.view)"
+      >
+        <span class="home-overview-icon" aria-hidden="true">
+          <component v-if="item.icon" :is="item.icon" :size="38" :stroke-width="1.65" />
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            width="38"
+            height="38"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.65"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M8 2c0 2 1.5 3 4 3s4-1 4-3l3 2-2.5 5.5 4.8 10.1c-5.7 3.2-12.9 3.2-18.6 0L7.5 9.5 5 4Z"
+            />
+            <path d="M7.5 9.5h9" />
+          </svg>
+        </span>
+        <span class="home-overview-text">
+          <strong>{{ numberFormat.format(item.count) }}</strong>
+          <span>{{ item.label }}</span>
+        </span>
+      </button>
+    </nav>
+    <HomeWallpaperDialog
+      :visible="wallpaperOpen"
+      :language="language"
+      :wallpaper="wallpaper"
+      @close="closeWallpaper(true)"
+    />
   </div>
 </template>
 
 <style scoped>
 .desktop-home {
-  padding: clamp(24px, 4vw, 64px);
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-.home-index {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-  gap: clamp(28px, 5vw, 80px);
-  align-items: center;
+  flex: 1;
+  grid-template-rows: 1fr auto;
+  gap: clamp(24px, 5vh, 56px);
+  min-width: 0;
+  min-height: 440px;
+  padding: clamp(28px, 6vh, 72px) clamp(24px, 6vw, 88px) clamp(32px, 13vh, 112px);
+  overflow: hidden;
+  border-radius: 0;
+  isolation: isolate;
+  color: white;
+  color: color-mix(in srgb, var(--share-ink), white var(--home-text-lightness, 100%));
 }
-.home-index h1 {
-  color: var(--heading);
-  font-size: clamp(32px, 3.7vw, 52px);
+.desktop-home::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: calc(-2 * var(--home-background-blur, 0px));
+  background-image: var(--home-wallpaper, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(var(--home-background-blur, 0px));
+  pointer-events: none;
+}
+.home-hero-copy {
+  align-self: center;
+  max-width: 100%;
+  text-shadow: 0 2px 12px rgba(46, 36, 52, 0.25);
+}
+.home-hero-text,
+.home-overview {
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  border-radius: 26px;
+}
+.home-hero-text {
+  width: fit-content;
+  max-width: 100%;
+  padding: 16px 22px;
+  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--surface) 12%, transparent);
+  backdrop-filter: blur(8px);
+}
+.home-eyebrow {
+  margin: 0 0 8px;
+  font-size: clamp(14px, 1.3vw, 20px);
+  letter-spacing: 0.08em;
+}
+.home-hero-copy h1 {
+  margin: 0;
+  color: inherit;
+  font-family: Georgia, 'Songti SC', SimSun, serif;
+  font-size: clamp(32px, 3.9vw, 64px);
   font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: -0.025em;
-  margin: 0 0 30px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
-.desktop-home button {
+.home-description {
+  margin: 12px 0 0;
+  font-size: clamp(12px, 1.05vw, 16px);
+  line-height: 1.7;
+}
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+.home-guide-button,
+.home-wallpaper-button {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  font: inherit;
+  justify-content: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 7px 22px;
+  border: 1.5px solid rgba(255, 248, 239, 0.82);
+  border-radius: 999px;
+  background: rgba(255, 248, 239, 0.12);
+  color: inherit;
+  font-size: clamp(13px, 1.1vw, 16px);
+  backdrop-filter: blur(6px);
+}
+.home-guide-button {
+  border-color: var(--surface-strong);
+  background: var(--surface);
+  background: color-mix(in srgb, var(--surface-strong) 70%, transparent);
+  color: var(--pink-deep);
+  backdrop-filter: blur(8px);
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(104, 49, 79, 0.16);
+  transition:
+    background var(--motion-base),
+    border-color var(--motion-base);
+}
+.home-guide-button:hover {
+  background: var(--interactive-hover-bg);
+  border-color: var(--interactive-hover-bg);
+}
+.home-wallpaper-button {
+  border-color: currentColor;
+}
+.home-wallpaper-button:hover {
+  background: rgba(255, 248, 239, 0.24);
+}
+.desktop-home:not(.has-wallpaper) {
   color: var(--text);
-  cursor: pointer;
 }
-.desktop-home button svg {
-  flex-shrink: 0;
-  color: var(--menu-hover-text);
+.desktop-home:not(.has-wallpaper) .home-hero-copy {
+  text-shadow: none;
 }
-.desktop-home button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.desktop-home:not(.has-wallpaper) .home-wallpaper-button {
+  border-color: var(--line);
+  background: var(--surface);
 }
-.desktop-home button:focus-visible {
-  outline: 2px solid var(--pink-deep);
-  outline-offset: 4px;
+.home-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  padding: clamp(10px, 1.3vw, 16px) 0;
+
+  background: var(--surface);
+  background: color-mix(in srgb, var(--surface-strong) 70%, transparent);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+  color: var(--text);
 }
-.home-album-button {
-  background: var(--soft-accent);
-  border: 1px solid var(--interactive-hover-border);
-  border-radius: 10px;
-  padding: 12px 19px;
+.home-overview {
+  transition: opacity 180ms ease;
 }
-.home-album-button:not(:disabled):hover {
-  background: var(--interactive-hover-bg);
+.home-overview.is-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
-.home-collections {
+@media (prefers-reduced-motion: reduce) {
+  .home-overview {
+    transition: none;
+  }
+}
+.home-overview button {
+  --overview-icon: #9b62b1;
+  --overview-icon-bg: #eadcf0;
   display: flex;
-  flex-direction: column;
-  margin-top: 30px;
-}
-.home-collections button {
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  text-align: left;
-  padding: 16px 10px;
-  font-size: clamp(17px, 1.8vw, 23px);
-}
-.home-collections button:not(:disabled):hover {
-  background: var(--interactive-hover-bg);
-  color: var(--menu-hover-text);
-  border-radius: 8px;
-}
-.home-artwork {
-  margin: 0;
-  min-width: 0;
-}
-.home-photo-placeholder {
-  aspect-ratio: 16 / 10;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  border-radius: 14px;
-  background: var(--surface-soft);
-  color: var(--text);
-  border: 1px dashed var(--interactive-hover-border);
-}
-.home-tools {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
-  gap: 20px;
-  border-top: 1px solid var(--line);
-  margin-top: 40px;
-  padding-top: 20px;
-}
-.home-tools h2 {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--text);
-  margin: 0;
-}
-.home-tool-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-}
-.home-tool-links button {
+  gap: clamp(6px, 0.9vw, 14px);
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px clamp(6px, 1vw, 14px);
   border: 0;
-  padding: 9px 8px;
   background: transparent;
-  font-size: 13px;
-  border-radius: 8px;
+  color: inherit;
+  text-align: left;
+  transition: background var(--motion-base);
 }
-.home-tool-links button:not(:disabled):hover {
-  background: var(--interactive-hover-bg);
-  color: var(--menu-hover-text);
+.home-overview button + button {
+  border-left: 1px solid rgba(174, 128, 132, 0.25);
 }
-.home-backup-actions {
-  flex-basis: 100%;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 8px;
-  border-radius: 10px;
-  background: var(--surface-soft);
+.home-overview button[data-view='outfits'] {
+  --overview-icon: #bf5576;
+  --overview-icon-bg: #f8dce4;
 }
-@media (max-width: 1100px) {
-  .desktop-home {
-    padding: 28px;
-  }
-  .home-index {
-    gap: 30px;
-  }
-  .home-tools {
-    gap: 12px;
-  }
+.home-overview button[data-view='home'] {
+  --overview-icon: #829a5b;
+  --overview-icon-bg: #f3e8d6;
 }
-@media (max-width: 650px) {
-  .home-index {
-    grid-template-columns: 1fr;
-  }
-  .home-tools {
-    grid-template-columns: 1fr;
-  }
+.home-overview button[data-view='favorites'] {
+  --overview-icon: #779b5b;
+  --overview-icon-bg: #e6ebd8;
+}
+.home-overview button:hover:not(:disabled) {
+  background: rgba(201, 132, 134, 0.1);
+}
+.home-overview-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: clamp(28px, 3vw, 44px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  color: var(--overview-icon);
+  background: var(--overview-icon-bg);
+}
+.home-overview-icon svg {
+  width: 72%;
+  height: 72%;
+}
+.home-overview-text {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  line-height: 1.2;
+}
+.home-overview-text strong {
+  color: #4d2938;
+  font-size: clamp(18px, 1.6vw, 26px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.home-overview-text > span {
+  font-size: clamp(12px, 1.05vw, 16px);
+  overflow-wrap: anywhere;
+}
+:global(:root[data-theme='dark']) .home-hero-text,
+:global(:root[data-theme='dark']) .home-overview {
+  border-color: rgba(255, 248, 244, 0.25);
+}
+
+:global(:root[data-theme='dark']) .home-overview-text strong {
+  color: var(--heading);
 }
 </style>

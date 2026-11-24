@@ -958,11 +958,8 @@ function handleAddTag(value: string) {
     <div class="home-scheme-main">
       <header class="gallery-header is-outfit-header home-scheme-header"
         ><div class="home-scheme-heading"
-          ><div class="home-scheme-title-row"
-            ><h2>{{ messages.title }}</h2
-            ><strong class="home-scheme-count"
-              >{{ visibleSchemes.length }} / {{ schemes.length }}</strong
-            ></div
+          ><div class="collection-title-row"
+            ><h2>{{ messages.title }}</h2></div
           ></div
         ><CollectionActions
           mobile-target="#home-tag-actions"
@@ -1381,19 +1378,6 @@ function handleAddTag(value: string) {
 }
 .home-scheme-heading {
   min-width: 0;
-}
-.home-scheme-title-row {
-  display: flex;
-  min-height: 28px;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-.home-scheme-count {
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1;
-  white-space: nowrap;
 }
 .home-scheme-empty {
   margin-top: 14px;

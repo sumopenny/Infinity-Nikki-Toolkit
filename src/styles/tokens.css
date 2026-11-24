@@ -73,7 +73,9 @@
   --scrollbar-track: rgba(255, 255, 255, 0.62);
   --scrollbar-thumb: rgba(201, 132, 134, 0.42);
   --scrollbar-thumb-hover: rgba(201, 132, 134, 0.68);
-  --text: var(--share-ink);
+  --text-light-theme: var(--share-ink);
+  --text-dark-theme: #eee7e2;
+  --text: var(--text-light-theme);
   --heading: var(--share-heading);
   --muted: var(--share-muted);
   --shadow: 0 14px 34px rgba(150, 119, 98, 0.14);
@@ -177,7 +179,7 @@
   --scrollbar-track: rgba(18, 18, 22, 0.76);
   --scrollbar-thumb: rgba(239, 176, 178, 0.42);
   --scrollbar-thumb-hover: rgba(239, 176, 178, 0.68);
-  --text: #eee7e2;
+  --text: var(--text-dark-theme);
   --heading: #fff8f4;
   --muted: #b7aaa5;
   --shadow: 0 14px 34px rgba(0, 0, 0, 0.42);

@@ -31,8 +31,7 @@ import { readOutfitCollection } from '../src/utils/outfit/outfitStorage'
 import {
   getSavedGameAlbumUid,
   getSavedX6GameDirectoryHandle,
-  saveGameAlbumDirectory,
-  saveX6GameDirectoryHandle
+  saveGameAlbumDirectory
 } from '../src/utils/file-system/directoryStorage'
 import { countHomeSchemes } from '../src/utils/homeBuild/homeSchemeStorage'
 
@@ -221,13 +220,31 @@ describe('App lifecycle coordination', () => {
     const labels = gameAlbumMessages[language]
     const button = page.get('.empty-album-actions .primary-button')
     expect(page.get('h2').text()).toBe(messages[language].grid.emptyTitle)
-    expect(page.get('h2 + p').text()).toBe(labels.emptyDescription)
+    expect(page.get('.album-entry-recommended h3').text()).toContain(
+      messages[language].grid.gameDirectoryTitle
+    )
     expect(button.text()).toBe(labels[action])
     expect(page.get('.empty-album-guidance > p').text()).toContain(button.text())
+    expect(page.get('.album-entry-recommended .album-authorization-path').text()).toBe(
+      labels.authorizationPath
+    )
+    expect(page.find('.album-entry-recommended .primary-button').exists()).toBe(true)
+    const helpToggle = page.get('.album-entry-help .accordion-toggle')
+    const answer = page.get('.album-entry-help .accordion-answer')
+    expect(helpToggle.text()).toBe(messages[language].grid.albumOpeningHelp)
+    expect(helpToggle.attributes('aria-expanded')).toBe('false')
+    expect(answer.classes()).not.toContain('expanded')
+    await helpToggle.trigger('click')
+    expect(helpToggle.attributes('aria-expanded')).toBe('true')
+    expect(answer.classes()).toContain('expanded')
+    await helpToggle.trigger('click')
+    expect(helpToggle.attributes('aria-expanded')).toBe('false')
+    expect(answer.classes()).not.toContain('expanded')
     expect(page.findAll('.recommended-path').map((path) => path.text())).toEqual([
       labels.authorizationPath,
-      messages[language].grid.manualAlbumPath
+      `${messages[language].grid.separateAlbumHint}${messages[language].grid.manualAlbumRecommendation} ${messages[language].grid.manualAlbumPath}`
     ])
+    expect(page.find('.recommended-path .separate-album-hint + br + strong').exists()).toBe(true)
     expect(page.get('.hidden-folder-tip').text()).toBe(messages[language].grid.hiddenFolderTip)
     expect(page.get('.empty-album-reload-hint').text()).toMatch(/只读|read-only/)
   })
@@ -452,7 +469,7 @@ describe('App lifecycle coordination', () => {
     }
   })
 
-  it('opens the desktop home without an album and connects its navigation and tools', async () => {
+  it('opens the desktop home without an album and reuses navigation counts and top bar tools', async () => {
     localStorage.removeItem('infinity-nikki-active-view')
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
@@ -460,15 +477,34 @@ describe('App lifecycle coordination', () => {
     const home = wrapper.getComponent({ name: 'DesktopHome' })
     expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('landing')
     expect(wrapper.find('.header-search').exists()).toBe(false)
-    expect(wrapper.find('.home-artwork img').exists()).toBe(false)
-    expect(wrapper.find('.home-photo-placeholder').exists()).toBe(true)
+    expect(home.find('img').exists()).toBe(false)
+    expect(home.get('.home-wallpaper-button').attributes('disabled')).toBeUndefined()
+    await home.get('.home-wallpaper-button').trigger('click')
+    expect(home.find('.home-wallpaper-drawer').exists()).toBe(true)
+    expect(home.find('.home-overview').classes()).toContain('is-hidden')
+    expect(home.find('.home-wallpaper-drawer').attributes('aria-modal')).toBeUndefined()
+    await home.get('.home-wallpaper-close').trigger('click')
+    expect(home.find('.home-wallpaper-drawer').exists()).toBe(false)
+    expect(home.find('.home-overview').classes()).not.toContain('is-hidden')
+    await home.get('.home-wallpaper-button').trigger('click')
+    await home.get('.home-wallpaper-drawer').trigger('click')
+    expect(home.find('.home-wallpaper-drawer').exists()).toBe(true)
+    await home.get('.desktop-home').trigger('click')
+    expect(home.find('.home-wallpaper-drawer').exists()).toBe(false)
+    expect(
+      home.findAll('.home-overview button').map((button) => button.attributes('data-view'))
+    ).toEqual(['all', 'outfits', 'home', 'favorites'])
+    const nav = wrapper.getComponent({ name: 'AlbumViewSwitcher' })
+    for (const prop of ['allCount', 'outfitsCount', 'homeSchemesCount', 'favoriteCount']) {
+      expect(home.props(prop)).toBe(nav.props(prop))
+    }
     expect(wrapper.find('.empty-album-start').exists()).toBe(false)
     expect(wrapper.findComponent({ name: 'DateSidebar' }).exists()).toBe(false)
-    home.vm.$emit('tool', 'parse')
+    wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openParseTools')
     await nextTick()
     expect(wrapper.getComponent({ name: 'ParseToolsDialog' }).props('visible')).toBe(true)
     wrapper.getComponent({ name: 'ParseToolsDialog' }).vm.$emit('close')
-    await home.get('.home-album-button').trigger('click')
+    await home.get('[data-view="all"]').trigger('click')
     expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('all')
     expect(wrapper.findComponent({ name: 'DesktopHome' }).exists()).toBe(false)
     wrapper.getComponent({ name: 'AlbumViewSwitcher' }).vm.$emit('changeView', 'landing')
@@ -574,7 +610,7 @@ describe('App lifecycle coordination', () => {
     await flushPromises()
     expect(wrapper.find('#album-sidebar-column .outfit-sidebar').exists()).toBe(true)
     if (view === 'favorites') {
-      expect(wrapper.find('#favorites-camera-actions .collection-actions').exists()).toBe(true)
+      expect(wrapper.find('.camera-header .collection-actions').exists()).toBe(true)
     }
   })
 
@@ -1037,17 +1073,7 @@ describe('App lifecycle coordination', () => {
       vi.fn((media: string) => (media === '(max-width: 899px)' ? query : { matches: false }))
     )
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
-    const wrapper = mount(App, {
-      global: {
-        stubs: {
-          CameraFavorites: {
-            name: 'CameraFavorites',
-            props: ['active', 'thumbnailSize'],
-            template: '<div />'
-          }
-        }
-      }
-    })
+    const wrapper = mount(App, { attachTo: document.body })
     try {
       await flushPromises()
       await wrapper.findAll('.mobile-navigation button')[2]!.trigger('click')
@@ -1079,14 +1105,14 @@ describe('App lifecycle coordination', () => {
       )
       expect(localStorage.getItem('infinity-nikki-camera-thumbnail-size-mobile')).toBe('small')
       expect(wrapper.find('.empty-album-start').exists()).toBe(false)
-      expect(wrapper.get('.camera-parameters-toolbar').isVisible()).toBe(false)
+      expect(wrapper.get('.camera-header').isVisible()).toBe(false)
       query.matches = false
       listeners.forEach((fn) => fn())
       await flushPromises()
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('thumbnailSize')).toBe(
         'large'
       )
-      expect(wrapper.get('.camera-parameters-toolbar').isVisible()).toBe(true)
+      expect(wrapper.get('.camera-header').isVisible()).toBe(true)
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(true)
       await wrapper.getComponent({ name: 'TopBar' }).vm.$emit('toggleLanguage')
       await flushPromises()
@@ -1560,26 +1586,13 @@ describe('App lifecycle coordination', () => {
     }
   )
 
-  it('keeps tool authorization out of the album menu and scans once after an explicit replacement', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  it('keeps game directory authorization in the album menu instead of outfit actions', async () => {
     const album = { name: 'Independent' } as FileSystemDirectoryHandle
-    const oldRoot = { kind: 'directory', name: 'X6Game' } as FileSystemDirectoryHandle
-    const newRoot = {
-      kind: 'directory',
-      name: 'X6Game',
-      label: 'new'
-    } as unknown as FileSystemDirectoryHandle
-    const picker = vi
-      .fn()
-      .mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'))
-      .mockImplementationOnce(async () => {
-        window.dispatchEvent(new Event('focus'))
-        return newRoot
-      })
-    vi.stubGlobal('showDirectoryPicker', picker)
+    const root = { kind: 'directory', name: 'X6Game' } as FileSystemDirectoryHandle
+    vi.stubGlobal('showDirectoryPicker', vi.fn())
     localStorage.setItem('infinity-nikki-active-view', 'outfits')
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(album)
-    getSavedX6GameDirectoryHandleMock.mockResolvedValue(oldRoot)
+    getSavedX6GameDirectoryHandleMock.mockResolvedValue(root)
     readAlbumDirectoryMock.mockResolvedValue({
       directoryHandle: album,
       directoryName: album.name,
@@ -1588,32 +1601,12 @@ describe('App lifecycle coordination', () => {
     const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
     try {
       await flushPromises()
+      const actions = wrapper.get('.outfit-header-actions')
+      expect(actions.text()).not.toContain(gameAlbumMessages.zh.authorizeTools)
+      expect(actions.text()).not.toContain(gameAlbumMessages.zh.reauthorizeTools)
       const topBar = wrapper.getComponent({ name: 'TopBar' })
       await topBar.get('.album-name-button').trigger('click')
-      expect(topBar.text()).not.toContain(gameAlbumMessages.zh.reauthorizeTools)
-      const authorize = wrapper
-        .findAll('button')
-        .find((button) => button.text() === gameAlbumMessages.zh.reauthorizeTools)
-      expect(authorize).toBeDefined()
-      readOutfitLibraryMock.mockClear()
-      getSavedX6GameDirectoryHandleMock.mockClear()
-      await authorize!.trigger('click')
-      await flushPromises()
-      expect(picker).toHaveBeenCalledTimes(1)
-      expect(saveX6GameDirectoryHandle).not.toHaveBeenCalled()
-      expect(readOutfitLibraryMock).not.toHaveBeenCalled()
-      expect(topBar.props('directoryName')).toBe(album.name)
-      expect(authorize!.text()).toBe(gameAlbumMessages.zh.reauthorizeTools)
-      await authorize!.trigger('click')
-      await flushPromises()
-      await vi.advanceTimersByTimeAsync(400)
-      expect(picker).toHaveBeenCalledTimes(2)
-      expect(saveX6GameDirectoryHandle).toHaveBeenCalledTimes(1)
-      expect(saveX6GameDirectoryHandle).toHaveBeenCalledWith(newRoot)
-      expect(getSavedX6GameDirectoryHandleMock).not.toHaveBeenCalled()
-      expect(readOutfitLibraryMock).toHaveBeenCalledTimes(1)
-      expect(readOutfitLibraryMock).toHaveBeenCalledWith({ x6GameDirectory: newRoot })
-      expect(topBar.props('directoryName')).toBe(album.name)
+      expect(topBar.text()).toContain(gameAlbumMessages.zh.reselect)
     } finally {
       wrapper.unmount()
       vi.unstubAllGlobals()

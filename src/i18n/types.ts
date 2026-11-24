@@ -301,7 +301,15 @@ export interface FullLocaleMessages {
     emptyDescription: string
     emptyFavoritesTitle: string
     emptyFavoritesDescription: string
+    gameDirectoryTitle: string
+    recommended: string
+    gameDirectoryHint: string
+    separateDirectoryHint: string
+    compatibleDirectoryHint: string
+    albumOpeningHelp: string
+    manualAlbumRecommendation: string
     manualAlbumPath: string
+    separateAlbumHint: string
     hiddenFolderTip: string
     selectDay: string
     addFavorite: string

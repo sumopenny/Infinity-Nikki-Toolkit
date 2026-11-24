@@ -2,12 +2,20 @@
 import type { LocaleMessages } from '../types'
 
 export const gridZh: LocaleMessages['grid'] = {
-  emptyTitle: '开始整理你的暖暖摄影作品',
+  emptyTitle: '打开你的暖暖相册',
   emptyDescription: '选择高画质相册文件夹后，照片会按拍摄日期自动整理。',
+  gameDirectoryTitle: '授权游戏目录',
+  recommended: '推荐',
+  gameDirectoryHint: '自动找到游戏内的大喵相册，即NikkiPhotos_HighQuality。',
+  separateDirectoryHint: '打开你单独存放照片的文件夹',
+  compatibleDirectoryHint: '在无法访问游戏目录时使用',
+  albumOpeningHelp: '相册打开帮助',
   emptyFavoritesTitle: '收藏夹还是空的',
   emptyFavoritesDescription: '点击照片右上角的爱心，即可加入收藏夹。',
-  manualAlbumPath:
-    '手动打开相册时参考：\\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\你的id\\NikkiPhotos_HighQuality',
+  manualAlbumRecommendation: '强烈建议优先选择 NikkiPhotos_HighQuality 文件夹。',
+  manualAlbumPath: '游戏内的「大喵相册」只读取这个文件夹里的照片。',
+  separateAlbumHint:
+    '如果你的照片存放在其他文件夹，可以使用「打开独立相册」，选择实际存放照片的文件夹。',
   hiddenFolderTip: '如果找不到 GamePlayPhotos，在文件夹上方栏点击“查看”→显示→隐藏的项目→点击勾选',
   selectDay: '选择这一天',
   addFavorite: '加入收藏夹',
@@ -36,13 +44,21 @@ export const gridZh: LocaleMessages['grid'] = {
   photoCount: (count) => `${count} 张照片`
 }
 export const gridEn: LocaleMessages['grid'] = {
-  emptyTitle: 'Start organizing your Infinity Nikki photography',
+  emptyTitle: 'Open your Infinity Nikki album',
   emptyDescription:
     'Choose the high-quality album folder to organize photos automatically by capture date.',
+  gameDirectoryTitle: 'Authorize game folder',
+  recommended: 'Recommended',
+  gameDirectoryHint: 'Automatically find Momo’s Album (NikkiPhotos_HighQuality).',
+  separateDirectoryHint: 'Open the folder where you store your photos separately',
+  compatibleDirectoryHint: 'Use when the game folder is inaccessible',
+  albumOpeningHelp: 'Album opening help',
   emptyFavoritesTitle: 'No favorites yet',
   emptyFavoritesDescription: 'Click the heart at the top right of a photo to add it to Favorites.',
-  manualAlbumPath:
-    'Path for opening an album manually: \\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\Your ID\\NikkiPhotos_HighQuality',
+  manualAlbumRecommendation: 'We strongly recommend choosing the NikkiPhotos_HighQuality folder.',
+  manualAlbumPath: 'The in-game Momo’s Album only reads photos from this folder.',
+  separateAlbumHint:
+    'If your photos are stored elsewhere, use “Open a separate album” and select the folder where they’re stored.',
   hiddenFolderTip:
     'Can\'t find GamePlayPhotos? In the folder toolbar, click "View" → Show → Hidden items to check it.',
   selectDay: 'Select this day',

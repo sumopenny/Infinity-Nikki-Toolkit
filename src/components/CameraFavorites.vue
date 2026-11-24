@@ -88,7 +88,6 @@ const props = defineProps<{
   thumbnailSize?: ThumbnailSize
   disabled?: boolean
   sidebarTarget?: string
-  actionsTarget?: string
   filtersOpen?: boolean
   language: Language
   messages: PhotoParamsMessages
@@ -974,20 +973,23 @@ function handleImportChoices(value: typeof choices.value) {
     class="camera-favorites"
     :class="`thumbnail-size-${thumbnailSize ?? 'medium'}`"
   >
-    <!-- 操作按钮进入相机参数页工具栏，保持组件内的事件和状态。 -->
-    <Teleport v-if="active" :to="actionsTarget || 'body'" :disabled="!actionsTarget" defer>
+    <!-- 桌面使用统一页眉，移动端由 CollectionActions 传送到筛选栏。 -->
+    <header v-if="active" v-show="!compact" class="gallery-header is-outfit-header camera-header">
+      <div class="collection-title-row">
+        <h2>{{ localeMessages[language].topBar.cameraParamsTitle }}</h2>
+      </div>
       <CollectionActions
         mobile-target="#camera-tag-actions"
         :label="t('收藏操作', 'Favorite actions')"
         ><button
           class="primary-button"
           type="button"
-          :aria-label="t('添加收藏', 'Add favorite')"
-          :title="t('添加收藏', 'Add favorite')"
+          :aria-label="t('添加方案', 'Add preset')"
+          :title="t('添加方案', 'Add preset')"
           :disabled="busy"
           @click="openEditor()"
           ><Plus :size="15" aria-hidden="true" /><span class="collection-action-label">{{
-            t('添加收藏', 'Add favorite')
+            t('添加方案', 'Add preset')
           }}</span></button
         ><template #secondary>
           <input
@@ -998,17 +1000,17 @@ function handleImportChoices(value: typeof choices.value) {
             @change="importBackup"
           />
           <button type="button" :disabled="busy" @click="backupInput?.click()"
-            ><Download :size="15" />{{ t('导入', 'Import') }}</button
+            ><Download :size="15" />{{ t('导入数据', 'Import data') }}</button
           >
           <button
             type="button"
             :disabled="busy || (!library.records.length && !allTags.length)"
             @click="exportBackup"
-            ><Upload :size="15" />{{ t('导出', 'Export') }}</button
+            ><Upload :size="15" />{{ t('导出数据', 'Export data') }}</button
           >
         </template></CollectionActions
       >
-    </Teleport>
+    </header>
     <CollectionFilterBar
       tag-picker
       :like-active="active"
@@ -1029,15 +1031,21 @@ function handleImportChoices(value: typeof choices.value) {
     <p v-if="loadError" role="alert"
       >{{ loadError }} <button type="button" @click="reload">{{ t('重试', 'Retry') }}</button></p
     >
-    <p v-if="!visibleRecords.length && !loadError" class="camera-empty"
-      >{{
-        t(
-          '暂无相机参数。添加参数码，或从照片参数窗口收藏。',
-          'No camera parameters yet. Add a code or save from photo parameters.'
-        )
-      }}<MobileEmptyScreenshot v-if="!library.records.length" page="camera" :language="language"
-    /></p>
-    <div class="camera-favorite-grid">
+    <div v-if="!visibleRecords.length && !loadError" class="empty-album inline-empty camera-empty">
+      <Camera :size="30" aria-hidden="true" />
+      <h2>{{
+        library.records.length
+          ? t('没有匹配的相机参数', 'No matching camera parameters')
+          : t('暂无相机参数', 'No camera parameters yet')
+      }}</h2>
+      <p>{{
+        library.records.length
+          ? t('试试调整搜索或筛选条件。', 'Try changing your search or filters.')
+          : t('添加参数码，或从照片参数窗口收藏。', 'Add a code or save from photo parameters.')
+      }}</p>
+      <MobileEmptyScreenshot v-if="!library.records.length" page="camera" :language="language" />
+    </div>
+    <div v-else-if="visibleRecords.length" class="camera-favorite-grid">
       <article
         v-for="item in visibleRecords"
         :key="item.id"
@@ -1460,15 +1468,8 @@ function handleImportChoices(value: typeof choices.value) {
 .camera-favorites {
   min-width: 0;
 }
-.camera-favorites h2 small {
-  font-size: 13px;
-  color: var(--muted);
-  margin-left: 8px;
-}
 .camera-empty {
-  padding: 60px 20px;
-  text-align: center;
-  color: var(--muted);
+  margin-top: 14px;
 }
 /* 相机参数独立控制列宽；中图保留原布局，两端分别读取大小偏好。 */
 .camera-favorites.thumbnail-size-small {

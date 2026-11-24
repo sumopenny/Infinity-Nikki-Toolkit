@@ -149,7 +149,7 @@ it.each([1, 3])(
     const view = create()
     try {
       await flushPromises()
-      button('导出').click()
+      button('导出数据').click()
       await flushPromises()
       const [message, tone, files] = view.emitted('status')!.at(-1)! as [string, string, File[]]
       expect(message).toBe(`已生成 ${count} 个备份文件`)
@@ -185,13 +185,13 @@ it('keeps completed parts available in a failed export notice and allows a clean
   const view = create()
   try {
     await flushPromises()
-    button('导出').click()
+    button('导出数据').click()
     await flushPromises()
     const failure = view.emitted('status')!.at(-1)!
     expect(failure.slice(0, 2)).toEqual(['export interrupted', 'error'])
     expect((failure[2] as File[]).map((file) => file.name)).toEqual([part.fileName])
-    expect(button('导出').disabled).toBe(false)
-    button('导出').click()
+    expect(button('导出数据').disabled).toBe(false)
+    button('导出数据').click()
     await flushPromises()
     const retried = view.emitted('status')!.at(-1)!
     expect(retried.slice(0, 2)).toEqual(['已生成 1 个备份文件', 'success'])
@@ -238,6 +238,9 @@ describe('camera favorite UI', () => {
     const view = create()
     await flushPromises()
     expect(view.findComponent(MobileEmptyScreenshot).exists()).toBe(true)
+    expect(view.get('.camera-header h2').text()).toBe('相机参数')
+    expect(view.find('.collection-title-count').exists()).toBe(false)
+    expect(view.get('.camera-empty h2').text()).toBe('暂无相机参数')
     expect(view.find('.empty-import-button').exists()).toBe(false)
     mocks.read.mockResolvedValue({ records: [item], covers: new Map() })
     await (view.vm as unknown as { reload: () => Promise<void> }).reload()
@@ -281,7 +284,7 @@ describe('camera favorite UI', () => {
   it('offers manual addition without an album and requires successful parsing before saving', async () => {
     const view = create()
     await flushPromises()
-    button('添加收藏').click()
+    button('添加方案').click()
     await flushPromises()
     expect(button('保存收藏').disabled).toBe(true)
     const input = document.querySelector<HTMLTextAreaElement>('textarea:not([readonly])')!
@@ -305,7 +308,7 @@ describe('camera favorite UI', () => {
   it('invalidates a parsed result when the input changes and retains the form on failure', async () => {
     const view = create()
     await flushPromises()
-    button('添加收藏').click()
+    button('添加方案').click()
     await flushPromises()
     const input = document.querySelector<HTMLTextAreaElement>('textarea:not([readonly])')!
     input.value = 'ABC'
@@ -612,7 +615,7 @@ describe('camera favorite automatic parsing', () => {
   async function open() {
     const view = create()
     await flushPromises()
-    button('添加收藏').click()
+    button('添加方案').click()
     await flushPromises()
     return view
   }
@@ -646,7 +649,7 @@ describe('camera favorite automatic parsing', () => {
     await flushPromises()
     await vi.advanceTimersByTimeAsync(600)
     expect(mocks.parse).not.toHaveBeenCalled()
-    button('添加收藏').click()
+    button('添加方案').click()
     await flushPromises()
     await enter('ABC')
     view.unmount()
@@ -677,7 +680,7 @@ describe('camera favorite automatic parsing', () => {
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flushPromises()
     expect(mocks.save.mock.calls[0][0].result.rawCameraParams).toBe('NEW')
-    button('添加收藏').click()
+    button('添加方案').click()
     await flushPromises()
     mocks.parse.mockImplementationOnce(
       () =>
@@ -995,7 +998,7 @@ it('skips focus refresh for an inactive module and while its editor is open', as
   window.dispatchEvent(new Event('focus'))
   await flushPromises()
   expect(mocks.read).toHaveBeenCalledOnce()
-  button('添加收藏').click()
+  button('添加方案').click()
   await flushPromises()
   mocks.read.mockClear()
   window.dispatchEvent(new Event('focus'))

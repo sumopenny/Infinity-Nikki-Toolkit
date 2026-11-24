@@ -173,9 +173,12 @@ async function readImageBytes(file: File): Promise<ArrayBuffer> {
   }
 }
 
-async function convertImageToWebpInternal(file: File): Promise<Blob> {
+async function convertImageToWebpInternal(
+  file: File,
+  options?: { maxEdge: number }
+): Promise<Blob> {
   if (file.size > MAX_IMAGE_BYTES) throw new Error('Image is too large')
-  if (imageExtension(file.name) === 'webp' || file.type === 'image/webp') {
+  if (!options && (imageExtension(file.name) === 'webp' || file.type === 'image/webp')) {
     let bytes: ArrayBuffer | undefined
     try {
       bytes = await readImageBytes(file)
@@ -192,12 +195,14 @@ async function convertImageToWebpInternal(file: File): Promise<Blob> {
   try {
     validateImageDimensions(bitmap.width, bitmap.height)
     const canvas = document.createElement('canvas')
-    canvas.width = bitmap.width
-    canvas.height = bitmap.height
+    const scale = options ? Math.min(1, options.maxEdge / Math.max(bitmap.width, bitmap.height)) : 1
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas is unavailable')
     try {
-      context.drawImage(bitmap.source, 0, 0)
+      if (scale === 1) context.drawImage(bitmap.source, 0, 0)
+      else context.drawImage(bitmap.source, 0, 0, canvas.width, canvas.height)
     } catch (error) {
       throw imageDiagnosticError('canvas:drawImage', file, error)
     }
@@ -223,9 +228,9 @@ async function convertImageToWebpInternal(file: File): Promise<Blob> {
 }
 
 // 顶层补充文件上下文，同时保留解码、绘制、导出的阶段信息。
-export async function convertImageToWebp(file: File): Promise<Blob> {
+export async function convertImageToWebp(file: File, options?: { maxEdge: number }): Promise<Blob> {
   try {
-    return await convertImageToWebpInternal(file)
+    return await convertImageToWebpInternal(file, options)
   } catch (error) {
     throw imageDiagnosticError('save:convertImageToWebp', file, error)
   }
