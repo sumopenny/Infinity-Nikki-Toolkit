@@ -121,8 +121,6 @@ export interface FullLocaleMessages {
     chooseDirectory: string
     loading: string
     clearDirectory: string
-    authorizeX6Game: string
-    reauthorizeX6Game: string
     refreshAlbum: string
     refreshing: string
     thumbnailRatio: string
@@ -303,7 +301,7 @@ export interface FullLocaleMessages {
     emptyDescription: string
     emptyFavoritesTitle: string
     emptyFavoritesDescription: string
-    recommendedPath: string
+    manualAlbumPath: string
     hiddenFolderTip: string
     selectDay: string
     addFavorite: string

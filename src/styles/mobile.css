@@ -1004,7 +1004,7 @@
   .gallery-header h2 {
     font-size: 18px;
   }
-  .gallery-header h2:not(.trash-header-title) {
+  .gallery-header h2:not(.trash-header-title, .photo-header-title) {
     display: none;
   }
   .gallery-header.is-outfit-header {

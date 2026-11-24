@@ -7,7 +7,6 @@ import type { GameAlbumBinding } from './useDirectorySession'
 import { gameAlbumMessages } from '../i18n/messages/gameAlbum'
 import { readLocalStorage, writeLocalStorage, removeLocalStorage } from '../utils/localStorage'
 import { formatFileSize } from '../utils/file-system/albumFileSystem'
-import { getSavedX6GameDirectoryHandle } from '../utils/file-system/directoryStorage'
 import {
   getX6GameDirectoryForAlbum,
   listGamePlayPhotoAccounts,
@@ -33,9 +32,8 @@ function persistCleanupAccountChoice(choice: string | null): void {
 
 interface GameCleanupOptions {
   albumDirectoryHandle: Ref<FileSystemDirectoryHandle | null>
-  hasX6GameAuthorization: Ref<boolean>
+  authorizedGameDirectory: Ref<FileSystemDirectoryHandle | null>
   gameAlbum?: Ref<GameAlbumBinding | null>
-  onX6GameAuthorized?: (root: FileSystemDirectoryHandle) => void
   language: Ref<Language>
   locale: ComputedRef<LocaleMessages>
   activeOperation: Ref<ActiveOperation | null>
@@ -48,7 +46,7 @@ interface GameCleanupOptions {
 export function useGameCleanup(options: GameCleanupOptions) {
   const {
     albumDirectoryHandle,
-    hasX6GameAuthorization,
+    authorizedGameDirectory: cleanupX6GameHandle,
     language,
     locale,
     activeOperation,
@@ -58,7 +56,6 @@ export function useGameCleanup(options: GameCleanupOptions) {
     openConfirmDialog
   } = options
   const showCleanupDialog = ref(false)
-  const cleanupX6GameHandle = ref<FileSystemDirectoryHandle | null>(null)
   const cleaningItem = ref<SpecialCleanupItem | null>(null)
   const showCleanupAccountDialog = ref(false)
   const cleanupAccounts = ref<string[]>([])
@@ -66,22 +63,8 @@ export function useGameCleanup(options: GameCleanupOptions) {
   const cleanupAccountResolver = ref<((accountIds: string[] | null) => void) | null>(null)
 
   // 专项清理
-  async function openCleanupDialog() {
+  function openCleanupDialog() {
     showCleanupDialog.value = true
-    if (cleanupX6GameHandle.value) return
-    const savedHandle = await getSavedX6GameDirectoryHandle()
-    if (!savedHandle || savedHandle.name !== 'X6Game') return
-    try {
-      const permission = savedHandle.queryPermission
-        ? await savedHandle.queryPermission({ mode: 'readwrite' })
-        : 'granted'
-      if (permission === 'granted') {
-        cleanupX6GameHandle.value = savedHandle
-        hasX6GameAuthorization.value = true
-      }
-    } catch {
-      /* 静默恢复失败时由用户手动授权 */
-    }
   }
   async function authorizeCleanupFolder() {
     if (isAnyFileOperationBusy.value) return
@@ -95,22 +78,10 @@ export function useGameCleanup(options: GameCleanupOptions) {
     }
     activeOperation.value = 'loading'
     let didCancelDirectoryPrompt = false
-    const alreadyAuthorized = Boolean(cleanupX6GameHandle.value || hasX6GameAuthorization.value)
+    const alreadyAuthorized = Boolean(cleanupX6GameHandle.value)
     try {
       const handle = await pickStandaloneX6GameDirectory(locale.value.fileSystem, {
         forcePick: true,
-        beforeRequestX6GamePermission: async () => {
-          if (alreadyAuthorized) return true
-          const confirmed = await openConfirmDialog({
-            title: locale.value.app.x6GameDirectoryDialogTitle,
-            message: locale.value.fileSystem.restoreX6GamePermissionPrompt,
-            tone: 'info',
-            confirmLabel: locale.value.app.dialogContinueAuthorization,
-            cancelLabel: locale.value.app.dialogCancel
-          })
-          didCancelDirectoryPrompt = !confirmed
-          return confirmed
-        },
         beforePickX6GameDirectory: async () => {
           if (alreadyAuthorized) return true
           const confirmed = await openConfirmDialog({
@@ -125,8 +96,6 @@ export function useGameCleanup(options: GameCleanupOptions) {
         }
       })
       cleanupX6GameHandle.value = handle
-      hasX6GameAuthorization.value = true
-      options.onX6GameAuthorized?.(handle)
       publishStatus({
         type: 'custom',
         message: locale.value.app.authorizeX6GameStatus,
@@ -338,7 +307,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
               return confirmed
             }
           })
-      if (!gameRoot) options.onX6GameAuthorized?.(x6GameHandle)
+      if (!gameRoot) cleanupX6GameHandle.value = x6GameHandle
       const plan = await prepareMatchingPhotoCleanup(
         x6GameHandle,
         accountDirectoryName,

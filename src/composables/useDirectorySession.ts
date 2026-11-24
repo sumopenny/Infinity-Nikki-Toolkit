@@ -25,8 +25,7 @@ import {
 } from '../utils/file-system/directoryPermission'
 import {
   listGameAlbumAccounts,
-  resolveX6GameAccountDirectory,
-  type GameAlbumAccount
+  resolveX6GameAccountDirectory
 } from '../utils/file-system/directoryAccess'
 import type { ActiveOperation, StatusState, useOperationNotice } from './useOperationNotice'
 
@@ -35,7 +34,7 @@ export type DirectoryState = { type: 'none' } | { type: 'remembered' | 'selected
 export interface GameAlbumBinding {
   root: FileSystemDirectoryHandle
   uid: string
-  accountCount: number
+  accountUids: string[]
 }
 
 interface RememberedAlbum {
@@ -51,13 +50,12 @@ interface DirectorySessionOptions {
   locale: ComputedRef<LocaleMessages>
   directoryState: Ref<DirectoryState>
   gameAlbum: Ref<GameAlbumBinding | null>
-  hasX6GameAuthorization: Ref<boolean>
+  authorizedGameDirectory: Ref<FileSystemDirectoryHandle | null>
   replaceAlbum: (
     result: AlbumDirectoryResult,
     status: StatusState,
     options?: { preserveView?: boolean; remember?: boolean; game?: GameAlbumBinding }
   ) => Promise<void>
-  chooseAccount: (accounts: GameAlbumAccount[], currentUid?: string) => Promise<string | null>
   createErrorStatus: ReturnType<typeof useOperationNotice>['createErrorStatus']
 }
 
@@ -70,9 +68,8 @@ export function useDirectorySession(options: DirectorySessionOptions) {
     locale,
     directoryState,
     gameAlbum,
-    hasX6GameAuthorization,
+    authorizedGameDirectory,
     replaceAlbum,
-    chooseAccount,
     createErrorStatus
   } = options
   const remembered = shallowRef<RememberedAlbum | null>(null)
@@ -94,19 +91,17 @@ export function useDirectorySession(options: DirectorySessionOptions) {
     uid?: string
   ) {
     const accounts = await listGameAlbumAccounts(root, messages.value)
-    const previous = accounts.find((account) => account.uid === uid)
-    let selected = intent === 'startup' || intent === 'restore' ? previous : undefined
+    const accountUids = accounts.map((account) => account.uid)
+    const requested = accounts.find((account) => account.uid === uid)
+    const selected =
+      requested ?? (intent === 'new' || intent === 'restore' ? accounts[0] : undefined)
     if (!selected) {
-      if (uid && !previous) showInfo(text.value.missingAccount)
-      else if (!accounts.length) showInfo(text.value.noAccounts)
-      if (!accounts.length || intent === 'startup') return
-      if (intent === 'new' && accounts.length === 1) selected = accounts[0]
-      else {
-        const selectedUid = await chooseAccount(accounts, intent === 'switch' ? uid : undefined)
-        selected = accounts.find((account) => account.uid === selectedUid)
+      if (intent === 'switch' && gameAlbum.value?.root === root) {
+        gameAlbum.value = { ...gameAlbum.value, accountUids }
       }
+      showInfo(uid ? text.value.missingAccount : text.value.noAccounts)
+      return
     }
-    if (!selected || (intent === 'switch' && selected.uid === uid)) return
     const result = await readAlbumDirectory(selected.directory, {
       requestPermission: false,
       messages: messages.value
@@ -117,14 +112,39 @@ export function useDirectorySession(options: DirectorySessionOptions) {
       {
         preserveView: intent !== 'new',
         remember: intent !== 'startup',
-        game: { root, uid: selected.uid, accountCount: accounts.length }
+        game: { root, uid: selected.uid, accountUids }
       }
+    )
+    remembered.value = null
+  }
+
+  async function openRememberedAlbum(saved: RememberedAlbum, intent: 'startup' | 'restore') {
+    if (saved.game) {
+      const { root, uid } = saved.game
+      if ((await resolveX6GameAccountDirectory(root, saved.directory, messages.value)) !== uid) {
+        throw createDirectoryError('invalid-directory', messages.value)
+      }
+      await openGameAlbum(root, intent, uid)
+      return
+    }
+    const result = await readAlbumDirectory(saved.directory, {
+      requestPermission: false,
+      messages: messages.value
+    })
+    await replaceAlbum(
+      result,
+      { type: 'initial' },
+      { preserveView: true, remember: intent === 'restore' }
     )
     remembered.value = null
   }
 
   async function restoreSavedDirectory() {
     activeOperation.value = 'loading'
+    const savedRoot = getSavedX6GameDirectoryHandle()
+    const rootPermission = savedRoot
+      .then((root) => root?.name === 'X6Game' && ensureReadWritePermission(root, false))
+      .catch(() => false)
     try {
       if (readLocalStorage(ALBUM_ACCESS_MODE_KEY) === 'compatible') {
         showInfo(compatibleAlbumMessages[options.language.value].restore)
@@ -132,46 +152,24 @@ export function useDirectorySession(options: DirectorySessionOptions) {
       }
       const saved = await getSavedAlbumDirectoryHandle()
       if (!saved) return
-      remembered.value = { directory: saved }
       directoryState.value = { type: 'remembered', name: saved.name }
-      const root = await getSavedX6GameDirectoryHandle()
+      const root = await savedRoot
       const uid = root ? await getSavedGameAlbumUid() : undefined
-      if (root && uid) remembered.value.game = { root, uid }
-      const handle = remembered.value.game?.root ?? saved
-      if (!(await ensureReadWritePermission(handle, false))) {
+      const game = root && uid ? { root, uid } : undefined
+      const album = { directory: saved, game }
+      remembered.value = album
+      const granted = game ? await rootPermission : await ensureReadWritePermission(saved, false)
+      if (!granted) {
         showInfo(text.value.restoreHint)
         return
       }
-      if (root && uid) {
-        if ((await resolveX6GameAccountDirectory(root, saved, messages.value)) !== uid) {
-          throw createDirectoryError('invalid-directory', messages.value)
-        }
-        await openGameAlbum(root, 'startup', uid)
-      } else {
-        const result = await readAlbumDirectory(saved, {
-          requestPermission: false,
-          messages: messages.value
-        })
-        await replaceAlbum(result, { type: 'initial' }, { preserveView: true, remember: false })
-        remembered.value = null
-      }
+      await openRememberedAlbum(album, 'startup')
     } catch (error) {
       publishStatus(createErrorStatus(error, { type: 'restoreFailed' }))
     } finally {
+      const granted = await rootPermission
+      if (!gameAlbum.value && granted) authorizedGameDirectory.value = (await savedRoot) ?? null
       finishLoading()
-    }
-  }
-
-  async function restoreSavedX6GameAuthorization() {
-    if (gameAlbum.value) return
-    try {
-      const root = await getSavedX6GameDirectoryHandle()
-      const granted = Boolean(
-        root?.name === 'X6Game' && (await ensureReadWritePermission(root, false))
-      )
-      if (!gameAlbum.value) hasX6GameAuthorization.value = granted
-    } catch {
-      if (!gameAlbum.value) hasX6GameAuthorization.value = false
     }
   }
 
@@ -189,25 +187,7 @@ export function useDirectorySession(options: DirectorySessionOptions) {
         showInfo(text.value.restoreFailed)
         return
       }
-      if (saved.game) {
-        if (
-          (await resolveX6GameAccountDirectory(
-            saved.game.root,
-            saved.directory,
-            messages.value
-          )) !== saved.game.uid
-        ) {
-          throw createDirectoryError('invalid-directory', messages.value)
-        }
-        await openGameAlbum(saved.game.root, 'restore', saved.game.uid)
-      } else {
-        const result = await readAlbumDirectory(saved.directory, {
-          requestPermission: false,
-          messages: messages.value
-        })
-        await replaceAlbum(result, { type: 'initial' }, { preserveView: true })
-        remembered.value = null
-      }
+      await openRememberedAlbum(saved, 'restore')
     } catch (error) {
       publishStatus(createErrorStatus(error, { type: 'restoreFailed' }))
     } finally {
@@ -239,12 +219,18 @@ export function useDirectorySession(options: DirectorySessionOptions) {
     }
   }
 
-  async function switchGameAccount() {
-    if (!gameAlbum.value || isAnyFileOperationBusy.value) return
-    const { root, uid } = gameAlbum.value
+  async function switchGameAccount(uid: string) {
+    const current = gameAlbum.value
+    if (
+      !current ||
+      current.uid === uid ||
+      !current.accountUids.includes(uid) ||
+      isAnyFileOperationBusy.value
+    )
+      return
     activeOperation.value = 'loading'
     try {
-      await openGameAlbum(root, 'switch', uid)
+      await openGameAlbum(current.root, 'switch', uid)
     } catch (error) {
       publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {
@@ -280,7 +266,6 @@ export function useDirectorySession(options: DirectorySessionOptions) {
 
   return {
     restoreSavedDirectory,
-    restoreSavedX6GameAuthorization,
     canRestoreDirectory,
     restoreDirectoryAccess,
     chooseDirectory,

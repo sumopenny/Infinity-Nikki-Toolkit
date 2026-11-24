@@ -91,10 +91,6 @@ export async function getSavedX6GameDirectoryHandle(): Promise<FileSystemDirecto
   }
 }
 
-export async function clearSavedX6GameDirectoryHandle(): Promise<void> {
-  await transaction('readwrite', (store) => store.delete(SAVED_X6GAME_DIRECTORY_KEY))
-}
-
 export async function getSavedCameraParamUids(): Promise<string[]> {
   try {
     const value = await transaction('readonly', (store) => store.get(SAVED_CAMERA_PARAM_UIDS_KEY))

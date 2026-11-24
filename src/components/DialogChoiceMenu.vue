@@ -4,6 +4,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 const props = defineProps<{
   label: string
+  triggerLabel?: string
   options: { value: T; label: string; attrs?: Record<string, string> }[]
   disabled?: boolean
 }>()
@@ -27,7 +28,7 @@ async function toggle() {
     menu.value?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus()
   }
 }
-/** 菜单留在弹窗内；Esc 只收起菜单，方向键在选项之间移动。 */
+/** Esc 只收起菜单，方向键在选项之间移动。 */
 async function keydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && open.value) {
     event.preventDefault()
@@ -85,7 +86,7 @@ onBeforeUnmount(() => document.removeEventListener('click', outside))
       :aria-controls="`${id}-menu`"
       @click="toggle"
     >
-      <span>{{ options.find((option) => option.value === model)?.label }}</span>
+      <span>{{ triggerLabel ?? options.find((option) => option.value === model)?.label }}</span>
       <ChevronDown :size="14" aria-hidden="true" />
     </button>
     <DesktopMenuTransition>

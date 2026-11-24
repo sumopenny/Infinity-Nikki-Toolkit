@@ -1,11 +1,7 @@
 import { ensureReadWritePermission, getSupportedDirectoryPicker } from './directoryPermission'
 export { supportsDirectoryAuthorization } from './directoryPermission'
 // 目录访问：负责浏览器目录选择、读写权限、X6Game 授权复用和账号路径验证。
-import {
-  clearSavedX6GameDirectoryHandle,
-  getSavedX6GameDirectoryHandle,
-  saveX6GameDirectoryHandle
-} from './directoryStorage'
+import { getSavedX6GameDirectoryHandle, saveX6GameDirectoryHandle } from './directoryStorage'
 import { createDirectoryError, normalizeDirectoryError } from './directoryErrors'
 import type { FileSystemMessages } from './directoryErrors'
 
@@ -152,7 +148,7 @@ async function getValidatedX6GameDirectory(
         )
         return { directoryHandle: savedHandle, accountDirectoryName }
       } catch {
-        await clearSavedX6GameDirectoryHandle()
+        // 当前相册可能来自其他安装目录，重新选择前保留已保存的工具授权。
       }
     }
   }
@@ -182,9 +178,9 @@ export async function pickStandaloneX6GameDirectory(
   messages: FileSystemMessages,
   options: X6GameDirectoryOptions = {}
 ): Promise<FileSystemDirectoryHandle> {
-  const savedHandle = await getSavedX6GameDirectoryHandle()
+  const savedHandle = options.forcePick ? null : await getSavedX6GameDirectoryHandle()
 
-  if (!options.forcePick && savedHandle && savedHandle.name === 'X6Game') {
+  if (savedHandle && savedHandle.name === 'X6Game') {
     let hasPermission = await ensureReadWritePermission(savedHandle, false)
 
     if (!hasPermission) {
@@ -198,7 +194,6 @@ export async function pickStandaloneX6GameDirectory(
     }
 
     if (hasPermission) return savedHandle
-    await clearSavedX6GameDirectoryHandle()
   }
 
   const showDirectoryPicker = getSupportedDirectoryPicker(messages)

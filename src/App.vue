@@ -39,6 +39,7 @@ import { exportCompatiblePhotos } from './utils/file-system/compatiblePhotoExpor
 import { requestBlobDownload } from './utils/backup/downloadFallback'
 import { compatibleAlbumMessages, ALBUM_ACCESS_MODE_KEY } from './i18n/messages/compatibleAlbum'
 import { gameAlbumMessages } from './i18n/messages/gameAlbum'
+import { useGameAlbumNicknames } from './composables/useGameAlbumNicknames'
 
 import {
   reportError as captureDiagnosticError,
@@ -93,9 +94,9 @@ import {
   Upload
 } from 'lucide-vue-next'
 import UpdateLogDialog from './components/UpdateLogDialogContent.vue'
-import EdgeDirectoryRepairDialog from './components/EdgeDirectoryRepairDialog.vue'
 import HelpAboutDialog from './components/HelpAboutDialogContent.vue'
 import AlbumViewSwitcher, { type AlbumView } from './components/AlbumViewSwitcher.vue'
+import DesktopHome, { type HomeTool } from './components/DesktopHome.vue'
 import CleanupAccountPicker from './components/CleanupAccountPicker.vue'
 import CleanupDialog from './components/CleanupDialog.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
@@ -164,17 +165,16 @@ import {
   type RefreshAlbumResult
 } from './utils/file-system/albumFileSystem'
 import { listRecentlyDeleted } from './utils/file-system/trashFileSystem'
+import { ensureReadWritePermission } from './utils/file-system/directoryPermission'
 import {
   listGamePlayPhotoAccounts,
   isProtectedAlbumDirectory,
   pickStandaloneX6GameDirectory,
-  type GameAlbumAccount,
   supportsDirectoryAuthorization
 } from './utils/file-system/directoryAccess'
 import {
   clearSavedParseCaches,
   getSavedCameraParamUids,
-  getSavedX6GameDirectoryHandle,
   saveGameAlbumDirectory
 } from './utils/file-system/directoryStorage'
 import {
@@ -266,9 +266,6 @@ const isOutfitGuideVisible = ref(false)
 const isOutfitSummaryVisible = ref(false)
 const isOutfitGuideDismissed = ref(readLocalStorage(OUTFIT_GUIDE_DISMISSED_KEY) === 'true')
 const isUpdateLogVisible = ref(false)
-const isEdgeDirectoryRepairVisible = ref(false)
-const directoryRepairDismissedKey = 'infinity-nikki-directory-repair-dismissed'
-const pendingStartupUpdateLog = ref(false)
 const isHelpAboutVisible = ref(false)
 // 标记使用帮助是否从更新记录窗口跳来，关闭帮助后返回更新记录窗口
 const returnToUpdateLog = ref(false)
@@ -316,13 +313,9 @@ retainDialogAfterOpen('OutfitEditor', isOutfitEditorVisible)
 
 retainDialogAfterOpen('HelpAboutDialog', isHelpAboutVisible)
 retainDialogAfterOpen('UpdateLogDialog', isUpdateLogVisible)
-retainDialogAfterOpen('EdgeDirectoryRepairDialog', isEdgeDirectoryRepairVisible)
 retainDialogAfterOpen('OutfitGuideDialog', isOutfitGuideVisible)
 retainDialogAfterOpen('FortuneTimeDialog', isFortuneTimeVisible)
 const compactLayout = useCompactLayout()
-watch(compactLayout, (compact) => {
-  if (compact) isEdgeDirectoryRepairVisible.value = false
-})
 useVisualViewport()
 const {
   mobileNavStyle,
@@ -365,6 +358,7 @@ function isAlbumView(value: string | null): value is AlbumView {
   return (
     value !== null &&
     [
+      'landing',
       'all',
       'outfits',
       'home',
@@ -378,10 +372,12 @@ function isAlbumView(value: string | null): value is AlbumView {
   )
 }
 function viewForLayout(view: AlbumView): AlbumView {
-  return compactLayout.value && (view === 'all' || view === 'trash') ? 'outfits' : view
+  return compactLayout.value && (view === 'all' || view === 'trash' || view === 'landing')
+    ? 'outfits'
+    : view
 }
 const storedView = readLocalStorage(ACTIVE_VIEW_STORAGE_KEY)
-const activeView = ref<AlbumView>(viewForLayout(isAlbumView(storedView) ? storedView : 'all'))
+const activeView = ref<AlbumView>(viewForLayout(isAlbumView(storedView) ? storedView : 'landing'))
 watch(
   activeView,
   (view) => {
@@ -400,13 +396,28 @@ onBeforeUnmount(() => clearTimeout(archiveToolbarExitTimer))
 const sidebarMode = ref<'date' | 'action'>('date')
 const actionSort = ref<ActionSort>('id')
 const currentPreview = ref<PhotoDisplayItem | null>(null)
-const sharedOutfitSource = ref<SharedOutfitSource | null>(null)
-const hasX6GameAuthorization = ref(false)
+const authorizedGameDirectory = shallowRef<FileSystemDirectoryHandle | null>(null)
+const hasX6GameAuthorization = computed(() => Boolean(authorizedGameDirectory.value))
 const directoryState = ref<DirectoryState>({ type: 'none' })
 const gameAlbum = shallowRef<GameAlbumBinding | null>(null)
 const gameAlbumText = computed(() => gameAlbumMessages[language.value])
-const gameAccountOptions = ref<{ value: string; label: string }[]>([])
-const selectedGameAccount = ref('')
+const { nicknames: gameAlbumNicknames, loadNickname: loadGameAlbumNickname } =
+  useGameAlbumNicknames()
+const gameAlbumNickname = computed(() =>
+  gameAlbum.value ? (gameAlbumNicknames.get(gameAlbum.value.uid) ?? undefined) : undefined
+)
+const gameAccountOptions = computed(() =>
+  (gameAlbum.value?.accountUids ?? []).map((uid) => ({
+    value: uid,
+    label: gameAlbumText.value.account(uid, gameAlbumNicknames.get(uid))
+  }))
+)
+watch(
+  () => gameAlbum.value?.accountUids,
+  (uids) => {
+    uids?.forEach(loadGameAlbumNickname)
+  }
+)
 const {
   state: photoTransfer,
   begin: beginPhotoTransfer,
@@ -609,24 +620,6 @@ const {
   dispose: disposeStatusNotice
 } = useOperationNotice(locale, operations)
 
-const isDirectoryStartupSlow = ref(false)
-const visibleStatusNotices = computed(() =>
-  isDirectoryStartupSlow.value && isLoading.value && !compactLayout.value
-    ? [
-        {
-          id: -1,
-          tone: 'warning' as const,
-          loading: true,
-          message:
-            language.value === 'zh'
-              ? '目录加载时间较长。如果「添加」等按钮一直不可用，请打开「更多 → 应用维护 → 目录加载修复教程」。'
-              : 'Folder loading is taking longer than expected. If buttons stay disabled, go to More → App maintenance → Folder loading repair guide.'
-        },
-        ...statusNotices.value
-      ]
-    : statusNotices.value
-)
-
 function createErrorStatus(error: unknown, fallback: StatusState): StatusState {
   const status = describeOperationError(error, fallback)
   const directoryMissing =
@@ -640,7 +633,7 @@ function createErrorStatus(error: unknown, fallback: StatusState): StatusState {
     diagnosticMetadata(error).stage === 'create-trash-directory'
   if ((directoryMissing && activeOperation.value === 'refreshing') || trashParentMissing) {
     // 丢弃失效的文件引用，后续操作必须通过已有入口重新选择并扫描相册。
-    resetLoadedAlbumState({ clearSharedOutfit: false })
+    resetLoadedAlbumState()
     albumDirectoryHandle.value = null
     directoryState.value = { type: 'none' }
     return { type: 'restorePathFailed' }
@@ -895,9 +888,8 @@ const {
   deleteMatchingLowQualityPhotos: cleanMatchingPhotos
 } = useGameCleanup({
   albumDirectoryHandle,
-  hasX6GameAuthorization,
+  authorizedGameDirectory,
   gameAlbum,
-  onX6GameAuthorized: applySharedGameDirectory,
   language,
   locale,
   activeOperation,
@@ -927,7 +919,7 @@ function deleteMatchingLowQualityPhotos() {
 // 通用通知、偏好与持久化
 async function resolveActionCandidateUids(): Promise<string[]> {
   if (isCompatibleAlbum.value) return getSavedCameraParamUids()
-  const source = sharedOutfitSource.value ?? (await ensureSharedOutfitSource(true, false))
+  const source = await ensureSharedOutfitSource(true, false)
   if (!source) return getSavedCameraParamUids()
   const [directoryUids, savedUids] = await Promise.all([
     listGamePlayPhotoAccounts(source.x6GameDirectory),
@@ -1012,7 +1004,7 @@ async function replaceAlbum(
     return
   }
   gameAlbum.value = options.game ?? null
-  if (options.game) applySharedGameDirectory(options.game.root)
+  if (options.game) authorizedGameDirectory.value = options.game.root
   isCompatibleAlbum.value = false
   writeLocalStorage(ALBUM_ACCESS_MODE_KEY, 'directory')
   releasePhotoUrls(photos.value)
@@ -1052,31 +1044,8 @@ const { refreshAlbum, scheduleFocusRefresh, invalidatePendingRefreshes, suppress
     }
   })
 
-async function chooseGameAlbumAccount(accounts: GameAlbumAccount[], currentUid?: string) {
-  if (appDisposed || confirmDialog.value.visible) return null
-  const labels = gameAlbumText.value
-  gameAccountOptions.value = accounts.map(({ uid }) => ({
-    value: uid,
-    label: uid === currentUid ? labels.currentAccount(uid) : `UID ${uid}`
-  }))
-  selectedGameAccount.value = accounts.find(({ uid }) => uid === currentUid)?.uid ?? accounts[0].uid
-  try {
-    const confirmed = await openConfirmDialog({
-      title: currentUid ? labels.switchAccount : labels.chooseAccount,
-      message: labels.accountHint,
-      tone: 'info',
-      confirmLabel: labels.open,
-      cancelLabel: locale.value.app.dialogCancel
-    })
-    return confirmed && !appDisposed ? selectedGameAccount.value : null
-  } finally {
-    gameAccountOptions.value = []
-  }
-}
-
 const {
   restoreSavedDirectory,
-  restoreSavedX6GameAuthorization,
   chooseDirectory,
   canRestoreDirectory,
   chooseGameDirectory,
@@ -1091,11 +1060,16 @@ const {
   locale,
   directoryState,
   gameAlbum,
-  hasX6GameAuthorization,
+  authorizedGameDirectory,
   replaceAlbum,
-  chooseAccount: chooseGameAlbumAccount,
   createErrorStatus
 })
+
+const gameDirectoryActionLabel = computed(() =>
+  canRestoreDirectory.value || hasX6GameAuthorization.value
+    ? gameAlbumText.value.reselect
+    : gameAlbumText.value.authorize
+)
 
 /** 用户点击时同步打开选择器，避免选择过程触发焦点刷新。 */
 function chooseCompatibleAlbum() {
@@ -1246,7 +1220,7 @@ async function downloadCompatiblePhotos(source: PhotoItem[]) {
 }
 
 /** 清除页面内已加载的相册和选择状态。参数：无。 */
-function resetLoadedAlbumState(options: { clearSharedOutfit?: boolean } = {}) {
+function resetLoadedAlbumState() {
   gameAlbum.value = null
   photoFavoritesOnly.value = false
   albumNotes.value = undefined
@@ -1264,7 +1238,6 @@ function resetLoadedAlbumState(options: { clearSharedOutfit?: boolean } = {}) {
   editingOutfit.value = null
   isOutfitEditorVisible.value = false
   isOutfitGuideVisible.value = false
-  if (options.clearSharedOutfit !== false) sharedOutfitSource.value = null
 }
 
 /** 清除保存的目录授权和当前页面状态。参数：无。 */
@@ -1276,7 +1249,7 @@ async function clearDirectory() {
     publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     return
   }
-  resetLoadedAlbumState({ clearSharedOutfit: false })
+  resetLoadedAlbumState()
   forgetDirectoryRestore()
   albumDirectoryHandle.value = null
   isCompatibleAlbum.value = false
@@ -1437,19 +1410,12 @@ function changeThumbnailMode(mode: ThumbnailMode) {
 }
 
 // X6Game 授权与搭配码流程
-function applySharedGameDirectory(root: FileSystemDirectoryHandle) {
-  sharedOutfitSource.value = { x6GameDirectory: root }
-  cleanupX6GameHandle.value = root
-  hasX6GameAuthorization.value = true
-}
-
 /** 获取或恢复当前相册对应的 X6Game 授权，用于自动读取游戏最新搭配码。参数：prompt 表示是否允许弹出授权说明（false 时也不弹系统目录选择器，未授权则静默跳过共享导入），autoPrompt 表示是否为搭配码界面自动触发。 */
 async function ensureSharedOutfitSource(
   prompt: boolean,
   autoPrompt = prompt,
   forcePick = false
 ): Promise<SharedOutfitSource | null> {
-  if (!gameAlbum.value && autoPrompt && isX6GameAutoPromptDismissed.value && !forcePick) return null
   let cancelledPrompt = false
   const confirmAuthorization = async (message: string) => {
     const confirmed = await openConfirmDialog({
@@ -1468,22 +1434,14 @@ async function ensureSharedOutfitSource(
         publishStatus({ type: 'custom', message: gameAlbumText.value.changeViaAlbum, tone: 'info' })
         return null
       }
-      return sharedOutfitSource.value
+      return { x6GameDirectory: gameAlbum.value.root }
     }
-    const saved =
-      sharedOutfitSource.value?.x6GameDirectory ?? (await getSavedX6GameDirectoryHandle())
-    if (!forcePick && saved && saved.name === 'X6Game') {
-      const permission = saved.queryPermission
-        ? await saved.queryPermission({ mode: 'readwrite' })
-        : 'granted'
-      if (permission === 'granted') {
-        sharedOutfitSource.value = { x6GameDirectory: saved }
-        hasX6GameAuthorization.value = true
-        return sharedOutfitSource.value
-      }
+    const cached = authorizedGameDirectory.value
+    if (!forcePick && cached) {
+      if (await ensureReadWritePermission(cached, false)) return { x6GameDirectory: cached }
+      if (authorizedGameDirectory.value === cached) authorizedGameDirectory.value = null
     }
-    hasX6GameAuthorization.value = false
-    sharedOutfitSource.value = null
+    if (autoPrompt && isX6GameAutoPromptDismissed.value && !forcePick) return null
     // 后台不请求授权；进入模块时，不支持目录授权的设备静默跳过。
     if (!prompt || (autoPrompt && !supportsDirectoryAuthorization())) return null
     const directoryHandle = await pickStandaloneX6GameDirectory(locale.value.fileSystem, {
@@ -1493,11 +1451,11 @@ async function ensureSharedOutfitSource(
       beforePickX6GameDirectory: () =>
         forcePick || confirmAuthorization(locale.value.fileSystem.selectX6GameDirectoryPrompt)
     })
-    applySharedGameDirectory(directoryHandle)
+    authorizedGameDirectory.value = directoryHandle
     isX6GameAutoPromptDismissed.value = false
     didCancelX6GameAutoPrompt.value = false
     if (!suppressLocalPersistence) removeLocalStorage(X6GAME_AUTO_PROMPT_DISMISSED_KEY)
-    return sharedOutfitSource.value
+    return { x6GameDirectory: directoryHandle }
   } catch (error) {
     if (autoPrompt && (cancelledPrompt || isUserCancelledFilePicker(error)))
       dismissX6GameAutoPrompt()
@@ -1511,19 +1469,22 @@ async function ensureSharedOutfitSource(
 async function authorizeX6GameDirectory() {
   if (isAnyFileOperationBusy.value) return
   activeOperation.value = 'loading'
-  let source: SharedOutfitSource | null
   try {
-    source = await ensureSharedOutfitSource(true, false, hasX6GameAuthorization.value)
+    const source = await ensureSharedOutfitSource(true, false, hasX6GameAuthorization.value)
+    if (!source) return
+    publishStatus({
+      type: 'custom',
+      message: locale.value.app.authorizeX6GameStatus,
+      tone: 'success'
+    })
+    showOutfitRefreshResult(await refreshOutfitLibrary(false, source), false)
+  } catch (error) {
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   } finally {
+    // 目录选择器返回页面时已处理扫描，丢弃这次聚焦排队的自动刷新。
+    invalidatePendingRefreshes()
     if (activeOperation.value === 'loading') activeOperation.value = null
   }
-  if (!source) return
-  publishStatus({
-    type: 'custom',
-    message: locale.value.app.authorizeX6GameStatus,
-    tone: 'success'
-  })
-  await updateOutfitLibrary(false, false)
 }
 
 function applyOutfitTags(tags: string[]) {
@@ -1550,12 +1511,6 @@ function applyOutfitLibraryResult(result: OutfitLibraryResult) {
     currentPreview.value = result.outfits.find((outfit) => outfit.id === previousPreviewId) ?? null
 }
 
-/** 扫描搭配方案并返回结果，不直接修改页面状态。 */
-async function scanOutfitLibrary(promptSharedAccess = false): Promise<OutfitLibraryResult> {
-  const sharedSource = await ensureSharedOutfitSource(promptSharedAccess)
-  return readOutfitLibrary(sharedSource)
-}
-
 /** 扫描搭配方案并在当前任务仍有效时应用结果。 */
 let outfitLoadGeneration = 0
 let appDisposed = false
@@ -1565,9 +1520,14 @@ async function reloadOutfitCollection() {
   if (appDisposed || generation !== outfitLoadGeneration) return
   applyOutfitLibraryResult({ ...library, importedSharedCount: 0, failedCount: 0 })
 }
-async function refreshOutfitLibrary(promptSharedAccess = false): Promise<OutfitLibraryResult> {
+async function refreshOutfitLibrary(
+  promptSharedAccess = false,
+  source?: SharedOutfitSource
+): Promise<OutfitLibraryResult> {
   const generation = ++outfitLoadGeneration
-  const result = await scanOutfitLibrary(promptSharedAccess)
+  const result = await readOutfitLibrary(
+    source ?? (await ensureSharedOutfitSource(promptSharedAccess))
+  )
   if (!appDisposed && generation === outfitLoadGeneration) applyOutfitLibraryResult(result)
   else releasePhotoUrls(result.outfits)
   return result
@@ -1734,25 +1694,6 @@ function closeUpdateLog(dismissal: boolean | 'forever') {
   isUpdateLogVisible.value = false
 }
 
-function openDirectoryRepair() {
-  if (!compactLayout.value) isEdgeDirectoryRepairVisible.value = true
-}
-
-function closeDirectoryRepair() {
-  if (!suppressLocalPersistence) writeLocalStorage(directoryRepairDismissedKey, 'true')
-  isEdgeDirectoryRepairVisible.value = false
-}
-
-function finishDirectoryRepair() {
-  if (!pendingStartupUpdateLog.value || isEdgeDirectoryRepairVisible.value) return
-  pendingStartupUpdateLog.value = false
-  showStartupUpdateLog()
-}
-
-function showStartupUpdateLog() {
-  if (!appDisposed && !updateLogDismissal.value) isUpdateLogVisible.value = true
-}
-
 function openHelpAbout() {
   isHelpAboutVisible.value = true
 }
@@ -1847,6 +1788,16 @@ function closeOutfitParse() {
 
 function openParseTools() {
   isParseToolsVisible.value = true
+}
+
+function openHomeTool(tool: HomeTool) {
+  if (navigationBusy.value) return
+  if (tool === 'avatar') isAvatarSimulatorVisible.value = true
+  else if (tool === 'fortune') isFortuneTimeVisible.value = true
+  else if (tool === 'cleanup') void openCleanupDialog()
+  else if (tool === 'parse') openParseTools()
+  else if (tool === 'export') void allDataBackupRef.value?.exportData()
+  else if (tool === 'import') allDataBackupRef.value?.chooseImport()
 }
 
 function closeParseTools() {
@@ -2189,21 +2140,9 @@ function updateSidebarStickyOffset() {
 
 // 生命周期
 let startupReady: Promise<unknown> = Promise.resolve()
-let directoryStartupTimer: number | undefined
-function stopDirectoryStartupNotice() {
-  window.clearTimeout(directoryStartupTimer)
-  directoryStartupTimer = undefined
-  isDirectoryStartupSlow.value = false
-}
 let initialOutfitScanStarted = false
 let promptX6GameOnInitialOutfitScan = false
-const isStartupNoticeVisible = computed(
-  () =>
-    pendingStartupUpdateLog.value ||
-    isEdgeDirectoryRepairVisible.value ||
-    isUpdateLogVisible.value ||
-    isHelpAboutVisible.value
-)
+const isStartupNoticeVisible = computed(() => isUpdateLogVisible.value || isHelpAboutVisible.value)
 
 async function ensureInitialOutfitScan() {
   await startupReady
@@ -2253,25 +2192,11 @@ onMounted(() => {
   const collectionReady = reloadOutfitCollection().catch((error) => {
     if (!appDisposed) showOutfitStorageError(error)
   })
-  const directoryReady = (async () => {
-    if (appDisposed) return
-    await restoreSavedDirectory()
-    if (appDisposed) return
-    await restoreSavedX6GameAuthorization()
-  })()
+  const directoryReady = restoreSavedDirectory()
   startupReady = Promise.allSettled([collectionReady, directoryReady])
-  directoryStartupTimer = window.setTimeout(() => {
-    isDirectoryStartupSlow.value = true
-  }, 5_000)
-  void startupReady.then(stopDirectoryStartupNotice)
+  if (!updateLogDismissal.value) isUpdateLogVisible.value = true
   // 重型游戏目录扫描推迟到首次进入搭配码，避免打开其他模块时争用 I/O。
   void ensureInitialOutfitScan()
-  if (!compactLayout.value && readLocalStorage(directoryRepairDismissedKey) !== 'true') {
-    pendingStartupUpdateLog.value = true
-    openDirectoryRepair()
-  } else {
-    showStartupUpdateLog()
-  }
   nextTick(() => {
     updateSidebarStickyOffset()
     const topBarElement = document.querySelector<HTMLElement>('.app-header')
@@ -2286,8 +2211,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   appDisposed = true
-  if (gameAccountOptions.value.length) closeConfirmDialog(false)
-  stopDirectoryStartupNotice()
   albumThumbnailCache.dispose()
   outfitLoadGeneration++
   invalidatePendingRefreshes()
@@ -2326,10 +2249,10 @@ function importAllDataFromMenu() {
       :has-backup-data="hasBackupData"
       :is-deleting="isDeleting || isTrashBusy"
       :has-album-directory="hasAlbum"
-      :has-x6-game-authorization="hasX6GameAuthorization"
       :game-album-uid="gameAlbum?.uid"
-      :can-switch-game-account="(gameAlbum?.accountCount ?? 0) > 1"
+      :game-album-nickname="gameAlbumNickname"
       :can-restore-directory="canRestoreDirectory && !isCompatibleAlbum"
+      :game-directory-action-label="gameDirectoryActionLabel"
       :thumbnail-mode="displayedThumbnailMode"
       :thumbnail-mode-disabled="isThumbnailModeDisabled"
       :thumbnail-size="displayedThumbnailSize"
@@ -2358,13 +2281,11 @@ function importAllDataFromMenu() {
       @choose-directory="chooseDirectory"
       @choose-game-directory="chooseGameDirectory"
       @restore-directory-access="restoreDirectoryAccess"
-      @switch-game-account="switchGameAccount"
       @choose-compatible="chooseCompatibleAlbum"
       :compatible-label="compatibleMessages.open"
       :album-read-only="isCompatibleAlbum"
       :read-only-hint="compatibleMessages.writeDisabled"
       @clear-directory="clearDirectory"
-      @authorize-x6-game="authorizeX6GameDirectory"
       @open-cleanup="openCleanupDialog"
       @open-avatar-simulator="isAvatarSimulatorVisible = true"
       @open-fortune-time="isFortuneTimeVisible = true"
@@ -2379,7 +2300,6 @@ function importAllDataFromMenu() {
       @toggle-language="toggleLanguage"
       @toggle-theme="toggleTheme"
       @open-update-log="openUpdateLog"
-      @open-directory-repair="openDirectoryRepair"
       @open-help-about="openHelpAbout"
       @update-search="searchQuery = $event"
     />
@@ -2428,8 +2348,10 @@ function importAllDataFromMenu() {
     <main
       class="album-layout"
       :class="{
+        'is-homepage': activeView === 'landing',
         'without-album':
           !hasAlbum &&
+          activeView !== 'landing' &&
           activeView !== 'outfits' &&
           activeView !== 'home' &&
           activeView !== 'resonance' &&
@@ -2443,15 +2365,13 @@ function importAllDataFromMenu() {
         <AlbumViewSwitcher
           class="desktop-navigation"
           :active-view="activeView"
+          :home-label="mobileText('主页', 'Home')"
           :all-count="photos.length"
           :outfits-count="outfits.length"
           :home-schemes-count="homeSchemesCount"
           :resonance-label="locale.viewNav.resonance"
           :favorite-count="cameraFavoriteCodes.length"
           :favorite-count-text="`${cameraFavoriteCodes.length} ${language === 'zh' ? '项' : 'items'}`"
-          :trash-count="recentlyDeleted.length"
-          :trash-disabled="isCompatibleAlbum"
-          :trash-disabled-hint="compatibleMessages.trash"
           :outfit-label="outfitLocale.viewName"
           :disabled="navigationBusy"
           :messages="locale.viewNav"
@@ -2473,7 +2393,12 @@ function importAllDataFromMenu() {
           :aria-label="mobileText('妆容筛选', 'Makeup filters')"
         ></aside>
         <AdaptiveFilterPanel
-          v-if="activeView !== 'wardrobe' && activeView !== 'makeup' && activeView !== 'animations'"
+          v-if="
+            activeView !== 'landing' &&
+            activeView !== 'wardrobe' &&
+            activeView !== 'makeup' &&
+            activeView !== 'animations'
+          "
           :compact="compactLayout"
           :open="mobileFiltersOpen"
           :tag-picker="mobileCollectionPicker"
@@ -2535,7 +2460,20 @@ function importAllDataFromMenu() {
         </AdaptiveFilterPanel>
       </div>
 
-      <section class="album-content" :aria-label="locale.app.albumContentAria">
+      <section
+        v-if="activeView === 'landing'"
+        class="album-content"
+        :aria-label="mobileText('主页', 'Home')"
+      >
+        <DesktopHome
+          :language="language"
+          :disabled="navigationBusy"
+          :has-backup-data="hasBackupData"
+          @navigate="changeAlbumView"
+          @tool="openHomeTool"
+        />
+      </section>
+      <section v-else class="album-content" :aria-label="locale.app.albumContentAria">
         <AlbumNoteNotice
           v-if="albumNotes?.blocked && ['all', 'trash'].includes(activeView)"
           :snapshot="albumNotes"
@@ -2544,16 +2482,7 @@ function importAllDataFromMenu() {
           :busy="isAnyFileOperationBusy"
           @recover="recoverNotes"
         />
-        <div
-          v-if="isCompatibleAlbum && activeView === 'all'"
-          class="compatible-album-notice"
-          role="status"
-        >
-          <span>{{ compatibleMessages.readOnly }} · {{ compatibleMessages.hint }}</span>
-          <button type="button" :disabled="isAnyFileOperationBusy" @click="chooseCompatibleAlbum">{{
-            compatibleMessages.reselect
-          }}</button>
-        </div>
+
         <div
           v-if="compactLayout && isArchiveView"
           class="archive-main-toolbar"
@@ -2687,51 +2616,57 @@ function importAllDataFromMenu() {
         >
           <div class="empty-start-mark" aria-hidden="true"></div>
           <h2>{{ locale.grid.emptyTitle }}</h2>
-          <p>{{ canRestoreDirectory ? gameAlbumText.restoreHint : gameAlbumText.chooseHint }}</p>
+          <p>{{ gameAlbumText.emptyDescription }}</p>
           <div class="empty-album-actions">
-            <button
-              v-if="canRestoreDirectory"
-              class="primary-button"
-              type="button"
-              :disabled="isAnyFileOperationBusy"
-              @click="restoreDirectoryAccess"
-            >
-              {{ gameAlbumText.restore }}
-            </button>
-            <button
-              :class="canRestoreDirectory ? 'album-compatible-button' : 'primary-button'"
-              type="button"
-              :disabled="isAnyFileOperationBusy"
-              @click="chooseGameDirectory"
-            >
-              {{
-                canRestoreDirectory || hasX6GameAuthorization
-                  ? gameAlbumText.reselect
-                  : gameAlbumText.authorize
-              }}
-            </button>
-            <button
-              class="album-compatible-button"
-              type="button"
-              :disabled="isAnyFileOperationBusy"
-              @click="chooseDirectory"
-            >
-              {{ locale.topBar.chooseDirectory }}
-            </button>
-            <button
-              v-if="!compactLayout"
-              type="button"
-              class="album-compatible-button"
-              :disabled="isAnyFileOperationBusy"
-              @click="chooseCompatibleAlbum"
-              >{{ compatibleMessages.open }}</button
-            >
+            <div class="empty-album-action-row">
+              <button
+                v-if="canRestoreDirectory"
+                class="primary-button"
+                type="button"
+                :disabled="isAnyFileOperationBusy"
+                @click="restoreDirectoryAccess"
+              >
+                {{ gameAlbumText.restore }}
+              </button>
+              <button
+                :class="canRestoreDirectory ? 'album-compatible-button' : 'primary-button'"
+                type="button"
+                :disabled="isAnyFileOperationBusy"
+                @click="chooseGameDirectory"
+              >
+                {{ gameDirectoryActionLabel }}
+              </button>
+            </div>
+            <div class="empty-album-action-row">
+              <button
+                class="album-compatible-button"
+                type="button"
+                :disabled="isAnyFileOperationBusy"
+                @click="chooseDirectory"
+              >
+                {{ locale.topBar.chooseDirectory }}
+              </button>
+              <button
+                v-if="!compactLayout"
+                type="button"
+                class="album-compatible-button"
+                :disabled="isAnyFileOperationBusy"
+                @click="chooseCompatibleAlbum"
+                >{{ compatibleMessages.open }}</button
+              >
+            </div>
           </div>
           <div v-if="!compactLayout" class="empty-album-guidance">
-            <p>{{ compatibleMessages.openingHint }}</p>
+            <p>{{
+              compatibleMessages.openingHint(
+                canRestoreDirectory ? gameAlbumText.restore : gameDirectoryActionLabel
+              )
+            }}</p>
             <p class="empty-album-reload-hint">{{ compatibleMessages.reloadHint }}</p>
           </div>
-          <p class="recommended-path">{{ gameAlbumText.path }}</p>
+          <p class="recommended-path">{{ gameAlbumText.authorizationPath }}</p>
+          <p class="recommended-path">{{ locale.grid.manualAlbumPath }}</p>
+          <p class="hidden-folder-tip">{{ locale.grid.hiddenFolderTip }}</p>
         </div>
 
         <header
@@ -2752,6 +2687,47 @@ function importAllDataFromMenu() {
               >
                 <CircleHelp :size="17" aria-hidden="true" />
               </button>
+            </div>
+            <div v-else-if="activeView === 'all'" class="photo-title-row">
+              <h2 class="photo-header-title">{{ viewTitle }}</h2>
+              <div v-if="gameAlbum && gameAccountOptions.length > 1" class="photo-account-switch">
+                <DialogChoiceMenu
+                  :model-value="gameAlbum.uid"
+                  :label="gameAlbumText.switchAccount"
+                  :trigger-label="gameAlbumNickname || gameAlbumText.account(gameAlbum.uid)"
+                  :options="gameAccountOptions"
+                  :disabled="isAnyFileOperationBusy"
+                  @update:model-value="switchGameAccount"
+                />
+              </div>
+              <div
+                class="outfit-header-actions photo-header-actions collection-actions photo-title-actions"
+              >
+                <button
+                  class="photo-trash-button"
+                  type="button"
+                  :disabled="navigationBusy || isCompatibleAlbum"
+                  :title="isCompatibleAlbum ? compatibleMessages.trash : undefined"
+                  @click="changeAlbumView('trash')"
+                >
+                  <Trash2 :size="16" aria-hidden="true" />{{ locale.viewNav.recentlyDeleted }}
+                  <small>{{ recentlyDeleted.length }}</small>
+                </button>
+                <button
+                  class="photo-favorites-button"
+                  type="button"
+                  :aria-pressed="photoFavoritesOnly"
+                  :disabled="isAnyFileOperationBusy"
+                  @click="togglePhotoFavorites"
+                >
+                  <Heart
+                    :size="16"
+                    :fill="photoFavoritesOnly ? 'currentColor' : 'none'"
+                    aria-hidden="true"
+                  />{{ locale.viewNav.photoFavorites }}
+                  <small>{{ favoriteCount }}</small>
+                </button>
+              </div>
             </div>
             <h2 v-else class="trash-header-title"
               >{{ viewTitle }}
@@ -2785,6 +2761,18 @@ function importAllDataFromMenu() {
                 outfitLocale.addOutfit
               }}</span> </button
             ><template #secondary>
+              <button
+                v-if="directorySupported && !gameAlbum"
+                type="button"
+                :disabled="isAnyFileOperationBusy"
+                @click="authorizeX6GameDirectory"
+              >
+                {{
+                  hasX6GameAuthorization
+                    ? gameAlbumText.reauthorizeTools
+                    : gameAlbumText.authorizeTools
+                }}
+              </button>
               <button
                 type="button"
                 :disabled="isAnyFileOperationBusy"
@@ -2838,20 +2826,6 @@ function importAllDataFromMenu() {
                 <span>{{ locale.grid.autoParseActions }}</span>
                 <span class="auto-parse-actions-help" aria-hidden="true">?</span>
               </label>
-              <button
-                class="photo-favorites-button"
-                type="button"
-                :aria-pressed="photoFavoritesOnly"
-                :disabled="isAnyFileOperationBusy"
-                @click="togglePhotoFavorites"
-              >
-                <Heart
-                  :size="16"
-                  :fill="photoFavoritesOnly ? 'currentColor' : 'none'"
-                  aria-hidden="true"
-                />{{ locale.viewNav.photoFavorites }}
-                <small>{{ favoriteCount }}</small>
-              </button>
 
               <button
                 type="button"
@@ -2868,6 +2842,16 @@ function importAllDataFromMenu() {
             locale.trash.totalSummary(recentlyDeleted.length, trashTotalSizeText)
           }}</p>
         </header>
+        <div
+          v-if="isCompatibleAlbum && activeView === 'all'"
+          class="compatible-album-notice"
+          role="status"
+        >
+          <span>{{ compatibleMessages.readOnly }} · {{ compatibleMessages.hint }}</span>
+          <button type="button" :disabled="isAnyFileOperationBusy" @click="chooseCompatibleAlbum">{{
+            compatibleMessages.reselect
+          }}</button>
+        </div>
 
         <CollectionFilterBar
           v-if="activeView === 'outfits' || activeView === 'resonance'"
@@ -3262,14 +3246,6 @@ function importAllDataFromMenu() {
       @close="closeOutfitGuide"
     />
 
-    <EdgeDirectoryRepairDialog
-      v-if="mountedDialogs.has('EdgeDirectoryRepairDialog')"
-      :visible="isEdgeDirectoryRepairVisible"
-      :language="language"
-      @close="closeDirectoryRepair"
-      @after-close="finishDirectoryRepair"
-    />
-
     <UpdateLogDialog
       v-if="mountedDialogs.has('UpdateLogDialog')"
       :visible="isUpdateLogVisible"
@@ -3357,18 +3333,11 @@ function importAllDataFromMenu() {
       :close-label="locale.app.dialogCloseAria"
       @confirm="closeConfirmDialog(true)"
       @cancel="closeConfirmDialog(false)"
-    >
-      <DialogChoiceMenu
-        v-if="gameAccountOptions.length"
-        v-model="selectedGameAccount"
-        :label="gameAlbumText.accountLabel"
-        :options="gameAccountOptions"
-      />
-    </ConfirmDialog>
+    />
 
     <OperationNotice
       :language="language"
-      :notices="visibleStatusNotices"
+      :notices="statusNotices"
       :title="locale.app.operationNoticeTitle"
       :close-label="locale.app.operationNoticeCloseAria"
       @close="closeStatusNotice"
@@ -3379,6 +3348,32 @@ function importAllDataFromMenu() {
 </template>
 
 <style scoped>
+.photo-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+.photo-title-actions {
+  flex: 0 0 auto;
+}
+.photo-account-switch {
+  flex: none;
+}
+.photo-account-switch :deep(.cleanup-account-select) {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.photo-account-switch :deep(.cleanup-account-menu) {
+  right: auto;
+  width: min(15rem, calc(100vw - 9rem));
+  min-width: 100%;
+  white-space: normal;
+}
 .camera-parameters-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -3395,8 +3390,41 @@ function importAllDataFromMenu() {
 .camera-parameters-toolbar :deep(.outfit-header-actions > button) {
   white-space: nowrap;
 }
-.photo-header-actions .photo-favorites-button[aria-pressed='true'] {
-  border-color: var(--pink-deep);
-  color: var(--pink-deep);
+.photo-trash-button {
+  --action-ink: #786c85;
+  --action-border: #ddd3e3;
+  --action-hover: #f5f1f7;
+}
+.photo-favorites-button {
+  --action-ink: #a95368;
+  --action-border: #eac3ce;
+  --action-hover: #fff0f3;
+  --action-selected-bg: #f5d2dd;
+  --action-selected-border: #be7086;
+}
+:global(:root[data-theme='dark']) .photo-trash-button {
+  --action-ink: #cbbbd9;
+  --action-border: #584963;
+  --action-hover: #302a37;
+}
+:global(:root[data-theme='dark']) .photo-favorites-button {
+  --action-ink: #f0b1c3;
+  --action-border: #704454;
+  --action-hover: #3b2831;
+  --action-selected-bg: #633c4c;
+  --action-selected-border: #ce8ba0;
+}
+.photo-header-actions.collection-actions button:is(.photo-trash-button, .photo-favorites-button) {
+  color: var(--action-ink);
+  background: var(--surface-strong);
+  border-color: var(--action-border);
+}
+.photo-header-actions.collection-actions
+  button:is(.photo-trash-button, .photo-favorites-button):hover:not(:disabled) {
+  background: var(--action-hover);
+}
+.photo-header-actions.collection-actions button.photo-favorites-button[aria-pressed='true'] {
+  background: var(--action-selected-bg);
+  border-color: var(--action-selected-border);
 }
 </style>

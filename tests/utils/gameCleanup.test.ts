@@ -47,7 +47,7 @@ function setup() {
           publishStatus: (status) => {
             statusState.value = status
           },
-          hasX6GameAuthorization: ref(false),
+          authorizedGameDirectory: ref<FileSystemDirectoryHandle | null>(null),
           language: ref('zh'),
           locale: computed(() => messages.zh),
           isAnyFileOperationBusy: computed(() => activeOperation.value !== null),

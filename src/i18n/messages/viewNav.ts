@@ -4,7 +4,7 @@ import type { LocaleMessages } from '../types'
 export const viewNavZh: LocaleMessages['viewNav'] = {
   aria: '相册视图',
   title: '相册',
-  allPhotos: '全部照片',
+  allPhotos: '我的相册',
   homeSchemes: '家园方案',
   resonance: '暖暖档案',
   resonanceRecords: '共鸣记录',
@@ -12,7 +12,7 @@ export const viewNavZh: LocaleMessages['viewNav'] = {
   makeup: '妆容图鉴',
   animations: '满进动画',
   favorites: '相机参数',
-  photoFavorites: '照片收藏',
+  photoFavorites: '收藏',
   recentlyDeleted: '最近删除',
   count: (count) => `${count} 张`,
   homeSchemesCount: (count) => `${count} 个方案`
@@ -20,7 +20,7 @@ export const viewNavZh: LocaleMessages['viewNav'] = {
 export const viewNavEn: LocaleMessages['viewNav'] = {
   aria: 'Album views',
   title: 'Album',
-  allPhotos: 'All photos',
+  allPhotos: 'My album',
   homeSchemes: 'Home schemes',
   resonance: 'Nikki Archive',
   resonanceRecords: 'Resonance records',
@@ -28,7 +28,7 @@ export const viewNavEn: LocaleMessages['viewNav'] = {
   makeup: 'Makeup catalog',
   animations: 'Evolution animations',
   favorites: 'Camera parameters',
-  photoFavorites: 'Photo favorites',
+  photoFavorites: 'Favorites',
   recentlyDeleted: 'Recently deleted',
   count: (count) => `${count} photos`,
   homeSchemesCount: (count) => `${count}`

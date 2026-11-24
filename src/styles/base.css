@@ -109,6 +109,22 @@ button:disabled {
   --sidebar-width: clamp(154px, 11.5vw, 180px);
 }
 
+/* 桌面内容区直接填满顶栏剩余空间，不重复估算顶栏高度。 */
+@media (min-width: 900px) {
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-shell > .app-header {
+    flex-shrink: 0;
+  }
+
+  .app-shell > .album-layout {
+    flex: 1 0 auto;
+  }
+}
+
 .album-layout,
 .date-block-header,
 .lightbox-footer,

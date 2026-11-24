@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
-import { ChevronLeft } from 'lucide-vue-next'
+import { ChevronLeft, House } from 'lucide-vue-next'
 import { onBeforeUnmount, ref } from 'vue'
 import { useCompactLayout } from '../composables/useCompactLayout'
 import type { LocaleMessages } from '../i18n'
 
 export type AlbumView =
+  | 'landing'
   | 'all'
   | 'outfits'
   | 'home'
@@ -18,15 +19,13 @@ export type AlbumView =
 
 defineProps<{
   activeView: AlbumView
+  homeLabel?: string
   allCount: number
   outfitsCount: number
   homeSchemesCount: number
   resonanceLabel?: string
   favoriteCount: number
   favoriteCountText?: string
-  trashDisabled?: boolean
-  trashDisabledHint?: string
-  trashCount: number
   outfitLabel: string
   disabled: boolean
   messages: LocaleMessages['viewNav']
@@ -68,6 +67,20 @@ function selectView(view: AlbumView) {
 
 <template>
   <nav class="album-view-nav" :aria-label="messages.aria">
+    <div v-if="!compact" class="album-view-item">
+      <button
+        class="album-view-button"
+        type="button"
+        :class="{ active: activeView === 'landing' }"
+        :aria-pressed="activeView === 'landing'"
+        :disabled="disabled"
+        @click="selectView('landing')"
+      >
+        <span class="home-nav-label"
+          ><House :size="16" aria-hidden="true" />{{ homeLabel ?? '主页' }}</span
+        >
+      </button>
+    </div>
     <div
       v-for="item in [
         { view: 'all' as const, label: messages.allPhotos, count: allCount },
@@ -79,18 +92,17 @@ function selectView(view: AlbumView) {
           countText: messages.homeSchemesCount(homeSchemesCount)
         },
         {
-          view: 'resonance' as const,
-          label: resonanceLabel ?? 'Resonance',
-          count: 0,
-          countText: ''
-        },
-        {
           view: 'favorites' as const,
           label: messages.favorites,
           count: favoriteCount,
           countText: favoriteCountText
         },
-        { view: 'trash' as const, label: messages.recentlyDeleted, count: trashCount }
+        {
+          view: 'resonance' as const,
+          label: resonanceLabel ?? 'Resonance',
+          count: 0,
+          countText: ''
+        }
       ]"
       :key="item.view"
       class="album-view-item"
@@ -110,8 +122,7 @@ function selectView(view: AlbumView) {
               (activeView === 'wardrobe' || activeView === 'makeup' || activeView === 'animations'))
         }"
         type="button"
-        :disabled="disabled || (item.view === 'trash' && trashDisabled)"
-        :title="item.view === 'trash' && trashDisabled ? trashDisabledHint : undefined"
+        :disabled="disabled"
         :aria-pressed="
           activeView === item.view ||
           (item.view === 'resonance' &&

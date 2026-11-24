@@ -6,8 +6,8 @@ export const gridZh: LocaleMessages['grid'] = {
   emptyDescription: '选择高画质相册文件夹后，照片会按拍摄日期自动整理。',
   emptyFavoritesTitle: '收藏夹还是空的',
   emptyFavoritesDescription: '点击照片右上角的爱心，即可加入收藏夹。',
-  recommendedPath:
-    '推荐文件路径：\\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\你的id\\NikkiPhotos_HighQuality',
+  manualAlbumPath:
+    '手动打开相册时参考：\\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\你的id\\NikkiPhotos_HighQuality',
   hiddenFolderTip: '如果找不到 GamePlayPhotos，在文件夹上方栏点击“查看”→显示→隐藏的项目→点击勾选',
   selectDay: '选择这一天',
   addFavorite: '加入收藏夹',
@@ -41,8 +41,8 @@ export const gridEn: LocaleMessages['grid'] = {
     'Choose the high-quality album folder to organize photos automatically by capture date.',
   emptyFavoritesTitle: 'No favorites yet',
   emptyFavoritesDescription: 'Click the heart at the top right of a photo to add it to Favorites.',
-  recommendedPath:
-    'Recommended path: \\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\Your ID\\NikkiPhotos_HighQuality',
+  manualAlbumPath:
+    'Path for opening an album manually: \\InfinityNikki Launcher\\InfinityNikki\\X6Game\\Saved\\GamePlayPhotos\\Your ID\\NikkiPhotos_HighQuality',
   hiddenFolderTip:
     'Can\'t find GamePlayPhotos? In the folder toolbar, click "View" → Show → Hidden items to check it.',
   selectDay: 'Select this day',

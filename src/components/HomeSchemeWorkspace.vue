@@ -1374,7 +1374,6 @@ function handleAddTag(value: string) {
 <style scoped>
 .home-scheme-workspace {
   min-width: 0;
-  min-height: 100%;
 }
 .home-scheme-main {
   min-width: 0;

@@ -87,7 +87,7 @@ export const helpAboutZh: HelpAboutMessages = {
       title: '打开游戏相册',
       entry: '当前相册 → 授权X6Game',
       steps: [
-        '选择 X6Game。有多个高画质相册时，选择要打开的游戏账号。照片在浏览器本地读取。',
+        '选择 X6Game 后会自动打开第一个相册。有多个账号时，可在「我的相册」标题旁切换。照片在浏览器本地读取。',
         '打不开时，在「当前相册」试试「兼容打开（只读）」。',
         '普通删除可从「最近删除」恢复。永久删除和「工具 → 专项清理」会直接删除电脑文件。'
       ]
@@ -229,7 +229,7 @@ export const helpAboutEn: HelpAboutMessages = {
       title: 'Open my game album',
       entry: 'Current album → Authorize X6Game',
       steps: [
-        'Select X6Game, then choose a game account if several high-quality albums are found. Your browser reads the photos locally.',
+        'Select X6Game to open the first album. If there are several accounts, switch from the My album heading. Your browser reads the photos locally.',
         'If the folder won’t open, try “Compatibility open (read-only)” under Current album.',
         'Recover deleted photos from Recently deleted. Permanent deletion and Tools → Cleanup delete files from your computer.'
       ]

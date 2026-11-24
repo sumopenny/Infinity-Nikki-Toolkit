@@ -169,7 +169,7 @@ Click **Authorize X6Game** and select the `X6Game` folder in your game installat
 ...\InfinityNikki Launcher\InfinityNikki\X6Game
 ```
 
-Toolkit looks for high-quality albums under `Saved\GamePlayPhotos`. It opens a single account directly, or asks which account to open when there are several. Use the current album menu to switch accounts or choose another X6Game folder. Outfit codes and cleanup reuse the same access. To browse photos stored elsewhere, select **Open a separate album**.
+Toolkit looks for high-quality albums under `Saved\GamePlayPhotos` and opens the first account in UID order. If there are several accounts, use **Switch account** next to **All photos**. Use the current album menu to choose another X6Game folder. Outfit codes and cleanup reuse the same access. To browse photos stored elsewhere, select **Open a separate album**.
 
 #### Compatibility open (read-only)
 
@@ -232,7 +232,7 @@ Create portrait or landscape share cards from photo cards or parameter windows, 
 
 #### Automatically update outfit codes
 
-Authorize the game’s `X6Game` folder from Current album. In the game, tap Share, select the screenshot area, generate an outfit code, then return to the website. Import requires a new code and an updated image; duplicates or unchanged or missing images are skipped with a message.
+Outfit codes can reuse access to the game album's `X6Game` folder. To grant access just for tools, select **Authorize X6Game** in the Outfit codes page actions. In the game, tap Share, select the screenshot area, generate an outfit code, then return to the website. Import requires a new code and an updated image; duplicates or unchanged or missing images are skipped with a message.
 
 <div align="center">
   <img src="img/自动更新步骤.webp" alt="In-game steps for auto-updating outfit codes" width="70%">

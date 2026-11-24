@@ -31,7 +31,8 @@ import { readOutfitCollection } from '../src/utils/outfit/outfitStorage'
 import {
   getSavedGameAlbumUid,
   getSavedX6GameDirectoryHandle,
-  saveGameAlbumDirectory
+  saveGameAlbumDirectory,
+  saveX6GameDirectoryHandle
 } from '../src/utils/file-system/directoryStorage'
 import { countHomeSchemes } from '../src/utils/homeBuild/homeSchemeStorage'
 
@@ -71,7 +72,24 @@ vi.mock('../src/utils/file-system/directoryStorage', async (importOriginal) => {
     ...actual,
     getSavedX6GameDirectoryHandle: vi.fn(),
     getSavedGameAlbumUid: vi.fn(),
-    saveGameAlbumDirectory: vi.fn()
+    saveGameAlbumDirectory: vi.fn(),
+    saveX6GameDirectoryHandle: vi.fn().mockResolvedValue(undefined)
+  }
+})
+
+vi.mock('../src/composables/useGameAlbumNicknames', async () => {
+  const { reactive } = await import('vue')
+  return {
+    useGameAlbumNicknames() {
+      const nicknames = reactive(new Map<string, string>())
+      return {
+        nicknames,
+        loadNickname: async (uid: string) => {
+          await Promise.resolve()
+          if (uid === '100128456') nicknames.set(uid, '相册昵称')
+        }
+      }
+    }
   }
 })
 
@@ -139,15 +157,6 @@ function gameAlbumFixture(...uids: string[]) {
   return { root, albums }
 }
 
-async function dismissStartupRepairGuide(wrapper: ReturnType<typeof mount>) {
-  const guide = wrapper.findComponent({ name: 'EdgeDirectoryRepairDialog' })
-  if (!guide.exists()) return
-  guide.vm.$emit('close')
-  await nextTick()
-  guide.vm.$emit('afterClose')
-  await nextTick()
-}
-
 beforeEach(() => {
   // jsdom 不提供浏览器广播通道；不能混用 Node 通道与 jsdom MessageEvent。
   // 跨标签页协调由独立真实浏览器测试覆盖，挂载测试不连接其他测试的通道。
@@ -166,6 +175,8 @@ beforeEach(() => {
 describe('App lifecycle coordination', () => {
   beforeEach(() => {
     localStorage.clear()
+    // Existing lifecycle cases exercise the album workspace explicitly.
+    localStorage.setItem('infinity-nikki-active-view', 'all')
     vi.clearAllMocks()
     getSavedX6GameDirectoryHandleMock.mockResolvedValue(null)
     vi.mocked(getSavedGameAlbumUid).mockResolvedValue(undefined)
@@ -186,32 +197,45 @@ describe('App lifecycle coordination', () => {
     document.body.innerHTML = ''
   })
 
-  it('keeps the directory repair notice visible until stalled startup finishes', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const pending = deferred<FileSystemDirectoryHandle | null>()
-    getSavedAlbumDirectoryHandleMock.mockReturnValueOnce(pending.promise)
-    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
-    const notice = () =>
-      wrapper
-        .getComponent({ name: 'OperationNotice' })
-        .props('notices')
-        .find((item: { id: number }) => item.id === -1)
+  it.each([
+    ['zh', 'authorize'],
+    ['zh', 'restore'],
+    ['zh', 'reselect'],
+    ['en', 'authorize']
+  ] as const)('shows the %s empty-album guidance for %s', async (language, action) => {
+    localStorage.setItem('infinity-nikki-language', language)
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    if (action === 'restore') {
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue({
+        name: 'NikkiPhotos_HighQuality',
+        queryPermission: async () => 'prompt'
+      } as FileSystemDirectoryHandle)
+    }
+    if (action === 'reselect') {
+      getSavedX6GameDirectoryHandleMock.mockResolvedValue(gameAlbumFixture('100128456').root)
+    }
+
+    const wrapper = mount(App)
     await flushPromises()
-    await vi.advanceTimersByTimeAsync(4999)
-    expect(notice()).toBeUndefined()
-    await vi.advanceTimersByTimeAsync(1)
-    expect(notice()?.message).toContain('目录加载修复教程')
-    await vi.advanceTimersByTimeAsync(30_000)
-    expect(notice()).toBeDefined()
-    pending.resolve(null)
-    await flushPromises()
-    expect(notice()).toBeUndefined()
+    const page = wrapper.get('.empty-album-start')
+    const labels = gameAlbumMessages[language]
+    const button = page.get('.empty-album-actions .primary-button')
+    expect(page.get('h2').text()).toBe(messages[language].grid.emptyTitle)
+    expect(page.get('h2 + p').text()).toBe(labels.emptyDescription)
+    expect(button.text()).toBe(labels[action])
+    expect(page.get('.empty-album-guidance > p').text()).toContain(button.text())
+    expect(page.findAll('.recommended-path').map((path) => path.text())).toEqual([
+      labels.authorizationPath,
+      messages[language].grid.manualAlbumPath
+    ])
+    expect(page.get('.hidden-folder-tip').text()).toBe(messages[language].grid.hiddenFolderTip)
+    expect(page.get('.empty-album-reload-hint').text()).toMatch(/只读|read-only/)
   })
 
-  it('validates X6Game before saving, opens the selected UID and switches without another picker', async () => {
+  it('opens the first UID directly and switches from the photo heading without a dialog or another picker', async () => {
     const firstUid = '100128456'
     const secondUid = '100274913'
-    const { root, albums } = gameAlbumFixture(firstUid, secondUid)
+    const { root, albums } = gameAlbumFixture(secondUid, firstUid)
     const picker = vi
       .fn()
       .mockResolvedValueOnce({ name: 'Wrong', queryPermission: async () => 'granted' })
@@ -234,28 +258,45 @@ describe('App lifecycle coordination', () => {
       expect(saveGameAlbumDirectory).not.toHaveBeenCalled()
       topBar.vm.$emit('chooseGameDirectory')
       await flushPromises()
-      expect(dialog.props('title')).toBe(gameAlbumMessages.zh.chooseAccount)
-      expect(saveGameAlbumDirectory).not.toHaveBeenCalled()
-      dialog.vm.$emit('confirm')
-      await flushPromises()
+      expect(dialog.props('visible')).toBe(false)
+      const titleRow = wrapper.get('.photo-title-row')
+      expect(titleRow.get('h2').text()).toBe('我的相册')
+      const accountPicker = titleRow.getComponent({ name: 'DialogChoiceMenu' })
+      expect(accountPicker.props('options')).toEqual([
+        { value: firstUid, label: `相册昵称 · UID ${firstUid}` },
+        { value: secondUid, label: `UID ${secondUid}` }
+      ])
       expect(topBar.props('gameAlbumUid')).toBe(firstUid)
-      expect(topBar.props('canSwitchGameAccount')).toBe(true)
+      expect(topBar.props('gameAlbumNickname')).toBe('相册昵称')
+      expect(topBar.get('.album-name-button').text()).toBe('相册昵称')
       expect(saveGameAlbumDirectory).toHaveBeenLastCalledWith(root, albums[firstUid], firstUid)
       expect(listRecentlyDeletedMock).toHaveBeenLastCalledWith(albums[firstUid], undefined)
 
-      topBar.vm.$emit('switchGameAccount')
-      await flushPromises()
-      dialog.vm.$emit('cancel')
-      await flushPromises()
+      const accountTrigger = accountPicker.get('button[aria-haspopup="menu"]')
+      expect(accountTrigger.text()).toBe('相册昵称')
+      await accountTrigger.trigger('click')
+      expect(accountPicker.get('[role="menuitemradio"][aria-checked="true"]').text()).toContain(
+        firstUid
+      )
+      await accountTrigger.trigger('keydown', { key: 'Escape' })
+      expect(accountTrigger.attributes('aria-expanded')).toBe('false')
       expect(topBar.props('gameAlbumUid')).toBe(firstUid)
       expect(saveGameAlbumDirectory).toHaveBeenCalledTimes(1)
-      topBar.vm.$emit('switchGameAccount')
+
+      await accountTrigger.trigger('click')
+      expect(accountTrigger.attributes('aria-expanded')).toBe('true')
+      const secondAccount = accountPicker.get('[role="menuitemradio"]:last-child')
+      expect(secondAccount.text()).toBe(`UID ${secondUid}`)
+      await secondAccount.trigger('click')
+      expect(accountTrigger.attributes('aria-expanded')).toBe('false')
       await flushPromises()
-      wrapper.getComponent({ name: 'DialogChoiceMenu' }).vm.$emit('update:modelValue', secondUid)
-      dialog.vm.$emit('confirm')
-      await flushPromises()
+      expect(dialog.props('visible')).toBe(false)
       expect(topBar.props('gameAlbumUid')).toBe(secondUid)
+      expect(topBar.props('gameAlbumNickname')).toBeUndefined()
+      expect(accountTrigger.text()).toBe(`UID ${secondUid}`)
+      expect(topBar.get('.album-name-button').text()).toBe(`UID ${secondUid}`)
       expect(saveGameAlbumDirectory).toHaveBeenLastCalledWith(root, albums[secondUid], secondUid)
+      expect(listRecentlyDeletedMock).toHaveBeenLastCalledWith(albums[secondUid], undefined)
       expect(picker).toHaveBeenCalledTimes(2)
       expect(root.requestPermission).not.toHaveBeenCalled()
     } finally {
@@ -411,8 +452,33 @@ describe('App lifecycle coordination', () => {
     }
   })
 
+  it('opens the desktop home without an album and connects its navigation and tools', async () => {
+    localStorage.removeItem('infinity-nikki-active-view')
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    const home = wrapper.getComponent({ name: 'DesktopHome' })
+    expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('landing')
+    expect(wrapper.find('.header-search').exists()).toBe(false)
+    expect(wrapper.find('.home-artwork img').exists()).toBe(false)
+    expect(wrapper.find('.home-photo-placeholder').exists()).toBe(true)
+    expect(wrapper.find('.empty-album-start').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'DateSidebar' }).exists()).toBe(false)
+    home.vm.$emit('tool', 'parse')
+    await nextTick()
+    expect(wrapper.getComponent({ name: 'ParseToolsDialog' }).props('visible')).toBe(true)
+    wrapper.getComponent({ name: 'ParseToolsDialog' }).vm.$emit('close')
+    await home.get('.home-album-button').trigger('click')
+    expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('all')
+    expect(wrapper.findComponent({ name: 'DesktopHome' }).exists()).toBe(false)
+    wrapper.getComponent({ name: 'AlbumViewSwitcher' }).vm.$emit('changeView', 'landing')
+    await nextTick()
+    expect(wrapper.findComponent({ name: 'DesktopHome' }).exists()).toBe(true)
+  })
+
   it.each([
     [null, 'outfits'],
+    ['landing', 'outfits'],
     ['all', 'outfits'],
     ['trash', 'outfits'],
     ['home', 'home'],
@@ -530,7 +596,7 @@ describe('App lifecycle coordination', () => {
     localStorage.setItem('infinity-nikki-active-view', 'removed-module')
     const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
     await flushPromises()
-    expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('all')
+    expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('landing')
   })
 
   it.each(['wardrobe', null])(
@@ -545,74 +611,11 @@ describe('App lifecycle coordination', () => {
         const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
         await flushPromises()
         expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe(
-          savedView ?? 'all'
+          savedView ?? 'landing'
         )
         wrapper.unmount()
       } finally {
         window.history.replaceState(null, '', previousUrl)
-      }
-    }
-  )
-
-  it.each([
-    ['Chrome/158.0 Edg/158.0', true],
-    ['Chrome/158.0', true],
-    ['Chrome/158.0 Edg/158.0', false]
-  ])(
-    'shows the directory repair guide only in wide layout (%s, wide=%s)',
-    async (userAgent, wide) => {
-      const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent)
-      const originalMatchMedia = window.matchMedia
-      vi.stubGlobal('matchMedia', (query: string) => ({
-        matches: query === '(max-width: 899px)' && !wide,
-        addEventListener: () => {},
-        removeEventListener: () => {}
-      }))
-      try {
-        const wrapper = mount(App, {
-          global: {
-            stubs: {
-              Teleport: true,
-              EdgeDirectoryRepairDialog: {
-                name: 'EdgeDirectoryRepairDialog',
-                props: ['visible'],
-                template: '<div />'
-              }
-            }
-          }
-        })
-        await nextTick()
-        const guide = wrapper.findComponent({ name: 'EdgeDirectoryRepairDialog' })
-        const updates = () => wrapper.findComponent({ name: 'UpdateLogDialogContent' })
-        expect(guide.exists()).toBe(wide)
-        if (wide) {
-          expect(guide.props('visible')).toBe(true)
-          expect(updates().exists()).toBe(false)
-          guide.vm.$emit('close')
-          await nextTick()
-          expect(guide.props('visible')).toBe(false)
-          guide.vm.$emit('afterClose')
-          await nextTick()
-        }
-        expect(updates().exists()).toBe(true)
-        wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
-        await nextTick()
-        expect(guide.exists()).toBe(wide)
-        if (wide) expect(guide.props('visible')).toBe(true)
-        if (wide) {
-          expect(localStorage.getItem('infinity-nikki-directory-repair-dismissed')).toBe('true')
-          wrapper.unmount()
-          const reopened = mount(App, { global: { stubs: { Teleport: true } } })
-          await nextTick()
-          const findGuide = () => reopened.findComponent({ name: 'EdgeDirectoryRepairDialog' })
-          expect(findGuide().exists()).toBe(false)
-          reopened.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
-          await nextTick()
-          expect(findGuide().props('visible')).toBe(true)
-        }
-      } finally {
-        ua.mockRestore()
-        vi.stubGlobal('matchMedia', originalMatchMedia)
       }
     }
   )
@@ -629,7 +632,6 @@ describe('App lifecycle coordination', () => {
       }
     })
     await flushPromises()
-    await dismissStartupRepairGuide(wrapper)
     const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
     updates.vm.$emit('openHelp')
     await nextTick()
@@ -718,9 +720,9 @@ describe('App lifecycle coordination', () => {
     Object.defineProperty(input.element, 'files', { value: files })
     await input.trigger('change')
     await flushPromises()
-    const autoParse = wrapper.get('.auto-parse-actions-toggle')
     const favorites = wrapper.get('.photo-favorites-button')
-    expect(autoParse.element.nextElementSibling).toBe(favorites.element)
+    expect(wrapper.get('.photo-title-row .photo-trash-button').exists()).toBe(true)
+    expect(wrapper.get('.photo-trash-button').element.nextElementSibling).toBe(favorites.element)
     expect(wrapper.get('.photo-header-actions').text()).not.toContain('搭配总结')
     const grid = wrapper.getComponent({ name: 'PhotoGrid' })
     const visiblePhotos = () =>
@@ -767,7 +769,7 @@ describe('App lifecycle coordination', () => {
       expect(wrapper.find('.compatible-album-notice').exists()).toBe(true)
       expect(wrapper.find('.empty-album-start').exists()).toBe(false)
       expect(wrapper.getComponent({ name: 'PhotoGrid' }).props('readOnly')).toBe(true)
-      expect(wrapper.getComponent({ name: 'AlbumViewSwitcher' }).props('trashDisabled')).toBe(true)
+      expect((wrapper.get('.photo-trash-button').element as HTMLButtonElement).disabled).toBe(true)
       expect(saveAlbumDirectoryHandleMock).not.toHaveBeenCalled()
       expect(readOutfitLibraryMock).not.toHaveBeenCalled()
       expect(listRecentlyDeletedMock).not.toHaveBeenCalled()
@@ -1259,8 +1261,8 @@ describe('App lifecycle coordination', () => {
       expect(wrapper.findComponent({ name: 'AlbumViewSwitcher' }).props('disabled')).toBe(false)
     )
 
-    for (const index of [1, 2, 4, 5, 0]) {
-      const button = wrapper.findAll('.album-view-button')[index]
+    for (const index of [1, 2, 4, 0]) {
+      const button = wrapper.findAll('.album-view-button')[index === 4 ? 4 : index + 1]
       await vi.waitFor(() => expect((button.element as HTMLButtonElement).disabled).toBe(false))
       await button.trigger('click')
       await flushPromises()
@@ -1304,7 +1306,7 @@ describe('App lifecycle coordination', () => {
     expect(readOutfitLibraryMock).toHaveBeenCalledWith(null)
     expect(wrapper.findComponent({ name: 'OutfitGuideDialog' }).props('visible')).toBe(false)
 
-    await wrapper.findAll('.album-view-button')[3].trigger('click')
+    await wrapper.findAll('.album-view-button')[5].trigger('click')
     expect(wrapper.find('.resonance-workspace-stub').exists()).toBe(false)
     await wrapper.get('.resonance-nav-menu [role=menuitem]').trigger('click')
     expect(wrapper.find('.resonance-workspace-stub').exists()).toBe(true)
@@ -1428,7 +1430,7 @@ describe('App lifecycle coordination', () => {
       await vi.waitFor(() =>
         expect(wrapper.findComponent({ name: 'TopBar' }).props('hasAlbumDirectory')).toBe(false)
       )
-      await wrapper.findAll('.album-view-button')[1].trigger('click')
+      await wrapper.findAll('.album-view-button')[2].trigger('click')
       await flushPromises()
       expect(wrapper.get('.outfit-grid-stub').text()).toBe('1')
       expect(
@@ -1489,7 +1491,7 @@ describe('App lifecycle coordination', () => {
     const wrapper = mount(App, { global: { stubs: { CameraFavorites: true } } })
     try {
       await flushPromises()
-      await wrapper.findAll('.album-view-button')[1].trigger('click')
+      await wrapper.findAll('.album-view-button')[2].trigger('click')
       await flushPromises()
       expect(wrapper.find('.outfit-grid-wrap').exists()).toBe(true)
       expect(wrapper.findComponent({ name: 'ConfirmDialog' }).props('visible')).toBe(false)
@@ -1547,9 +1549,6 @@ describe('App lifecycle coordination', () => {
       try {
         await flushPromises()
         const confirm = wrapper.getComponent({ name: 'ConfirmDialog' })
-        expect(confirm.props('visible')).toBe(false)
-        await dismissStartupRepairGuide(wrapper)
-        await flushPromises()
         expect(confirm.props('visible')).toBe(!dismissed)
         if (!dismissed)
           expect(confirm.props('title')).toBe(messages.zh.app.x6GameDirectoryDialogTitle)
@@ -1560,6 +1559,66 @@ describe('App lifecycle coordination', () => {
       }
     }
   )
+
+  it('keeps tool authorization out of the album menu and scans once after an explicit replacement', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const album = { name: 'Independent' } as FileSystemDirectoryHandle
+    const oldRoot = { kind: 'directory', name: 'X6Game' } as FileSystemDirectoryHandle
+    const newRoot = {
+      kind: 'directory',
+      name: 'X6Game',
+      label: 'new'
+    } as unknown as FileSystemDirectoryHandle
+    const picker = vi
+      .fn()
+      .mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'))
+      .mockImplementationOnce(async () => {
+        window.dispatchEvent(new Event('focus'))
+        return newRoot
+      })
+    vi.stubGlobal('showDirectoryPicker', picker)
+    localStorage.setItem('infinity-nikki-active-view', 'outfits')
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(album)
+    getSavedX6GameDirectoryHandleMock.mockResolvedValue(oldRoot)
+    readAlbumDirectoryMock.mockResolvedValue({
+      directoryHandle: album,
+      directoryName: album.name,
+      photos: []
+    })
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    try {
+      await flushPromises()
+      const topBar = wrapper.getComponent({ name: 'TopBar' })
+      await topBar.get('.album-name-button').trigger('click')
+      expect(topBar.text()).not.toContain(gameAlbumMessages.zh.reauthorizeTools)
+      const authorize = wrapper
+        .findAll('button')
+        .find((button) => button.text() === gameAlbumMessages.zh.reauthorizeTools)
+      expect(authorize).toBeDefined()
+      readOutfitLibraryMock.mockClear()
+      getSavedX6GameDirectoryHandleMock.mockClear()
+      await authorize!.trigger('click')
+      await flushPromises()
+      expect(picker).toHaveBeenCalledTimes(1)
+      expect(saveX6GameDirectoryHandle).not.toHaveBeenCalled()
+      expect(readOutfitLibraryMock).not.toHaveBeenCalled()
+      expect(topBar.props('directoryName')).toBe(album.name)
+      expect(authorize!.text()).toBe(gameAlbumMessages.zh.reauthorizeTools)
+      await authorize!.trigger('click')
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(400)
+      expect(picker).toHaveBeenCalledTimes(2)
+      expect(saveX6GameDirectoryHandle).toHaveBeenCalledTimes(1)
+      expect(saveX6GameDirectoryHandle).toHaveBeenCalledWith(newRoot)
+      expect(getSavedX6GameDirectoryHandleMock).not.toHaveBeenCalled()
+      expect(readOutfitLibraryMock).toHaveBeenCalledTimes(1)
+      expect(readOutfitLibraryMock).toHaveBeenCalledWith({ x6GameDirectory: newRoot })
+      expect(topBar.props('directoryName')).toBe(album.name)
+    } finally {
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    }
+  })
 
   it('checks an authorized game directory without an album and skips permission requests in background', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })

@@ -70,10 +70,10 @@ const props = defineProps<{
   hasBackupData?: boolean
   isDeleting: boolean
   hasAlbumDirectory: boolean
-  hasX6GameAuthorization: boolean
   gameAlbumUid?: string
-  canSwitchGameAccount?: boolean
+  gameAlbumNickname?: string
   canRestoreDirectory?: boolean
+  gameDirectoryActionLabel?: string
   thumbnailMode: ThumbnailMode
   thumbnailModeDisabled?: boolean
   thumbnailSize?: ThumbnailSize
@@ -92,10 +92,8 @@ const emit = defineEmits<{
   chooseDirectory: []
   chooseGameDirectory: []
   restoreDirectoryAccess: []
-  switchGameAccount: []
   chooseCompatible: []
   clearDirectory: []
-  authorizeX6Game: []
   openCleanup: []
   openAvatarSimulator: []
   openFortuneTime: []
@@ -112,7 +110,6 @@ const emit = defineEmits<{
   changeThumbnailMode: [mode: ThumbnailMode]
   changeThumbnailSize: [size: ThumbnailSize]
   openUpdateLog: []
-  openDirectoryRepair: []
   openHelpAbout: []
   updateSearch: [value: string]
 }>()
@@ -553,7 +550,7 @@ function openDonate() {
           :messages="{ like: messages.like, likeTooltip: messages.likeTooltip }"
         />
       </Teleport>
-      <div v-if="activeView !== 'animations'" class="header-search">
+      <div v-if="activeView !== 'animations' && activeView !== 'landing'" class="header-search">
         <input
           :value="searchQuery ?? ''"
           type="search"
@@ -583,7 +580,13 @@ function openDonate() {
           @pointerleave="leaveMenu"
         >
           <FolderOpen :size="16" aria-hidden="true" />
-          <span>{{ hasAlbumDirectory ? directoryName : messages.currentAlbum }}</span>
+          <span>{{
+            gameAlbumUid
+              ? gameAlbumNickname || `UID ${gameAlbumUid}`
+              : hasAlbumDirectory
+                ? directoryName
+                : messages.currentAlbum
+          }}</span>
           <ChevronLeft
             class="header-menu-chevron"
             :class="{ 'is-open': openMenu === 'album' }"
@@ -609,19 +612,6 @@ function openDonate() {
               :style="menuStyle"
               role="menu"
             >
-              <div v-if="gameAlbumUid" class="menu-section-label">
-                {{ gameAlbumMessages[language].currentAccount(gameAlbumUid) }}
-              </div>
-              <button
-                v-if="canSwitchGameAccount"
-                type="button"
-                role="menuitem"
-                :disabled="isBusy"
-                @click="runMenuAction(() => emit('switchGameAccount'))"
-              >
-                <CircleUserRound :size="16" />
-                <span>{{ gameAlbumMessages[language].switchAccount }}</span>
-              </button>
               <button
                 v-if="canRestoreDirectory"
                 type="button"
@@ -639,11 +629,7 @@ function openDonate() {
                 @click="runMenuAction(() => emit('chooseGameDirectory'))"
               >
                 <FolderOpen :size="16" />
-                <span>{{
-                  gameAlbumUid || canRestoreDirectory || hasX6GameAuthorization
-                    ? gameAlbumMessages[language].reselect
-                    : gameAlbumMessages[language].authorize
-                }}</span>
+                <span>{{ gameDirectoryActionLabel ?? gameAlbumMessages[language].authorize }}</span>
               </button>
               <button
                 type="button"
@@ -671,18 +657,6 @@ function openDonate() {
               >
                 <Trash2 :size="16" />
                 <span>{{ messages.clearDirectory }}</span>
-              </button>
-              <button
-                v-if="!gameAlbumUid && (hasAlbumDirectory || activeView === 'outfits')"
-                type="button"
-                role="menuitem"
-                :disabled="isBusy"
-                @click="runMenuAction(() => emit('authorizeX6Game'))"
-              >
-                <FolderOpen :size="16" />
-                <span>{{
-                  hasX6GameAuthorization ? messages.reauthorizeX6Game : messages.authorizeX6Game
-                }}</span>
               </button>
             </div>
           </Transition>
@@ -1130,16 +1104,6 @@ function openDonate() {
                 </section>
                 <section class="more-menu-group" aria-labelledby="more-maintenance-heading">
                   <h3 id="more-maintenance-heading">{{ messages.appMaintenance }}</h3>
-                  <button
-                    v-if="!compact"
-                    type="button"
-                    @click="runMenuAction(() => emit('openDirectoryRepair'))"
-                  >
-                    <Wrench :size="16" aria-hidden="true" />
-                    <span>{{
-                      language === 'zh' ? '目录加载修复教程' : 'Folder loading repair guide'
-                    }}</span>
-                  </button>
                   <button
                     v-if="!desktopInstallDialog?.installed"
                     type="button"
