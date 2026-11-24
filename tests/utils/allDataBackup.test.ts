@@ -509,7 +509,7 @@ it('uses legacy backup scope inference in the conflict dialog', async () => {
   expect((await loadWardrobe()).regionScope).toBe('cn')
 })
 
-it('accepts legacy full backups without wardrobe and rejects invalid wardrobe before restoring', async () => {
+it('rejects legacy full backups without wardrobe and rejects invalid wardrobe before restoring', async () => {
   await seed()
   const file = await exported()
   const legacy = await repack(file, (files) => {
@@ -521,7 +521,7 @@ it('accepts legacy full backups without wardrobe and rejects invalid wardrobe be
     )
     files['backup.json'] = strToU8(JSON.stringify(manifest))
   })
-  expect((await prepareAllDataBackup(legacy)).wardrobe).toBeNull()
+  await expect(prepareAllDataBackup(legacy)).rejects.toThrow('unsupported_format')
   const invalid = await repack(
     file,
     (files) => {

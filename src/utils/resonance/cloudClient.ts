@@ -9,7 +9,7 @@ export interface CloudSnapshot {
   records: ResonanceRecord[]
 }
 
-/** 兼容共鸣现有入口；传输逻辑由两个模块共用。 */
+/** 云账户入口；档案读写使用统一 archive 接口。 */
 export function cloudRequest<T>(
   action: string,
   user?: CloudUser | null,

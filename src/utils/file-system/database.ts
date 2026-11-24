@@ -6,8 +6,10 @@ export const DB_VERSION = 10
 const versionMismatchListeners = new Set<() => void>()
 let versionMismatchDetected = false
 export function isDatabaseVersionMismatch(error: unknown): boolean {
-  return error instanceof Error &&
+  return (
+    error instanceof Error &&
     (error.name === 'VersionError' || error.message === 'DATABASE_VERSION_MISMATCH')
+  )
 }
 export function subscribeDatabaseVersionMismatch(notify: () => void): () => void {
   versionMismatchListeners.add(notify)
@@ -24,13 +26,9 @@ export const OUTFIT_IMAGES_STORE = 'outfit-images'
 export const OUTFIT_TAGS_STORE = 'outfit-tags'
 export const OUTFIT_IGNORED_CODES_STORE = 'outfit-ignored-sharecodes'
 export const OUTFIT_GAME_SOURCES_STORE = 'outfit-game-sources'
-export const OUTFIT_MIGRATION_SOURCES_STORE = 'outfit-migration-sources'
-export const OUTFIT_MIGRATION_ENTRIES_STORE = 'outfit-migration-entries'
 export const HOME_SCHEMES_STORE = 'home-schemes'
 export const HOME_IMAGES_STORE = 'home-scheme-images'
 export const HOME_TAGS_STORE = 'home-scheme-tags'
-export const HOME_MIGRATION_SOURCES_STORE = 'home-scheme-migration-sources'
-export const HOME_MIGRATION_ENTRIES_STORE = 'home-scheme-migration-entries'
 export const CAMERA_FAVORITES_STORE = 'camera-favorites'
 export const CAMERA_TAGS_STORE = 'camera-favorite-tags'
 export const CAMERA_COVERS_STORE = 'camera-favorite-covers'
@@ -57,19 +55,12 @@ export function openDb(): Promise<IDBDatabase> {
       // Pending outfits omit codeKey, so multiple empty codes remain valid.
       if (!outfits.indexNames.contains('code'))
         outfits.createIndex('code', 'codeKey', { unique: true })
-      for (const name of [
-        OUTFIT_IMAGES_STORE,
-        OUTFIT_GAME_SOURCES_STORE,
-        OUTFIT_MIGRATION_SOURCES_STORE
-      ]) {
+      for (const name of [OUTFIT_IMAGES_STORE, OUTFIT_GAME_SOURCES_STORE]) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' })
       }
       if (!db.objectStoreNames.contains(OUTFIT_TAGS_STORE)) db.createObjectStore(OUTFIT_TAGS_STORE)
       if (!db.objectStoreNames.contains(OUTFIT_IGNORED_CODES_STORE))
         db.createObjectStore(OUTFIT_IGNORED_CODES_STORE, { keyPath: 'code' })
-      if (!db.objectStoreNames.contains(OUTFIT_MIGRATION_ENTRIES_STORE)) {
-        db.createObjectStore(OUTFIT_MIGRATION_ENTRIES_STORE, { keyPath: ['sourceId', 'fileName'] })
-      }
       for (const name of [
         'album-handles',
         'resonance-records',
@@ -95,13 +86,9 @@ export function openDb(): Promise<IDBDatabase> {
         : db.createObjectStore(HOME_SCHEMES_STORE, { keyPath: 'id' })
       if (!schemes.indexNames.contains('code'))
         schemes.createIndex('code', 'code', { unique: true })
-      for (const name of [HOME_IMAGES_STORE, HOME_MIGRATION_SOURCES_STORE]) {
-        if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' })
-      }
+      if (!db.objectStoreNames.contains(HOME_IMAGES_STORE))
+        db.createObjectStore(HOME_IMAGES_STORE, { keyPath: 'id' })
       if (!db.objectStoreNames.contains(HOME_TAGS_STORE)) db.createObjectStore(HOME_TAGS_STORE)
-      if (!db.objectStoreNames.contains(HOME_MIGRATION_ENTRIES_STORE)) {
-        db.createObjectStore(HOME_MIGRATION_ENTRIES_STORE, { keyPath: ['sourceId', 'fileName'] })
-      }
     }
     request.onsuccess = () => {
       const db = request.result

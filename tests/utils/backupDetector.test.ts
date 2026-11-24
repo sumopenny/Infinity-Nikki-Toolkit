@@ -27,7 +27,7 @@ it.each([
 )
 
 it('identifies a wrong module before any write and gives actionable Chinese and English warnings', async () => {
-  const file = zip({ 'manifest.json': manifest('infinity-nikki-outfit-backup', 2) })
+  const file = zip({ 'manifest.json': manifest('infinity-nikki-outfit-backup', 4) })
   const error = await assertBackupKind(file, 'all').catch((caught) => caught)
   expect(error).toBeInstanceOf(BackupInputError)
   expect(error).toMatchObject({ reason: 'type_mismatch', actual: 'outfits' })

@@ -5,7 +5,7 @@ import { build } from 'esbuild'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 import { pruneDiagnostics } from '../../scripts/error-retention.mjs'
-import { archiveUpload, resonanceFixture, wardrobeFixture } from '../fixtures/archiveCloud'
+import { archiveUpload } from '../fixtures/archiveCloud'
 import { sampleEvent } from '../utils/errorReporting/fixture'
 
 let runtime: Miniflare
@@ -148,11 +148,7 @@ it('dispatches all API routes and preserves middleware and input checks', async 
   expect((await request('/api/outfit-code/%2F')).status).toBe(404)
   expect((await request('/api/outfit-code/%ZZ')).status).toBe(400)
   expect((await request('/api/like')).headers.get('x-request-id')).toBeTruthy()
-  for (const path of [
-    '/api/resonance/cloud?action=session',
-    '/api/wardrobe/cloud?action=summary',
-    '/api/archive/cloud?action=summary'
-  ]) {
+  for (const path of ['/api/resonance/cloud?action=session', '/api/archive/cloud?action=summary']) {
     const response = await request(path)
     expect(response.status).toBeGreaterThanOrEqual(200)
     expect(response.status).toBeLessThan(500)
@@ -179,32 +175,16 @@ it('supports secure shared sessions through the production entrypoint', async ()
   expect(
     (await request('/api/resonance/cloud?action=session', { headers: authenticated })).status
   ).toBe(200)
-  for (const path of ['/api/wardrobe/cloud?action=summary', '/api/archive/cloud?action=summary'])
+  for (const path of ['/api/archive/cloud?action=summary'])
     expect((await request(path, { headers: authenticated })).status).toBe(200)
   const post = (path: string, body: unknown) =>
     request(path, { method: 'POST', headers: authenticated, body: JSON.stringify(body) })
-  const resonanceBody = {
-    requestId: crypto.randomUUID(),
-    revision: 0,
-    records: [resonanceFixture()]
-  }
-  expect((await post('/api/resonance/cloud?action=upload', resonanceBody)).status).toBe(200)
-  expect(
-    (
-      await post('/api/wardrobe/cloud?action=upload', {
-        requestId: crypto.randomUUID(),
-        revision: 0,
-        schemaVersion: 1,
-        data: wardrobeFixture()
-      })
-    ).status
-  ).toBe(200)
-  expect((await post('/api/archive/cloud?action=upload', archiveUpload(1))).status).toBe(200)
+  expect((await post('/api/archive/cloud?action=upload', archiveUpload(0))).status).toBe(200)
   expect((await post('/api/archive/cloud?action=upload', archiveUpload(0))).status).toBe(409)
   const snapshot = await (
     await request('/api/archive/cloud?action=snapshot', { headers: authenticated })
   ).json()
-  expect(snapshot).toMatchObject({ resonance: { revision: 2 }, wardrobe: { revision: 2 } })
+  expect(snapshot).toMatchObject({ resonance: { revision: 1 }, wardrobe: { revision: 1 } })
   expect(
     (
       await request('/api/archive/cloud?action=snapshot', {

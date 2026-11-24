@@ -9,7 +9,7 @@ import {
 import { onRequest as middleware } from '../../functions/api/_middleware'
 import { onRequestGet as homeBuildEndpoint } from '../../functions/api/home-build/[key]'
 import { sampleEvent } from '../utils/errorReporting/fixture'
-import { onRequest as wardrobeEndpoint } from '../../functions/api/wardrobe/cloud'
+import { onRequest as archiveEndpoint } from '../../functions/api/archive/cloud'
 import type { CloudDB } from '../../functions/_lib/cloudShared'
 
 /** 纯对象 D1 替身；不启动 Wrangler、SQLite 或 IndexedDB。SQL 真正执行留给云端验收。 */
@@ -192,35 +192,45 @@ describe('error intake contract without a database', () => {
     const waitUntil = vi.fn()
     const response = await middleware({
       request: new Request('https://example.test/api/outfit-code/test'),
-      env: state.env, data: {}, next: async () => new Response(null, { status }), waitUntil
+      env: state.env,
+      data: {},
+      next: async () => new Response(null, { status }),
+      waitUntil
     })
     expect(response.status).toBe(status)
     expect(response.headers.get('X-Request-Id')).toBeTruthy()
     expect(waitUntil).not.toHaveBeenCalled()
     await recordServerError(state.env, new Error('failed'), {
-      route: '/api/outfit-code/:key', method: 'GET', status, requestId: 'test', durationMs: 1
+      route: '/api/outfit-code/:key',
+      method: 'GET',
+      status,
+      requestId: 'test',
+      durationMs: 1
     })
     expect(state.calls).toHaveLength(0)
   })
-  it.each(['parse', 'save', 'importBackup', 'component-error'])('filters old outfit clients for %s before any database access', async (action) => {
-    const state = fakeDatabase()
-    const event = sampleEvent()
-    event.module = 'outfits'
-    event.action = action
-    event.error.message = 'arbitrary failure'
-    const response = await handleErrorReport(request(event), state.env)
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({accepted: true, filtered: true})
-    expect(state.calls).toHaveLength(0)
-  })
+  it.each(['parse', 'save', 'importBackup', 'component-error'])(
+    'filters old outfit clients for %s before any database access',
+    async (action) => {
+      const state = fakeDatabase()
+      const event = sampleEvent()
+      event.module = 'outfits'
+      event.action = action
+      event.error.message = 'arbitrary failure'
+      const response = await handleErrorReport(request(event), state.env)
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ accepted: true, filtered: true })
+      expect(state.calls).toHaveLength(0)
+    }
+  )
   it('filters outfit endpoint metadata while keeping home reports', async () => {
     const state = fakeDatabase()
     const event = sampleEvent()
     event.module = 'api'
-    event.context = {endpoint: '/api/outfit-code/:key'}
+    event.context = { endpoint: '/api/outfit-code/:key' }
     expect((await handleErrorReport(request(event), state.env)).status).toBe(200)
     expect(state.calls).toHaveLength(0)
-    event.context = {endpoint: '/api/home-build/:key'}
+    event.context = { endpoint: '/api/home-build/:key' }
     expect((await handleErrorReport(request(event), state.env)).status).toBe(201)
     expect(state.writes()).toBe(1)
   })
@@ -287,14 +297,14 @@ describe('error intake contract without a database', () => {
     expect(response.status).toBe(503)
     expect(waitUntil).not.toHaveBeenCalled()
   })
-  it('stores the original wardrobe failure, operation, stage and correlated response ID', async () => {
+  it('stores the original archive failure, operation, stage and correlated response ID', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       const state = fakeDatabase(),
         tasks: Promise<unknown>[] = [],
         data = {}
-      const cause = new Error('wardrobe-database-fixture')
-      const request = new Request('https://example.test/api/wardrobe/cloud?action=summary', {
+      const cause = new Error('archive-database-fixture')
+      const request = new Request('https://example.test/api/archive/cloud?action=summary', {
         headers: { Cookie: `resonance_session=${'a'.repeat(64)}` }
       })
       const db = {
@@ -306,14 +316,14 @@ describe('error intake contract without a database', () => {
         request,
         env: state.env,
         data,
-        next: () => wardrobeEndpoint({ request, env: { RESONANCE_DB: db }, data }),
+        next: () => archiveEndpoint({ request, env: { RESONANCE_DB: db }, data }),
         waitUntil: (task) => tasks.push(task)
       })
       await Promise.all(tasks)
       expect(response.status).toBe(500)
       expect(state.writes()).toBe(1)
       const serialized = JSON.stringify(state.calls)
-      expect(serialized).toContain('wardrobe-database-fixture')
+      expect(serialized).toContain('archive-database-fixture')
       expect(serialized).toContain('summary')
       expect(serialized).toContain('session')
       expect(serialized).toContain(response.headers.get('X-Request-Id'))

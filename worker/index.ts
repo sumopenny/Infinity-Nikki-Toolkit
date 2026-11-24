@@ -1,7 +1,6 @@
 import { onRequest as middleware } from '../functions/api/_middleware'
 import { onRequestGet as likeGet, onRequestPost as likePost } from '../functions/api/like'
 import { onRequest as resonance } from '../functions/api/resonance/cloud'
-import { onRequest as wardrobe } from '../functions/api/wardrobe/cloud'
 import { onRequest as archive } from '../functions/api/archive/cloud'
 import { onRequestGet as outfit } from '../functions/api/outfit-code/[id]'
 import { onRequestGet as home } from '../functions/api/home-build/[key]'
@@ -53,8 +52,6 @@ async function api(request: Request, env: Env, execution: ExecutionContext): Pro
         )
       case '/api/resonance/cloud':
         return select(['GET', 'POST'], () => resonance(context))
-      case '/api/wardrobe/cloud':
-        return select(['GET', 'POST'], () => wardrobe(context))
       case '/api/archive/cloud':
         return select(['GET', 'POST'], () => archive(context))
       case '/api/share-image':

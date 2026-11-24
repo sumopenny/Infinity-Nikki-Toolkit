@@ -1,5 +1,5 @@
 import { cloneJsonData } from '../cloneJsonData'
-import { openDb } from '../file-system/database'
+import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
 import { emptyWardrobe, validateWardrobe, wardrobeBaseline } from '../wardrobe/wardrobeSchema'
 import {
   archiveModules,
@@ -29,40 +29,24 @@ export interface ArchiveLocalPreview {
 export async function readArchiveLocalPreview(
   selected: readonly ArchiveModule[] = archiveModules
 ): Promise<ArchiveLocalPreview> {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    let tx: IDBTransaction
-    try {
-      tx = db.transaction(
-        selected.map((module) => stores[module]),
-        'readonly'
-      )
-    } catch (cause) {
-      db.close()
-      reject(cause)
-      return
-    }
-    const output: ArchiveLocalPreview = { data: {}, errors: {} }
-    tx.oncomplete = () => {
-      db.close()
-      resolve(output)
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(tx.error ?? new Error('LOCAL_READ_FAILED'))
-    }
-    tx.onerror = () => {}
-    for (const module of selected) {
-      const request = tx.objectStore(stores[module]).get(keys[module])
-      request.onsuccess = () => {
+  return runDatabaseTransaction(
+    selected.map((module) => stores[module]),
+    'readonly',
+    async (tx) => {
+      const output: ArchiveLocalPreview = { data: {}, errors: {} }
+      for (const module of selected) {
+        const value: unknown = await databaseRequest(
+          tx.objectStore(stores[module]).get(keys[module])
+        )
         try {
-          Object.assign(output.data, { [module]: decode(module, request.result) })
+          Object.assign(output.data, { [module]: decode(module, value) })
         } catch {
           output.errors[module] = 'INVALID_DATA'
         }
       }
+      return output
     }
-  })
+  )
 }
 
 export function readArchiveLocal(): Promise<ArchiveLocal>
@@ -83,58 +67,28 @@ export async function replaceArchiveLocal(
   selected: ArchiveModule[]
 ) {
   const snapshot = cloneJsonData(incoming)
-  const db = await openDb()
-  return new Promise<void>((resolve, reject) => {
-    let tx: IDBTransaction
-    try {
-      tx = db.transaction(
-        selected.map((k) => stores[k]),
-        'readwrite'
-      )
-    } catch (cause) {
-      db.close()
-      reject(cause)
-      return
-    }
-    let failure: unknown,
-      remaining = selected.length
-    tx.oncomplete = () => {
-      db.close()
-      resolve()
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(failure ?? tx.error)
-    }
-    tx.onerror = () => {}
-    for (const module of selected) {
-      const request = tx.objectStore(stores[module]).get(keys[module])
-      request.onsuccess = () => {
-        try {
-          if (
-            expected[module] === undefined ||
-            archiveBaseline(
-              module,
-              decode(module, request.result) as ArchiveLocal[ArchiveModule]
-            ) !== archiveBaseline(module, expected[module]!)
-          )
-            throw new Error('LOCAL_CHANGED')
-          if (--remaining !== 0) return
-          for (const key of selected) {
-            const value =
-              key === 'resonance'
-                ? snapshot.resonance!.records
-                : {
-                    ...validateWardrobe(snapshot.wardrobe!.data),
-                    updatedAt: new Date().toISOString()
-                  }
-            tx.objectStore(stores[key]).put(value, keys[key])
-          }
-        } catch (error) {
-          failure = error
-          tx.abort()
-        }
+  await runDatabaseTransaction(
+    selected.map((module) => stores[module]),
+    'readwrite',
+    async (tx) => {
+      for (const module of selected) {
+        const value: unknown = await databaseRequest(
+          tx.objectStore(stores[module]).get(keys[module])
+        )
+        if (
+          expected[module] === undefined ||
+          archiveBaseline(module, decode(module, value) as ArchiveLocal[ArchiveModule]) !==
+            archiveBaseline(module, expected[module]!)
+        )
+          throw new Error('LOCAL_CHANGED')
+      }
+      for (const module of selected) {
+        const value =
+          module === 'resonance'
+            ? snapshot.resonance!.records
+            : { ...validateWardrobe(snapshot.wardrobe!.data), updatedAt: new Date().toISOString() }
+        tx.objectStore(stores[module]).put(value, keys[module])
       }
     }
-  })
+  )
 }

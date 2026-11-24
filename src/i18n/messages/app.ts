@@ -36,7 +36,7 @@ export const appZh: LocaleMessages['app'] = {
       items: [
         '搭配、家园方案、共鸣记录、个人衣橱与照片收藏标记',
         '相机参数收藏，以及已保存的图片、封面和标签',
-        '解析缓存、UID、目录授权、迁移记录及设置'
+        '解析缓存、UID、目录授权及设置'
       ]
     },
     {
@@ -168,7 +168,7 @@ export const appEn: LocaleMessages['app'] = {
       items: [
         'Outfits, home schemes, resonance records, personal wardrobe and photo favorites',
         'Camera parameter favorites and saved images, covers and tags',
-        'Parsing caches, UIDs, folder permissions, migration records and settings'
+        'Parsing caches, UIDs, folder permissions and settings'
       ]
     },
     {

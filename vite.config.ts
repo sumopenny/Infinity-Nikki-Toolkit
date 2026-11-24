@@ -118,7 +118,6 @@ export default defineConfig(({ mode, command }) => {
         '/api/home-build': homeBuildProxy,
         // 共鸣、衣橱与点赞都访问线上 Workers/D1；云同步额外适配本地同源认证和 Cookie。
         '^/api/resonance/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
-        '^/api/wardrobe/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
         '^/api/archive/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
         // 远程 D1 点赞接口仍转发到 Workers 服务。
         '/api': {

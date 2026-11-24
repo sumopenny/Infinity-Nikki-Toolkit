@@ -98,21 +98,6 @@ export class OutfitDirectory {
 }
 export const directoryHandle = (directory: OutfitDirectory) =>
   directory as unknown as FileSystemDirectoryHandle
-export function legacyAlbum(id = 'one', code = 'CODE1', content = 'original') {
-  const album = new OutfitDirectory('NikkiPhotos_HighQuality'),
-    clothe = album.child('clothe')
-  clothe.json('tags.json', ['甜美', '自定义'])
-  clothe.files.set(`${id}.webp`, webp(`${id}.webp`, content))
-  clothe.json(`${id}.json`, {
-    id,
-    image: `${id}.webp`,
-    code,
-    tags: ['自定义'],
-    note: '保留备注',
-    createdAt: '2026-07-31T00:00:00.000Z'
-  })
-  return { album, clothe }
-}
 export function gameSource() {
   const game = new OutfitDirectory('X6Game'),
     saved = game.child('Saved'),

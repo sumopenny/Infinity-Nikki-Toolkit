@@ -51,7 +51,7 @@ beforeAll(async () => {
       middlewareMode: true,
       proxy: {
         '^/api/resonance/cloud(?:\\?|$)': resonanceCloudProxy(target),
-        '^/api/wardrobe/cloud(?:\\?|$)': resonanceCloudProxy(target)
+        '^/api/archive/cloud(?:\\?|$)': resonanceCloudProxy(target)
       }
     },
     optimizeDeps: { noDiscovery: true, include: [] }
@@ -117,14 +117,12 @@ it('does not rewrite hostile origins or bypass Fetch Metadata checks', async () 
   }
 })
 
-it('forwards wardrobe uploads to the same remote service with the existing account cookie', async () => {
+it('forwards archive uploads to the same remote service with the existing account cookie', async () => {
   const body = JSON.stringify({
     requestId: 'fixture',
-    revision: 0,
-    schemaVersion: 1,
-    data: { imported: true }
+    modules: { wardrobe: { revision: 0, data: { imported: true } } }
   })
-  const response = await fetch(`${origin}/api/wardrobe/cloud?action=upload`, {
+  const response = await fetch(`${origin}/api/archive/cloud?action=upload`, {
     method: 'POST',
     headers: {
       Origin: origin,
@@ -139,6 +137,6 @@ it('forwards wardrobe uploads to the same remote service with the existing accou
     origin: target,
     cookie: 'resonance_session=shared-session',
     body,
-    path: '/api/wardrobe/cloud?action=upload'
+    path: '/api/archive/cloud?action=upload'
   })
 })

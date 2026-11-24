@@ -7,20 +7,6 @@ export const resonanceRecordsSQL =
 
 const enc = new TextEncoder()
 
-/** 只回收已提交且不再活跃的记录；保留小型请求回执与其他设备的暂存版本。 */
-async function cleanupRecords(db: CloudDB, userId: string, requestId: string) {
-  try {
-    await db
-      .prepare(
-        'DELETE FROM cloud_records WHERE user_id=? AND snapshot_id IN (SELECT id FROM cloud_snapshots WHERE user_id=? AND committed_revision IS NOT NULL AND id IS NOT (SELECT active_snapshot FROM cloud_users WHERE id=?))'
-      )
-      .bind(userId, userId, userId)
-      .run()
-  } catch {
-    // 提交已完成，回收失败留待下次请求处理，不改变提交回执。
-    console.warn('resonance-cloud', { stage: 'cleanup', requestId, category: 'deferred' })
-  }
-}
 /** 校验版本并暂存完整共鸣快照，返回准备结果，不提交活跃指针。 */
 export async function prepareResonanceSnapshot(
   db: CloudDB,
@@ -107,65 +93,4 @@ export async function prepareResonanceSnapshot(
       )
     )
   return { kind: 'staged', count: rows.length, fingerprint, createdAt: now }
-}
-
-/** 保留旧客户端的单模块提交契约；与联合接口共享同一准备过程。 */
-export async function writeResonanceCloud(
-  db: CloudDB,
-  user: { id: string },
-  body: Record<string, unknown>,
-  deleting: boolean,
-  stage: (value: SnapshotStage) => void,
-  requestId: string
-) {
-  const prepared = await prepareResonanceSnapshot(db, user.id, body, deleting, stage)
-  if (prepared.kind === 'replayed') {
-    stage('cleanup')
-    await cleanupRecords(db, user.id, requestId)
-    return { revision: prepared.revision, replayed: true }
-  }
-  const id = body.requestId
-  const { createdAt: now, count } = prepared
-  stage('commit')
-  const result = await db.batch([
-    db
-      .prepare(
-        'UPDATE cloud_users SET active_snapshot=?,last_request=?,revision=revision+1,updated_at=? WHERE id=? AND revision=? AND (SELECT COUNT(*) FROM cloud_records WHERE user_id=? AND snapshot_id=?)=? AND EXISTS(SELECT 1 FROM cloud_sessions WHERE user_id=? AND token_hash=?) RETURNING revision'
-      )
-      .bind(
-        deleting ? null : id,
-        id,
-        now,
-        user.id,
-        body.revision,
-        user.id,
-        id,
-        count,
-        user.id,
-        body.sessionHash
-      ),
-    db
-      .prepare(
-        'UPDATE cloud_snapshots SET committed_revision=? WHERE user_id=? AND id=? AND EXISTS(SELECT 1 FROM cloud_users WHERE id=? AND revision=? AND last_request=?)'
-      )
-      .bind(Number(body.revision) + 1, user.id, id, user.id, Number(body.revision) + 1, id)
-  ])
-  if (!result[0].results.length) {
-    const replay = await db
-      .prepare('SELECT committed_revision FROM cloud_snapshots WHERE user_id=? AND id=?')
-      .bind(user.id, id)
-      .first<{ committed_revision: number | null }>()
-    if (replay?.committed_revision != null)
-      return { revision: replay.committed_revision, replayed: true }
-    await db
-      .prepare(
-        'DELETE FROM cloud_snapshots WHERE user_id=? AND id=? AND committed_revision IS NULL'
-      )
-      .bind(user.id, id)
-      .run()
-    fail(409, 'CONFLICT')
-  }
-  stage('cleanup')
-  await cleanupRecords(db, user.id, requestId)
-  return { revision: Number(body.revision) + 1 }
 }

@@ -13,7 +13,6 @@ provide(openAnimationKey, (page: number) => {
   changeAlbumView('animations')
 })
 
-import { migrateHomeSchemeLibrary } from './utils/homeBuild/homeSchemeMigration'
 import { vSegmentedIndicator } from './utils/segmentedIndicator'
 import SkeletonSweep from './components/SkeletonSweep.vue'
 import { globalSkeletonSweepKey } from './utils/imageSkeleton'
@@ -246,7 +245,6 @@ const albumThumbnailCache = createPhotoThumbnailCache()
 const outfits = ref<OutfitItem[]>([])
 const unreadableOutfitCount = ref(0)
 const homeSchemesCount = ref(0)
-const homeLibraryRevision = ref(0)
 let homeCountGeneration = 0
 const resonanceRecords = ref<ResonanceRecord[]>([])
 const resonanceBannerOrder = ref<ResonanceBannerOrder>('newest')
@@ -1000,57 +998,6 @@ async function updateHomeSchemeCount() {
   if (generation === homeCountGeneration) homeSchemesCount.value = count
 }
 
-async function migrateHomeSchemes(
-  directory: FileSystemDirectoryHandle
-): Promise<StatusState | null> {
-  try {
-    const result = await migrateHomeSchemeLibrary(directory)
-    await updateHomeSchemeCount()
-    if (result.addedCount || result.replacedCount || result.tagsChanged) homeLibraryRevision.value++
-    if (
-      !result.addedCount &&
-      !result.replacedCount &&
-      !result.skippedCount &&
-      !result.failedCount &&
-      !result.tagsChanged &&
-      !result.homeDirectoryRemoved
-    )
-      return null
-    let message = locale.value.homeScheme.migrationSucceeded(
-      result.addedCount,
-      result.replacedCount,
-      result.skippedCount,
-      result.failedCount
-    )
-    if (result.homeDirectoryRemoved)
-      message += ' ' + locale.value.homeScheme.migrationDirectoryRemoved
-    if (result.failures.length) {
-      message +=
-        ' ' +
-        locale.value.homeScheme.migrationFailedItems(
-          [...new Set(result.failures.map((item) => item.fileName))].slice(0, 5).join('、')
-        )
-      if (result.failures.some((item) => item.message.startsWith('home_scheme_tag_limit')))
-        message += ' ' + locale.value.homeScheme.migrationTagLimit
-      if (result.failures.some((item) => item.fileName === 'home'))
-        message += ' ' + locale.value.homeScheme.migrationCleanupFailed
-      if (result.failures.some((item) => item.errorName === 'QuotaExceededError'))
-        message += ' ' + locale.value.homeScheme.storageFull
-    }
-    return { type: 'custom', message, tone: result.failedCount ? 'warning' : 'success' }
-  } catch (error) {
-    captureDiagnosticError(error, { module: 'home-schemes', action: 'migration' })
-    return {
-      type: 'custom',
-      message:
-        error instanceof DOMException && error.name === 'QuotaExceededError'
-          ? locale.value.homeScheme.storageFull
-          : locale.value.homeScheme.operationFailed,
-      tone: 'error'
-    }
-  }
-}
-
 function handleHomeSchemeCount(count: number) {
   homeCountGeneration++
   homeSchemesCount.value = count
@@ -1071,71 +1018,31 @@ async function replaceAlbum(
     releasePhotoUrls(result.photos)
     return
   }
-  const restoring = activeOperation.value === 'loading'
-  // 读取目录后可能迁移搭配和家园文件；该阶段恢复全局写互斥。
-  if (restoring) activeOperation.value = 'updating-outfits'
-  try {
-    invalidatePendingRefreshes()
-    const [outfitResult, nextRecentlyDeleted] = await Promise.all([
-      readOutfitLibrary(result.directoryHandle),
-      listRecentlyDeleted(result.directoryHandle, result.notes?.metadata.photos)
-    ])
-    if (appDisposed) {
-      releasePhotoUrls(result.photos)
-      releasePhotoUrls(outfitResult.outfits)
-      releasePhotoUrls(nextRecentlyDeleted)
-      return
-    }
-    await saveAlbumDirectoryHandle(result.directoryHandle)
-    isCompatibleAlbum.value = false
-    writeLocalStorage(ALBUM_ACCESS_MODE_KEY, 'directory')
-
-    releasePhotoUrls(photos.value)
-    releasePhotoUrls(outfits.value)
-    releasePhotoUrls(recentlyDeleted.value)
-    sharedOutfitSource.value = null
-    selectedIds.value = new Set()
-    selectedOutfitIds.value = new Set()
-    trashSelectedIds.value = new Set()
-    currentPreview.value = null
-    editingOutfit.value = null
-    isOutfitEditorVisible.value = false
-    isOutfitGuideVisible.value = false
-    photos.value = result.photos
-    unreadableOutfitCount.value = outfitResult.unreadableCount ?? 0
-    outfits.value = outfitResult.outfits
-    outfitTags.value = outfitResult.tags
-    recentlyDeleted.value = nextRecentlyDeleted
-    // 收藏记录跨相册保留，切换相册时不再按当前照片裁剪，避免切回后丢失
-    if (!options.preserveView) activeView.value = 'all'
-    albumNotes.value = result.notes
-    albumDirectoryHandle.value = result.directoryHandle
-    directoryState.value = { type: 'selected', name: result.directoryName }
-    publishStatus(
-      outfitResult.failedCount
-        ? {
-            type: 'custom',
-            message: outfitLocale.value.operations.albumOpenedWithFailures(
-              outfitResult.failedCount
-            ),
-            tone: 'warning'
-          }
-        : nextStatus
-    )
-    if (
-      outfitResult.migration &&
-      (outfitResult.migration.addedCount ||
-        outfitResult.migration.replacedCount ||
-        outfitResult.migration.tagsChanged ||
-        outfitResult.migration.clotheDirectoryRemoved ||
-        outfitResult.failedCount)
-    )
-      showOutfitRefreshResult(outfitResult, false)
-    const migrationStatus = await migrateHomeSchemes(result.directoryHandle)
-    if (migrationStatus) publishStatus(migrationStatus)
-  } finally {
-    if (restoring && activeOperation.value === 'updating-outfits') activeOperation.value = 'loading'
+  invalidatePendingRefreshes()
+  const nextRecentlyDeleted = await listRecentlyDeleted(
+    result.directoryHandle,
+    result.notes?.metadata.photos
+  )
+  if (appDisposed) {
+    releasePhotoUrls(result.photos)
+    releasePhotoUrls(nextRecentlyDeleted)
+    return
   }
+  await saveAlbumDirectoryHandle(result.directoryHandle)
+  isCompatibleAlbum.value = false
+  writeLocalStorage(ALBUM_ACCESS_MODE_KEY, 'directory')
+  releasePhotoUrls(photos.value)
+  releasePhotoUrls(recentlyDeleted.value)
+  selectedIds.value = new Set()
+  trashSelectedIds.value = new Set()
+  currentPreview.value = null
+  photos.value = result.photos
+  recentlyDeleted.value = nextRecentlyDeleted
+  if (!options.preserveView) activeView.value = 'all'
+  albumNotes.value = result.notes
+  albumDirectoryHandle.value = result.directoryHandle
+  directoryState.value = { type: 'selected', name: result.directoryName }
+  publishStatus(nextStatus)
 }
 
 const { refreshAlbum, scheduleFocusRefresh, invalidatePendingRefreshes, suppressNextFocusRefresh } =
@@ -1152,7 +1059,6 @@ const { refreshAlbum, scheduleFocusRefresh, invalidatePendingRefreshes, suppress
     publishStatus,
     createErrorStatus,
     apply: applyRefreshResult,
-    migrate: migrateHomeSchemes,
     refreshCollections: async () => {
       await updateOutfitLibrary(false, false)
       if (!cameraMounted.value) refreshCameraFavoriteMetadata()
@@ -1648,9 +1554,8 @@ function applyOutfitLibraryResult(result: OutfitLibraryResult) {
 
 /** 扫描搭配方案并返回结果，不直接修改页面状态。 */
 async function scanOutfitLibrary(promptSharedAccess = false): Promise<OutfitLibraryResult> {
-  const directoryHandle = albumDirectoryHandle.value
   const sharedSource = await ensureSharedOutfitSource(promptSharedAccess)
-  return readOutfitLibrary(directoryHandle, { sharedSource })
+  return readOutfitLibrary(sharedSource)
 }
 
 /** 扫描搭配方案并在当前任务仍有效时应用结果。 */
@@ -1706,44 +1611,8 @@ function showOutfitStorageError(error: unknown, source?: string) {
 let lastOutfitWarning = ''
 function showOutfitRefreshResult(result: OutfitLibraryResult, announce = true) {
   const added = result.importedSharedCount
-  const migration = result.migration
-  const migrated =
-    migration &&
-    (migration.addedCount ||
-      migration.replacedCount ||
-      migration.skippedCount ||
-      migration.tagsChanged ||
-      migration.clotheDirectoryRemoved)
   let message =
-    migrated || migration?.failedCount
-      ? outfitLocale.value.migrationComplete(
-          migration!.addedCount,
-          migration!.replacedCount,
-          migration!.skippedCount,
-          migration!.failedCount
-        )
-      : ''
-  if (migration?.clotheDirectoryRemoved)
-    message += ' ' + outfitLocale.value.migrationDirectoryRemoved
-  if (migration?.failures.length) {
-    message +=
-      ' ' +
-      outfitLocale.value.migrationFailedItems(
-        [...new Set(migration.failures.map((item) => item.fileName))].slice(0, 5).join('、')
-      )
-    if (migration.failures.some((item) => item.message.startsWith('outfit_tag_limit')))
-      message += ' ' + outfitLocale.value.migrationTagLimit
-    if (migration.failures.some((item) => item.fileName === 'clothe'))
-      message += ' ' + outfitLocale.value.migrationCleanupFailed
-    if (migration.failures.some((item) => item.message === 'outfit_migration_source_changed'))
-      message += ' ' + outfitLocale.value.migrationSourceChanged
-    if (migration.failures.some((item) => item.errorName === 'QuotaExceededError'))
-      message += ' ' + outfitLocale.value.storageFull
-  }
-  if (added || result.failedCount > (migration?.failedCount ?? 0))
-    message +=
-      ' ' +
-      outfitLocale.value.scanComplete(added, result.failedCount - (migration?.failedCount ?? 0))
+    added || result.failedCount ? outfitLocale.value.scanComplete(added, result.failedCount) : ''
   if (result.sharedFailureStage && result.sharedFailureStage !== 'duplicate')
     message += ' ' + outfitLocale.value.sharedImportResult[result.sharedFailureStage]
   if (!message.trim())
@@ -1752,8 +1621,7 @@ function showOutfitRefreshResult(result: OutfitLibraryResult, announce = true) {
         ? outfitLocale.value.sharedImportResult.duplicate
         : outfitLocale.value.upToDate
   const signature = result.failedCount ? message.trim() : ''
-  if (!announce && !added && !migrated && (!result.failedCount || signature === lastOutfitWarning))
-    return
+  if (!announce && !added && (!result.failedCount || signature === lastOutfitWarning)) return
   lastOutfitWarning = signature
   showOutfitStatus(message.trim(), result.failedCount ? 'warning' : 'success')
 }
@@ -2396,8 +2264,7 @@ watch(activeView, (view) => {
 watch(
   [isStartupNoticeVisible, isAnyFileOperationBusy, () => confirmDialog.value.visible],
   () => {
-    if (promptX6GameOnInitialOutfitScan && !initialOutfitScanStarted)
-      void ensureInitialOutfitScan()
+    if (promptX6GameOnInitialOutfitScan && !initialOutfitScanStarted) void ensureInitialOutfitScan()
   },
   { flush: 'post' }
 )
@@ -2405,7 +2272,7 @@ onMounted(() => {
   promptX6GameOnInitialOutfitScan = activeView.value === 'outfits'
   if (!cameraMounted.value) refreshCameraFavoriteMetadata()
   activeOperation.value = 'loading'
-  // 计数独立读取；本地集合与目录迁移仍保持顺序，防止较旧读取覆盖迁移结果。
+  // 计数与收藏独立读取；目录恢复只更新相册。
   void updateHomeSchemeCount().catch((error) => {
     if (!appDisposed)
       captureDiagnosticError(error, { module: 'home-schemes', action: 'load-count' })
@@ -2420,7 +2287,6 @@ onMounted(() => {
     if (!appDisposed) showOutfitStorageError(error)
   })
   const directoryReady = (async () => {
-    await collectionReady
     if (appDisposed) return
     await restoreSavedDirectory()
     if (appDisposed) return
@@ -3099,7 +2965,6 @@ function importAllDataFromMenu() {
           @close-filters="mobileFiltersOpen = false"
           :filters-open="mobileFiltersOpen"
           v-if="activeView === 'home'"
-          :library-revision="homeLibraryRevision"
           :messages="locale.homeScheme"
           :copy-messages="locale.app"
           :disabled="navigationBusy"

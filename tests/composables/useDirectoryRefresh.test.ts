@@ -17,7 +17,6 @@ afterEach(() => {
 })
 function setup() {
   const apply = vi.fn(),
-    migrate = vi.fn(async () => null),
     refreshCollections = vi.fn(async () => {})
   const directory = ref<FileSystemDirectoryHandle | null>({
     name: 'album'
@@ -40,7 +39,6 @@ function setup() {
               statusState.value = status
             },
             apply,
-            migrate,
             refreshCollections,
             createErrorStatus: () => ({ type: 'readFailed' })
           })
@@ -50,10 +48,10 @@ function setup() {
     )
   )
   vi.mocked(listRecentlyDeleted).mockResolvedValue([])
-  return { session, apply, migrate, directory, statusState, refreshCollections }
+  return { session, apply, directory, statusState, refreshCollections }
 }
 it('discards an in-flight scan after the directory session is invalidated', async () => {
-  const { session, apply, migrate } = setup()
+  const { session, apply } = setup()
   let finish!: (result: Awaited<ReturnType<typeof refreshAlbumPhotos>>) => void
   vi.mocked(refreshAlbumPhotos).mockReturnValue(
     new Promise((resolve) => {
@@ -73,7 +71,6 @@ it('discards an in-flight scan after the directory session is invalidated', asyn
   })
   await job
   expect(apply).not.toHaveBeenCalled()
-  expect(migrate).not.toHaveBeenCalled()
 })
 it('invalidates queued focus refresh and releases it on unmount', async () => {
   vi.useFakeTimers()

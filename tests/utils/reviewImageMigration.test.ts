@@ -3,19 +3,11 @@ import { optimizedImageKitUrl } from '../../src/utils/imagekit'
 import { resolveResourceImage, resourceImage } from '../../src/utils/photo-params/resourceManifest'
 import { loadResonanceCatalog } from '../../src/utils/resonance/resonanceCatalog'
 import { validateCloudRecords } from '../../src/utils/resonance/cloudSchema'
-it('resolves old saved catalog URLs without changing custom URLs', () => {
-  const old = 'https://cdn.gongeo.us/images/outfits/10001.png'
-  expect(optimizedImageKitUrl(old)).toContain('https://ik.imagekit.io/')
-  expect(optimizedImageKitUrl(old)).not.toContain('gongeo')
-  expect(optimizedImageKitUrl('https://cdn.gongeo.us/images/items/999999999999.png')).toBe(
-    '/catalog-placeholder.svg'
-  )
+it('resolves current catalog IDs and preserves custom URLs', () => {
   expect(optimizedImageKitUrl('https://example.com/custom.png?x=1')).toBe(
     'https://example.com/custom.png?x=1'
   )
-  expect(
-    resolveResourceImage({ kind: 'pose', id: '1', imageUrl: 'https://cdn.gongeo.us/old.png' })
-  ).toBe(resourceImage('pose', '1'))
+  expect(resolveResourceImage({ kind: 'pose', id: '1' })).toBe(resourceImage('pose', '1'))
   expect(
     resolveResourceImage({ kind: 'pose', id: '1', imageUrl: 'https://example.com/custom.png' })
   ).toBe('https://example.com/custom.png')

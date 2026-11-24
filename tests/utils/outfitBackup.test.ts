@@ -11,7 +11,7 @@ import {
 import { OUTFIT_BACKUP_LIMITS } from '../../src/utils/backup/zipBackup'
 setupOutfitDatabaseTests()
 const input = (code: string) => ({ imageFile: webp(), code, tag: null, note: '备注' })
-function archive(records: unknown[], images: Record<string, Uint8Array>, version = 1) {
+function archive(records: unknown[], images: Record<string, Uint8Array>, version = 4) {
   return new File(
     [
       zipSync({
@@ -21,7 +21,7 @@ function archive(records: unknown[], images: Record<string, Uint8Array>, version
             version,
             tags: ['甜美'],
             outfits: records,
-            ...(version === 2 ? { ignoredCodes: ['DELETED'] } : {})
+            ignoredCodes: []
           })
         ),
         ...images
@@ -39,7 +39,7 @@ const raw = (id = 'one', code = 'CODE1') => ({
   createdAt: '2026-07-31T00:00:00.000Z'
 })
 
-it('imports existing version 1 backups into the global database and keeps code deduplication', async () => {
+it('imports current backups into the global database and keeps code deduplication', async () => {
   const file = archive([raw()], { 'images/one.webp': new Uint8Array(await webp().arrayBuffer()) })
   expect(await importOutfitBackup(file)).toMatchObject({ addedCount: 1, failedCount: 0 })
   expect((await readOutfitSnapshot()).records[0]).toMatchObject({ note: '旧备注', tags: ['甜美'] })
@@ -49,7 +49,7 @@ it('imports existing version 1 backups into the global database and keeps code d
     failedCount: 0
   })
 })
-it('exports and restores version 2 records, pending records, images and persistent ignores', async () => {
+it('exports and restores current records, pending records, images and persistent ignores', async () => {
   await saveOutfit(input('CODE1'))
   await saveOutfit(input(''))
   await deleteOutfit(await saveOutfit(input('DELETED')))
@@ -60,7 +60,7 @@ it('exports and restores version 2 records, pending records, images and persiste
   const manifest = JSON.parse(
     strFromU8(unzipSync(new Uint8Array(await backup!.arrayBuffer()))['manifest.json'])
   )
-  expect(manifest.version).toBe(2)
+  expect(manifest.version).toBe(4)
   expect(manifest.ignoredCodes).toContain('DELETED')
   expect(
     manifest.outfits.every((record: Record<string, unknown>) => !('gameSourceId' in record))
@@ -170,7 +170,7 @@ it.each([
       backup = new File([blob], name)
     })
     const entries = unzipSync(new Uint8Array(await backup.arrayBuffer()))
-    expect(JSON.parse(strFromU8(entries['manifest.json'])).version).toBe(3)
+    expect(JSON.parse(strFromU8(entries['manifest.json'])).version).toBe(4)
     expect(entries['images/' + edited.image]).toEqual(bytes)
     await resetOutfitDatabase()
     const result = prepared
@@ -203,4 +203,14 @@ it('round trips source URLs including repeated and encoded parameters', async ()
   await resetOutfitDatabase()
   await importOutfitBackup(backup)
   expect((await readOutfitSnapshot()).records[0].sourceUrl).toBe(sourceUrl)
+})
+
+it.each([1, 2, 3])('rejects obsolete outfit backup version %s before writing', async (version) => {
+  const file = archive(
+    [raw()],
+    { 'images/one.webp': new Uint8Array(await webp().arrayBuffer()) },
+    version
+  )
+  await expect(importOutfitBackup(file)).rejects.toThrow('Unsupported backup format')
+  expect((await readOutfitSnapshot()).records).toHaveLength(0)
 })

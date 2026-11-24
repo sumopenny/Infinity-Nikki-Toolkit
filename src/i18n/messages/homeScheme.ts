@@ -65,11 +65,7 @@ export interface HomeSchemeMessages {
   nameRequired: string
   invalidBackup: string
   storageFull: string
-  migrationSucceeded: (added: number, replaced: number, skipped: number, failed: number) => string
-  migrationFailedItems: (files: string) => string
-  migrationTagLimit: string
-  migrationDirectoryRemoved: string
-  migrationCleanupFailed: string
+
   permissionDenied: string
   imageInvalid: string
   dataInvalid: string
@@ -153,13 +149,7 @@ export const homeSchemeMessages = {
     nameRequired: '请填写方案名称。',
     invalidBackup: '备份文件无效或不受支持。',
     storageFull: '浏览器存储空间不足，请释放空间后重试。',
-    migrationSucceeded: (added, replaced, skipped, failed) =>
-      `家园方案迁移完成：新增 ${added} 个，替换 ${replaced} 个，相同跳过 ${skipped} 个，失败 ${failed} 项。`,
-    migrationFailedItems: (files) => `失败文件：${files}。重新选择或更新相册可重试。`,
-    migrationDirectoryRemoved: '旧 home 文件夹已自动删除。',
-    migrationCleanupFailed:
-      '旧 home 文件夹未删除，请检查写入权限或是否存在未迁移内容，再更新相册重试。',
-    migrationTagLimit: '标签已达到 40 个上限，相关条目未迁移；释放标签名额后可重试。',
+
     operationFailed: '操作失败，数据未能完整读取或保存，请重试。'
   },
   en: {
@@ -244,15 +234,7 @@ export const homeSchemeMessages = {
     nameRequired: 'Enter a scheme name.',
     invalidBackup: 'The backup file is invalid or unsupported.',
     storageFull: 'Browser storage is full. Free up space and try again.',
-    migrationSucceeded: (added, replaced, skipped, failed) =>
-      `Home migration complete: ${added} added, ${replaced} replaced, ${skipped} identical, ${failed} failed.`,
-    migrationFailedItems: (files) =>
-      `Failed files: ${files}. Reopen or refresh the album to retry.`,
-    migrationDirectoryRemoved: 'The old home folder was deleted automatically.',
-    migrationCleanupFailed:
-      'The old home folder was retained. Check write access or unmigrated contents, then refresh the album to retry.',
-    migrationTagLimit:
-      'The 40-tag limit was reached. Free a tag slot and retry the affected items.',
+
     operationFailed: 'Unable to read or save all data. Please try again.'
   }
 } satisfies Record<'zh' | 'en', HomeSchemeMessages>

@@ -21,12 +21,7 @@ export interface OutfitMessages {
   storageFull: string
   recordChanged: string
   operationFailed: string
-  migrationComplete: (added: number, replaced: number, skipped: number, failed: number) => string
-  migrationFailedItems: (names: string) => string
-  migrationTagLimit: string
-  migrationSourceChanged: string
-  migrationDirectoryRemoved: string
-  migrationCleanupFailed: string
+
   updating: string
   upToDate: string
   scanComplete: (added: number, failed: number) => string
@@ -88,7 +83,7 @@ export interface OutfitMessages {
   imageLoadFailed: string
   operations: {
     copyCode: string
-    albumOpenedWithFailures: (failed: number) => string
+
     saveSucceeded: (wasEditing: boolean) => string
     invalidTag: (maxLength: number) => string
     duplicateOrReservedTag: string
@@ -141,14 +136,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     storageFull: '浏览器存储空间不足，请释放空间后重试。源文件已保留。',
     recordChanged: '方案已被其他页面修改或删除，请刷新后重试。',
     operationFailed: '搭配数据读取或保存失败，请重试。',
-    migrationComplete: (added, replaced, skipped, failed) =>
-      `旧搭配迁移：新增 ${added} 个，替换 ${replaced} 个，跳过 ${skipped} 个，失败 ${failed} 个。`,
-    migrationFailedItems: (names) => `未完成文件：${names}。源文件已保留。`,
-    migrationDirectoryRemoved: '旧 clothe 文件夹已删除。',
-    migrationCleanupFailed:
-      'clothe 文件夹已保留：存在未迁移内容、源文件变化或删除权限不足。请检查后再次更新。',
-    migrationTagLimit: '全局标签已达上限，请整理标签后再次更新。',
-    migrationSourceChanged: '已迁移的源文件发生变化，未再次覆盖收藏；请通过编辑或备份导入更新。',
+
     updating: '搭配码更新中…',
     upToDate: '搭配码已是最新状态。',
     scanComplete: (added, failed) => `搭配码更新完成：新增 ${added} 个，失败 ${failed} 个。`,
@@ -213,7 +201,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     imageLoadFailed: '图片读取或预览失败，可能是格式不支持或文件损坏，请重新选择',
     operations: {
       copyCode: '复制搭配码',
-      albumOpenedWithFailures: (failed) => `相册已打开，${failed} 个搭配方案读取或导入失败。`,
+
       saveSucceeded: (wasEditing) => (wasEditing ? '保存成功。' : '添加成功。'),
       invalidTag: (maxLength) => `标签不能为空，且最多为${maxLength}个字符。`,
       duplicateOrReservedTag: '标签名称已存在或属于系统筛选项。',
@@ -284,15 +272,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     storageFull: 'Browser storage is full. Free some space and retry. Source files were retained.',
     recordChanged: 'This outfit was changed or deleted in another page. Refresh and retry.',
     operationFailed: 'Unable to read or save outfit data. Please retry.',
-    migrationComplete: (added, replaced, skipped, failed) =>
-      `Outfit migration: ${added} added, ${replaced} replaced, ${skipped} skipped, ${failed} failed.`,
-    migrationFailedItems: (names) => `Unfinished files: ${names}. Source files were retained.`,
-    migrationDirectoryRemoved: 'The old clothe folder was removed.',
-    migrationCleanupFailed:
-      'The clothe folder was retained because of unmigrated content, changed files or insufficient deletion permission. Check it and update again.',
-    migrationTagLimit: 'The global tag limit was reached. Organize your tags and update again.',
-    migrationSourceChanged:
-      'A migrated source file changed. Saved outfits were preserved. Use editing or backup import to update it.',
+
     updating: 'Updating outfit codes…',
     upToDate: 'Outfit codes are up to date.',
     scanComplete: (added, failed) =>
@@ -364,8 +344,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
       'Unable to read or preview image. The format may be unsupported or the file damaged. Please select again',
     operations: {
       copyCode: 'Copy outfit code',
-      albumOpenedWithFailures: (failed) =>
-        `Album opened; ${failed} outfit item(s) could not be read or imported.`,
+
       saveSucceeded: (wasEditing) => (wasEditing ? 'Outfit saved.' : 'Outfit added.'),
       invalidTag: (maxLength) => `A tag must contain 1 to ${maxLength} characters.`,
       duplicateOrReservedTag: 'That name is already used or reserved.',

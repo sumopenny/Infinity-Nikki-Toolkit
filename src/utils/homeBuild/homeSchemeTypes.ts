@@ -66,7 +66,7 @@ export function isSafeHomeSchemeId(value: unknown): value is string {
   )
 }
 
-/** Shared validation for database writes, backups and legacy migration. */
+/** Shared validation for database writes and backups. */
 export function normalizeHomeSchemeRecord(value: unknown): HomeSchemeRecord {
   if (!value || typeof value !== 'object') throw new Error('home_scheme_record_invalid')
   const raw = value as Partial<HomeSchemeRecord>

@@ -67,7 +67,6 @@ import type { ThumbnailMode, ThumbnailSize } from '../types/thumbnail'
 
 const props = defineProps<{
   language?: 'zh' | 'en'
-  libraryRevision: number
   messages: HomeSchemeMessages
   copyMessages?: { copySucceeded: string; copyFailed: (value: string) => string }
   disabled: boolean
@@ -214,9 +213,13 @@ async function rotatePreviewSource() {
         const result = await readHomeSchemeLibrary()
         schemes.value = result.schemes
         tags.value = result.tags
-        previewScheme.value = result.schemes.find(scheme => scheme.id === item.id) ?? null
-      } catch { throw new Error('rotation_refresh') }
-    } finally { busy.value = false }
+        previewScheme.value = result.schemes.find((scheme) => scheme.id === item.id) ?? null
+      } catch {
+        throw new Error('rotation_refresh')
+      }
+    } finally {
+      busy.value = false
+    }
   })
 }
 
@@ -877,13 +880,7 @@ function reload() {
   return loadLibrary()
 }
 defineExpose({ reload })
-watch(
-  () => props.libraryRevision,
-  () => {
-    void reload()
-  },
-  { immediate: true }
-)
+void reload()
 window.addEventListener('paste', handlePaste)
 window.addEventListener('keydown', handleKeydown)
 document.addEventListener('pointerdown', handleTagPointerDown)

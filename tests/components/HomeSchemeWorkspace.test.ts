@@ -23,7 +23,6 @@ import { createEmptyHomeSchemeMetadata } from '../helpers/homeSchemeMetadata'
 
 vi.mock('../../src/utils/homeBuild/homeSchemeParser', () => ({ parseHomeScheme: vi.fn() }))
 const props = {
-  libraryRevision: 0,
   messages: homeSchemeMessages.zh,
   disabled: false,
   confirmAction: async () => true,
@@ -47,7 +46,7 @@ it('only shows the screenshot when the whole home library is empty', async () =>
       note: '',
       metadata: createEmptyHomeSchemeMetadata()
     })
-    await wrapper.setProps({ libraryRevision: 1 })
+    await wrapper.vm.reload()
     await vi.waitFor(() => expect(wrapper.findAll('.home-scheme-card')).toHaveLength(1))
     expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(false)
     await wrapper.setProps({ searchQuery: 'does-not-match' })
@@ -60,7 +59,7 @@ it('only shows the screenshot when the whole home library is empty', async () =>
     expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(false)
     const snapshot = await readHomeSchemeSnapshot()
     await homeStorage.deleteHomeScheme(snapshot.records[0])
-    await wrapper.setProps({ libraryRevision: 2 })
+    await wrapper.vm.reload()
     await vi.waitFor(() => expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(true))
   } finally {
     wrapper.unmount()
@@ -283,7 +282,7 @@ it('adds and persists a parsed scheme without any album directory', async () => 
   }
 })
 
-it('reloads global data after migration revision changes and preserves it when thumbnail settings change', async () => {
+it('reloads global data when explicitly refreshed and preserves it when thumbnail settings change', async () => {
   const wrapper = mount(HomeSchemeWorkspace, { props, attachTo: document.body })
   try {
     await vi.waitFor(() => expect(wrapper.emitted('countChange')?.at(-1)).toEqual([0]))
@@ -296,7 +295,7 @@ it('reloads global data after migration revision changes and preserves it when t
       note: '',
       metadata: createEmptyHomeSchemeMetadata()
     })
-    await wrapper.setProps({ libraryRevision: 1 })
+    await wrapper.vm.reload()
     expect(document.querySelector('.home-scheme-editor')).not.toBeNull()
     expect(wrapper.text()).not.toContain('迁入方案')
     const cancel = [

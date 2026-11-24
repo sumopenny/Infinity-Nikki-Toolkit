@@ -28,7 +28,7 @@
     "errors:report": "node scripts/error-report.mjs event",
     "errors:prune": "node scripts/error-report.mjs prune",
     "test:errors": "vitest run tests/utils/errorReporting tests/functions/errors.test.ts && node --test tests/errorBuildPolicy.test.mjs",
-    "test:without-d1": "vitest run --exclude tests/functions/assetFallback.test.ts --exclude tests/resonanceCloud.test.ts --exclude tests/wardrobeCloud.test.ts --exclude tests/archiveCloud.test.ts --exclude tests/functions/outfitCodeRuntime.test.ts && node --test tests/startupDependencies.test.mjs tests/resourceNetwork.test.cjs tests/errorBuildPolicy.test.mjs",
+    "test:without-d1": "vitest run --exclude tests/functions/assetFallback.test.ts --exclude tests/resonanceCloud.test.ts --exclude tests/archiveCloud.test.ts --exclude tests/functions/outfitCodeRuntime.test.ts && node --test tests/startupDependencies.test.mjs tests/resourceNetwork.test.cjs tests/errorBuildPolicy.test.mjs",
     "dev:worker": "npm run build && wrangler dev --local"
   },
   "dependencies": {

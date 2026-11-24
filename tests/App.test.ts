@@ -83,17 +83,6 @@ vi.mock('../src/utils/homeBuild/homeSchemeStorage', async (importOriginal) => {
   return { ...actual, countHomeSchemes: vi.fn() }
 })
 
-vi.mock('../src/utils/homeBuild/homeSchemeMigration', () => ({
-  migrateHomeSchemeLibrary: vi.fn(async () => ({
-    addedCount: 0,
-    replacedCount: 0,
-    skippedCount: 0,
-    failedCount: 0,
-    tagsChanged: false,
-    failures: []
-  }))
-}))
-
 const getSavedAlbumDirectoryHandleMock = vi.mocked(getSavedAlbumDirectoryHandle)
 const listRecentlyDeletedMock = vi.mocked(listRecentlyDeleted)
 const readAlbumDirectoryMock = vi.mocked(readAlbumDirectory)
@@ -425,61 +414,64 @@ describe('App lifecycle coordination', () => {
     ['Chrome/158.0 Edg/158.0', true],
     ['Chrome/158.0', true],
     ['Chrome/158.0 Edg/158.0', false]
-  ])('shows the directory repair guide only in wide layout (%s, wide=%s)', async (userAgent, wide) => {
-    const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent)
-    const originalMatchMedia = window.matchMedia
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query === '(max-width: 899px)' && !wide,
-      addEventListener: () => {},
-      removeEventListener: () => {}
-    }))
-    try {
-      const wrapper = mount(App, {
-        global: {
-          stubs: {
-            Teleport: true,
-            EdgeDirectoryRepairDialog: {
-              name: 'EdgeDirectoryRepairDialog',
-              props: ['visible'],
-              template: '<div />'
+  ])(
+    'shows the directory repair guide only in wide layout (%s, wide=%s)',
+    async (userAgent, wide) => {
+      const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent)
+      const originalMatchMedia = window.matchMedia
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query === '(max-width: 899px)' && !wide,
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      }))
+      try {
+        const wrapper = mount(App, {
+          global: {
+            stubs: {
+              Teleport: true,
+              EdgeDirectoryRepairDialog: {
+                name: 'EdgeDirectoryRepairDialog',
+                props: ['visible'],
+                template: '<div />'
+              }
             }
           }
+        })
+        await nextTick()
+        const guide = wrapper.findComponent({ name: 'EdgeDirectoryRepairDialog' })
+        const updates = () => wrapper.findComponent({ name: 'UpdateLogDialogContent' })
+        expect(guide.exists()).toBe(wide)
+        if (wide) {
+          expect(guide.props('visible')).toBe(true)
+          expect(updates().exists()).toBe(false)
+          guide.vm.$emit('close')
+          await nextTick()
+          expect(guide.props('visible')).toBe(false)
+          guide.vm.$emit('afterClose')
+          await nextTick()
         }
-      })
-      await nextTick()
-      const guide = wrapper.findComponent({ name: 'EdgeDirectoryRepairDialog' })
-      const updates = () => wrapper.findComponent({ name: 'UpdateLogDialogContent' })
-      expect(guide.exists()).toBe(wide)
-      if (wide) {
-        expect(guide.props('visible')).toBe(true)
-        expect(updates().exists()).toBe(false)
-        guide.vm.$emit('close')
+        expect(updates().exists()).toBe(true)
+        wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
         await nextTick()
-        expect(guide.props('visible')).toBe(false)
-        guide.vm.$emit('afterClose')
-        await nextTick()
+        expect(guide.exists()).toBe(wide)
+        if (wide) expect(guide.props('visible')).toBe(true)
+        if (wide) {
+          expect(localStorage.getItem('infinity-nikki-directory-repair-dismissed')).toBe('true')
+          wrapper.unmount()
+          const reopened = mount(App, { global: { stubs: { Teleport: true } } })
+          await nextTick()
+          const findGuide = () => reopened.findComponent({ name: 'EdgeDirectoryRepairDialog' })
+          expect(findGuide().exists()).toBe(false)
+          reopened.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
+          await nextTick()
+          expect(findGuide().props('visible')).toBe(true)
+        }
+      } finally {
+        ua.mockRestore()
+        vi.stubGlobal('matchMedia', originalMatchMedia)
       }
-      expect(updates().exists()).toBe(true)
-      wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
-      await nextTick()
-      expect(guide.exists()).toBe(wide)
-      if (wide) expect(guide.props('visible')).toBe(true)
-      if (wide) {
-        expect(localStorage.getItem('infinity-nikki-directory-repair-dismissed')).toBe('true')
-        wrapper.unmount()
-        const reopened = mount(App, { global: { stubs: { Teleport: true } } })
-        await nextTick()
-        const findGuide = () => reopened.findComponent({ name: 'EdgeDirectoryRepairDialog' })
-        expect(findGuide().exists()).toBe(false)
-        reopened.getComponent({ name: 'TopBar' }).vm.$emit('openDirectoryRepair')
-        await nextTick()
-        expect(findGuide().props('visible')).toBe(true)
-      }
-    } finally {
-      ua.mockRestore()
-      vi.stubGlobal('matchMedia', originalMatchMedia)
     }
-  })
+  )
 
   it.each([false, true])(
     'queues the reminder after updates and persists dismissal=%s',
@@ -1201,10 +1193,7 @@ describe('App lifecycle coordination', () => {
           expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(true)
         )
     }
-    expect(readOutfitLibraryMock).toHaveBeenCalledWith(
-      null,
-      expect.objectContaining({ sharedSource: null })
-    )
+    expect(readOutfitLibraryMock).toHaveBeenCalledWith(null)
     expect(wrapper.findComponent({ name: 'OutfitGuideDialog' }).props('visible')).toBe(false)
 
     await wrapper.findAll('.album-view-button')[3].trigger('click')
@@ -1230,12 +1219,7 @@ describe('App lifecycle coordination', () => {
       directoryHandle,
       photos: []
     })
-    readOutfitLibraryMock.mockResolvedValue({
-      outfits: [outfit],
-      tags: [],
-      importedSharedCount: 0,
-      failedCount: 0
-    })
+    readOutfitCollectionMock.mockResolvedValue({ outfits: [outfit], tags: [], unreadableCount: 0 })
 
     const wrapper = mount(App)
     await flushPromises()
@@ -1404,10 +1388,7 @@ describe('App lifecycle coordination', () => {
       expect(wrapper.text()).not.toContain(messages.zh.fileSystem.mobileBrowserUnsupported)
       expect(wrapper.text()).not.toContain(messages.zh.fileSystem.unsupportedBrowser)
       expect(picker).not.toHaveBeenCalled()
-      expect(readOutfitLibraryMock).toHaveBeenLastCalledWith(
-        null,
-        expect.objectContaining({ sharedSource: null })
-      )
+      expect(readOutfitLibraryMock).toHaveBeenLastCalledWith(null)
     } finally {
       wrapper.unmount()
       userAgent.mockRestore()
@@ -1441,33 +1422,37 @@ describe('App lifecycle coordination', () => {
     }
   })
 
-  it.each([false, true])('offers X6Game authorization on initial outfits view unless dismissed (%s)', async (dismissed) => {
-    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
-    localStorage.setItem('infinity-nikki-active-view', 'outfits')
-    localStorage.setItem(
-      'infinity-nikki-about-state',
-      JSON.stringify({ version: '0.0.0', dismissedForever: true })
-    )
-    localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
-    if (dismissed) localStorage.setItem('infinity-nikki-x6game-auto-prompt-dismissed', 'true')
-    const originalPicker = window.showDirectoryPicker
-    const picker = vi.fn()
-    vi.stubGlobal('showDirectoryPicker', picker)
-    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
-    try {
-      await flushPromises()
-      const confirm = wrapper.getComponent({ name: 'ConfirmDialog' })
-      expect(confirm.props('visible')).toBe(false)
-      await dismissStartupRepairGuide(wrapper)
-      await flushPromises()
-      expect(confirm.props('visible')).toBe(!dismissed)
-      if (!dismissed) expect(confirm.props('title')).toBe(messages.zh.app.x6GameDirectoryDialogTitle)
-      expect(picker).not.toHaveBeenCalled()
-    } finally {
-      wrapper.unmount()
-      vi.stubGlobal('showDirectoryPicker', originalPicker)
+  it.each([false, true])(
+    'offers X6Game authorization on initial outfits view unless dismissed (%s)',
+    async (dismissed) => {
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+      localStorage.setItem('infinity-nikki-active-view', 'outfits')
+      localStorage.setItem(
+        'infinity-nikki-about-state',
+        JSON.stringify({ version: '0.0.0', dismissedForever: true })
+      )
+      localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
+      if (dismissed) localStorage.setItem('infinity-nikki-x6game-auto-prompt-dismissed', 'true')
+      const originalPicker = window.showDirectoryPicker
+      const picker = vi.fn()
+      vi.stubGlobal('showDirectoryPicker', picker)
+      const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+      try {
+        await flushPromises()
+        const confirm = wrapper.getComponent({ name: 'ConfirmDialog' })
+        expect(confirm.props('visible')).toBe(false)
+        await dismissStartupRepairGuide(wrapper)
+        await flushPromises()
+        expect(confirm.props('visible')).toBe(!dismissed)
+        if (!dismissed)
+          expect(confirm.props('title')).toBe(messages.zh.app.x6GameDirectoryDialogTitle)
+        expect(picker).not.toHaveBeenCalled()
+      } finally {
+        wrapper.unmount()
+        vi.stubGlobal('showDirectoryPicker', originalPicker)
+      }
     }
-  })
+  )
 
   it('checks an authorized game directory without an album and skips permission requests in background', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -1488,17 +1473,13 @@ describe('App lifecycle coordination', () => {
       wrapper.findComponent({ name: 'AlbumViewSwitcher' }).vm.$emit('changeView', 'outfits')
       await flushPromises()
       expect(readOutfitLibraryMock).toHaveBeenCalledWith(
-        null,
-        expect.objectContaining({ sharedSource: { x6GameDirectory: game } })
+        expect.objectContaining({ x6GameDirectory: game })
       )
       queryPermission.mockResolvedValue('prompt')
       window.dispatchEvent(new Event('focus'))
       await vi.advanceTimersByTimeAsync(400)
       await flushPromises()
-      expect(readOutfitLibraryMock).toHaveBeenLastCalledWith(
-        null,
-        expect.objectContaining({ sharedSource: null })
-      )
+      expect(readOutfitLibraryMock).toHaveBeenLastCalledWith(null)
       expect(requestPermission).not.toHaveBeenCalled()
       expect(wrapper.findComponent({ name: 'ConfirmDialog' }).props('visible')).toBe(false)
     } finally {

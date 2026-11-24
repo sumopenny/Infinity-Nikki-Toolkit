@@ -76,5 +76,5 @@ it('includes static components in the initial production dependency graph and ke
     'locales/zh/banner.json'
   ])
   expect(modules.some((id) => id.endsWith('/lookbookWasmClient.ts'))).toBe(true)
-  expect(modules.some((id) => id.endsWith('/homeSchemeMigration.ts'))).toBe(true)
+  expect(modules.some((id) => id.endsWith('/homeSchemeMigration.ts'))).toBe(false)
 }, 60000)

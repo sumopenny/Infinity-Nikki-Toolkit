@@ -34,15 +34,6 @@ export interface OutfitRecord {
   gameSourceId?: string
 }
 export type OutfitItem = PhotoDisplayItem & OutfitRecord
-export interface OutfitMigrationResult {
-  addedCount: number
-  replacedCount: number
-  skippedCount: number
-  failedCount: number
-  tagsChanged: boolean
-  clotheDirectoryRemoved: boolean
-  failures: { fileName: string; message: string; errorName: string }[]
-}
 export interface OutfitLibraryResult {
   unreadableCount?: number
   outfits: OutfitItem[]
@@ -50,7 +41,6 @@ export interface OutfitLibraryResult {
   importedSharedCount: number
   failedCount: number
   sharedFailureStage?: SharedOutfitImportResult['failureStage']
-  migration?: OutfitMigrationResult
 }
 export interface SharedOutfitSource {
   x6GameDirectory: FileSystemDirectoryHandle
@@ -126,7 +116,7 @@ export function normalizeOutfitTagList(value: unknown): string[] {
   return tags
 }
 
-/** Shared validation for database records, legacy files and ZIP metadata. */
+/** Shared validation for database records, ZIP metadata. */
 export function normalizeOutfitRecord(value: unknown): OutfitRecord {
   if (!value || typeof value !== 'object') throw new Error('outfit_record_invalid')
   const raw = value as Partial<OutfitRecord>

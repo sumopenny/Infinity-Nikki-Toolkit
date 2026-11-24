@@ -52,7 +52,7 @@ interface BackupManifest {
   exportedAt: string
   tags: string[]
   outfits: Array<OutfitRecord>
-  ignoredCodes?: string[]
+  ignoredCodes: string[]
 }
 export async function exportOutfitBackup(
   download?: BackupDownload
@@ -76,16 +76,11 @@ export async function exportOutfitBackup(
       files: [{ name: path, blob: checked.blob }]
     })
   }
-  const version = snapshot.records.some((record) => !record.image)
-    ? BACKUP_VERSION
-    : snapshot.records.every((record) => imageExtension(record.image) === 'webp')
-      ? 2
-      : 3
   const parts = planBackupParts(
     items,
     (outfits) => ({
       format: BACKUP_FORMAT,
-      version,
+      version: BACKUP_VERSION,
       exportedAt,
       tags: snapshot.tags,
       ignoredCodes: snapshot.ignoredCodes,
@@ -157,7 +152,8 @@ async function streamBackupEntries(
       if (entryCount > MAX_BACKUP_ENTRIES) throw new Error('Backup contains too many files')
       if (entry.name === 'images/' && entry.originalSize === 0) {
         entry.ondata = (error, chunk) => {
-          if (error || chunk?.length) extractionError = new Error('Backup contains an unsupported file')
+          if (error || chunk?.length)
+            extractionError = new Error('Backup contains an unsupported file')
         }
         entry.start()
         return
@@ -301,14 +297,13 @@ async function inspectBackup(file: File) {
   if (
     !manifest ||
     manifest.format !== BACKUP_FORMAT ||
-    ![1, 2, 3, BACKUP_VERSION].includes(manifest.version) ||
+    manifest.version !== BACKUP_VERSION ||
     !Array.isArray(manifest.outfits) ||
     !Array.isArray(manifest.tags)
   )
     throw new Error('Unsupported backup format')
   for (const raw of manifest.outfits) {
-    if (manifest.version === BACKUP_VERSION && raw?.image === '' && normalizeOutfitCode(raw.code))
-      continue
+    if (raw?.image === '' && normalizeOutfitCode(raw.code)) continue
     if (
       !raw ||
       typeof raw !== 'object' ||
@@ -320,14 +315,13 @@ async function inspectBackup(file: File) {
     if (!images.has(raw.image)) throw new Error('Backup is missing an outfit image')
   }
   if (
-    manifest.version >= 2 &&
-    (!Array.isArray(manifest.ignoredCodes) ||
-      manifest.ignoredCodes.some(
-        (code) =>
-          typeof code !== 'string' ||
-          !normalizeOutfitCode(code) ||
-          code.replace(/\s/g, '').length > 30
-      ))
+    !Array.isArray(manifest.ignoredCodes) ||
+    manifest.ignoredCodes.some(
+      (code) =>
+        typeof code !== 'string' ||
+        !normalizeOutfitCode(code) ||
+        code.replace(/\s/g, '').length > 30
+    )
   )
     throw new Error('outfit_ignored_codes_invalid')
   return { manifest, images }
@@ -395,7 +389,7 @@ async function importBackup(
         tags.push(tag)
       }
       tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
-      for (const code of manifest.ignoredCodes ?? []) {
+      for (const code of manifest.ignoredCodes) {
         const normalized = normalizeOutfitCode(code)
         if (!(await outfitRequest(tx.objectStore(OUTFITS_STORE).index('code').get(normalized))))
           tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put({ code: normalized })

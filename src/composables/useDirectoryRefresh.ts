@@ -14,7 +14,6 @@ interface DirectoryRefreshOptions {
   activeOperation: Ref<ActiveOperation | null>
   publishStatus: (status: StatusState) => void
   apply: (result: RefreshAlbumResult) => void
-  migrate: (directory: FileSystemDirectoryHandle) => Promise<StatusState | null>
   refreshCollections: () => Promise<void>
   createErrorStatus: ReturnType<typeof useOperationNotice>['createErrorStatus']
 }
@@ -56,9 +55,7 @@ export function useDirectoryRefresh(options: DirectoryRefreshOptions) {
       if (refreshToken !== latestRefreshToken || directoryHandle !== options.directory()) return
       const result: RefreshAlbumResult = { ...albumResult, recentlyDeleted: trashResult }
       options.apply(result)
-      const migrationStatus = await options.migrate(directoryHandle)
-      if (refreshToken !== latestRefreshToken || directoryHandle !== options.directory()) return
-      const refreshStatus = migrationStatus ?? createRefreshResultStatus(result, manual)
+      const refreshStatus = createRefreshResultStatus(result, manual)
       if (refreshStatus) publishStatus(refreshStatus)
     } catch (error) {
       if (refreshToken !== latestRefreshToken || directoryHandle !== options.directory()) return

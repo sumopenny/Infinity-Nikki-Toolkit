@@ -16,13 +16,8 @@ export type { Statement, CloudDB, CloudEnv } from './cloudShared'
 export { digest } from './cloudShared'
 import { argon2idAsync } from '@noble/hashes/argon2.js'
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
-import { MAX_CLOUD_BYTES } from '../../src/utils/resonance/cloudSchema'
-
-import { resonanceRecordsSQL, writeResonanceCloud } from './resonanceCloudStore'
-import type { SnapshotStage } from './cloudSnapshot'
 
 type CloudStage =
-  | SnapshotStage
   | 'origin'
   | 'session'
   | 'body-read'
@@ -31,15 +26,11 @@ type CloudStage =
   | 'password-hash'
   | 'account-write'
   | 'session-write'
-  | 'snapshot-read'
-  | 'snapshot-decode'
+
 interface User {
   id: string
   username: string
   password_hash: string
-  active_snapshot: string | null
-  revision: number
-  updated_at: number
 }
 const opts = { m: 19456, t: 2, p: 1, dkLen: 32, maxmem: 32 * 1024 * 1024 }
 const publicUser = (user: User) => ({ id: user.id, username: user.username })
@@ -58,7 +49,7 @@ export async function verifyPassword(password: string, stored: string) {
     diff |= actual.charCodeAt(i) ^ (expected?.charCodeAt(i) || 0)
   return diff === 0 && stored.startsWith('argon2id-v1$')
 }
-/** 共鸣账户与单存档 API；所有记录归属来自已验证会话，不接受客户端指定用户。 */
+/** 云账户 API；所有记录归属来自已验证会话，不接受客户端指定用户。 */
 export async function handleCloud(
   request: Request,
   env: CloudEnv,
@@ -71,23 +62,14 @@ export async function handleCloud(
     stage = value
   }
   const action = new URL(request.url).searchParams.get('action') || 'session'
-  const operation = [
-    'session',
-    'register',
-    'login',
-    'logout',
-    'snapshot',
-    'upload',
-    'delete'
-  ].includes(action)
-    ? action
-    : 'unknown'
+  const operation = ['session', 'register', 'login', 'logout'].includes(action) ? action : 'unknown'
   try {
     checkOrigin(request)
+    if (operation === 'unknown') fail(400, 'INVALID_DATA')
     const db = env.RESONANCE_DB
     if (!db) fail(503, 'NOT_CONFIGURED')
     if (!['GET', 'POST'].includes(request.method)) fail(405, 'METHOD')
-    if ((request.method === 'GET') !== ['session', 'snapshot'].includes(action)) fail(405, 'METHOD')
+    if ((request.method === 'GET') !== (action === 'session')) fail(405, 'METHOD')
     setStage('session')
     const { token, sessionHash, user } = await readCloudSession<User>(db, request)
     if (action === 'session')
@@ -147,45 +129,9 @@ export async function handleCloud(
       return json({ user: publicUser(account) }, cookieFor(request, next))
     }
     requireCloudAccount(request, user)
-    if (action === 'logout') {
-      setStage('session-write')
-      await db.prepare('DELETE FROM cloud_sessions WHERE token_hash=?').bind(sessionHash).run()
-      return json({ success: true }, cookieFor(request, '', true))
-    }
-    setStage('rate-limit')
-    await limit(db, `sync:${user.id}`, 60)
-    if (action === 'snapshot') {
-      setStage('snapshot-read')
-      // 同一批事务读取指针与记录，避免覆盖清理时拿到不完整的下载。
-      const result = await db.batch([
-        db
-          .prepare('SELECT revision,updated_at,active_snapshot FROM cloud_users WHERE id=?')
-          .bind(user.id),
-        db.prepare(resonanceRecordsSQL).bind(user.id)
-      ])
-      setStage('snapshot-decode')
-      return json({
-        ...result[0].results[0],
-        records: result[1].results.map((row) => JSON.parse(String(row.payload_json)))
-      })
-    }
-    if (!['upload', 'delete'].includes(action)) fail(400, 'INVALID_DATA')
-    setStage('body-read')
-    const body = await readBody(request, action === 'delete' ? 4096 : MAX_CLOUD_BYTES + 4096)
-    if (action === 'delete') {
-      setStage('rate-limit')
-      await limit(db, `delete:${user.id}`, 10)
-    }
-    return json(
-      await writeResonanceCloud(
-        db,
-        user,
-        { ...body, sessionHash },
-        action === 'delete',
-        setStage,
-        requestId
-      )
-    )
+    setStage('session-write')
+    await db.prepare('DELETE FROM cloud_sessions WHERE token_hash=?').bind(sessionHash).run()
+    return json({ success: true }, cookieFor(request, '', true))
   } catch (error) {
     const known =
       error instanceof ApiError ||

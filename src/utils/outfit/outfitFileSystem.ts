@@ -1,11 +1,9 @@
-// File-system inputs only: legacy migration and game ShareCode/DIY. Collections live in IndexedDB.
+// Game ShareCode/DIY inputs; collections live in IndexedDB.
 import {
   OUTFITS_STORE,
   OUTFIT_IMAGES_STORE,
   OUTFIT_IGNORED_CODES_STORE,
   OUTFIT_GAME_SOURCES_STORE,
-  OUTFIT_MIGRATION_SOURCES_STORE,
-  OUTFIT_MIGRATION_ENTRIES_STORE,
   runStoreRequest
 } from '../file-system/database'
 import { isSupportedImage } from '../image'
@@ -26,13 +24,6 @@ import {
   readOutfitCollection,
   withOutfitImportLock
 } from './outfitStorage'
-import {
-  isMissingOutfitEntry,
-  migrateOutfitLibrary,
-  type OutfitMigrationSource,
-  type OutfitMigrationMarker
-} from './outfitMigration'
-
 export * from './outfitTypes'
 export {
   saveOutfit,
@@ -42,7 +33,8 @@ export {
   deleteOutfits
 } from './outfitStorage'
 export { convertImageToWebp } from '../image'
-const isMissingEntryError = isMissingOutfitEntry
+const isMissingEntryError = (error: unknown) =>
+  error instanceof DOMException && error.name === 'NotFoundError'
 
 /** 逐级进入游戏目录的子文件夹。参数：rootHandle 为起点目录，segments 为路径片段；缺少目录时返回 null。 */
 async function findOptionalNestedDirectory(
@@ -164,47 +156,6 @@ async function gameSourceState(directory: FileSystemDirectoryHandle): Promise<Ga
   return next
 }
 
-/** Seed only timestamps demonstrably migrated from this game installation, never the global maximum. */
-async function migratedPlayerTimestamp(
-  directory: FileSystemDirectoryHandle,
-  playerId: string
-): Promise<number> {
-  if (!directory.resolve) return 0
-  const sources = await runStoreRequest<OutfitMigrationSource[]>(
-    OUTFIT_MIGRATION_SOURCES_STORE,
-    'readonly',
-    (store) => store.getAll()
-  )
-  const sourceIds = new Set<string>()
-  for (const source of sources) {
-    let path: string[] | null
-    try {
-      path = await directory.resolve(source.albumDirectory ?? source.directory)
-    } catch (error) {
-      if (isMissingEntryError(error)) continue
-      throw error
-    }
-    if (path && path[0] === 'Saved' && path[1] === 'GamePlayPhotos') sourceIds.add(source.id)
-  }
-  if (!sourceIds.size) return 0
-  return outfitTransaction(
-    [OUTFITS_STORE, OUTFIT_MIGRATION_ENTRIES_STORE],
-    'readonly',
-    async (tx) => {
-      const markers = (await outfitRequest(
-        tx.objectStore(OUTFIT_MIGRATION_ENTRIES_STORE).getAll()
-      )) as OutfitMigrationMarker[]
-      let latest = 0
-      for (const marker of markers) {
-        if (marker.kind !== 'legacy' || !sourceIds.has(marker.sourceId)) continue
-        if (marker.sourcePlayerId === playerId)
-          latest = Math.max(latest, marker.diyImageModifiedAt ?? 0)
-      }
-      return latest
-    }
-  )
-}
-
 async function importShared(source: SharedOutfitSource): Promise<SharedOutfitImportResult> {
   let failureStage: SharedOutfitImportResult['failureStage']
   try {
@@ -240,9 +191,7 @@ async function importShared(source: SharedOutfitSource): Promise<SharedOutfitImp
     if (!latestImage || !diyDirectory)
       return { importedCount: 0, duplicateCount: 0, failedCount: 1, failureStage: 'missing-image' }
     const state = await gameSourceState(source.x6GameDirectory)
-    const baseline =
-      state.players[latest.playerId]?.timestamp ??
-      (await migratedPlayerTimestamp(source.x6GameDirectory, latest.playerId))
+    const baseline = state.players[latest.playerId]?.timestamp ?? 0
     if (baseline && latestImage.file.lastModified <= baseline)
       return {
         importedCount: 0,
@@ -335,41 +284,16 @@ export function importLatestSharedOutfit(
 }
 
 export async function readOutfitLibrary(
-  album?: FileSystemDirectoryHandle | null,
-  options: { sharedSource?: SharedOutfitSource | null } = {}
+  sharedSource?: SharedOutfitSource | null
 ): Promise<OutfitLibraryResult> {
-  let migration: OutfitLibraryResult['migration']
-  if (album) {
-    try {
-      migration = await migrateOutfitLibrary(album)
-    } catch (error) {
-      migration = {
-        addedCount: 0,
-        replacedCount: 0,
-        skippedCount: 0,
-        failedCount: 1,
-        tagsChanged: false,
-        clotheDirectoryRemoved: false,
-        failures: [
-          {
-            fileName: 'clothe',
-            message: error instanceof Error ? error.message : String(error),
-            errorName: error instanceof Error ? error.name : ''
-          }
-        ]
-      }
-    }
-  }
-  // Always process game input independently of a missing or failed legacy directory.
-  const shared: SharedOutfitImportResult = options.sharedSource
-    ? await importLatestSharedOutfit(options.sharedSource)
+  const shared: SharedOutfitImportResult = sharedSource
+    ? await importLatestSharedOutfit(sharedSource)
     : { importedCount: 0, duplicateCount: 0, failedCount: 0 }
   const library = await readOutfitCollection()
   return {
     ...library,
     importedSharedCount: shared.importedCount,
-    failedCount: (migration?.failedCount ?? 0) + shared.failedCount,
-    sharedFailureStage: shared.failureStage,
-    migration
+    failedCount: shared.failedCount,
+    sharedFailureStage: shared.failureStage
   }
 }

@@ -9,15 +9,6 @@ import {
 } from '../../src/utils/wardrobe/wardrobeCloudSchema'
 import type { WardrobeSnapshot } from '../../src/utils/wardrobe/wardrobeSchema'
 
-export type WardrobeStage =
-  | SnapshotStage
-  | 'origin'
-  | 'session'
-  | 'rate-limit'
-  | 'body-read'
-  | 'summary-read'
-  | 'snapshot-read'
-type Stage = (value: WardrobeStage) => void
 type HeadRow = {
   revision: number
   updated_at: number
@@ -62,17 +53,6 @@ export function decodeHead(row?: HeadRow): WardrobeCloudHead {
 export const wardrobeRecordsSQL =
   'SELECT r.record_key,r.payload_json FROM cloud_wardrobe_records r JOIN cloud_wardrobe_state s ON s.user_id=r.user_id AND s.active_snapshot=r.snapshot_id WHERE s.user_id=? ORDER BY r.record_key'
 
-/** 摘要读取不扫描记录；下载在同一批事务读取指针、元数据和完整记录。 */
-export async function readWardrobeCloud(db: CloudDB, userId: string, complete: boolean) {
-  if (!complete)
-    return decodeHead((await db.prepare(headSQL).bind(userId).first<HeadRow>()) ?? undefined)
-  const result = await db.batch([
-    db.prepare(headSQL).bind(userId),
-    db.prepare(wardrobeRecordsSQL).bind(userId)
-  ])
-  return decodeWardrobeSnapshot(result)
-}
-
 /** 统一档案下载复用同一批事务的结果，不再另读一次衣橱指针。 */
 export function decodeWardrobeSnapshot(result: { results: Record<string, unknown>[] }[]) {
   const row = result[0].results[0] as HeadRow | undefined
@@ -93,22 +73,6 @@ export function decodeWardrobeSnapshot(result: { results: Record<string, unknown
   return validateWardrobeCloudSnapshot({ ...head, schemaVersion: 1, data })
 }
 
-/** 提交后清理是可重试维护；失败不能把已成功的操作变成失败。 */
-async function cleanupCommitted(db: CloudDB, userId: string, traceId: string) {
-  try {
-    await db
-      .prepare(
-        `DELETE FROM cloud_wardrobe_records WHERE user_id=? AND snapshot_id IN
-      (SELECT id FROM cloud_wardrobe_snapshots WHERE user_id=? AND committed_revision IS NOT NULL
-      AND id IS NOT (SELECT active_snapshot FROM cloud_wardrobe_state WHERE user_id=?))`
-      )
-      .bind(userId, userId, userId)
-      .run()
-  } catch {
-    console.warn('wardrobe-cloud', { stage: 'cleanup', traceId, category: 'deferred' })
-  }
-}
-
 type Receipt = { digest: string; committed_revision: number | null }
 const receipt = (db: CloudDB, userId: string, id: string) =>
   db
@@ -118,7 +82,7 @@ const receipt = (db: CloudDB, userId: string, id: string) =>
     .bind(userId, id)
     .first<Receipt>()
 
-/** 校验版本并暂存完整衣橱快照，由调用方选择单模块或联合提交。 */
+/** 校验版本并暂存完整衣橱快照，由统一档案接口提交。 */
 export async function prepareWardrobeSnapshot(
   db: CloudDB,
   userId: string,
@@ -239,77 +203,4 @@ export async function prepareWardrobeSnapshot(
       )
     )
   return { kind: 'staged', count: rows.length, fingerprint, createdAt: now }
-}
-
-/** 兼容旧客户端的单模块写入，共享准备逻辑并独立提交。 */
-export async function writeWardrobeCloud(
-  db: CloudDB,
-  userId: string,
-  sessionHash: string,
-  body: Record<string, unknown>,
-  deleting: boolean,
-  stage: Stage,
-  traceId: string
-) {
-  const prepared = await prepareWardrobeSnapshot(db, userId, body, deleting, stage)
-  if (prepared.kind === 'replayed') {
-    stage('cleanup')
-    await cleanupCommitted(db, userId, traceId)
-    return { revision: prepared.revision, replayed: true }
-  }
-  const id = body.requestId as string
-  const revision = body.revision
-  const { createdAt: now, count, fingerprint } = prepared
-  stage('commit')
-  const result = await db.batch([
-    db
-      .prepare(
-        `UPDATE cloud_wardrobe_state SET active_snapshot=?,last_request=?,revision=revision+1,updated_at=?
-      WHERE user_id=? AND revision=? AND
-      (SELECT COUNT(*) FROM cloud_wardrobe_records WHERE user_id=? AND snapshot_id=?)=? AND
-      EXISTS(SELECT 1 FROM cloud_wardrobe_snapshots WHERE user_id=? AND id=? AND digest=? AND committed_revision IS NULL) AND
-      EXISTS(SELECT 1 FROM cloud_sessions WHERE user_id=? AND token_hash=?) RETURNING revision`
-      )
-      .bind(
-        deleting ? null : id,
-        id,
-        now,
-        userId,
-        revision,
-        userId,
-        id,
-        count,
-        userId,
-        id,
-        fingerprint,
-        userId,
-        sessionHash
-      ),
-    db
-      .prepare(
-        `UPDATE cloud_wardrobe_snapshots SET committed_revision=? WHERE user_id=? AND id=? AND
-      EXISTS(SELECT 1 FROM cloud_wardrobe_state WHERE user_id=? AND revision=? AND last_request=?)`
-      )
-      .bind(Number(revision) + 1, userId, id, userId, Number(revision) + 1, id)
-  ])
-  if (!result[0].results.length) {
-    const replay = await receipt(db, userId, id)
-    if (replay?.committed_revision != null) {
-      await cleanupCommitted(db, userId, traceId)
-      return { revision: replay.committed_revision, replayed: true }
-    }
-    // 版本已前进的暂存不可能再提交；条件删除不会碰到同 ID 请求已提交的回执。
-    // 会话失效但版本未变时保留暂存，允许同账号的有效会话核实原请求。
-    await db
-      .prepare(
-        `DELETE FROM cloud_wardrobe_snapshots WHERE user_id=? AND id=? AND committed_revision IS NULL
-      AND EXISTS(SELECT 1 FROM cloud_wardrobe_state WHERE user_id=? AND revision<>?)`
-      )
-      .bind(userId, id, userId, revision)
-      .run()
-    fail(409, 'CONFLICT')
-  }
-  stage('cleanup')
-  await cleanupCommitted(db, userId, traceId)
-  return { revision: Number(revision) + 1, replayed: false }
 }

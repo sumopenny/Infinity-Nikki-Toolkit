@@ -62,7 +62,7 @@ describe('home scheme ZIP backup', () => {
           'manifest.json': strToU8(
             JSON.stringify({
               format: 'infinity-nikki-outfit-backup',
-              version: 1,
+              version: 2,
               tags: [],
               homeSchemes: []
             })
@@ -73,7 +73,7 @@ describe('home scheme ZIP backup', () => {
   })
 
   it.each([false, true])(
-    'round-trips version-1 metadata and image bytes (prepared=%s)',
+    'round-trips current metadata and image bytes (prepared=%s)',
     async (prepared) => {
       await addHomeSchemeTag('庭院')
       const saved = await saveHomeScheme({
@@ -91,7 +91,7 @@ describe('home scheme ZIP backup', () => {
       const manifest = JSON.parse(strFromU8(entries['manifest.json']))
       expect(manifest).toMatchObject({
         format: 'infinity-nikki-home-scheme-backup',
-        version: 1,
+        version: 2,
         tags: ['庭院']
       })
       expect(manifest.homeSchemes[0]).toMatchObject({
@@ -125,7 +125,7 @@ describe('home scheme ZIP backup', () => {
     const base = { ...existing, image: null, tags: [] }
     const manifest = {
       format: 'infinity-nikki-home-scheme-backup',
-      version: 1,
+      version: 2,
       tags: [],
       homeSchemes: [
         { ...base, name: '不会覆盖' },
@@ -204,4 +204,21 @@ it('round-trips a PNG fallback with its actual extension', async () => {
   const image = snapshot.images.get(record.id)!
   expect(image.blob.type).toBe('image/png')
   expect(new Uint8Array(await image.blob.arrayBuffer())).toEqual(bytes)
+})
+
+it('rejects the obsolete home backup version before writing', async () => {
+  const file = archive({
+    'manifest.json': strToU8(
+      JSON.stringify({
+        format: 'infinity-nikki-home-scheme-backup',
+        version: 1,
+        tags: [],
+        homeSchemes: []
+      })
+    )
+  })
+  await expect(importHomeSchemeBackup(file)).rejects.toThrow(
+    'home_scheme_backup_format_unsupported'
+  )
+  expect((await readHomeSchemeSnapshot()).records).toHaveLength(0)
 })

@@ -1,4 +1,4 @@
-import { openDb } from './file-system/database'
+import { databaseRequest, runDatabaseTransaction } from './file-system/transaction'
 import { parsePearpalResonance, PEARPAL_NO_RECORDS } from './resonance/resonanceImport'
 import { parseResonanceFile } from './resonance/resonanceFile'
 import { cloneResonanceRecords, type ResonanceRecord } from './resonance/resonanceTypes'
@@ -133,49 +133,22 @@ export async function saveDataImport(
       empty: emptyWardrobe()
     })
   if (!jobs.length) throw new Error('NO_SELECTION')
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    let failure: unknown
-    let tx: IDBTransaction
-    try {
-      tx = db.transaction(
-        jobs.map((job) => job.store),
-        'readwrite'
-      )
-    } catch (error) {
-      db.close()
-      reject(error)
-      return
-    }
-    tx.oncomplete = () => {
-      db.close()
-      resolve()
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(failure ?? tx.error)
-    }
-    tx.onerror = () => {
-      /* 等待事务回滚后报告。 */
-    }
-    for (const job of jobs) {
-      const store = tx.objectStore(job.store)
-      const request = store.get(job.key)
-      request.onsuccess = () => {
-        try {
-          const current =
-            request.result === undefined
-              ? job.empty
-              : job.store === 'wardrobe'
-                ? validateWardrobe(request.result)
-                : request.result
-          if (JSON.stringify(current) !== job.expected) throw new Error('LOCAL_CHANGED')
-          store.put(job.value, job.key)
-        } catch (error) {
-          failure = error
-          tx.abort()
-        }
+  await runDatabaseTransaction(
+    jobs.map((job) => job.store),
+    'readwrite',
+    async (tx) => {
+      for (const job of jobs) {
+        const store = tx.objectStore(job.store)
+        const value: unknown = await databaseRequest(store.get(job.key))
+        const current =
+          value === undefined
+            ? job.empty
+            : job.store === 'wardrobe'
+              ? validateWardrobe(value)
+              : value
+        if (JSON.stringify(current) !== job.expected) throw new Error('LOCAL_CHANGED')
+        store.put(job.value, job.key)
       }
     }
-  })
+  )
 }

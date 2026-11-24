@@ -106,9 +106,7 @@ export async function exportHomeSchemeBackup(
     items,
     (homeSchemes) => ({
       format: BACKUP_FORMAT,
-      version: library.records.every((record) => !record.image || record.image.endsWith('.webp'))
-        ? 1
-        : BACKUP_VERSION,
+      version: BACKUP_VERSION,
       exportedAt,
       tags: library.tags,
       homeSchemes
@@ -216,7 +214,7 @@ function parseManifest(entries: Map<string, Uint8Array>): BackupManifest {
   if (
     manifest.format !== BACKUP_FORMAT ||
     typeof manifest.version !== 'number' ||
-    ![1, BACKUP_VERSION].includes(manifest.version) ||
+    manifest.version !== BACKUP_VERSION ||
     !Array.isArray(manifest.homeSchemes) ||
     !Array.isArray(manifest.tags)
   )
