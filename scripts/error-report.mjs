@@ -1,4 +1,5 @@
 /** 管理员工具：只连接远程 D1，不创建任何本地数据库。日志内容始终按数据处理。 */
+import { pruneDiagnostics, retentionCutoffs } from './error-retention.mjs'
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -76,9 +77,8 @@ async function main(args) {
     return
   }
   if (command === 'prune') {
-    const now = Date.now(),
-      eventCutoff = now - 30 * 86400000,
-      groupCutoff = now - 180 * 86400000
+    const now = Date.now()
+    const { eventCutoff, groupCutoff } = retentionCutoffs(now)
     if (!args.includes('--apply')) {
       console.log(
         JSON.stringify(
@@ -92,16 +92,7 @@ async function main(args) {
       console.log('Read-only preview. Add --apply to delete expired remote diagnostics.')
       return
     }
-    // 每批最多 500 个事件，最多 20 批；轨迹由外键级联删除，避免单次超长事务。
-    for (let pass = 0; pass < 20; pass++) {
-      const result = query(
-        `DELETE FROM error_events WHERE event_id IN (SELECT event_id FROM error_events WHERE received_at<${eventCutoff} ORDER BY received_at LIMIT 500) RETURNING event_id;`
-      )
-      if ((result[0]?.results?.length ?? 0) < 500) break
-    }
-    query(
-      `DELETE FROM error_groups WHERE last_seen<${groupCutoff} AND NOT EXISTS(SELECT 1 FROM error_events WHERE fingerprint=error_groups.fingerprint); DELETE FROM error_rate_limits WHERE expires_at<${now}; DELETE FROM error_release_stats WHERE last_seen<${groupCutoff} AND NOT EXISTS(SELECT 1 FROM error_events WHERE build_id=error_release_stats.build_id); UPDATE error_groups SET latest_event_id=NULL WHERE latest_event_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM error_events WHERE event_id=error_groups.latest_event_id);`
-    )
+    await pruneDiagnostics(query, now)
     console.log(
       'Expired remote diagnostic data pruned; likes and resonance databases were not accessed.'
     )

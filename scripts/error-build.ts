@@ -15,15 +15,15 @@ function git(...args: string[]): string {
 }
 export function errorBuildInfo(): BuildInfo {
   const builtAt = new Date().toISOString()
-  const gitCommit = process.env.CF_PAGES_COMMIT_SHA || git('rev-parse', 'HEAD')
+  const gitCommit = process.env.WORKERS_CI_COMMIT_SHA || git('rev-parse', 'HEAD')
   const version =
     readFileSync('src/i18n/messages/updateLog.ts', 'utf8').match(
       /currentVersion:\s*['"]([^'"]+)['"]/
     )?.[1] ?? 'unknown'
   const environment =
     process.env.ERROR_DEPLOYMENT_ENV ||
-    (process.env.CF_PAGES === '1'
-      ? process.env.CF_PAGES_BRANCH === 'main'
+    (process.env.WORKERS_CI_BRANCH
+      ? process.env.WORKERS_CI_BRANCH === 'main'
         ? 'production'
         : 'preview'
       : 'local-build')

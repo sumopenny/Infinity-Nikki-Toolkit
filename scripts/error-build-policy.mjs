@@ -1,12 +1,10 @@
 /** Production deployments must never silently compile out diagnostics. No database or network access. */
 export function assertDiagnosticsBuild(env, command = 'build') {
-  const production =
-    env.ERROR_DEPLOYMENT_ENV === 'production' ||
-    (env.CF_PAGES === '1' && env.CF_PAGES_BRANCH === 'main')
+  const production = env.ERROR_DEPLOYMENT_ENV === 'production' || env.WORKERS_CI_BRANCH === 'main'
   if (command === 'build' && production && env.VITE_ERROR_REPORTING_ENABLED !== 'true') {
     throw new Error(
       '[diagnostics-build] Production requires VITE_ERROR_REPORTING_ENABLED=true at build time. ' +
-        'Configure the Pages production environment and rebuild. ' +
+        'Configure the Workers Builds production environment and rebuild. ' +
         'Use ERROR_REPORTING_ENABLED=false at runtime for an emergency server-side stop.'
     )
   }

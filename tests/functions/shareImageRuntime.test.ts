@@ -6,7 +6,7 @@ it('serves share images in real workerd and rejects upstream redirects', async (
   const bundled = await build({
     stdin: {
       contents: `
-        import { onRequestGet } from './functions/api/share-image.ts';
+        import worker from './worker/index.ts';
         globalThis.fetch = async (input, init) => {
           // Construct a real workerd Request so unsupported fetch options cannot be hidden by mocks.
           const request = new Request(input, init);
@@ -20,7 +20,7 @@ it('serves share images in real workerd and rejects upstream redirects', async (
           }
           return new Response(new Uint8Array([137, 80, 78, 71]), { headers: { 'content-type': 'image/png' } });
         };
-        export default { fetch(request) { return onRequestGet({ request }); } };
+        export default { fetch(request, env, ctx) { return worker.fetch(request, env, ctx); } };
       `,
       resolveDir: process.cwd(),
       loader: 'ts'

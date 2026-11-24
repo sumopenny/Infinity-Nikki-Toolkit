@@ -56,7 +56,7 @@ GitHub 与 Gitee 必须使用完全一致的标题和正文。正文固定先放
 
 本网站可直接访问：
 
-[https://infinity-nikki-album-manager.pages.dev/](https://infinity-nikki-album-manager.pages.dev/)
+[https://nikkicube.sumopenny.workers.dev/](https://nikkicube.sumopenny.workers.dev/)
 
 本地部署教程可查看 README。
 

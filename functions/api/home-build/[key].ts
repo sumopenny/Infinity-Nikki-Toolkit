@@ -1,7 +1,7 @@
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 const KEY_PATTERN = /^[A-Za-z0-9]{1,29}$/
 
-interface PagesFunctionContext {
+interface HomeBuildContext {
   params: Record<string, string | undefined>
   request?: Request
   data?: Record<string, unknown>
@@ -18,7 +18,7 @@ function jsonError(status: number, code: string): Response {
 }
 
 /** 只代理家园方案固定 CDN 的对象键，限制响应大小以避免代理被用于大流量转发。 */
-export async function onRequestGet(context: PagesFunctionContext): Promise<Response> {
+export async function onRequestGet(context: HomeBuildContext): Promise<Response> {
   const key = context.params.key ?? ''
   if (!KEY_PATTERN.test(key)) return jsonError(400, 'resource_key_invalid')
 

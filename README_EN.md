@@ -25,7 +25,7 @@
 
 **Official website: [https://nikki3.pages.dev/](https://nikki3.pages.dev/)**
 
-Use the toolkit here: [https://infinity-nikki-album-manager.pages.dev/](https://infinity-nikki-album-manager.pages.dev/)
+Use the toolkit here: [https://nikkicube.sumopenny.workers.dev/](https://nikkicube.sumopenny.workers.dev/)
 
 Open it directly without downloading anything. Local features need no sign-in. Outfits, home schemes, camera favorites, and Nikki Archive need no album selection; choose an album only for browsing game photos, and sign in only for resonance and wardrobe cloud sync.
 
@@ -484,7 +484,7 @@ Both commands should print version numbers, which means installation succeeded. 
 
 If the launcher is unavailable, run `start\Start-Remote-D1-Website.bat`, or use the commands below. Resource updates require network access; failed updates keep the existing local resources.
 
-The local site connects to the online service for Likes, shared cloud accounts, and resonance/wardrobe cloud sync. These actions affect real online data. The default service is `https://infinity-nikki-album-manager.pages.dev`.
+The local site connects to the online service for Likes, shared cloud accounts, and resonance/wardrobe cloud sync. These actions affect real online data. The default service is `https://nikkicube.sumopenny.workers.dev`.
 
 ### Development Commands
 
@@ -492,7 +492,7 @@ Run these commands in the project root:
 
 ```bash
 npm install                # Install dependencies
-set REMOTE_API_ORIGIN=https://infinity-nikki-album-manager.pages.dev
+set REMOTE_API_ORIGIN=https://nikkicube.sumopenny.workers.dev
 npm run dev:remote         # Start locally with the online service
 npm test                   # Run automated tests
 npm run build              # Type-check and build
@@ -508,3 +508,7 @@ Reference repositories: [Nikki Albums](https://github.com/RanAxro/nikki_albums) 
 
 Please refer to the root [LICENSE](LICENSE) file for this project's license.
 See the [chart licenses](public/outfit-chart-licenses.txt) for the third-party notices for Outfit Summary.
+
+## Workers deployment
+
+Daily updates target `main`; `pages` preserves the Pages deployment. See [deployment instructions](docs/workers-deployment.md) for build variables, D1 bindings, secrets, branch settings and acceptance checks.

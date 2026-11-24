@@ -3,7 +3,7 @@ import { onRequest } from '../functions/api/wardrobe/cloud'
 import type { CloudDB } from '../functions/_lib/cloudShared'
 
 afterEach(() => vi.restoreAllMocks())
-it('passes the original wardrobe failure and stage to Pages diagnostics while keeping the response safe', async () => {
+it('passes the original wardrobe failure and stage to server diagnostics while keeping the response safe', async () => {
   const log = vi.spyOn(console, 'error').mockImplementation(() => {})
   const failure = new Error('private database failure')
   const data: Record<string, unknown> = {}

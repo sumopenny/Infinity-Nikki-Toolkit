@@ -11,7 +11,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('outfit-code Pages Function', () => {
+describe('outfit-code endpoint', () => {
   it('fetches only the matching object and forwards its body and content type', async () => {
     const upstream = new Response('{"clothes":[]}', {
       status: 200,

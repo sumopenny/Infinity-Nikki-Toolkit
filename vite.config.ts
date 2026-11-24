@@ -75,7 +75,9 @@ function getRemoteApiOrigin(mode: string): string | undefined {
 
   const rawOrigin = loadEnv(mode, process.cwd(), '').REMOTE_API_ORIGIN?.trim()
   if (!rawOrigin) {
-    throw new Error('remote mode requires REMOTE_API_ORIGIN, for example https://example.pages.dev')
+    throw new Error(
+      'remote mode requires REMOTE_API_ORIGIN, for example https://example.workers.dev'
+    )
   }
 
   let origin: URL
@@ -110,15 +112,15 @@ export default defineConfig(({ mode, command }) => {
   }
   const apiProxy = remoteApiOrigin
     ? {
-        // 搭配码数据始终由本地 Vite 直连对象存储，不依赖已部署的 Pages Function。
+        // 搭配码数据始终由本地 Vite 直连对象存储，不依赖已部署的 Worker handler。
         '/api/outfit-code': outfitCodeProxy,
-        // 家园方案数据与搭配码一样直接代理固定 CDN，避免本地远程模式依赖尚未部署的 Pages Function。
+        // 家园方案数据与搭配码一样直接代理固定 CDN，避免本地远程模式依赖尚未部署的 Worker handler。
         '/api/home-build': homeBuildProxy,
-        // 共鸣、衣橱与点赞都访问线上 Pages/D1；云同步额外适配本地同源认证和 Cookie。
+        // 共鸣、衣橱与点赞都访问线上 Workers/D1；云同步额外适配本地同源认证和 Cookie。
         '^/api/resonance/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
         '^/api/wardrobe/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
         '^/api/archive/cloud(?:\\?|$)': resonanceCloudProxy(remoteApiOrigin),
-        // 远程 D1 点赞接口仍转发到 Pages 服务。
+        // 远程 D1 点赞接口仍转发到 Workers 服务。
         '/api': {
           target: remoteApiOrigin,
           changeOrigin: true,

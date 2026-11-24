@@ -7,7 +7,7 @@ it('Cloudflare 运行时允许固定上游请求、缓存命中，并拒绝重�
   const bundled = await build({
     stdin: {
       contents: `
-        import { onRequestGet } from './functions/api/outfit-code/[id].ts';
+        import worker from './worker/index.ts';
         globalThis.fetch = async (input, init) => {
           const upstream = new Request(input, init);
           if (upstream.redirect !== 'manual') throw new Error('Unexpected redirect mode');
@@ -17,7 +17,7 @@ it('Cloudflare 运行时允许固定上游请求、缓存命中，并拒绝重�
         };
         export default {
           fetch(request, env, ctx) {
-            return onRequestGet({ request, params: { id: new URL(request.url).pathname.split('/').pop() }, waitUntil: p => ctx.waitUntil(p) });
+            return worker.fetch(request, env, ctx);
           }
         };
       `,

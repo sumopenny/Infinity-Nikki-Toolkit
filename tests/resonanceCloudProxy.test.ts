@@ -10,7 +10,7 @@ let vite: ViteDevServer
 let origin: string
 let target: string
 
-/** 用真实 HTTP 代理核实来源、Cookie 和请求体；测试不连接生产 Pages。 */
+/** 用本地 HTTP 服务核实代理的来源、Cookie 和请求体。 */
 async function listen(server: Server) {
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`
@@ -71,7 +71,7 @@ afterAll(async () => {
     }
 })
 
-it('forwards same-origin login to Pages and adapts only the resonance cookie for local HTTP', async () => {
+it('forwards same-origin login upstream and adapts only the resonance cookie for local HTTP', async () => {
   const body = JSON.stringify({ username: 'tester', password: 'test-password' })
   const response = await fetch(`${origin}/api/resonance/cloud?action=login`, {
     method: 'POST',

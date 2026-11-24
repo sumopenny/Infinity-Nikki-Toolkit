@@ -1,26 +1,48 @@
-name = "infinity-nikki-album-manager"
-pages_build_output_dir = "dist"
+name = "nikkicube"
+main = "worker/index.ts"
+workers_dev = true
+preview_urls = false
+upload_source_maps = true
 compatibility_date = "2026-09-19"
 
-# D1 数据库绑定：前端函数通过 env.DB 访问。
-# database_id 在创建数据库后填入（wrangler d1 create wxnn-likes 会输出该 id），
-# 或在 Cloudflare 控制台 Pages 项目 → 设置 → 函数 → D1 数据库绑定中配置同名绑定 DB。
+# Existing production D1 bindings; do not recreate or migrate on deploy.
 [[d1_databases]]
 binding = "DB"
 database_name = "wxnn-likes"
 database_id = "1fc2cb15-3458-4035-acdd-2a2caa203aa4"
 
-# 共鸣云同步使用独立云端数据库；绑定名与 Pages Function 一致，详见 docs/resonance-cloud.md。
+# 共鸣云同步使用独立云端数据库；绑定名与 Worker 一致，详见 docs/workers-deployment.md。
 [[d1_databases]]
 binding = "RESONANCE_DB"
 database_name = "wxnn-resonance"
 database_id = "ddf3454b-71e3-4b96-8e67-3554cc386fce"
 migrations_dir = "migrations-resonance"
 
-# 错误诊断仅使用云端 D1。自行创建后填入真实 ID 并取消以下注释；不执行本地迁移。
+# Existing diagnostics database. Production deploys never run migrations.
 [[d1_databases]]
 binding = "ERROR_DB"
 database_name = "wxnn-errors"
 database_id = "578e261f-9503-4812-815c-b96d0bd507fc"
 migrations_dir = "migrations-errors"
-# 开启步骤及密钥见 docs/error-diagnostics.md。
+# 开启步骤及密钥见 docs/workers-deployment.md。
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+html_handling = "none"
+not_found_handling = "none"
+run_worker_first = ["/api", "/api/*"]
+
+[observability]
+enabled = true
+
+[version_metadata]
+binding = "VERSION_METADATA"
+
+[vars]
+ERROR_REPORTING_ENABLED = "true"
+ERROR_MAX_DAILY_EVENTS = "1000"
+ERROR_DEPLOYMENT_ENV = "production"
+
+[triggers]
+crons = ["25 19 * * *"]

@@ -25,7 +25,7 @@
 
 **官网：[https://nikki3.pages.dev/](https://nikki3.pages.dev/)**
 
-实际使用入口（工具集）：[https://infinity-nikki-album-manager.pages.dev/](https://infinity-nikki-album-manager.pages.dev/)
+实际使用入口（工具集）：[https://nikkicube.sumopenny.workers.dev/](https://nikkicube.sumopenny.workers.dev/)
 
 直接打开即可使用，无需下载。本地功能无需登录，搭配、家园、相机收藏和暖暖档案无需先选择相册；只有浏览游戏照片时才需要选择相册，使用共鸣与衣橱云同步时才需要登录。
 
@@ -486,7 +486,7 @@ npm -v
 
 启动器不可用时，可运行 `start\Start-Remote-D1-Website.bat`，或使用下方命令手动启动。启动时需要联网更新资源，更新失败时沿用已有本地资源。
 
-本地运行的点赞、共鸣账号及云同步连接线上服务，相关操作会影响真实线上数据。默认服务地址为 `https://infinity-nikki-album-manager.pages.dev`。
+本地运行的点赞、共鸣账号及云同步连接线上服务，相关操作会影响真实线上数据。默认服务地址为 `https://nikkicube.sumopenny.workers.dev`。
 
 ### 开发命令
 
@@ -494,7 +494,7 @@ npm -v
 
 ```bash
 npm install                # 安装依赖
-set REMOTE_API_ORIGIN=https://infinity-nikki-album-manager.pages.dev
+set REMOTE_API_ORIGIN=https://nikkicube.sumopenny.workers.dev
 npm run dev:remote         # 连接线上服务并启动本地网站
 npm test                   # 运行自动化测试
 npm run build              # 类型检查并构建
@@ -510,3 +510,7 @@ npm run preview            # 预览构建结果
 
 本项目许可证请参阅根目录的 [LICENSE](LICENSE) 文件。
 搭配总结图表所用的第三方软件声明见 [图表许可证](public/outfit-chart-licenses.txt)。
+
+## Workers 部署
+
+日常更新在 `main`；`pages` 保留旧 Pages 部署。构建变量、D1 绑定、诊断 Secret、分支配置和上线验收见 [部署说明](docs/workers-deployment.md)。

@@ -1,10 +1,8 @@
 import { build } from 'vite'
 import type { OutputChunk } from 'rollup'
-import { expect, it, vi, afterEach } from 'vitest'
-afterEach(() => vi.unstubAllEnvs())
+import { expect, it } from 'vitest'
 
 it('includes static components in the initial production dependency graph and keeps optional features separate', async () => {
-  vi.stubEnv('CF_PAGES_URL', 'https://abcdef12.example.pages.dev')
   const result = await build({ logLevel: 'silent', build: { write: false } })
   if (Array.isArray(result) || !('output' in result))
     throw new Error('Expected a single app bundle')
@@ -15,11 +13,7 @@ it('includes static components in the initial production dependency graph and ke
   )
   const entry = [...chunks.values()].find((chunk) => chunk.isEntry)!
   expect(entry).toBeDefined()
-  // Deployment domains may require Cloudflare Access; public assets must stay same-origin.
-  for (const item of result.output) {
-    const content = item.type === 'chunk' ? item.code : String(item.source)
-    expect(content, item.fileName).not.toContain('https://abcdef12.example.pages.dev')
-  }
+  // The production entry script must load from the current origin.
   const html = result.output.find((item) => item.type === 'asset' && item.fileName === 'index.html')
   expect(html && html.type === 'asset' && String(html.source)).toMatch(
     /src="\/assets\/index-[^"]+\.js"/

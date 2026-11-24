@@ -22,6 +22,7 @@
     "src/**/*.tsx",
     "src/**/*.vue",
     "functions/**/*.ts",
+    "worker/**/*.ts",
     "tests/**/*.ts"
   ],
   "references": []
