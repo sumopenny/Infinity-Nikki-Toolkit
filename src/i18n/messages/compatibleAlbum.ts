@@ -3,7 +3,7 @@ export const compatibleAlbumMessages = {
     open: '兼容打开（只读）',
     reselect: '重新选择文件夹',
     readOnly: '只读',
-    openingHint: '优先使用“选择/恢复相册路径”；若提示相册无法访问，再使用“兼容打开（只读）”。',
+    openingHint: '若浏览器拒绝访问 X6Game，可用「兼容打开（只读）」直接选择高画质相册。',
     reloadHint: '只读模式刷新网页后需重新选择文件夹，无法自动恢复读取。',
     hint: '无法修改原文件；查看新照片或刷新网页后，需重新选择文件夹。照片仅在本地读取。',
     writeDisabled: '兼容只读模式无法修改原文件',
@@ -19,7 +19,7 @@ export const compatibleAlbumMessages = {
     reselect: 'Select folder again',
     readOnly: 'Read-only',
     openingHint:
-      'Use “Choose / restore album folder” first. If the album cannot be accessed, try “Compatibility open (read-only)”.',
+      'If the browser denies access to X6Game, use “Compatibility open (read-only)” to select the high-quality album directly.',
     reloadHint:
       'In read-only mode, reloading the page requires selecting the folder again. Access cannot be restored automatically.',
     hint: 'Original files cannot be changed. Select the folder again for new photos or after reloading the page. Photos are read locally.',

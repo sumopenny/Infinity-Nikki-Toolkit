@@ -5,10 +5,12 @@ import {
   clearSavedAlbumDirectoryHandle,
   clearSavedOutfitParseResults,
   getSavedAlbumDirectoryHandle,
+  getSavedGameAlbumUid,
   getSavedHomeSchemeParseResult,
   getSavedOutfitParseResult,
   getSavedX6GameDirectoryHandle,
   saveAlbumDirectoryHandle,
+  saveGameAlbumDirectory,
   saveHomeSchemeParseResult,
   saveOutfitParseResult,
   saveX6GameDirectoryHandle
@@ -34,6 +36,26 @@ describe('directoryStorage', () => {
     await clearSavedAlbumDirectoryHandle()
     expect(await getSavedAlbumDirectoryHandle()).toBeUndefined()
     expect((await getSavedX6GameDirectoryHandle())?.name).toBe('X6Game')
+  })
+
+  it('saves the selected game account and detaches it when opening or clearing a separate album', async () => {
+    const highQuality = handle('NikkiPhotos_HighQuality')
+    const game = handle('X6Game')
+    await saveGameAlbumDirectory(game, highQuality, '100128456')
+    expect(await getSavedGameAlbumUid()).toBe('100128456')
+    expect(await getSavedX6GameDirectoryHandle()).toEqual(game)
+    expect(await getSavedAlbumDirectoryHandle()).toEqual(highQuality)
+
+    const independent = handle('separate')
+    await saveAlbumDirectoryHandle(independent)
+    expect(await getSavedGameAlbumUid()).toBeUndefined()
+    expect(await getSavedAlbumDirectoryHandle()).toEqual(independent)
+    expect(await getSavedX6GameDirectoryHandle()).toEqual(game)
+
+    await saveGameAlbumDirectory(game, highQuality, '100274913')
+    await clearSavedAlbumDirectoryHandle()
+    expect(await getSavedGameAlbumUid()).toBeUndefined()
+    expect(await getSavedX6GameDirectoryHandle()).toEqual(game)
   })
 
   it('stores and clears outfit-code parse results independently', async () => {

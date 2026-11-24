@@ -1,9 +1,10 @@
 // 目录句柄存储：使用 IndexedDB 保存和读取相册及 X6Game 目录授权句柄。
 import { runStoreRequest } from './database'
-import { runDatabaseTransaction } from './transaction'
+import { databaseRequest, runDatabaseTransaction } from './transaction'
 const STORE_NAME = 'album-handles'
 const SAVED_DIRECTORY_KEY = 'current-album-directory'
 const SAVED_X6GAME_DIRECTORY_KEY = 'current-x6game-directory'
+const SAVED_GAME_ALBUM_UID_KEY = 'current-game-album-uid'
 const SAVED_CAMERA_PARAM_UIDS_KEY = 'current-camera-param-uids'
 const OUTFIT_PARSE_CACHE_KEY_PREFIX = 'outfit-code-parse:'
 // 特效染色标记的解析结果格式发生变化，避免继续命中旧版 IndexedDB 数据。
@@ -32,7 +33,32 @@ function transaction<T>(
 }
 
 export async function saveAlbumDirectoryHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-  await transaction('readwrite', (store) => store.put(handle, SAVED_DIRECTORY_KEY))
+  await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_NAME)
+    await Promise.all([
+      databaseRequest(store.put(handle, SAVED_DIRECTORY_KEY)),
+      databaseRequest(store.delete(SAVED_GAME_ALBUM_UID_KEY))
+    ])
+  })
+}
+
+export async function saveGameAlbumDirectory(
+  root: FileSystemDirectoryHandle,
+  album: FileSystemDirectoryHandle,
+  uid: string
+): Promise<void> {
+  await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_NAME)
+    await Promise.all([
+      databaseRequest(store.put(root, SAVED_X6GAME_DIRECTORY_KEY)),
+      databaseRequest(store.put(album, SAVED_DIRECTORY_KEY)),
+      databaseRequest(store.put(uid, SAVED_GAME_ALBUM_UID_KEY))
+    ])
+  })
+}
+
+export async function getSavedGameAlbumUid(): Promise<string | undefined> {
+  return transaction('readonly', (store) => store.get(SAVED_GAME_ALBUM_UID_KEY))
 }
 
 export async function saveX6GameDirectoryHandle(handle: FileSystemDirectoryHandle): Promise<void> {
@@ -48,7 +74,13 @@ export async function getSavedAlbumDirectoryHandle(): Promise<FileSystemDirector
 }
 
 export async function clearSavedAlbumDirectoryHandle(): Promise<void> {
-  await transaction('readwrite', (store) => store.delete(SAVED_DIRECTORY_KEY))
+  await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_NAME)
+    await Promise.all([
+      databaseRequest(store.delete(SAVED_DIRECTORY_KEY)),
+      databaseRequest(store.delete(SAVED_GAME_ALBUM_UID_KEY))
+    ])
+  })
 }
 
 export async function getSavedX6GameDirectoryHandle(): Promise<FileSystemDirectoryHandle | null> {

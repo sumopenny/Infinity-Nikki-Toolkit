@@ -413,10 +413,6 @@
   flex-shrink: 0;
 }
 
-.more-menu-panel .more-data-reminder {
-  color: var(--muted);
-}
-
 .more-menu-panel .more-danger-action {
   color: var(--danger, #a94f55);
 }

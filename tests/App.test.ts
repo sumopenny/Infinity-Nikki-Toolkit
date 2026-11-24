@@ -12,8 +12,10 @@ import { defineComponent, nextTick } from 'vue'
 enableAutoUnmount(afterEach)
 import App from '../src/App.vue'
 import { messages } from '../src/i18n'
+import { gameAlbumMessages } from '../src/i18n/messages/gameAlbum'
 import {
   getSavedAlbumDirectoryHandle,
+  pickAlbumDirectory,
   readAlbumDirectory,
   refreshAlbumPhotos,
   saveAlbumDirectoryHandle
@@ -26,7 +28,11 @@ import { readOutfitLibrary, type OutfitItem } from '../src/utils/outfit/outfitFi
 import { importOutfitBackup } from '../src/utils/outfit/outfitBackup'
 import { decodeCameraParams } from '../src/utils/photo-params/wasmClient'
 import { readOutfitCollection } from '../src/utils/outfit/outfitStorage'
-import { getSavedX6GameDirectoryHandle } from '../src/utils/file-system/directoryStorage'
+import {
+  getSavedGameAlbumUid,
+  getSavedX6GameDirectoryHandle,
+  saveGameAlbumDirectory
+} from '../src/utils/file-system/directoryStorage'
 import { countHomeSchemes } from '../src/utils/homeBuild/homeSchemeStorage'
 
 vi.mock('../src/utils/file-system/albumFileSystem', async (importOriginal) => {
@@ -34,6 +40,7 @@ vi.mock('../src/utils/file-system/albumFileSystem', async (importOriginal) => {
   return {
     ...actual,
     getSavedAlbumDirectoryHandle: vi.fn(),
+    pickAlbumDirectory: vi.fn(actual.pickAlbumDirectory),
     readAlbumDirectory: vi.fn(),
     refreshAlbumPhotos: vi.fn(actual.refreshAlbumPhotos),
     saveAlbumDirectoryHandle: vi.fn()
@@ -60,7 +67,12 @@ vi.mock('../src/utils/outfit/outfitStorage', async (importOriginal) => {
 })
 vi.mock('../src/utils/file-system/directoryStorage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/utils/file-system/directoryStorage')>()
-  return { ...actual, getSavedX6GameDirectoryHandle: vi.fn() }
+  return {
+    ...actual,
+    getSavedX6GameDirectoryHandle: vi.fn(),
+    getSavedGameAlbumUid: vi.fn(),
+    saveGameAlbumDirectory: vi.fn()
+  }
 })
 
 // App integration tests mock ZIP import, so recognition is covered independently.
@@ -102,6 +114,31 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+function gameAlbumFixture(...uids: string[]) {
+  const name = 'NikkiPhotos_HighQuality'
+  const albums = Object.fromEntries(
+    uids.map((uid) => [uid, { kind: 'directory', name } as FileSystemDirectoryHandle])
+  )
+  const photos = {
+    async *entries() {
+      for (const uid of uids) {
+        yield [uid, { kind: 'directory', getDirectoryHandle: async () => albums[uid] }]
+      }
+    }
+  }
+  const root = {
+    name: 'X6Game',
+    queryPermission: vi.fn().mockResolvedValue('granted'),
+    requestPermission: vi.fn().mockResolvedValue('granted'),
+    getDirectoryHandle: async () => ({ getDirectoryHandle: async () => photos }),
+    resolve: async (album: FileSystemHandle) => {
+      const uid = uids.find((candidate) => albums[candidate] === album)
+      return uid ? ['Saved', 'GamePlayPhotos', uid, name] : null
+    }
+  } as unknown as FileSystemDirectoryHandle
+  return { root, albums }
+}
+
 async function dismissStartupRepairGuide(wrapper: ReturnType<typeof mount>) {
   const guide = wrapper.findComponent({ name: 'EdgeDirectoryRepairDialog' })
   if (!guide.exists()) return
@@ -131,6 +168,7 @@ describe('App lifecycle coordination', () => {
     localStorage.clear()
     vi.clearAllMocks()
     getSavedX6GameDirectoryHandleMock.mockResolvedValue(null)
+    vi.mocked(getSavedGameAlbumUid).mockResolvedValue(undefined)
     readOutfitCollectionMock.mockResolvedValue({ outfits: [], tags: [], unreadableCount: 0 })
     listRecentlyDeletedMock.mockResolvedValue([])
     saveAlbumDirectoryHandleMock.mockResolvedValue(undefined)
@@ -170,6 +208,107 @@ describe('App lifecycle coordination', () => {
     expect(notice()).toBeUndefined()
   })
 
+  it('validates X6Game before saving, opens the selected UID and switches without another picker', async () => {
+    const firstUid = '100128456'
+    const secondUid = '100274913'
+    const { root, albums } = gameAlbumFixture(firstUid, secondUid)
+    const picker = vi
+      .fn()
+      .mockResolvedValueOnce({ name: 'Wrong', queryPermission: async () => 'granted' })
+      .mockResolvedValueOnce(root)
+    vi.stubGlobal('showDirectoryPicker', picker)
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    readAlbumDirectoryMock.mockImplementation(async (directoryHandle) => ({
+      directoryHandle,
+      directoryName: directoryHandle.name,
+      photos: []
+    }))
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    const topBar = wrapper.getComponent({ name: 'TopBar' })
+    const dialog = wrapper.getComponent({ name: 'ConfirmDialog' })
+    try {
+      await flushPromises()
+      topBar.vm.$emit('chooseGameDirectory')
+      expect(picker).toHaveBeenCalledTimes(1)
+      await flushPromises()
+      expect(saveGameAlbumDirectory).not.toHaveBeenCalled()
+      topBar.vm.$emit('chooseGameDirectory')
+      await flushPromises()
+      expect(dialog.props('title')).toBe(gameAlbumMessages.zh.chooseAccount)
+      expect(saveGameAlbumDirectory).not.toHaveBeenCalled()
+      dialog.vm.$emit('confirm')
+      await flushPromises()
+      expect(topBar.props('gameAlbumUid')).toBe(firstUid)
+      expect(topBar.props('canSwitchGameAccount')).toBe(true)
+      expect(saveGameAlbumDirectory).toHaveBeenLastCalledWith(root, albums[firstUid], firstUid)
+      expect(listRecentlyDeletedMock).toHaveBeenLastCalledWith(albums[firstUid], undefined)
+
+      topBar.vm.$emit('switchGameAccount')
+      await flushPromises()
+      dialog.vm.$emit('cancel')
+      await flushPromises()
+      expect(topBar.props('gameAlbumUid')).toBe(firstUid)
+      expect(saveGameAlbumDirectory).toHaveBeenCalledTimes(1)
+      topBar.vm.$emit('switchGameAccount')
+      await flushPromises()
+      wrapper.getComponent({ name: 'DialogChoiceMenu' }).vm.$emit('update:modelValue', secondUid)
+      dialog.vm.$emit('confirm')
+      await flushPromises()
+      expect(topBar.props('gameAlbumUid')).toBe(secondUid)
+      expect(saveGameAlbumDirectory).toHaveBeenLastCalledWith(root, albums[secondUid], secondUid)
+      expect(picker).toHaveBeenCalledTimes(2)
+      expect(root.requestPermission).not.toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it.each(['granted', 'prompt'] as const)(
+    'restores the saved game account with %s root permission',
+    async (permission) => {
+      const uid = '100128456'
+      const { root, albums } = gameAlbumFixture(uid)
+      vi.mocked(root.queryPermission!).mockResolvedValue(permission)
+      const picker = vi.fn()
+      vi.stubGlobal('showDirectoryPicker', picker)
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue(albums[uid])
+      getSavedX6GameDirectoryHandleMock.mockResolvedValue(root)
+      vi.mocked(getSavedGameAlbumUid).mockResolvedValue(uid)
+      readAlbumDirectoryMock.mockImplementation(async (directoryHandle) => ({
+        directoryHandle,
+        directoryName: directoryHandle.name,
+        photos: []
+      }))
+      const wrapper = mount(App)
+      const topBar = wrapper.getComponent({ name: 'TopBar' })
+      try {
+        await flushPromises()
+        expect(root.requestPermission).not.toHaveBeenCalled()
+        if (permission === 'prompt') {
+          expect(topBar.props('canRestoreDirectory')).toBe(true)
+          expect(readAlbumDirectoryMock).not.toHaveBeenCalled()
+          vi.mocked(root.requestPermission!).mockResolvedValueOnce('denied')
+          topBar.vm.$emit('restoreDirectoryAccess')
+          expect(root.requestPermission).toHaveBeenCalledTimes(1)
+          await flushPromises()
+          expect(topBar.props('canRestoreDirectory')).toBe(true)
+          expect(saveGameAlbumDirectory).not.toHaveBeenCalled()
+          topBar.vm.$emit('restoreDirectoryAccess')
+          await flushPromises()
+          expect(root.requestPermission).toHaveBeenCalledTimes(2)
+        }
+        expect(topBar.props('gameAlbumUid')).toBe(uid)
+        expect(topBar.props('canRestoreDirectory')).toBe(false)
+        expect(picker).not.toHaveBeenCalled()
+        if (permission === 'granted') expect(saveGameAlbumDirectory).not.toHaveBeenCalled()
+      } finally {
+        wrapper.unmount()
+        vi.unstubAllGlobals()
+      }
+    }
+  )
+
   it('discards stale album handles after a missing-directory refresh and permits reopening', async () => {
     const { DirectoryAccessError } = await import('../src/utils/file-system/directoryErrors')
     const directory = {
@@ -206,6 +345,11 @@ describe('App lifecycle coordination', () => {
       window.dispatchEvent(new Event('focus'))
       await new Promise((resolve) => setTimeout(resolve, 450))
       expect(refreshAlbumPhotos).toHaveBeenCalledTimes(calls)
+      vi.mocked(pickAlbumDirectory).mockResolvedValueOnce({
+        directoryHandle: directory,
+        directoryName: directory.name,
+        photos: []
+      })
       wrapper.getComponent({ name: 'TopBar' }).vm.$emit('chooseDirectory')
       await flushPromises()
       await vi.waitFor(() =>
@@ -473,77 +617,7 @@ describe('App lifecycle coordination', () => {
     }
   )
 
-  it.each([false, true])(
-    'queues the reminder after updates and persists dismissal=%s',
-    async (dismissed) => {
-      getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
-      const wrapper = mount(App, {
-        global: {
-          stubs: {
-            Teleport: true,
-            UpdateLogDialog: {
-              name: 'UpdateLogDialog',
-              props: ['visible', 'dismissed'],
-              template: '<div />'
-            }
-          }
-        }
-      })
-      await flushPromises()
-      await dismissStartupRepairGuide(wrapper)
-      const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
-      const reminder = wrapper.getComponent({ name: 'DataStorageReminder' })
-      expect(updates.props('visible')).toBe(true)
-      expect(reminder.props('visible')).toBe(false)
-      updates.vm.$emit('close', true)
-      await nextTick()
-      expect(reminder.props('visible')).toBe(false)
-      updates.vm.$emit('afterClose')
-      await nextTick()
-      expect(reminder.props('visible')).toBe(true)
-      reminder.vm.$emit('confirm', dismissed)
-      await nextTick()
-      expect(reminder.props('visible')).toBe(false)
-      expect(localStorage.getItem('infinity-nikki-data-reminder-dismissed')).toBe(
-        dismissed ? 'true' : null
-      )
-      wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openDataReminder')
-      await nextTick()
-      expect(reminder.props('visible')).toBe(true)
-      expect(reminder.props('dismissed')).toBe(dismissed)
-      await reminder.get('button').trigger('click')
-      expect(reminder.props('visible')).toBe(false)
-    }
-  )
-
-  it.each([
-    [false, false],
-    [true, false],
-    [false, true]
-  ])(
-    'honors the data reminder with updates dismissed (reminder=%s, all versions=%s)',
-    async (dismissed, dismissedForever) => {
-      getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
-      const { currentVersion } = await import('../src/i18n/version')
-      localStorage.setItem(
-        'infinity-nikki-about-state',
-        JSON.stringify({
-          version: dismissedForever ? '0.0.0' : currentVersion.replace(/^v/, ''),
-          dismissed: !dismissedForever,
-          ...(dismissedForever ? { dismissedForever } : {})
-        })
-      )
-      if (dismissed) localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
-      const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
-      await flushPromises()
-      await dismissStartupRepairGuide(wrapper)
-      expect(wrapper.getComponent({ name: 'DataStorageReminder' }).props('visible')).toBe(
-        !dismissed
-      )
-    }
-  )
-
-  it('keeps the reminder queued during help opened from updates', async () => {
+  it('returns to the update log after closing help opened from it', async () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const wrapper = mount(App, {
       global: {
@@ -557,23 +631,17 @@ describe('App lifecycle coordination', () => {
     await flushPromises()
     await dismissStartupRepairGuide(wrapper)
     const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
-    const reminder = wrapper.getComponent({ name: 'DataStorageReminder' })
     updates.vm.$emit('openHelp')
     await nextTick()
-    updates.vm.$emit('afterClose')
-    await nextTick()
-    expect(reminder.props('visible')).toBe(false)
     const help = wrapper.getComponent({ name: 'HelpAboutDialog' })
     expect(help.props('visible')).toBe(true)
+    expect(updates.props('visible')).toBe(false)
     help.vm.$emit('close')
     await nextTick()
     expect(updates.props('visible')).toBe(true)
-    expect(reminder.props('visible')).toBe(false)
     updates.vm.$emit('close', true)
     await nextTick()
-    updates.vm.$emit('afterClose')
-    await nextTick()
-    expect(reminder.props('visible')).toBe(true)
+    expect(updates.props('visible')).toBe(false)
   })
 
   it('keeps favorite counts without mounting the camera page and hands off saving after its first mount', async () => {
@@ -1168,7 +1236,7 @@ describe('App lifecycle coordination', () => {
     await nextTick()
     const chooseDirectoryButton = [
       ...document.body.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
-    ].find((button) => button.textContent?.includes(messages.zh.topBar.chooseDirectory))
+    ].find((button) => button.textContent?.includes(gameAlbumMessages.zh.authorize))
 
     expect(chooseDirectoryButton?.disabled).toBe(true)
 
@@ -1471,7 +1539,6 @@ describe('App lifecycle coordination', () => {
         'infinity-nikki-about-state',
         JSON.stringify({ version: '0.0.0', dismissedForever: true })
       )
-      localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
       if (dismissed) localStorage.setItem('infinity-nikki-x6game-auto-prompt-dismissed', 'true')
       const originalPicker = window.showDirectoryPicker
       const picker = vi.fn()

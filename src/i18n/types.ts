@@ -144,7 +144,6 @@ export interface FullLocaleMessages {
     dataBackup: string
     appMaintenance: string
     aboutToolkit: string
-    dataStorageReminder: string
     exportAllData: string
     importAllData: string
     clearCache: string

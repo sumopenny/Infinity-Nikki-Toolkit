@@ -163,11 +163,13 @@
   <p><sub>相册 · 按动作分类浏览</sub></p>
 </div>
 
-点击“选择/恢复相册路径”，推荐直接选择以下目录，不要选择磁盘根目录、Program Files 或游戏安装上级目录：
+点击「授权X6Game」，选择游戏安装目录里的 `X6Game` 文件夹：
 
 ```text
-...\InfinityNikki Launcher\InfinityNikki\X6Game\Saved\GamePlayPhotos\你的ID\NikkiPhotos_HighQuality
+...\InfinityNikki Launcher\InfinityNikki\X6Game
 ```
+
+网站会查找 `Saved\GamePlayPhotos` 下的高画质相册。只有一个账号时直接打开；有多个时先选择账号，之后可在「当前相册」菜单切换。搭配码与专项清理复用同一授权。要更换游戏安装目录，点击「重新选择X6Game」。如果照片存放在其他文件夹，可以用「打开独立相册」打开。
 
 #### 兼容打开（只读）
 
@@ -436,11 +438,11 @@ ZIP 备份统一使用当前格式：搭配码 v4、家园方案 v2、全部数�
 
 - 确认选择的是实际图片目录。
 - 确认文件扩展名受支持；文件名以日期格式开头时会优先按文件名整理，其他图片会按文件最后修改时间显示。
-- 浏览器授权失效时，重新点击“选择/恢复相册路径”。
+- 浏览器权限仍有效时，网站会自动打开上次使用的相册。需要再次授权时，点击「恢复上次授权」。
 
 #### 浏览器拒绝打开文件夹
 
-浏览器会阻止网页访问系统目录。请直接选择 `NikkiPhotos_HighQuality`，<span style="color: red;">不要选择磁盘根目录或游戏安装上级目录。</span>
+请选择游戏里的 `X6Game`，避开磁盘根目录和系统目录。如果浏览器仍拒绝访问，可点击「兼容打开（只读）」，直接选择 `NikkiPhotos_HighQuality`。
 
 ## 隐私与安全
 

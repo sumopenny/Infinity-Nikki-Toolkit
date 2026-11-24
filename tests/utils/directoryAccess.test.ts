@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isProtectedAlbumDirectory,
   isSameOrNestedDirectory,
+  listGameAlbumAccounts,
   listGamePlayPhotoAccounts,
   resolveX6GameAccountDirectory
 } from '../../src/utils/file-system/directoryAccess'
@@ -42,6 +43,37 @@ describe('directoryAccess', () => {
         n === 'GamePlayPhotos' ? gameplay : { getDirectoryHandle: async () => gameplay }
     } as any
     expect(await listGamePlayPhotoAccounts(root)).toEqual(['a', 'b'])
+  })
+  it('enumerates only accounts with an existing high-quality folder', async () => {
+    const album = dir('NikkiPhotos_HighQuality')
+    const complete = { kind: 'directory', getDirectoryHandle: async () => album }
+    const incomplete = {
+      kind: 'directory',
+      getDirectoryHandle: async () => {
+        throw new DOMException('missing', 'NotFoundError')
+      }
+    }
+    const photos = {
+      async *entries() {
+        yield ['900222', complete]
+        yield ['900111', complete]
+        yield ['900333', incomplete]
+        yield ['900444', { kind: 'file' }]
+      }
+    }
+    const root = {
+      ...dir('X6Game'),
+      getDirectoryHandle: async () => ({
+        getDirectoryHandle: async () => photos
+      })
+    }
+    expect(await listGameAlbumAccounts(root, msg)).toEqual([
+      { uid: '900111', directory: album },
+      { uid: '900222', directory: album }
+    ])
+    await expect(listGameAlbumAccounts({ ...root, name: 'Saved' }, msg)).rejects.toMatchObject({
+      code: 'invalid-directory'
+    })
   })
   it('recognizes the album, nested folders and trash as protected targets', async () => {
     const candidate = dir('candidate')

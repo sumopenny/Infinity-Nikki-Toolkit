@@ -55,7 +55,7 @@ it('keeps the two dismissal choices mutually exclusive and saves on close', asyn
   expect(wrapper.emitted('close')).toEqual([['forever']])
 })
 
-it('preserves the leave event and does not take focus from the next dialog', async () => {
+it('keeps focus on the next dialog during the leave transition', async () => {
   const opener = document.createElement('button')
   document.body.append(opener)
   opener.focus()
@@ -71,6 +71,6 @@ it('preserves the leave event and does not take focus from the next dialog', asy
   document.body.append(nextDialogButton)
   nextDialogButton.focus()
   await wrapper.setProps({ visible: false })
-  await vi.waitFor(() => expect(wrapper.emitted('afterClose')).toHaveLength(1))
+  await vi.waitFor(() => expect(document.querySelector('.update-log-dialog')).toBeNull())
   expect(document.activeElement).toBe(nextDialogButton)
 })

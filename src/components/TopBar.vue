@@ -51,6 +51,7 @@ import DesktopInstallDialog from './DesktopInstallDialog.vue'
 import wxQrCode from '../../img/wx.jpg'
 import zfbQrCode from '../../img/zfb.jpg'
 import type { Language, LocaleMessages } from '../i18n'
+import { gameAlbumMessages } from '../i18n/messages/gameAlbum'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { THUMBNAIL_SIZES, type ThumbnailMode, type ThumbnailSize } from '../types/thumbnail'
 import type { ThemeMode } from '../types/theme'
@@ -70,6 +71,9 @@ const props = defineProps<{
   isDeleting: boolean
   hasAlbumDirectory: boolean
   hasX6GameAuthorization: boolean
+  gameAlbumUid?: string
+  canSwitchGameAccount?: boolean
+  canRestoreDirectory?: boolean
   thumbnailMode: ThumbnailMode
   thumbnailModeDisabled?: boolean
   thumbnailSize?: ThumbnailSize
@@ -86,6 +90,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   chooseDirectory: []
+  chooseGameDirectory: []
+  restoreDirectoryAccess: []
+  switchGameAccount: []
   chooseCompatible: []
   clearDirectory: []
   authorizeX6Game: []
@@ -107,7 +114,6 @@ const emit = defineEmits<{
   openUpdateLog: []
   openDirectoryRepair: []
   openHelpAbout: []
-  openDataReminder: []
   updateSearch: [value: string]
 }>()
 
@@ -603,6 +609,42 @@ function openDonate() {
               :style="menuStyle"
               role="menu"
             >
+              <div v-if="gameAlbumUid" class="menu-section-label">
+                {{ gameAlbumMessages[language].currentAccount(gameAlbumUid) }}
+              </div>
+              <button
+                v-if="canSwitchGameAccount"
+                type="button"
+                role="menuitem"
+                :disabled="isBusy"
+                @click="runMenuAction(() => emit('switchGameAccount'))"
+              >
+                <CircleUserRound :size="16" />
+                <span>{{ gameAlbumMessages[language].switchAccount }}</span>
+              </button>
+              <button
+                v-if="canRestoreDirectory"
+                type="button"
+                role="menuitem"
+                :disabled="isBusy"
+                @click="runMenuAction(() => emit('restoreDirectoryAccess'))"
+              >
+                <RotateCcw :size="16" />
+                <span>{{ gameAlbumMessages[language].restore }}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                :disabled="isBusy"
+                @click="runMenuAction(() => emit('chooseGameDirectory'))"
+              >
+                <FolderOpen :size="16" />
+                <span>{{
+                  gameAlbumUid || canRestoreDirectory || hasX6GameAuthorization
+                    ? gameAlbumMessages[language].reselect
+                    : gameAlbumMessages[language].authorize
+                }}</span>
+              </button>
               <button
                 type="button"
                 role="menuitem"
@@ -624,13 +666,14 @@ function openDonate() {
               <button
                 type="button"
                 role="menuitem"
-                :disabled="!hasAlbumDirectory || isBusy"
+                :disabled="(!hasAlbumDirectory && !canRestoreDirectory) || isBusy"
                 @click="runMenuAction(() => emit('clearDirectory'))"
               >
                 <Trash2 :size="16" />
                 <span>{{ messages.clearDirectory }}</span>
               </button>
               <button
+                v-if="!gameAlbumUid && (hasAlbumDirectory || activeView === 'outfits')"
                 type="button"
                 role="menuitem"
                 :disabled="isBusy"
@@ -1084,14 +1127,6 @@ function openDonate() {
                       }}</span></button
                     >
                   </div>
-                  <button
-                    class="more-data-reminder"
-                    type="button"
-                    @click="runMenuAction(() => emit('openDataReminder'))"
-                    ><BookOpen :size="16" aria-hidden="true" /><span>{{
-                      messages.dataStorageReminder
-                    }}</span></button
-                  >
                 </section>
                 <section class="more-menu-group" aria-labelledby="more-maintenance-heading">
                   <h3 id="more-maintenance-heading">{{ messages.appMaintenance }}</h3>

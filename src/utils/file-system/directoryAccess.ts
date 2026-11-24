@@ -252,3 +252,39 @@ export async function listGamePlayPhotoAccounts(
   }
   return accounts.sort()
 }
+
+export interface GameAlbumAccount {
+  uid: string
+  directory: FileSystemDirectoryHandle
+}
+
+/** 游戏相册只接受 X6Game 下结构正确且已创建高画质目录的账号。 */
+export async function listGameAlbumAccounts(
+  root: FileSystemDirectoryHandle,
+  messages: FileSystemMessages
+): Promise<GameAlbumAccount[]> {
+  if (root.name !== 'X6Game') throw createDirectoryError('invalid-directory', messages)
+  let photos: FileSystemDirectoryHandle
+  try {
+    photos = await getRequiredNestedDirectory(root, ['Saved', 'GamePlayPhotos'])
+  } catch (error) {
+    if (isMissingDirectoryError(error) || (error as DOMException)?.name === 'TypeMismatchError') {
+      throw createDirectoryError('invalid-directory', messages, error)
+    }
+    throw error
+  }
+  const accounts: GameAlbumAccount[] = []
+  for await (const [uid, account] of photos.entries()) {
+    if (account.kind !== 'directory') continue
+    try {
+      const directory = await (account as FileSystemDirectoryHandle).getDirectoryHandle(
+        HIGH_QUALITY_DIRECTORY_NAME
+      )
+      accounts.push({ uid, directory })
+    } catch (error) {
+      if (!isMissingDirectoryError(error) && (error as DOMException)?.name !== 'TypeMismatchError')
+        throw error
+    }
+  }
+  return accounts.sort((a, b) => a.uid.localeCompare(b.uid))
+}

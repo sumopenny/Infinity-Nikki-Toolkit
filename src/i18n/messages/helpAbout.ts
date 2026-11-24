@@ -85,9 +85,9 @@ export const helpAboutZh: HelpAboutMessages = {
   tasks: {
     album: {
       title: '打开游戏相册',
-      entry: '当前相册 → 选择/恢复相册路径',
+      entry: '当前相册 → 授权X6Game',
       steps: [
-        '选择直接存放游戏原图的文件夹。照片在浏览器本地读取。',
+        '选择 X6Game。有多个高画质相册时，选择要打开的游戏账号。照片在浏览器本地读取。',
         '打不开时，在「当前相册」试试「兼容打开（只读）」。',
         '普通删除可从「最近删除」恢复。永久删除和「工具 → 专项清理」会直接删除电脑文件。'
       ]
@@ -227,9 +227,9 @@ export const helpAboutEn: HelpAboutMessages = {
   tasks: {
     album: {
       title: 'Open my game album',
-      entry: 'Current album → Choose / restore album folder',
+      entry: 'Current album → Authorize X6Game',
       steps: [
-        'Select the folder that directly contains your original game photos. Your browser reads them locally.',
+        'Select X6Game, then choose a game account if several high-quality albums are found. Your browser reads the photos locally.',
         'If the folder won’t open, try “Compatibility open (read-only)” under Current album.',
         'Recover deleted photos from Recently deleted. Permanent deletion and Tools → Cleanup delete files from your computer.'
       ]

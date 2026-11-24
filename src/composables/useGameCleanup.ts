@@ -3,6 +3,8 @@ import type { Language, LocaleMessages } from '../i18n'
 import type { PhotoItem } from '../utils/photoGrouping'
 import type { ActiveOperation, StatusState, useOperationNotice } from './useOperationNotice'
 import type { useConfirmDialog } from './useConfirmDialog'
+import type { GameAlbumBinding } from './useDirectorySession'
+import { gameAlbumMessages } from '../i18n/messages/gameAlbum'
 import { readLocalStorage, writeLocalStorage, removeLocalStorage } from '../utils/localStorage'
 import { formatFileSize } from '../utils/file-system/albumFileSystem'
 import { getSavedX6GameDirectoryHandle } from '../utils/file-system/directoryStorage'
@@ -32,6 +34,8 @@ function persistCleanupAccountChoice(choice: string | null): void {
 interface GameCleanupOptions {
   albumDirectoryHandle: Ref<FileSystemDirectoryHandle | null>
   hasX6GameAuthorization: Ref<boolean>
+  gameAlbum?: Ref<GameAlbumBinding | null>
+  onX6GameAuthorized?: (root: FileSystemDirectoryHandle) => void
   language: Ref<Language>
   locale: ComputedRef<LocaleMessages>
   activeOperation: Ref<ActiveOperation | null>
@@ -81,6 +85,15 @@ export function useGameCleanup(options: GameCleanupOptions) {
   }
   async function authorizeCleanupFolder() {
     if (isAnyFileOperationBusy.value) return
+    if (options.gameAlbum?.value) {
+      publishStatus({
+        type: 'custom',
+        message: gameAlbumMessages[language.value].changeViaAlbum,
+        tone: 'info'
+      })
+      return
+    }
+    activeOperation.value = 'loading'
     let didCancelDirectoryPrompt = false
     const alreadyAuthorized = Boolean(cleanupX6GameHandle.value || hasX6GameAuthorization.value)
     try {
@@ -113,6 +126,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
       })
       cleanupX6GameHandle.value = handle
       hasX6GameAuthorization.value = true
+      options.onX6GameAuthorized?.(handle)
       publishStatus({
         type: 'custom',
         message: locale.value.app.authorizeX6GameStatus,
@@ -120,6 +134,8 @@ export function useGameCleanup(options: GameCleanupOptions) {
       })
     } catch (error) {
       if (!didCancelDirectoryPrompt) publishStatus(createErrorStatus(error, { type: 'readFailed' }))
+    } finally {
+      if (activeOperation.value === 'loading') activeOperation.value = null
     }
   }
   function resolveCleanupAccounts(accountIds: string[] | null, remember = false, choice = '') {
@@ -288,31 +304,41 @@ export function useGameCleanup(options: GameCleanupOptions) {
     })
     let cancelledAuthorization = false
     try {
-      const { directoryHandle: x6GameHandle, accountDirectoryName } =
-        await getX6GameDirectoryForAlbum(albumHandle, locale.value.fileSystem, {
-          beforeRequestX6GamePermission: async () => {
-            const confirmed = await openConfirmDialog({
-              title: locale.value.app.x6GameDirectoryDialogTitle,
-              message: locale.value.fileSystem.restoreX6GamePermissionPrompt,
-              tone: 'info',
-              confirmLabel: locale.value.app.dialogContinueAuthorization,
-              cancelLabel: locale.value.app.dialogCancel
-            })
-            cancelledAuthorization = !confirmed
-            return confirmed
-          },
-          beforePickX6GameDirectory: async () => {
-            const confirmed = await openConfirmDialog({
-              title: locale.value.app.x6GameDirectoryDialogTitle,
-              message: locale.value.fileSystem.selectX6GameDirectoryPrompt,
-              tone: 'info',
-              confirmLabel: locale.value.app.dialogOk,
-              cancelLabel: locale.value.app.dialogCancel
-            })
-            cancelledAuthorization = !confirmed
-            return confirmed
+      const gameRoot = options.gameAlbum?.value?.root
+      const { directoryHandle: x6GameHandle, accountDirectoryName } = gameRoot
+        ? {
+            directoryHandle: gameRoot,
+            accountDirectoryName: await resolveX6GameAccountDirectory(
+              gameRoot,
+              albumHandle,
+              locale.value.fileSystem
+            )
           }
-        })
+        : await getX6GameDirectoryForAlbum(albumHandle, locale.value.fileSystem, {
+            beforeRequestX6GamePermission: async () => {
+              const confirmed = await openConfirmDialog({
+                title: locale.value.app.x6GameDirectoryDialogTitle,
+                message: locale.value.fileSystem.restoreX6GamePermissionPrompt,
+                tone: 'info',
+                confirmLabel: locale.value.app.dialogContinueAuthorization,
+                cancelLabel: locale.value.app.dialogCancel
+              })
+              cancelledAuthorization = !confirmed
+              return confirmed
+            },
+            beforePickX6GameDirectory: async () => {
+              const confirmed = await openConfirmDialog({
+                title: locale.value.app.x6GameDirectoryDialogTitle,
+                message: locale.value.fileSystem.selectX6GameDirectoryPrompt,
+                tone: 'info',
+                confirmLabel: locale.value.app.dialogOk,
+                cancelLabel: locale.value.app.dialogCancel
+              })
+              cancelledAuthorization = !confirmed
+              return confirmed
+            }
+          })
+      if (!gameRoot) options.onX6GameAuthorized?.(x6GameHandle)
       const plan = await prepareMatchingPhotoCleanup(
         x6GameHandle,
         accountDirectoryName,

@@ -108,6 +108,7 @@ useModalFocus(visible, panelRef, () => emit('cancel'), undefined, initialFocus)
               <p v-if="section.text">{{ section.text }}</p>
             </section>
             <p v-if="consequence" class="confirm-dialog-consequence">{{ consequence }}</p>
+            <slot />
           </div>
 
           <div class="confirm-dialog-actions">

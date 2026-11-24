@@ -163,11 +163,13 @@ Browse game photos by date or action, open large previews, save favorites, and i
   <p><sub>Album · Browse photos by pose</sub></p>
 </div>
 
-Click Choose / restore album folder and select the following directory directly. Avoid drive roots, Program Files, and high-level game installation directories:
+Click **Authorize X6Game** and select the `X6Game` folder in your game installation:
 
 ```text
-...\InfinityNikki Launcher\InfinityNikki\X6Game\Saved\GamePlayPhotos\Your ID\NikkiPhotos_HighQuality
+...\InfinityNikki Launcher\InfinityNikki\X6Game
 ```
+
+Toolkit looks for high-quality albums under `Saved\GamePlayPhotos`. It opens a single account directly, or asks which account to open when there are several. Use the current album menu to switch accounts or choose another X6Game folder. Outfit codes and cleanup reuse the same access. To browse photos stored elsewhere, select **Open a separate album**.
 
 #### Compatibility open (read-only)
 
@@ -430,11 +432,11 @@ Use the retry action where available. If loading still fails, check the network 
 
 - Make sure you selected the actual image folder.
 - Make sure the file extension is supported. Photos whose filenames start with a date use that date; other photos use the file's last modified time.
-- If browser authorization expires, click Choose / restore album folder again.
+- Toolkit automatically reopens the last album while browser permission is still granted. If it expires, select **Restore previous access**.
 
 #### The browser refuses to open a folder
 
-Browsers block web pages from accessing system folders. Please select `NikkiPhotos_HighQuality` directly, and <span style="color: red;">do not select the drive root or a high-level game install directory.</span>
+Select the game's `X6Game` folder and avoid drive roots and system folders. If the browser still refuses it, use **Open in compatibility mode (read-only)** and select `NikkiPhotos_HighQuality` directly.
 
 ## Privacy and Safety
 

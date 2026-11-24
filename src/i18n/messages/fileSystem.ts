@@ -6,8 +6,7 @@ export const fileSystemZh: LocaleMessages['fileSystem'] = {
   systemDirectory:
     '浏览器可能将所选文件夹识别为敏感或受保护目录，因此拒绝网页访问，比如文件夹放在 C 盘 Program Files 文件夹中。即使选择了正确的游戏相册文件夹，也可能出现此问题。\n相册可尝试菜单中的“兼容打开（只读）”；需要管理原文件时，可将文件夹复制到普通目录再选择。',
   abortSelection: '未完成文件夹选择。如果选择被浏览器拒绝，可尝试相册菜单中的“兼容打开（只读）”。',
-  permissionRequired:
-    '已记住上次相册路径，但浏览器需要重新授权。请点击“选择/恢复相册路径”完成授权。',
+  permissionRequired: '浏览器需要读写权限才能打开相册。如已保存相册目录，请点击「恢复上次授权」。',
   unsupportedBrowser:
     '当前浏览器不支持选择文件夹。请使用电脑上的最新版 Chrome、Edge 或其他兼容的 Chromium 浏览器，并在 localhost/HTTPS 环境运行。',
   mobileBrowserUnsupported:
@@ -26,7 +25,7 @@ export const fileSystemEn: LocaleMessages['fileSystem'] = {
   abortSelection:
     'Folder selection was not completed. If the browser rejected it, try “Compatibility open (read-only)” in the album menu.',
   permissionRequired:
-    'The last album folder is remembered, but the browser needs permission again. Click “Choose / restore album folder” to authorize it.',
+    'The browser needs read and write access to open the album. If an album folder is already saved, select “Restore previous access”.',
   unsupportedBrowser:
     'This browser does not support folder selection. Please use the latest desktop version of Chrome, Edge, or another compatible Chromium browser and run on localhost/HTTPS.',
   mobileBrowserUnsupported:
