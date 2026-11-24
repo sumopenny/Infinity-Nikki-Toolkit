@@ -1,6 +1,7 @@
 name = "nikkicube"
 main = "worker/index.ts"
-workers_dev = true
+workers_dev = false
+routes = [{ pattern = "nikkicube.cc.cd", custom_domain = true }]
 preview_urls = false
 upload_source_maps = true
 compatibility_date = "2026-09-19"

@@ -565,9 +565,6 @@
   .resonance-page > .resonance-header {
     display: none;
   }
-  .favorites-toolbar-actions:empty {
-    display: none;
-  }
   /* 完整标签沿用原侧栏与管理逻辑，在居中窗口中搜索及选择。 */
   .mobile-filter-overlay.mobile-tag-picker {
     align-items: center;
@@ -1027,10 +1024,6 @@
     min-height: var(--mobile-control-size);
     padding: 8px 12px;
   }
-  .favorites-toolbar {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
   .favorites-tabs {
     display: flex;
     width: 100%;
@@ -1190,9 +1183,6 @@
     font-weight: 700;
     text-align: center;
     white-space: nowrap;
-  }
-  .favorites-toolbar-actions {
-    margin-left: auto;
   }
   .outfit-grid-wrap .outfit-grid {
     grid-template-columns: var(--mobile-collection-columns);

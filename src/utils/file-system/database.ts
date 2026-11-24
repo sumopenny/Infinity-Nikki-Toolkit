@@ -1,7 +1,6 @@
-import { monitored } from '../directory-backup/monitoredStores'
 // 所有本地数据共用升级入口，避免先打开不同模块时漏建存储。
 export const DB_NAME = 'infinity-nikki-album-manager'
-export const DB_VERSION = 10
+export const DB_VERSION = 11
 /** Higher-version databases must never be reset or silently downgraded. */
 const versionMismatchListeners = new Set<() => void>()
 let versionMismatchDetected = false
@@ -32,9 +31,6 @@ export const HOME_TAGS_STORE = 'home-scheme-tags'
 export const CAMERA_FAVORITES_STORE = 'camera-favorites'
 export const CAMERA_TAGS_STORE = 'camera-favorite-tags'
 export const CAMERA_COVERS_STORE = 'camera-favorite-covers'
-export const BACKUP_DIRTY_STORE = 'directory-backup-dirty'
-export const BACKUP_SETTINGS_STORE = 'directory-backup-settings'
-export const BACKUP_RESTORE_STORE = 'directory-backup-restore'
 
 /** Match the browser connection-loss failure, excluding validation and quota errors. */
 export function isDatabaseConnectionLost(error: unknown): boolean {
@@ -70,12 +66,14 @@ export function openDb(): Promise<IDBDatabase> {
       ]) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name)
       }
-      if (!db.objectStoreNames.contains(BACKUP_DIRTY_STORE))
-        db.createObjectStore(BACKUP_DIRTY_STORE, { keyPath: 'key' })
-      if (!db.objectStoreNames.contains(BACKUP_SETTINGS_STORE))
-        db.createObjectStore(BACKUP_SETTINGS_STORE, { keyPath: 'key' })
-      if (!db.objectStoreNames.contains(BACKUP_RESTORE_STORE))
-        db.createObjectStore(BACKUP_RESTORE_STORE, { keyPath: ['module', 'kind', 'id'] })
+      // 清理旧功能的内部表，保留业务数据和用户磁盘上的文件。
+      for (const name of [
+        'directory-backup-dirty',
+        'directory-backup-settings',
+        'directory-backup-restore'
+      ]) {
+        if (db.objectStoreNames.contains(name)) db.deleteObjectStore(name)
+      }
       const favorites = db.objectStoreNames.contains(CAMERA_FAVORITES_STORE)
         ? request.transaction!.objectStore(CAMERA_FAVORITES_STORE)
         : db.createObjectStore(CAMERA_FAVORITES_STORE, { keyPath: 'id' })
@@ -115,13 +113,6 @@ export async function runStoreRequest<T>(
   mode: IDBTransactionMode,
   action: (store: IDBObjectStore) => IDBRequest<T>
 ): Promise<T> {
-  // 业务单请求写入也接入事务日志；内部配置和暂存表不递归包装。
-  if (mode === 'readwrite' && Boolean(monitored[storeName])) {
-    const { runDatabaseTransaction, databaseRequest } = await import('./transaction')
-    return runDatabaseTransaction([storeName], mode, (tx) =>
-      databaseRequest(action(tx.objectStore(storeName)))
-    )
-  }
   const db = await openDb()
   return new Promise((resolve, reject) => {
     let request: IDBRequest<T> | undefined

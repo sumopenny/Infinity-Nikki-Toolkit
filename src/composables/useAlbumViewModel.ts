@@ -24,6 +24,7 @@ export function useAlbumViewModel(options: {
   outfits: Ref<OutfitItem[]>
   recentlyDeleted: Ref<RecentlyDeletedPhoto[]>
   favoriteIds: Ref<Set<string>>
+  photoFavoritesOnly: Ref<boolean>
   activeView: Ref<AlbumView>
   activeOutfitFilter: Ref<OutfitFilter>
   searchQuery: Ref<string>
@@ -44,6 +45,7 @@ export function useAlbumViewModel(options: {
     outfits,
     recentlyDeleted,
     favoriteIds,
+    photoFavoritesOnly,
     activeView,
     activeOutfitFilter,
     searchQuery,
@@ -68,7 +70,8 @@ export function useAlbumViewModel(options: {
     photos.value.filter((photo) => favoriteIds.value.has(photo.id))
   )
   const visiblePhotos = computed(() => {
-    const source = activeView.value === 'favorites' ? favoritePhotos.value : photos.value
+    const source =
+      activeView.value === 'all' && photoFavoritesOnly.value ? favoritePhotos.value : photos.value
     return source.filter((photo) => matchesSearch(`${photo.name} ${photo.note}`))
   })
   const visibleOutfits = computed(() => {
@@ -133,7 +136,9 @@ export function useAlbumViewModel(options: {
     if (activeView.value === 'home') return locale.value.homeScheme.viewName
     if (activeView.value === 'favorites') return locale.value.viewNav.favorites
     if (activeView.value === 'trash') return locale.value.viewNav.recentlyDeleted
-    return locale.value.viewNav.allPhotos
+    return photoFavoritesOnly.value
+      ? locale.value.viewNav.photoFavorites
+      : locale.value.viewNav.allPhotos
   })
   return {
     outfitLocale,

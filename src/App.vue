@@ -27,7 +27,6 @@ import {
   recoverAlbumNotes,
   type AlbumNoteSnapshot
 } from './utils/file-system/photoMetadata'
-import { browserBaseline } from './utils/directory-backup/repository'
 import { currentVersion } from './i18n/version'
 import { lazyFeature } from './utils/lazyFeature'
 import { isAlbumPhoto, isDirectoryPhoto } from './utils/photoGrouping'
@@ -66,15 +65,8 @@ import { archiveCloudMessages } from './i18n/messages/archiveCloud'
 import ArchiveCloudDialog from './components/ArchiveCloudDialog.vue'
 const archiveCloud = useArchiveCloudSync((task) => operations.run('archive-cloud', task))
 provide(archiveCloudKey, archiveCloud)
-import { useDirectoryBackupLifecycle } from './composables/useDirectoryBackup'
-useDirectoryBackupLifecycle()
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
 import { clearAllBrowserData, subscribeDatabaseVersionMismatch } from './utils/file-system/database'
-import {
-  pendingEnabledBackups,
-  flushBackupsBeforeReset,
-  pauseBackupsForBrowserReset
-} from './utils/directory-backup/engine'
 
 import {
   computed,
@@ -90,6 +82,7 @@ import {
   ChartNoAxesColumnIncreasing,
   CircleHelp,
   Download,
+  Heart,
   Plus,
   Trash2,
   Upload
@@ -438,14 +431,13 @@ const compatibleAlbumInput = ref<HTMLInputElement | null>(null)
 const appShellRef = ref<HTMLElement | null>(null)
 let topBarResizeObserver: ResizeObserver | null = null
 // 派生视图状态
-const favoriteTab = ref<'photos' | 'camera'>('camera')
+const photoFavoritesOnly = ref(false)
 const cameraFavoritesRef = ref<InstanceType<typeof CameraFavorites> | null>(null)
 const allDataBackupRef = ref<InstanceType<typeof AllDataBackup> | null>(null)
 const wardrobeRef = ref<InstanceType<typeof PersonalWardrobe> | null>(null)
 const resonanceRecordsRef = ref<InstanceType<typeof ResonanceRecords> | null>(null)
 const hasBackupData = ref(false)
 const allBackupDisabled = computed(() => operations.isBusy.value || archiveCloud.visible.value)
-// 只读目录恢复允许切换独立模块；所有写任务仍沿用原操作协调器互斥。
 const navigationBusy = computed(
   () =>
     archiveCloud.visible.value ||
@@ -499,17 +491,6 @@ function refreshAfterArchiveSync() {
     'archive-cloud'
   )
 }
-/** 目录恢复只刷新所选模块，保留其他模块的编辑状态。 */
-function refreshAfterDirectoryRestore(event: Event) {
-  return refreshModules(
-    ((event as CustomEvent<string[]>).detail ?? []).filter((key) =>
-      ['outfits', 'home', 'camera'].includes(key)
-    ),
-    language.value === 'zh'
-      ? '数据恢复成功，部分界面刷新失败，请重新加载页面查看。'
-      : 'Data restored; some views could not refresh. Reload to view them.'
-  )
-}
 function refreshAfterAllImport() {
   return refreshModules(
     ['outfits', 'home', 'camera', 'wardrobe', 'resonance'],
@@ -558,10 +539,7 @@ watch(cameraFavoritesRef, (view) => {
   pendingCameraFavorite = null
   open()
 })
-// 手机布局只展示相机参数，进入手机布局时同步校正收藏标签。
-const isCameraFavoritesView = computed(
-  () => activeView.value === 'favorites' && (compactLayout.value || favoriteTab.value === 'camera')
-)
+const isCameraFavoritesView = computed(() => activeView.value === 'favorites')
 watch(
   isCameraFavoritesView,
   (active) => {
@@ -576,9 +554,9 @@ const photoParamsSaved = computed(() =>
     normalizeCameraCode(photoParamsResult.value?.rawCameraParams ?? '')
   )
 )
-function changeFavoriteTab(tab: 'photos' | 'camera') {
-  if (operations.isBusy.value) return
-  favoriteTab.value = tab
+function togglePhotoFavorites() {
+  if (isAnyFileOperationBusy.value) return
+  photoFavoritesOnly.value = !photoFavoritesOnly.value
   selectedIds.value = new Set()
   currentPreview.value = null
 }
@@ -663,22 +641,6 @@ function createErrorStatus(error: unknown, fallback: StatusState): StatusState {
   }
   return status
 }
-// 电脑原始数据备份复用全站顶部通知；同一来源只保留一条持续加载提示。
-type BackupNoticeDetail = {
-  source: string
-  message: string | null
-  tone?: 'success' | 'error' | 'info'
-  loading?: boolean
-}
-function handleBackupNotice(event: Event) {
-  const { source, message, tone, loading } = (event as CustomEvent<BackupNoticeDetail>).detail
-  if (loading) {
-    updateLoadingNotice(source, message)
-  } else {
-    updateLoadingNotice(source, null)
-    if (message) showStatus({ message, tone: tone ?? 'success', source })
-  }
-}
 // A single top notice protects users when an old site build meets a newer local database.
 const databaseVersionNotice = () =>
   showStatus({
@@ -691,8 +653,6 @@ onMounted(() => {
   stopDatabaseVersionNotice = subscribeDatabaseVersionMismatch(databaseVersionNotice)
 })
 onBeforeUnmount(() => stopDatabaseVersionNotice?.())
-onMounted(() => window.addEventListener('nuan-backup-notice', handleBackupNotice))
-onBeforeUnmount(() => window.removeEventListener('nuan-backup-notice', handleBackupNotice))
 // 云端进度复用一条顶部通知，结束、失败或关闭后立即撤下。
 watch(
   [archiveCloud.visible, archiveCloud.phase, archiveCloud.action, language],
@@ -757,6 +717,7 @@ const {
   outfits,
   recentlyDeleted,
   favoriteIds,
+  photoFavoritesOnly,
   activeView,
   activeOutfitFilter,
   searchQuery,
@@ -816,6 +777,7 @@ function changeMobileFilter(key: string) {
 }
 watch(activeView, (view) => setDiagnosticModule(view), { immediate: true })
 watch(activeView, () => {
+  photoFavoritesOnly.value = false
   mobileFiltersOpen.value = false
   topBarRef.value?.closeMenus()
 })
@@ -827,12 +789,6 @@ watch([compactLayout, navigationBusy], ([compact, busy]) => {
   if (busy) return
   const view = viewForLayout(activeView.value)
   if (view !== activeView.value) changeAlbumView(view)
-  else if (view === 'favorites' && favoriteTab.value === 'photos') {
-    favoriteTab.value = 'camera'
-    currentPreview.value = null
-    selectedIds.value = new Set()
-    trashSelectedIds.value = new Set()
-  }
 })
 
 const currentPreviewIndex = computed(() =>
@@ -1038,7 +994,10 @@ async function replaceAlbum(
   currentPreview.value = null
   photos.value = result.photos
   recentlyDeleted.value = nextRecentlyDeleted
-  if (!options.preserveView) activeView.value = 'all'
+  if (!options.preserveView) {
+    photoFavoritesOnly.value = false
+    activeView.value = 'all'
+  }
   albumNotes.value = result.notes
   albumDirectoryHandle.value = result.directoryHandle
   directoryState.value = { type: 'selected', name: result.directoryName }
@@ -1229,6 +1188,7 @@ async function downloadCompatiblePhotos(source: PhotoItem[]) {
 
 /** 清除页面内已加载的相册和选择状态。参数：无。 */
 function resetLoadedAlbumState(options: { clearSharedOutfit?: boolean } = {}) {
+  photoFavoritesOnly.value = false
   albumNotes.value = undefined
   invalidatePendingRefreshes()
   photoActionParsing.cancel()
@@ -1319,48 +1279,7 @@ async function clearData() {
     confirmLabel: locale.value.app.clearDataConfirm,
     cancelLabel: locale.value.app.dialogCancel
   })
-  // 清浏览器数据不等于业务主动清空：必须保留授权目录下的备份。
   if (!confirmed || isAnyFileOperationBusy.value) return
-  let resetBaseline: Awaited<ReturnType<typeof browserBaseline>>
-  try {
-    resetBaseline = await browserBaseline()
-  } catch (error) {
-    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
-    return
-  }
-  const stillClear = () =>
-    openConfirmDialog({
-      title: language.value === 'zh' ? '仍然清除本站数据？' : 'Clear browser data anyway?',
-      message:
-        language.value === 'zh'
-          ? '未备份的最新修改可能丢失。电脑上已保存的副本会保留，但不保证包含最新修改。'
-          : 'Unbacked-up edits may be lost. Existing computer copies are preserved, but may not include the latest edits.',
-      tone: 'danger',
-      confirmLabel: language.value === 'zh' ? '仍然清除' : 'Clear anyway',
-      cancelLabel: locale.value.app.dialogCancel
-    })
-  try {
-    if (await pendingEnabledBackups()) {
-      const first = await openConfirmDialog({
-        title: language.value === 'zh' ? '还有待备份修改' : 'Backup changes are pending',
-        tone: 'warning',
-        message:
-          language.value === 'zh'
-            ? '是否先尝试完成电脑备份？未完成的最新修改在清除浏览器后无法找回。'
-            : 'Try completing the computer backup first? Pending edits cannot be recovered after clearing the browser.',
-        confirmLabel: language.value === 'zh' ? '先尝试备份' : 'Try backup first',
-        cancelLabel: language.value === 'zh' ? '暂不备份' : 'Not now'
-      })
-      const backedUp = first && (await flushBackupsBeforeReset())
-      if (!backedUp) {
-        resetBaseline = await browserBaseline()
-        if (!(await stillClear())) return
-      }
-    }
-  } catch {
-    resetBaseline = await browserBaseline()
-    if (!(await stillClear())) return
-  }
 
   await operations.run('website-reset', async () => {
     suppressLocalPersistence = true
@@ -1368,7 +1287,7 @@ async function clearData() {
       photoActionParsing.reset()
       photoParams.close()
       await invalidateCacheWrites()
-      await pauseBackupsForBrowserReset(() => clearAllBrowserData(), resetBaseline)
+      await clearAllBrowserData()
       localStorage.clear()
       sessionStorage.clear()
       publishStatus({
@@ -1685,8 +1604,10 @@ function changeAlbumView(view: AlbumView, afterArchiveExit = false) {
   }
   const isViewChanged = view !== activeView.value
   const isEnteringOutfits = view === 'outfits' && isViewChanged
-  // 点击收藏夹入口时默认显示相机参数。
-  if (view === 'favorites' && favoriteTab.value !== 'camera') changeFavoriteTab('camera')
+  if (view === 'all' && photoFavoritesOnly.value) {
+    photoFavoritesOnly.value = false
+    selectedIds.value = new Set()
+  }
   if (isViewChanged && view !== 'animations') loadAnimationOnEntry.value = false
   activeView.value = view
   currentPreview.value = null
@@ -2314,7 +2235,6 @@ onMounted(() => {
     topBarResizeObserver.observe(topBarElement)
   })
   window.addEventListener('resize', updateSidebarStickyOffset)
-  window.addEventListener('nuan-directory-restored', refreshAfterDirectoryRestore)
   window.addEventListener('focus', scheduleFocusRefresh)
   document.addEventListener('visibilitychange', scheduleFocusRefresh)
 })
@@ -2328,7 +2248,6 @@ onBeforeUnmount(() => {
   disposeStatusNotice()
   topBarResizeObserver?.disconnect()
   window.removeEventListener('resize', updateSidebarStickyOffset)
-  window.removeEventListener('nuan-directory-restored', refreshAfterDirectoryRestore)
   window.removeEventListener('focus', scheduleFocusRefresh)
   document.removeEventListener('visibilitychange', scheduleFocusRefresh)
   releasePhotoUrls(photos.value)
@@ -2477,8 +2396,8 @@ function importAllDataFromMenu() {
           :outfits-count="outfits.length"
           :home-schemes-count="homeSchemesCount"
           :resonance-label="locale.viewNav.resonance"
-          :favorite-count="favoriteCount + cameraFavoriteCodes.length"
-          :favorite-count-text="`${favoriteCount + cameraFavoriteCodes.length} ${language === 'zh' ? '项' : 'items'}`"
+          :favorite-count="cameraFavoriteCodes.length"
+          :favorite-count-text="`${cameraFavoriteCodes.length} ${language === 'zh' ? '项' : 'items'}`"
           :trash-count="recentlyDeleted.length"
           :trash-disabled="isCompatibleAlbum"
           :trash-disabled-hint="compatibleMessages.trash"
@@ -2567,7 +2486,7 @@ function importAllDataFromMenu() {
 
       <section class="album-content" :aria-label="locale.app.albumContentAria">
         <AlbumNoteNotice
-          v-if="albumNotes?.blocked && ['all', 'favorites', 'trash'].includes(activeView)"
+          v-if="albumNotes?.blocked && ['all', 'trash'].includes(activeView)"
           :snapshot="albumNotes"
           :language="language"
           :compatible="isCompatibleAlbum"
@@ -2675,77 +2594,12 @@ function importAllDataFromMenu() {
           @clear="changeMobileFilter(mobileFilterEntries[0]?.key ?? 'all')"
           @open="mobileFiltersOpen = true"
         />
-        <!-- 收藏夹：标签页与当前页操作按钮共用一行，移除重复标题。 -->
-        <div v-if="activeView === 'favorites'" v-show="!compactLayout" class="favorites-toolbar">
-          <nav
-            v-if="!compactLayout"
-            v-segmented-indicator
-            class="resonance-choice-row favorites-view-switch"
-            :aria-label="locale.viewNav.favorites"
-          >
-            <button
-              type="button"
-              class="resonance-choice"
-              :aria-pressed="favoriteTab === 'camera'"
-              @click="changeFavoriteTab('camera')"
-              >{{ language === 'zh' ? '相机参数' : 'Camera parameters' }}
-              <small>{{ cameraFavoriteCodes.length }}</small></button
-            >
-            <button
-              type="button"
-              class="resonance-choice"
-              :aria-pressed="favoriteTab === 'photos'"
-              @click="changeFavoriteTab('photos')"
-              >{{ language === 'zh' ? '照片收藏' : 'Photo favorites' }}
-              <small>{{ favoriteCount }}</small></button
-            >
-          </nav>
-          <CollectionActions
-            v-if="favoriteTab === 'photos' && hasAlbum"
-            class="outfit-header-actions photo-header-actions"
-            :label="mobileText('页面操作', 'Page actions')"
-            ><button
-              type="button"
-              :disabled="isAnyFileOperationBusy || isCompatibleAlbum"
-              :title="isCompatibleAlbum ? compatibleMessages.writeDisabled : undefined"
-              @click="openPhotoImportPicker"
-            >
-              <Download :size="16" aria-hidden="true" />{{
-                isImportingPhotos ? locale.topBar.importingPhotos : locale.topBar.importPhotos
-              }} </button
-            ><template #secondary>
-              <label
-                class="auto-parse-actions-toggle app-checkbox-label"
-                :data-tooltip="locale.grid.autoParseActionsHint"
-              >
-                <input
-                  v-model="autoParseActionsEnabled"
-                  class="app-checkbox"
-                  style="--checkbox-size: 17px"
-                  type="checkbox"
-                  :aria-label="locale.grid.autoParseActions"
-                />
-                <span>{{ locale.grid.autoParseActions }}</span>
-                <span class="auto-parse-actions-help" aria-hidden="true">?</span>
-              </label>
-
-              <button
-                type="button"
-                :disabled="isAnyFileOperationBusy || !photos.length"
-                @click="exportAlbumPhotos([], true)"
-              >
-                <Upload :size="16" aria-hidden="true" />{{
-                  isExportingPhotos ? locale.topBar.exportingPhotos : locale.topBar.exportAllPhotos
-                }}
-              </button>
-            </template></CollectionActions
-          >
-          <div
-            id="favorites-camera-actions"
-            v-show="isCameraFavoritesView"
-            class="favorites-toolbar-actions"
-          ></div>
-        </div>
+        <div
+          v-if="isCameraFavoritesView"
+          v-show="!compactLayout"
+          id="favorites-camera-actions"
+          class="camera-parameters-toolbar"
+        ></div>
         <CameraFavorites
           v-if="cameraMounted"
           @open-filters="mobileFiltersOpen = true"
@@ -2810,14 +2664,7 @@ function importAllDataFromMenu() {
         </div>
 
         <header
-          v-else-if="
-            activeView !== 'home' &&
-            activeView !== 'resonance' &&
-            activeView !== 'wardrobe' &&
-            activeView !== 'makeup' &&
-            activeView !== 'animations' &&
-            activeView !== 'favorites'
-          "
+          v-else-if="activeView === 'all' || activeView === 'outfits' || activeView === 'trash'"
           class="gallery-header"
           :class="{ 'is-outfit-header': activeView === 'outfits' }"
         >
@@ -2893,7 +2740,7 @@ function importAllDataFromMenu() {
             </template></CollectionActions
           >
           <CollectionActions
-            v-else-if="activeView !== 'trash'"
+            v-else-if="activeView === 'all'"
             class="outfit-header-actions photo-header-actions"
             :label="mobileText('页面操作', 'Page actions')"
             ><button
@@ -2920,6 +2767,20 @@ function importAllDataFromMenu() {
                 <span>{{ locale.grid.autoParseActions }}</span>
                 <span class="auto-parse-actions-help" aria-hidden="true">?</span>
               </label>
+              <button
+                class="photo-favorites-button"
+                type="button"
+                :aria-pressed="photoFavoritesOnly"
+                :disabled="isAnyFileOperationBusy"
+                @click="togglePhotoFavorites"
+              >
+                <Heart
+                  :size="16"
+                  :fill="photoFavoritesOnly ? 'currentColor' : 'none'"
+                  aria-hidden="true"
+                />{{ locale.viewNav.photoFavorites }}
+                <small>{{ favoriteCount }}</small>
+              </button>
 
               <button
                 type="button"
@@ -3057,7 +2918,7 @@ function importAllDataFromMenu() {
           :favorite-ids="favoriteIds"
           :thumbnail-mode="thumbnailMode"
           :thumbnail-size="thumbnailSizes.photo"
-          :is-favorites-view="activeView === 'favorites'"
+          :is-favorites-view="photoFavoritesOnly"
           :messages="locale.grid"
           @toggle-photo="togglePhoto"
           @toggle-favorite="toggleFavorite"
@@ -3075,7 +2936,7 @@ function importAllDataFromMenu() {
       :disabled="allBackupDisabled"
       :messages="locale.viewNav"
       :outfit-label="outfitLocale.viewName"
-      :camera-label="mobileText('相机参数', 'Camera parameters')"
+      :camera-label="locale.viewNav.favorites"
       @change-view="changeAlbumView"
     />
 
@@ -3095,7 +2956,7 @@ function importAllDataFromMenu() {
           ? 'trash'
           : activeView === 'outfits'
             ? 'outfit'
-            : activeView === 'favorites'
+            : photoFavoritesOnly
               ? 'favorites'
               : 'album'
       "
@@ -3449,28 +3310,24 @@ function importAllDataFromMenu() {
 </template>
 
 <style scoped>
-.favorites-toolbar {
+.camera-parameters-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px 16px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 22px;
+  justify-content: flex-end;
   padding-bottom: 10px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--line);
 }
-.favorites-toolbar-actions {
-  margin-left: auto;
-  min-width: 0;
-  max-width: 100%;
-}
-.favorites-toolbar :deep(.outfit-header-actions) {
+.camera-parameters-toolbar :deep(.outfit-header-actions) {
   width: auto;
   flex-wrap: wrap;
   justify-content: flex-end;
   overflow: visible;
 }
-.favorites-toolbar :deep(.outfit-header-actions > button) {
+.camera-parameters-toolbar :deep(.outfit-header-actions > button) {
   white-space: nowrap;
+}
+.photo-header-actions .photo-favorites-button[aria-pressed='true'] {
+  border-color: var(--pink-deep);
+  color: var(--pink-deep);
 }
 </style>

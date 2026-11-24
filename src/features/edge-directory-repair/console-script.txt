@@ -26,7 +26,7 @@ window.nikkiCleanDirectoryState = async (apply = false) => {
   });
 
   try {
-    if (db.version !== 10 || !db.objectStoreNames.contains(storeName)) {
+    if (![10, 11].includes(db.version) || !db.objectStoreNames.contains(storeName)) {
       throw new Error(`数据库结构与已核对版本不同（版本 ${db.version}），未清理。`);
     }
 

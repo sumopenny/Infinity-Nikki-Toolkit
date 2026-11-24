@@ -63,7 +63,7 @@ export function resonanceUserscript(): string {
 // @namespace    infinity-nikki-toolkit
 // @homepageURL  https://nikki3.pages.dev/
 // @version      1.0.4
-// @description  点击按钮复制登录凭据，返回 Infinity Nikki Toolkit 粘贴导入。工具网址：https://nikkicube.sumopenny.workers.dev/
+// @description  点击按钮复制登录凭据，返回 Infinity Nikki Toolkit 粘贴导入。工具网址：https://nikkicube.cc.cd/
 // @match        https://myl.nuanpaper.com/*
 // @match        https://pearpal.infoldgames.com/*
 // @run-at       document-idle

@@ -89,6 +89,7 @@ it('sorts action groups by the displayed language even when names were cached in
     outfits: ref([]),
     recentlyDeleted: ref([]),
     favoriteIds: ref(new Set()),
+    photoFavoritesOnly: ref(false),
     activeView: ref('all'),
     activeOutfitFilter: ref('all'),
     searchQuery: ref(''),

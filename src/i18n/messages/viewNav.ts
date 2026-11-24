@@ -11,7 +11,8 @@ export const viewNavZh: LocaleMessages['viewNav'] = {
   wardrobe: '个人衣橱',
   makeup: '妆容图鉴',
   animations: '满进动画',
-  favorites: '参数与收藏',
+  favorites: '相机参数',
+  photoFavorites: '照片收藏',
   recentlyDeleted: '最近删除',
   count: (count) => `${count} 张`,
   homeSchemesCount: (count) => `${count} 个方案`
@@ -26,7 +27,8 @@ export const viewNavEn: LocaleMessages['viewNav'] = {
   wardrobe: 'Personal wardrobe',
   makeup: 'Makeup catalog',
   animations: 'Evolution animations',
-  favorites: 'Favorites',
+  favorites: 'Camera parameters',
+  photoFavorites: 'Photo favorites',
   recentlyDeleted: 'Recently deleted',
   count: (count) => `${count} photos`,
   homeSchemesCount: (count) => `${count}`

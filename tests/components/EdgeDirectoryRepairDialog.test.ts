@@ -71,9 +71,9 @@ async function runScript(idb: IDBFactory) {
 const accessMode = 'infinity-nikki-album-access-mode'
 const dismissed = 'infinity-nikki-x6game-auto-prompt-dismissed'
 
-it('clears only the requested keys and settings and leaves user records intact', async () => {
+it.each([10, 11])('leaves unrelated keys and records intact in version %i', async (version) => {
   const idb = new IDBFactory()
-  const db = await createDb(idb, 10)
+  const db = await createDb(idb, version)
   try {
     localStorage.setItem(accessMode, 'directory')
     localStorage.setItem(dismissed, 'true')
@@ -97,7 +97,7 @@ it('clears only the requested keys and settings and leaves user records intact',
 
 it('refuses to clear an unexpected database version', async () => {
   const idb = new IDBFactory()
-  const db = await createDb(idb, 11)
+  const db = await createDb(idb, 12)
   try {
     localStorage.setItem(accessMode, 'directory')
     await expect(runScript(idb)).rejects.toThrow('未清理')

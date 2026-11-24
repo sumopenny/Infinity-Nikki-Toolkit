@@ -8,7 +8,6 @@ import {
   HOME_IMAGES_STORE,
   HOME_TAGS_STORE
 } from '../file-system/database'
-import { markConfirmedDeletion } from '../directory-backup/changeJournal'
 import { convertImageForStorage, inspectStoredImage } from '../storedImage'
 import { sha256Hex } from '../sha256'
 import {
@@ -209,15 +208,13 @@ export async function saveHomeScheme(input: SaveHomeSchemeInput): Promise<HomeSc
   return displayHomeScheme(saved.record)
 }
 
-/** 记录、图片和删除凭证在同一事务中提交；失败时整批回滚。 */
+/** 记录和图片在同一事务中删除；失败时整批回滚。 */
 export async function deleteHomeSchemes(
-  items: ReadonlyArray<Pick<HomeSchemeItem, 'id'>>,
-  confirmed = false
+  items: ReadonlyArray<Pick<HomeSchemeItem, 'id'>>
 ): Promise<void> {
   const ids = new Set(items.map((item) => item.id))
   if (!ids.size) return
   await homeTransaction([HOME_SCHEMES_STORE, HOME_IMAGES_STORE], 'readwrite', async (tx) => {
-    if (confirmed) markConfirmedDeletion(tx, 'home')
     for (const id of ids) {
       tx.objectStore(HOME_SCHEMES_STORE).delete(id)
       tx.objectStore(HOME_IMAGES_STORE).delete(id)
@@ -225,11 +222,8 @@ export async function deleteHomeSchemes(
   })
 }
 
-export function deleteHomeScheme(
-  item: Pick<HomeSchemeItem, 'id'>,
-  confirmed = false
-): Promise<void> {
-  return deleteHomeSchemes([item], confirmed)
+export function deleteHomeScheme(item: Pick<HomeSchemeItem, 'id'>): Promise<void> {
+  return deleteHomeSchemes([item])
 }
 
 /** 新增标签时读取事务中的最新列表，保留其他页面刚添加的未使用标签。 */

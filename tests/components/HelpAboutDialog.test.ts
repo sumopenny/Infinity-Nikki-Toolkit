@@ -73,7 +73,7 @@ describe('device-specific help', () => {
         language === 'zh' ? '兼容打开（只读）' : 'Compatibility open (read-only)'
       )
       expect(details(tasks()[4]!).textContent).toContain(
-        language === 'zh' ? '自动备份' : 'Auto backup'
+        language === 'zh' ? '导出全部数据' : 'Export all data'
       )
       expect(tasks().every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true)
     }

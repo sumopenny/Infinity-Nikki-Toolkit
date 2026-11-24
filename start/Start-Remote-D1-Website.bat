@@ -6,7 +6,7 @@ for %%I in ("%~dp0..") do set "PROJECT_DIR=%%~fI"
 cd /d "%PROJECT_DIR%"
 
 set "REMOTE_API_ORIGIN=%~1"
-if not defined REMOTE_API_ORIGIN set "REMOTE_API_ORIGIN=https://nikkicube.sumopenny.workers.dev"
+if not defined REMOTE_API_ORIGIN set "REMOTE_API_ORIGIN=https://nikkicube.cc.cd"
 
 echo.
 echo ============================================================

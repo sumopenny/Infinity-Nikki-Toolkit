@@ -634,6 +634,53 @@ describe('App lifecycle coordination', () => {
     }
   })
 
+  it('places photo favorites after auto-parse actions and filters the current album', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const wrapper = mount(App, {
+      global: { stubs: { PhotoGrid: true, CameraFavorites: true } }
+    })
+    await flushPromises()
+
+    const input = wrapper.get<HTMLInputElement>('[data-testid="compatible-album-input"]')
+    const files = ['21_05_24', '21_05_25'].map((time) => {
+      const file = new File(['photo'], '2026_04_26_' + time + '.jpeg', { lastModified: 1000 })
+      Object.defineProperty(file, 'webkitRelativePath', { value: '相册/' + file.name })
+      return file
+    })
+    Object.defineProperty(input.element, 'files', { value: files })
+    await input.trigger('change')
+    await flushPromises()
+    const autoParse = wrapper.get('.auto-parse-actions-toggle')
+    const favorites = wrapper.get('.photo-favorites-button')
+    expect(autoParse.element.nextElementSibling).toBe(favorites.element)
+    expect(wrapper.get('.photo-header-actions').text()).not.toContain('搭配总结')
+    const grid = wrapper.getComponent({ name: 'PhotoGrid' })
+    const visiblePhotos = () =>
+      (grid.props('dateGroups') as { photos: { id: string }[] }[]).flatMap((group) => group.photos)
+    expect(visiblePhotos()).toHaveLength(2)
+    const saved = visiblePhotos()[0]!
+    grid.vm.$emit('toggleFavorite', saved.id)
+    await favorites.trigger('click')
+    expect(favorites.attributes('aria-pressed')).toBe('true')
+    expect(visiblePhotos().map((photo) => photo.id)).toEqual([saved.id])
+    expect(wrapper.getComponent({ name: 'SelectionBar' }).props('mode')).toBe('favorites')
+    expect(wrapper.getComponent({ name: 'AlbumViewSwitcher' }).props('favoriteCount')).toBe(0)
+    await favorites.trigger('click')
+    expect(visiblePhotos()).toHaveLength(2)
+
+    await favorites.trigger('click')
+    wrapper.getComponent({ name: 'AlbumViewSwitcher' }).vm.$emit('changeView', 'all')
+    await nextTick()
+    expect(favorites.attributes('aria-pressed')).toBe('false')
+    wrapper.getComponent({ name: 'AlbumViewSwitcher' }).vm.$emit('changeView', 'outfits')
+    await nextTick()
+    expect(wrapper.find('.photo-favorites-button').exists()).toBe(false)
+    const summary = wrapper
+      .findAll('.is-outfit-header button')
+      .find((button) => button.text() === '搭配总结')
+    expect(summary).toBeDefined()
+  })
+
   it('opens compatible files without migration or persisted handles, preserves state on cancel/error and supports switching back', async () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const wrapper = mount(App, {
@@ -908,7 +955,7 @@ describe('App lifecycle coordination', () => {
     }
   )
 
-  it('keeps camera parameters selected after returning from compact favorites', async () => {
+  it('keeps camera parameters independent across desktop and mobile layouts', async () => {
     const listeners = new Set<() => void>()
     const query = {
       matches: false,
@@ -948,15 +995,11 @@ describe('App lifecycle coordination', () => {
       expect(localStorage.getItem('infinity-nikki-camera-thumbnail-size-desktop')).toBe('large')
       topBar.vm.$emit('changeThumbnailMode', 'portrait-standard')
       expect(localStorage.getItem('infinity-nikki-thumbnail-mode')).toBeNull()
-      await wrapper.findAll('.favorites-view-switch button')[1]!.trigger('click')
-      expect(topBar.props('thumbnailSize')).toBe('medium')
-      expect(wrapper.getComponent({ name: 'TopBar' }).props('thumbnailModeDisabled')).toBe(false)
-      expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(false)
       query.matches = true
       listeners.forEach((fn) => fn())
       await flushPromises()
       expect(wrapper.findAll('.mobile-navigation button')[2]!.text()).toBe('相机参数')
-      expect(wrapper.find('.favorites-view-switch').exists()).toBe(false)
+      expect(wrapper.find('.photo-favorites-button').exists()).toBe(false)
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(true)
       expect(topBar.props('thumbnailSize')).toBe('medium')
       topBar.vm.$emit('changeThumbnailSize', 'small')
@@ -966,17 +1009,14 @@ describe('App lifecycle coordination', () => {
       )
       expect(localStorage.getItem('infinity-nikki-camera-thumbnail-size-mobile')).toBe('small')
       expect(wrapper.find('.empty-album-start').exists()).toBe(false)
-      expect(wrapper.get('.favorites-toolbar').isVisible()).toBe(false)
+      expect(wrapper.get('.camera-parameters-toolbar').isVisible()).toBe(false)
       query.matches = false
       listeners.forEach((fn) => fn())
       await flushPromises()
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('thumbnailSize')).toBe(
         'large'
       )
-      expect(wrapper.findAll('.favorites-view-switch button')).toHaveLength(2)
-      expect(wrapper.findAll('.favorites-view-switch button')[0]!.attributes('aria-pressed')).toBe(
-        'true'
-      )
+      expect(wrapper.get('.camera-parameters-toolbar').isVisible()).toBe(true)
       expect(wrapper.findComponent({ name: 'CameraFavorites' }).props('active')).toBe(true)
       await wrapper.getComponent({ name: 'TopBar' }).vm.$emit('toggleLanguage')
       await flushPromises()

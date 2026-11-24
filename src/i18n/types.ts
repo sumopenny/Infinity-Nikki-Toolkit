@@ -280,6 +280,7 @@ export interface FullLocaleMessages {
     makeup: string
     animations: string
     favorites: string
+    photoFavorites: string
     recentlyDeleted: string
     count: (count: number) => string
     homeSchemesCount: (count: number) => string

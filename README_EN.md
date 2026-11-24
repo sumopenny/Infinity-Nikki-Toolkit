@@ -25,7 +25,7 @@
 
 **Official website: [https://nikki3.pages.dev/](https://nikki3.pages.dev/)**
 
-Use the toolkit here: [https://nikkicube.sumopenny.workers.dev/](https://nikkicube.sumopenny.workers.dev/)
+Use the toolkit here: [https://nikkicube.cc.cd/](https://nikkicube.cc.cd/)
 
 Open it directly without downloading anything. Local features need no sign-in. Outfits, home schemes, camera favorites, and Nikki Archive need no album selection; choose an album only for browsing game photos, and sign in only for resonance and wardrobe cloud sync.
 
@@ -37,7 +37,6 @@ For local use, see [Local installation](#local-installation).
 | --- | --- | --- |
 | Outfits, home schemes, camera parameters | Supported | Supported |
 | Resonance, personal wardrobe and makeup catalog | Supported | Supported |
-| Automatic backups to a local computer folder | Unavailable | Supported (folder permission required) |
 | Manual backups, migration, and cloud sync for resonance and wardrobe | Supported | Supported |
 | Parse codes or uploaded original photos | Supported | Supported |
 | Game album folders and Recently Deleted | Unavailable | Folder authorization required |
@@ -138,7 +137,7 @@ Open Nikki Archive from the bottom navigation, then switch between Resonance rec
 
 ### First use and navigation
 
-Use desktop Chrome, Edge, or a compatible Chromium browser. Switch modules and filter from the sidebar; search from the header. View controls display, theme, language and background options; Tools opens parsers and utilities; More provides full-data backups and help. Optional Auto Backup writes incremental changes to a selected local folder.
+Use desktop Chrome, Edge, or a compatible Chromium browser. Switch modules and filter from the sidebar; search from the header. View controls display, theme, language and background options; Tools opens parsers and utilities; More provides full-data backups and help.
 
 #### Desktop · Install the web app
 
@@ -151,7 +150,7 @@ Open the site's Add to Home Screen entry for desktop browser installation instru
 
 ### Albums, photo decoding, and Recently Deleted
 
-Browse game photos by date or action, open large previews, save favorites, and inspect photo parameters.
+Browse game photos by date or action, open large previews, save favorites, and inspect photo parameters. On the All photos page, select Photo favorites to the right of Auto-parse actions. Select it again to return to all photos.
 
 <div align="center">
   <img src="img/screenshots/album-timeline.webp" alt="Photo timeline" width="49%">
@@ -273,7 +272,7 @@ Click a parsed item to view its details. When multiple forms are available, swit
 - Filter by code type or tag in the sidebar. Card actions provide Copy, Edit, and Delete; click the image for a large preview.
 - Page actions provide module ZIP import/export. Deleting a tag does not delete its schemes.
 
-### Camera parameters and favorites
+### Camera parameters
 
 <div align="center">
   <img src="img/screenshots/camera-favorites.webp" alt="Camera favorites" width="80%">
@@ -286,7 +285,7 @@ Click a parsed item to view its details. When multiple forms are available, swit
   <p><sub>Photo settings and outfit decoding: left · Side-by-side layout ｜ Right · Stacked layout</sub></p>
 </div>
 
-- Open Favorites → Camera parameters, add and parse a parameter code, then enter a name and save. Covers and tags are optional.
+- Open Camera parameters, add and parse a parameter code, then enter a name and save. Covers and tags are optional.
 - Parameters can also be saved directly from photo-parsing results. Card actions provide Copy, Edit, Details, and Delete; copied codes can be imported into the in-game camera.
 - On desktop, use the view button to the left of Save parameters to switch between stacked and side-by-side layouts when a photo contains outfit data. The initial layout is side-by-side; subsequent visits restore your last choice. The parameter code spans the bottom in split view. Mobile stays stacked without changing the desktop preference.
 - When an original game photo contains outfit data, worn parts and dye swatches appear below its camera parameters. Click a part for dye details. Standalone camera codes do not contain outfits. Newer photos may include weather, wind, zoom and pose playback progress where recorded.
@@ -402,17 +401,6 @@ Resonance and wardrobe share one cloud-sync dialog, accessible from either page.
 
 Unrecorded wardrobe pieces were absent from the notebook response; this does not mean they are unowned in the game. A resonance-only export cannot be imported as wardrobe data.
 
-### Automatic desktop backups
-
-<div align="center">
-  <img src="img/screenshots/directory-backup.webp" alt="Automatic backup folder and module controls" width="80%">
-  <p><sub>Desktop · Incremental backup and folder-based restore</sub></p>
-</div>
-
-Auto Backup is optional. Choose a local folder, then separately enable incremental backups for **outfit codes, home schemes and camera favorites**, or restore from that folder. Editing and importing remain available without enabling backups. Game album originals, resonance and wardrobe are not included.
-
-Pending, healthy and abnormal status indicators help monitor backups. Unexpected data loss can pause an affected module to protect previous backups; verify restored contents and module states, and keep separate manual ZIP backups.
-
 ## FAQ
 
 ### General questions
@@ -484,7 +472,7 @@ Both commands should print version numbers, which means installation succeeded. 
 
 If the launcher is unavailable, run `start\Start-Remote-D1-Website.bat`, or use the commands below. Resource updates require network access; failed updates keep the existing local resources.
 
-The local site connects to the online service for Likes, shared cloud accounts, and resonance/wardrobe cloud sync. These actions affect real online data. The default service is `https://nikkicube.sumopenny.workers.dev`.
+The local site connects to the online service for Likes, shared cloud accounts, and resonance/wardrobe cloud sync. These actions affect real online data. The default service is `https://nikkicube.cc.cd`.
 
 ### Development Commands
 
@@ -492,7 +480,7 @@ Run these commands in the project root:
 
 ```bash
 npm install                # Install dependencies
-set REMOTE_API_ORIGIN=https://nikkicube.sumopenny.workers.dev
+set REMOTE_API_ORIGIN=https://nikkicube.cc.cd
 npm run dev:remote         # Start locally with the online service
 npm test                   # Run automated tests
 npm run build              # Type-check and build

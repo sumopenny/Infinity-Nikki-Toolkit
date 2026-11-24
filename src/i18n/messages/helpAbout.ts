@@ -114,7 +114,7 @@ export const helpAboutZh: HelpAboutMessages = {
         '选择游戏原图。若提示填写 UID，请使用拍这张照片的游戏账号 UID。',
         '解析后可以收藏相机参数。',
         {
-          desktop: '已有参数码可从「参数与收藏 → 相机参数 → 添加收藏」直接添加。',
+          desktop: '已有参数码可从「相机参数 → 添加收藏」直接添加。',
           mobile: '已有参数码可在底部导航进入「相机参数」，点「+」直接添加。'
         }
       ]
@@ -135,8 +135,7 @@ export const helpAboutZh: HelpAboutMessages = {
       entry: '更多 → 数据备份',
       steps: [
         {
-          desktop:
-            '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。顶部「自动备份」可把搭配、家园和相机收藏备份到电脑文件夹。',
+          desktop: '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。',
           mobile: '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。'
         },
         {
@@ -259,7 +258,7 @@ export const helpAboutEn: HelpAboutMessages = {
         'Choose an original game photo. If asked for a UID, enter the game account UID used to take it.',
         'Save camera parameters from the results.',
         {
-          desktop: 'If you have a code, use Favorites → Camera parameters → Add favorite.',
+          desktop: 'If you have a code, use Camera parameters → Add favorite.',
           mobile: 'If you have a code, open Camera parameters in the bottom navigation and tap +.'
         }
       ]
@@ -282,7 +281,7 @@ export const helpAboutEn: HelpAboutMessages = {
       steps: [
         {
           desktop:
-            'Choose “Export all data”, then “Import all data” on the new device. Back up original game photos separately. Auto backup in the header can save outfits, home schemes, and camera favorites to a folder on your computer.',
+            'Choose “Export all data”, then “Import all data” on the new device. Back up original game photos separately.',
           mobile:
             'Use “Export all data” to save a backup, then choose “Import all data” on the new device. Back up original game photos separately.'
         },

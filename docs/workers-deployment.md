@@ -1,7 +1,7 @@
 # Workers 部署与验收
 
 `main` 用于日常更新及 Workers；`pages` 保留 Pages，不合并 main 的部署改动。
-正式工具集：https://nikkicube.sumopenny.workers.dev 。独立官网 https://nikki3.pages.dev 不变。
+正式工具集：https://nikkicube.cc.cd 。独立官网 https://nikki3.pages.dev 不变。
 
 ## Cloudflare 控制台
 
@@ -9,7 +9,7 @@
 2. 构建命令 `npm run build:cloudflare`；部署命令 `npx wrangler deploy`。仓库根目录的 `.node-version` 指定 Node 22，随迁移提交推送。
 3. 关闭非生产分支构建/预览。`preview_urls=false` 只关闭版本预览 URL，不能代替控制台的分支构建开关。
 4. Pages 项目生产分支改为 **pages**，预览分支排除 main；保留旧部署，不删除、不跳转。
-5. 确认账号的 workers.dev 子域名是 **sumopenny**，Worker 名是 **nikkicube**。
+5. 在 Worker **nikkicube** 的 Settings → Domains & Routes 中确认已绑定自定义域名 **nikkicube.cc.cd**。该域名也由 `wrangler.toml` 声明。
 
 ### 构建环境变量（Settings → Build）
 

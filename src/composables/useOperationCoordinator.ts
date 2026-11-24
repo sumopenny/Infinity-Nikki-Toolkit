@@ -25,7 +25,7 @@ export function createOperationCoordinator() {
     }
   }
   const hasPending = computed(() => pending.value.size > 0)
-  /** 目录恢复的迁移阶段等待独立模块写入完成，避免导入与迁移同时修改存档。 */
+  /** 迁移前等待独立模块写入完成，避免导入与迁移同时修改存档。 */
   function waitForPending(): Promise<void> {
     if (!hasPending.value) return Promise.resolve()
     return new Promise((resolve) => {

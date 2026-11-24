@@ -1,13 +1,5 @@
 import { annotateDiagnosticError } from '../errorReporting/errorReporter'
 import { isDatabaseConnectionLost, openDb } from './database'
-import {
-  announceBackupChange,
-  changedModules,
-  journalStores,
-  needsJournal,
-  prepareJournal
-} from '../directory-backup/changeJournal'
-import { withBusinessWrites } from '../directory-backup/coordination'
 
 export function databaseRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -23,11 +15,7 @@ export async function runDatabaseTransaction<T>(
   action: (tx: IDBTransaction) => Promise<T>
 ): Promise<T> {
   try {
-    return await (needsJournal(stores, mode)
-      ? withBusinessWrites(changedModules(stores), () =>
-          runTransactionAttempt(stores, mode, action)
-        )
-      : runTransactionAttempt(stores, mode, action))
+    return await runTransactionAttempt(stores, mode, action)
   } catch (error) {
     if (mode !== 'readonly' || !isDatabaseConnectionLost(error)) throw error
     return runTransactionAttempt(stores, mode, action)
@@ -48,11 +36,9 @@ async function runTransactionAttempt<T>(
     let result: T
     let failure: unknown
     try {
-      const tracked = needsJournal(stores, mode)
-      tx = db.transaction(tracked ? journalStores(stores) : stores, mode)
+      tx = db.transaction(stores, mode)
       tx.oncomplete = () => {
         db.close()
-        if (tracked) announceBackupChange()
         resolve(result)
       }
       tx.onabort = () => {
@@ -67,8 +53,7 @@ async function runTransactionAttempt<T>(
       tx.onerror = () => {
         /* onabort reports the final failure */
       }
-      const execution = tracked ? prepareJournal(tx).then(action) : action(tx)
-      execution
+      action(tx)
         .then((value) => {
           result = value
         })

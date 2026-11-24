@@ -187,10 +187,6 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
       date: '2026.11.04',
       items: [
         {
-          title: '新增电脑端自动备份功能。',
-          text: '为了更好地保护大家的数据，强烈建议电脑端用户开启自动备份！电脑端顶部新增「自动备份」入口，支持将搭配码、家园方案和相机参数收藏自动备份到指定的电脑本地文件夹，三个模块可自由选择开启。数据发生变化时会自动增量备份，也支持从备份目录恢复数据，有效降低浏览器数据意外丢失的风险。特别说明：自动备份的数据保存在你自己的电脑本地文件夹中，不会上传至云端。'
-        },
-        {
           title: '优化界面动画与显示效果。',
           text: '优化页面卡片、弹窗及部分交互动画，让界面切换更加自然流畅，操作反馈更加细腻，整体视觉体验更加舒适。'
         }
@@ -1082,10 +1078,6 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
       version: 'v2.5.1',
       date: '2026.11.04',
       items: [
-        {
-          title: 'New automatic backups on desktop.',
-          text: 'To better protect your data, we strongly recommend enabling automatic backups on desktop! A new Auto backup button at the top lets you save outfit codes, home schemes, and camera parameter favorites to a folder on your own computer. Enable each module separately. Changes are backed up incrementally, and you can restore data from the backup folder to reduce the risk of losing browser data. Important: automatic backups are stored locally on your computer and are not uploaded to the cloud.'
-        },
         {
           title: 'Improved interface animations and visuals.',
           text: 'Refined card, dialog, and interaction animations for smoother transitions, clearer feedback, and a more comfortable overall experience.'

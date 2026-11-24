@@ -1,4 +1,3 @@
-import { updateConfig, dirtyChanges } from '../../src/utils/directory-backup/repository'
 // @vitest-environment node
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -68,6 +67,36 @@ it('upgrades version 6 without replacing existing stores or records', async () =
     code: 'CODE1',
     image: null
   })
+})
+
+it('removes obsolete version 10 stores and preserves user records', async () => {
+  const retiredStores = [
+    'directory-backup-dirty',
+    'directory-backup-settings',
+    'directory-backup-restore'
+  ]
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 10)
+    request.onupgradeneeded = () => {
+      for (const store of retiredStores) request.result.createObjectStore(store).put('old', 'test')
+      request.result.createObjectStore(HOME_SCHEMES_STORE, { keyPath: 'id' }).put({
+        id: 'saved',
+        code: 'KEEP'
+      })
+    }
+    request.onsuccess = () => {
+      request.result.close()
+      resolve()
+    }
+    request.onerror = () => reject(request.error)
+  })
+  const db = await openDb()
+  const remainingStores = [...db.objectStoreNames]
+  db.close()
+  expect(remainingStores.filter((store) => retiredStores.includes(store))).toEqual([])
+  expect(
+    await runStoreRequest(HOME_SCHEMES_STORE, 'readonly', (store) => store.get('saved'))
+  ).toEqual({ id: 'saved', code: 'KEEP' })
 })
 
 it('enforces global unique codes across concurrent writers', async () => {
@@ -176,25 +205,17 @@ it('merges concurrent tag additions and keeps unused tags', async () => {
   expect((await readHomeSchemeSnapshot()).tags).toHaveLength(3)
 })
 
-it('deletes a selected batch and its images in one transaction with confirmed backup intent', async () => {
-  await updateConfig((current) => {
-    current.enabled.home = true
-  })
+it('deletes a selected batch and its images in one transaction', async () => {
   const first = await saveHomeScheme({ ...input('FIRST'), tags: [], imageFile: image() })
   const second = await saveHomeScheme({ ...input('SECOND'), tags: [], imageFile: image() })
   const keep = await saveHomeScheme({ ...input('KEEP'), tags: [], imageFile: image() })
   const transactions = vi.spyOn(IDBDatabase.prototype, 'transaction')
-  await deleteHomeSchemes([first, second, first], true)
+  await deleteHomeSchemes([first, second, first])
   expect(transactions).toHaveBeenCalledTimes(1)
   transactions.mockRestore()
   const remaining = await readHomeSchemeSnapshot()
   expect(remaining.records.map((record) => record.id)).toEqual([keep.id])
   expect([...remaining.images.keys()]).toEqual([keep.id])
-  const changes = await dirtyChanges('home')
-  for (const item of [first, second])
-    expect(
-      changes.find((change) => change.key[1] === 'record' && change.key[2] === item.id)?.intent
-    ).toBe('confirmed-delete')
 })
 
 it('rolls the whole home deletion batch back if a later record cannot be deleted', async () => {
@@ -210,7 +231,7 @@ it('rolls the whole home deletion batch back if a later record cannot be deleted
     return original.call(this, key)
   })
   try {
-    await expect(deleteHomeSchemes([first, second], true)).rejects.toThrow('batch deletion failed')
+    await expect(deleteHomeSchemes([first, second])).rejects.toThrow('batch deletion failed')
   } finally {
     deletion.mockRestore()
   }

@@ -213,7 +213,7 @@
 @media (min-width: 900px) {
   :root[data-surface-style='frosted']
     .app-header
-    :is(.view-menu-button, .tools-menu-button, .more-menu-button, .auto-backup-button):is(
+    :is(.view-menu-button, .tools-menu-button, .more-menu-button):is(
       :hover,
       [aria-expanded='true']
     ):not(:disabled) {

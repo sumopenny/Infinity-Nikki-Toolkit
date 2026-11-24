@@ -25,7 +25,7 @@ describe('album view controls', () => {
       '搭配码4 张',
       '家园方案5 个方案',
       '共鸣',
-      '参数与收藏3 张',
+      '相机参数3 张',
       '最近删除2 张'
     ])
     await wrapper.findAll('button')[5].trigger('click')

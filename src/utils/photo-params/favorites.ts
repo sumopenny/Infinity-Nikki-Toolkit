@@ -4,7 +4,6 @@ import {
   CAMERA_COVERS_STORE as COVERS,
   CAMERA_TAGS_STORE as TAGS
 } from '../file-system/database'
-import { markConfirmedDeletion, markCursorUpdate } from '../directory-backup/changeJournal'
 import { runDatabaseTransaction } from '../file-system/transaction'
 import type { PhotoParamsResult } from './types'
 import { sha256Hex } from '../sha256'
@@ -181,9 +180,8 @@ export async function saveCameraFavorite(
   })
 }
 
-export async function deleteCameraFavorite(id: string, confirmed = false): Promise<void> {
+export async function deleteCameraFavorite(id: string): Promise<void> {
   await transact<void>('readwrite', (records, covers, done) => {
-    if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
     records.delete(id)
     covers.delete(id)
     done()
@@ -338,9 +336,8 @@ export async function applyCameraImport(
   })
 }
 
-export async function clearCameraFavorites(confirmed = false): Promise<void> {
+export async function clearCameraFavorites(): Promise<void> {
   await transact<void>('readwrite', (records, covers, done, tags) => {
-    if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
     records.clear()
     covers.clear()
     tags.put([], 'order')
@@ -349,9 +346,8 @@ export async function clearCameraFavorites(confirmed = false): Promise<void> {
 }
 
 /** 一次事务删除选中记录及其独立封面，不触碰来源照片。 */
-export async function deleteCameraFavorites(ids: string[], confirmed = false): Promise<void> {
+export async function deleteCameraFavorites(ids: string[]): Promise<void> {
   await transact<void>('readwrite', (records, covers, done) => {
-    if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
     for (const id of new Set(ids)) {
       records.delete(id)
       covers.delete(id)
@@ -379,7 +375,6 @@ export async function deleteCameraFavoriteTag(tag: string): Promise<void> {
       const record = cursor.value as CameraFavorite
       if (record.tag === tag) {
         cursor.update({ ...record, tag: '', updatedAt: new Date().toISOString() })
-        markCursorUpdate(records.transaction, 'camera', record.id)
       }
       cursor.continue()
     }

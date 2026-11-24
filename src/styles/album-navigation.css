@@ -486,7 +486,7 @@
 }
 
 .without-album .album-content {
-  /* 沿用普通内容区间距，使收藏标签栏对齐；空状态在剩余空间居中。 */
+  /* 沿用普通内容区间距，使页面工具栏对齐；空状态在剩余空间居中。 */
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 64px);
@@ -731,6 +731,7 @@
 /* The mobile header is horizontally scrollable; keep this control's upward tooltip
    outside that scroll clipping region. */
 .outfit-header-actions.photo-header-actions {
+  flex-wrap: wrap;
   overflow: visible !important;
 }
 
@@ -1126,7 +1127,6 @@
     background: rgba(52.44, 44.88, 48.64, 1);
   }
 }
-.favorites-view-switch small,
 .favorites-tabs small {
   font-size: 11px;
 }

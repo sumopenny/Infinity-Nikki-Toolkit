@@ -76,7 +76,7 @@ function getRemoteApiOrigin(mode: string): string | undefined {
   const rawOrigin = loadEnv(mode, process.cwd(), '').REMOTE_API_ORIGIN?.trim()
   if (!rawOrigin) {
     throw new Error(
-      'remote mode requires REMOTE_API_ORIGIN, for example https://example.workers.dev'
+      'remote mode requires REMOTE_API_ORIGIN, for example https://nikkicube.cc.cd'
     )
   }
 
