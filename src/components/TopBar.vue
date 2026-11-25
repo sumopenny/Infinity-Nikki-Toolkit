@@ -47,6 +47,8 @@ import type { AlbumView } from './AlbumViewSwitcher.vue'
 import { archiveBackgrounds, useArchiveBackground } from '../composables/useArchiveBackground'
 import LikeCounter from './LikeCounter.vue'
 import DesktopInstallDialog from './DesktopInstallDialog.vue'
+import GameAlbumProfileCard from './GameAlbumProfileCard.vue'
+import type { GameAlbumProfile } from '../composables/useGameAlbumProfiles'
 // 收款码图片，通过 Vite 打包以保证构建后路径正确
 import wxQrCode from '../../img/wx.jpg'
 import zfbQrCode from '../../img/zfb.jpg'
@@ -71,7 +73,7 @@ const props = defineProps<{
   isDeleting: boolean
   hasAlbumDirectory: boolean
   gameAlbumUid?: string
-  gameAlbumNickname?: string
+  gameAlbumProfile?: GameAlbumProfile
   canRestoreDirectory?: boolean
   gameDirectoryActionLabel?: string
   thumbnailMode: ThumbnailMode
@@ -582,7 +584,7 @@ function openDonate() {
           <FolderOpen :size="16" aria-hidden="true" />
           <span>{{
             gameAlbumUid
-              ? gameAlbumNickname || `UID ${gameAlbumUid}`
+              ? gameAlbumProfile?.nickname || gameAlbumMessages[language].account(gameAlbumUid)
               : hasAlbumDirectory
                 ? directoryName
                 : messages.currentAlbum
@@ -607,57 +609,66 @@ function openDonate() {
               @pointerenter="cancelMenuClose"
               @pointerleave="leaveMenu"
               tabindex="-1"
-              :aria-label="messages.more"
-              class="header-dropdown"
+              class="header-dropdown album-dropdown"
+              :class="{ 'album-dropdown-with-profile': gameAlbumUid }"
               :style="menuStyle"
-              role="menu"
             >
-              <button
-                v-if="canRestoreDirectory"
-                type="button"
-                role="menuitem"
-                :disabled="isBusy"
-                @click="runMenuAction(() => emit('restoreDirectoryAccess'))"
-              >
-                <RotateCcw :size="16" />
-                <span>{{ gameAlbumMessages[language].restore }}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                :disabled="isBusy"
-                @click="runMenuAction(() => emit('chooseGameDirectory'))"
-              >
-                <FolderOpen :size="16" />
-                <span>{{ gameDirectoryActionLabel ?? gameAlbumMessages[language].authorize }}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                :disabled="isBusy"
-                @click="runMenuAction(() => emit('chooseDirectory'))"
-              >
-                <FolderOpen :size="16" />
-                <span>{{ messages.chooseDirectory }}</span>
-              </button>
-              <button
-                v-if="compatibleLabel"
-                type="button"
-                role="menuitem"
-                :disabled="isBusy"
-                @click="runMenuAction(() => emit('chooseCompatible'))"
-              >
-                <FolderOpen :size="16" /><span>{{ compatibleLabel }}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                :disabled="(!hasAlbumDirectory && !canRestoreDirectory) || isBusy"
-                @click="runMenuAction(() => emit('clearDirectory'))"
-              >
-                <Trash2 :size="16" />
-                <span>{{ messages.clearDirectory }}</span>
-              </button>
+              <GameAlbumProfileCard
+                v-if="gameAlbumUid"
+                :uid="gameAlbumUid"
+                :profile="gameAlbumProfile"
+                :language="language"
+              />
+              <div role="menu" :aria-label="messages.albumMenuAria">
+                <button
+                  v-if="canRestoreDirectory"
+                  type="button"
+                  role="menuitem"
+                  :disabled="isBusy"
+                  @click="runMenuAction(() => emit('restoreDirectoryAccess'))"
+                >
+                  <RotateCcw :size="16" />
+                  <span>{{ gameAlbumMessages[language].restore }}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  :disabled="isBusy"
+                  @click="runMenuAction(() => emit('chooseGameDirectory'))"
+                >
+                  <FolderOpen :size="16" />
+                  <span>{{
+                    gameDirectoryActionLabel ?? gameAlbumMessages[language].authorize
+                  }}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  :disabled="isBusy"
+                  @click="runMenuAction(() => emit('chooseDirectory'))"
+                >
+                  <FolderOpen :size="16" />
+                  <span>{{ messages.chooseDirectory }}</span>
+                </button>
+                <button
+                  v-if="compatibleLabel"
+                  type="button"
+                  role="menuitem"
+                  :disabled="isBusy"
+                  @click="runMenuAction(() => emit('chooseCompatible'))"
+                >
+                  <FolderOpen :size="16" /><span>{{ compatibleLabel }}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  :disabled="(!hasAlbumDirectory && !canRestoreDirectory) || isBusy"
+                  @click="runMenuAction(() => emit('clearDirectory'))"
+                >
+                  <Trash2 :size="16" />
+                  <span>{{ messages.clearDirectory }}</span>
+                </button>
+              </div>
             </div>
           </Transition>
         </Teleport>

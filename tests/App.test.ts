@@ -76,16 +76,24 @@ vi.mock('../src/utils/file-system/directoryStorage', async (importOriginal) => {
   }
 })
 
-vi.mock('../src/composables/useGameAlbumNicknames', async () => {
+vi.mock('../src/composables/useGameAlbumProfiles', async () => {
   const { reactive } = await import('vue')
   return {
-    useGameAlbumNicknames() {
-      const nicknames = reactive(new Map<string, string>())
+    useGameAlbumProfiles() {
+      const profiles = reactive(new Map())
       return {
-        nicknames,
-        loadNickname: async (uid: string) => {
+        profiles,
+        loadProfile: async (uid: string) => {
           await Promise.resolve()
-          if (uid === '100128456') nicknames.set(uid, '相册昵称')
+          if (uid === '100128456') {
+            profiles.set(uid, {
+              nickname: '相册昵称',
+              avatarUrl: 'https://images.example.test/avatar.png',
+              level: 99,
+              createdAt: '2024-12-05T02:46:05Z',
+              updatedAt: '2026-11-24T14:00:31Z'
+            })
+          }
         }
       }
     }
@@ -284,8 +292,24 @@ describe('App lifecycle coordination', () => {
         { value: secondUid, label: `UID ${secondUid}` }
       ])
       expect(topBar.props('gameAlbumUid')).toBe(firstUid)
-      expect(topBar.props('gameAlbumNickname')).toBe('相册昵称')
+      expect(topBar.props('gameAlbumProfile')?.nickname).toBe('相册昵称')
       expect(topBar.get('.album-name-button').text()).toBe('相册昵称')
+      await topBar.get('.album-name-button').trigger('click')
+      const profileCard = topBar.get('.album-profile')
+      const avatar = profileCard.get('img')
+      expect(avatar.attributes('src')).toBe('https://images.example.test/avatar.png')
+      expect(profileCard.get('.album-profile-name .album-profile-level').text()).toBe('99级')
+      expect(profileCard.findAll('.album-profile-times dt').map((item) => item.text())).toEqual([
+        '角色创建时间',
+        '更新时间'
+      ])
+      expect(profileCard.findAll('time').map((item) => item.text())).toEqual([
+        '2024-12-05 10:46',
+        '2026-11-24 22:00'
+      ])
+      await avatar.trigger('error')
+      expect(profileCard.find('img').exists()).toBe(false)
+      await topBar.get('.album-name-button').trigger('click')
       expect(saveGameAlbumDirectory).toHaveBeenLastCalledWith(root, albums[firstUid], firstUid)
       expect(listRecentlyDeletedMock).toHaveBeenLastCalledWith(albums[firstUid], undefined)
 
@@ -309,9 +333,13 @@ describe('App lifecycle coordination', () => {
       await flushPromises()
       expect(dialog.props('visible')).toBe(false)
       expect(topBar.props('gameAlbumUid')).toBe(secondUid)
-      expect(topBar.props('gameAlbumNickname')).toBeUndefined()
+      expect(topBar.props('gameAlbumProfile')).toBeUndefined()
       expect(accountTrigger.text()).toBe(`UID ${secondUid}`)
       expect(topBar.get('.album-name-button').text()).toBe(`UID ${secondUid}`)
+      await topBar.get('.album-name-button').trigger('click')
+      expect(topBar.get('.album-profile-name').text()).toBe(`UID ${secondUid}`)
+      expect(topBar.find('.album-profile-level').exists()).toBe(false)
+      expect(topBar.get('.album-profile-times > div:last-child dd').text()).toBe('暂无数据')
       expect(saveGameAlbumDirectory).toHaveBeenLastCalledWith(root, albums[secondUid], secondUid)
       expect(listRecentlyDeletedMock).toHaveBeenLastCalledWith(albums[secondUid], undefined)
       expect(picker).toHaveBeenCalledTimes(2)

@@ -341,6 +341,12 @@
   left: 50%;
 }
 
+.album-dropdown-with-profile {
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 24px));
+  overflow-y: auto;
+}
+
 .header-dropdown.more-menu-panel {
   display: flex;
   flex-direction: column;

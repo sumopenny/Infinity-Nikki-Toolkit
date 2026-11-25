@@ -171,6 +171,8 @@ Click **Authorize X6Game** and select the `X6Game` folder in your game installat
 
 Toolkit looks for high-quality albums under `Saved\GamePlayPhotos` and opens the first account in UID order. If there are several accounts, use **Switch account** next to **All photos**. Use the current album menu to choose another X6Game folder. Outfit codes and cleanup reuse the same access. To browse photos stored elsewhere, select **Open a separate album**.
 
+The top-right album menu shows the current character’s nickname, avatar, level, and the **Character created** and **Last updated** timestamps. The UID identifies the album if the profile cannot be loaded.
+
 #### Compatibility open (read-only)
 
 If normal authorization cannot open your game album, choose **Compatibility open (read-only)** from the current album menu or empty album page, then select the folder directly containing the photos. Files are read locally for this session, without uploading photos or changing the source folder.

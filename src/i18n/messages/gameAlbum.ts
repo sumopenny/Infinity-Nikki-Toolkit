@@ -17,6 +17,11 @@ export const gameAlbumMessages = {
     missingAccount: '该账号的高画质相册已找不到。可切换到其他可用账号，或重新选择X6Game。',
     account,
     switchAccount: '切换账号',
+    profile: '当前相册角色',
+    profileLevel: (level: number) => `${level}级`,
+    profileCreatedAt: '角色创建时间',
+    profileUpdatedAt: '更新时间',
+    profileUnknown: '暂无数据',
     pickerAborted: '未打开 X6Game。如选择器无法访问此目录，可以用只读兼容模式打开相册。',
     restoreFailed: '未恢复上次授权。可以重试或重新选择目录。',
     changeViaAlbum: '请从当前相册菜单「重新选择X6Game」，同时更新游戏相册和工具的目录。'
@@ -38,6 +43,11 @@ export const gameAlbumMessages = {
       'This high-quality album is missing. Switch to an available account or choose another X6Game folder.',
     account,
     switchAccount: 'Switch account',
+    profile: 'Current album character',
+    profileLevel: (level: number) => `Level ${level}`,
+    profileCreatedAt: 'Character created',
+    profileUpdatedAt: 'Last updated',
+    profileUnknown: 'Unavailable',
     pickerAborted:
       'X6Game was not opened. If the picker cannot access this folder, try read-only compatibility mode.',
     restoreFailed: 'Access was not restored. Try again or choose another folder.',

@@ -39,7 +39,7 @@ import { exportCompatiblePhotos } from './utils/file-system/compatiblePhotoExpor
 import { requestBlobDownload } from './utils/backup/downloadFallback'
 import { compatibleAlbumMessages, ALBUM_ACCESS_MODE_KEY } from './i18n/messages/compatibleAlbum'
 import { gameAlbumMessages } from './i18n/messages/gameAlbum'
-import { useGameAlbumNicknames } from './composables/useGameAlbumNicknames'
+import { useGameAlbumProfiles } from './composables/useGameAlbumProfiles'
 
 import {
   reportError as captureDiagnosticError,
@@ -403,21 +403,20 @@ const hasX6GameAuthorization = computed(() => Boolean(authorizedGameDirectory.va
 const directoryState = ref<DirectoryState>({ type: 'none' })
 const gameAlbum = shallowRef<GameAlbumBinding | null>(null)
 const gameAlbumText = computed(() => gameAlbumMessages[language.value])
-const { nicknames: gameAlbumNicknames, loadNickname: loadGameAlbumNickname } =
-  useGameAlbumNicknames()
-const gameAlbumNickname = computed(() =>
-  gameAlbum.value ? (gameAlbumNicknames.get(gameAlbum.value.uid) ?? undefined) : undefined
+const { profiles: gameAlbumProfiles, loadProfile: loadGameAlbumProfile } = useGameAlbumProfiles()
+const gameAlbumProfile = computed(() =>
+  gameAlbum.value ? (gameAlbumProfiles.get(gameAlbum.value.uid) ?? undefined) : undefined
 )
 const gameAccountOptions = computed(() =>
   (gameAlbum.value?.accountUids ?? []).map((uid) => ({
     value: uid,
-    label: gameAlbumText.value.account(uid, gameAlbumNicknames.get(uid))
+    label: gameAlbumText.value.account(uid, gameAlbumProfiles.get(uid)?.nickname)
   }))
 )
 watch(
   () => gameAlbum.value?.accountUids,
   (uids) => {
-    uids?.forEach(loadGameAlbumNickname)
+    uids?.forEach(loadGameAlbumProfile)
   }
 )
 const {
@@ -2220,7 +2219,7 @@ function importAllDataFromMenu() {
       :is-deleting="isDeleting || isTrashBusy"
       :has-album-directory="hasAlbum"
       :game-album-uid="gameAlbum?.uid"
-      :game-album-nickname="gameAlbumNickname"
+      :game-album-profile="gameAlbumProfile"
       :can-restore-directory="canRestoreDirectory && !isCompatibleAlbum"
       :game-directory-action-label="gameDirectoryActionLabel"
       :thumbnail-mode="displayedThumbnailMode"
@@ -2688,7 +2687,9 @@ function importAllDataFromMenu() {
                 <DialogChoiceMenu
                   :model-value="gameAlbum.uid"
                   :label="gameAlbumText.switchAccount"
-                  :trigger-label="gameAlbumNickname || gameAlbumText.account(gameAlbum.uid)"
+                  :trigger-label="
+                    gameAlbumProfile?.nickname || gameAlbumText.account(gameAlbum.uid)
+                  "
                   :options="gameAccountOptions"
                   :disabled="isAnyFileOperationBusy"
                   @update:model-value="switchGameAccount"
