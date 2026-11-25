@@ -68,11 +68,16 @@ export { saveAlbumDirectoryHandle, getSavedAlbumDirectoryHandle, clearSavedAlbum
  */
 export async function readAlbumDirectory(
   directoryHandle: FileSystemDirectoryHandle,
-  options: { requestPermission?: boolean; messages: FileSystemMessages }
+  options: {
+    requestPermission?: boolean
+    messages: FileSystemMessages
+    onQueryTimeout?: () => void
+  }
 ): Promise<AlbumDirectoryResult> {
   const hasPermission = await ensureReadWritePermission(
     directoryHandle,
-    options.requestPermission ?? true
+    options.requestPermission ?? true,
+    options.onQueryTimeout
   )
   if (!hasPermission) {
     throw createDirectoryError('permission-denied', options.messages)

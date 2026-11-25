@@ -1,5 +1,6 @@
 import { reportError } from '../utils/errorReporting/errorReporter'
 import { DirectoryAccessError } from '../utils/file-system/directoryErrors'
+import { ensureReadWritePermission } from '../utils/file-system/directoryPermission'
 import { readLocalStorage } from '../utils/localStorage'
 import { ALBUM_ACCESS_MODE_KEY, compatibleAlbumMessages } from '../i18n/messages/compatibleAlbum'
 import type { Ref, ComputedRef } from 'vue'
@@ -44,9 +45,18 @@ export function useDirectorySession(options: DirectorySessionOptions) {
     replaceAlbum,
     createErrorStatus
   } = options
+  let skipSavedAlbumRestore = false
+  function showPermissionTimeout() {
+    publishStatus({
+      type: 'custom',
+      message: locale.value.fileSystem.permissionQueryTimeout,
+      tone: 'info'
+    })
+  }
   /** 恢复浏览器记住的相册目录。参数：无。 */
   async function restoreSavedDirectory() {
     activeOperation.value = 'loading'
+    let queryTimedOut = false
     try {
       if (readLocalStorage(ALBUM_ACCESS_MODE_KEY) === 'compatible') {
         publishStatus({
@@ -61,11 +71,16 @@ export function useDirectorySession(options: DirectorySessionOptions) {
       directoryState.value = { type: 'remembered', name: savedHandle.name }
       const result = await readAlbumDirectory(savedHandle, {
         requestPermission: false,
-        messages: locale.value.fileSystem
+        messages: locale.value.fileSystem,
+        onQueryTimeout: () => {
+          queryTimedOut = true
+          skipSavedAlbumRestore = true
+        }
       })
       await replaceAlbum(result, { type: 'initial' }, { preserveView: true })
     } catch (error) {
-      publishStatus(createErrorStatus(error, { type: 'restoreFailed' }))
+      if (queryTimedOut) showPermissionTimeout()
+      else publishStatus(createErrorStatus(error, { type: 'restoreFailed' }))
     } finally {
       if (activeOperation.value === 'loading') activeOperation.value = null
     }
@@ -76,10 +91,11 @@ export function useDirectorySession(options: DirectorySessionOptions) {
     try {
       const savedHandle = await getSavedX6GameDirectoryHandle()
       if (!savedHandle || savedHandle.name !== 'X6Game') return
-      const permission = savedHandle.queryPermission
-        ? await savedHandle.queryPermission({ mode: 'readwrite' })
-        : 'granted'
-      hasX6GameAuthorization.value = permission === 'granted'
+      hasX6GameAuthorization.value = await ensureReadWritePermission(
+        savedHandle,
+        false,
+        showPermissionTimeout
+      )
     } catch {
       hasX6GameAuthorization.value = false
     }
@@ -91,7 +107,8 @@ export function useDirectorySession(options: DirectorySessionOptions) {
     activeOperation.value = 'loading'
     publishStatus({ type: 'reading' })
     try {
-      const savedHandle = await getSavedAlbumDirectoryHandle()
+      // 超时后直接进入选择器，不再触碰失效句柄，也不提前丢失点击的用户激活。
+      const savedHandle = skipSavedAlbumRestore ? null : await getSavedAlbumDirectoryHandle()
       if (savedHandle && !photos.value.length) {
         try {
           const restored = await readAlbumDirectory(savedHandle, {
@@ -118,6 +135,7 @@ export function useDirectorySession(options: DirectorySessionOptions) {
         prefix: 'read',
         suffix: 'remembered'
       })
+      skipSavedAlbumRestore = false
     } catch (error) {
       publishStatus(createErrorStatus(error, { type: 'readFailed' }))
     } finally {

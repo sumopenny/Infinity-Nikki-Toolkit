@@ -374,6 +374,7 @@ export interface FullLocaleMessages {
     systemDirectory: string
     abortSelection: string
     permissionRequired: string
+    permissionQueryTimeout: string
     unsupportedBrowser: string
     mobileBrowserUnsupported: string
     invalidX6GameDirectory: string
