@@ -52,7 +52,7 @@ interface BackupManifest {
   exportedAt: string
   tags: string[]
   outfits: Array<OutfitRecord>
-  ignoredCodes: string[]
+  ignoredCodes?: string[]
 }
 export async function exportOutfitBackup(
   download?: BackupDownload
@@ -297,13 +297,14 @@ async function inspectBackup(file: File) {
   if (
     !manifest ||
     manifest.format !== BACKUP_FORMAT ||
-    manifest.version !== BACKUP_VERSION ||
+    ![1, 2, 3, BACKUP_VERSION].includes(manifest.version) ||
     !Array.isArray(manifest.outfits) ||
     !Array.isArray(manifest.tags)
   )
     throw new Error('Unsupported backup format')
   for (const raw of manifest.outfits) {
-    if (raw?.image === '' && normalizeOutfitCode(raw.code)) continue
+    if (manifest.version === BACKUP_VERSION && raw?.image === '' && normalizeOutfitCode(raw.code))
+      continue
     if (
       !raw ||
       typeof raw !== 'object' ||
@@ -314,6 +315,9 @@ async function inspectBackup(file: File) {
       throw new Error('Backup contains invalid outfit metadata')
     if (!images.has(raw.image)) throw new Error('Backup is missing an outfit image')
   }
+  // v1 predates persistent ignores. Default only the absent legacy field;
+  // malformed fields and missing v2+ fields must still fail validation.
+  if (manifest.version === 1 && manifest.ignoredCodes === undefined) manifest.ignoredCodes = []
   if (
     !Array.isArray(manifest.ignoredCodes) ||
     manifest.ignoredCodes.some(
@@ -389,7 +393,7 @@ async function importBackup(
         tags.push(tag)
       }
       tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
-      for (const code of manifest.ignoredCodes) {
+      for (const code of manifest.ignoredCodes ?? []) {
         const normalized = normalizeOutfitCode(code)
         if (!(await outfitRequest(tx.objectStore(OUTFITS_STORE).index('code').get(normalized))))
           tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put({ code: normalized })

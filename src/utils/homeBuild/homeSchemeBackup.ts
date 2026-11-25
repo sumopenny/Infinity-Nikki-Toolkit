@@ -214,7 +214,7 @@ function parseManifest(entries: Map<string, Uint8Array>): BackupManifest {
   if (
     manifest.format !== BACKUP_FORMAT ||
     typeof manifest.version !== 'number' ||
-    manifest.version !== BACKUP_VERSION ||
+    ![1, BACKUP_VERSION].includes(manifest.version) ||
     !Array.isArray(manifest.homeSchemes) ||
     !Array.isArray(manifest.tags)
   )

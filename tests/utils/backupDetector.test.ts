@@ -13,8 +13,13 @@ const zip = (files: Record<string, Uint8Array>) =>
 const manifest = (format: string, version: number) => strToU8(JSON.stringify({ format, version }))
 
 it.each([
+  ['all', 'backup.json', 'infinity-nikki-all-data-backup', 1],
   ['all', 'backup.json', 'infinity-nikki-all-data-backup', 2],
+  ['outfits', 'manifest.json', 'infinity-nikki-outfit-backup', 1],
+  ['outfits', 'manifest.json', 'infinity-nikki-outfit-backup', 2],
+  ['outfits', 'manifest.json', 'infinity-nikki-outfit-backup', 3],
   ['outfits', 'manifest.json', 'infinity-nikki-outfit-backup', 4],
+  ['home', 'manifest.json', 'infinity-nikki-home-scheme-backup', 1],
   ['home', 'manifest.json', 'infinity-nikki-home-scheme-backup', 2],
   ['camera', 'favorites.json', 'nikki-camera-favorites', 2]
 ] as const)(

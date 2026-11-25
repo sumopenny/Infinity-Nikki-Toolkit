@@ -1,6 +1,8 @@
 import { useLegacyJsonClone } from '../helpers/legacyJsonClone'
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
+import { readFile } from 'node:fs/promises'
+import { assertBackupKind } from '../../src/utils/backup/backupDetector'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { setupOutfitDatabaseTests, resetOutfitDatabase, webp } from '../helpers/outfitDatabase'
 import { createEmptyHomeSchemeMetadata } from '../helpers/homeSchemeMetadata'
@@ -128,6 +130,181 @@ async function repack(
   }
   return new File([zipSync(files)], 'changed.zip')
 }
+
+// Historical exporters: total v1 has no wardrobe; outfit v1 has no ignores;
+// home v1 uses WebP or no image. Keep the outer checksums valid when constructing fixtures.
+async function legacyBundle(
+  file: File,
+  totalVersion: number,
+  outfitVersion: number,
+  homeVersion: number
+) {
+  return repack(
+    file,
+    (files) => {
+      const manifest = JSON.parse(strFromU8(files['backup.json']))
+      manifest.version = totalVersion
+      if (totalVersion === 1) {
+        delete files['wardrobe/1.json']
+        manifest.entries = manifest.entries.filter(
+          (entry: { module: string }) => entry.module !== 'wardrobe'
+        )
+      }
+      for (const [path, bytes] of Object.entries(files)) {
+        if (!/^(outfits|home)\//.test(path)) continue
+        const nested = unzipSync(bytes)
+        const inner = JSON.parse(strFromU8(nested['manifest.json']))
+        inner.version = path.startsWith('outfits/') ? outfitVersion : homeVersion
+        if (path.startsWith('outfits/') && outfitVersion === 1) delete inner.ignoredCodes
+        nested['manifest.json'] = strToU8(JSON.stringify(inner))
+        nested['images/'] = new Uint8Array()
+        files[path] = zipSync(nested, { level: 6 })
+      }
+      files['backup.json'] = strToU8(JSON.stringify(manifest))
+    },
+    true
+  )
+}
+
+it.each(
+  [1, 2].flatMap((total) =>
+    [1, 2, 3, 4].flatMap((outfit) => [1, 2].map((home) => [total, outfit, home]))
+  )
+)(
+  'restores all modules for total v%s / outfit v%s / home v%s and safely imports again',
+  async (totalVersion, outfitVersion, homeVersion) => {
+    await seed()
+    await saveHomeScheme({
+      code: 'NOIMAGE',
+      name: '无图',
+      schemeType: 'combo',
+      tags: [],
+      note: '',
+      metadata: createEmptyHomeSchemeMetadata()
+    })
+    const file = await legacyBundle(await exported(), totalVersion, outfitVersion, homeVersion)
+    await resetOutfitDatabase()
+    await assertBackupKind(file, 'all')
+    const plan = await prepareAllDataBackup(file)
+    expect((await readOutfitSnapshot()).records).toHaveLength(0)
+    const result = await applyAllDataBackup(plan, async () => ({}))
+    expect(result).toHaveLength(totalVersion === 1 ? 4 : 5)
+    expect(result?.every((row) => !row.error && !row.failed)).toBe(true)
+    const outfits = await readOutfitSnapshot()
+    expect(outfits.records).toHaveLength(1)
+    expect(outfits.images.size).toBe(1)
+    expect(outfits.ignoredCodes).toEqual(outfitVersion === 1 ? [] : ['IGNORED'])
+    const home = await readHomeSchemeSnapshot()
+    expect(home.records).toHaveLength(2)
+    expect(home.images.size).toBe(1)
+    expect(home.tags).toContain('庭院')
+    expect((await readCameraFavorites()).covers.size).toBe(1)
+    expect(await loadResonanceRecords()).toHaveLength(1)
+    expect(Object.keys((await loadWardrobe()).entries)).toHaveLength(totalVersion === 1 ? 0 : 1)
+    const again = await applyAllDataBackup(await prepareAllDataBackup(file), async () => ({}))
+    expect(again?.every((row) => !row.error && !row.failed)).toBe(true)
+    expect(again?.find((row) => row.module === 'outfits')).toMatchObject({ saved: 0, skipped: 1 })
+    expect(again?.find((row) => row.module === 'home')).toMatchObject({ saved: 0, skipped: 2 })
+  }
+)
+
+it('restores the earliest optional fields and mixed historical module parts', async () => {
+  await seed()
+  const original = await legacyBundle(await exported(), 1, 1, 1)
+  const file = await repack(
+    original,
+    (files) => {
+      const outfits = unzipSync(files['outfits/1.zip'])
+      const outfitManifest = JSON.parse(strFromU8(outfits['manifest.json']))
+      // The original directory-backed exporter omitted record version/updatedAt;
+      // note was optional, and ignoredCodes did not exist until ZIP v2.
+      for (const record of outfitManifest.outfits) {
+        delete record.version
+        delete record.updatedAt
+        delete record.note
+      }
+      outfits['manifest.json'] = strToU8(JSON.stringify(outfitManifest))
+      files['outfits/1.zip'] = zipSync(outfits, { level: 0 })
+      files['outfits/2.zip'] = zipSync({
+        'manifest.json': strToU8(
+          JSON.stringify({
+            format: 'infinity-nikki-outfit-backup',
+            version: 4,
+            tags: [],
+            ignoredCodes: [],
+            outfits: [
+              {
+                id: 'code-only',
+                image: '',
+                code: 'ONLYCODE',
+                tags: [],
+                note: '',
+                createdAt: '2026-01-01T00:00:00.000Z'
+              }
+            ]
+          })
+        )
+      })
+      const home = unzipSync(files['home/1.zip'])
+      const homeManifest = JSON.parse(strFromU8(home['manifest.json']))
+      for (const record of homeManifest.homeSchemes) delete record.metadata
+      home['manifest.json'] = strToU8(JSON.stringify(homeManifest))
+      files['home/1.zip'] = zipSync(home)
+      const manifest = JSON.parse(strFromU8(files['backup.json']))
+      manifest.entries.push({ module: 'outfits', path: 'outfits/2.zip' })
+      files['backup.json'] = strToU8(JSON.stringify(manifest))
+    },
+    true
+  )
+  await resetOutfitDatabase()
+  await assertBackupKind(file, 'all')
+  const results = await applyAllDataBackup(await prepareAllDataBackup(file), async () => ({}))
+  expect(results?.every((row) => !row.failed && !row.error)).toBe(true)
+  const outfits = await readOutfitSnapshot()
+  expect(outfits.records).toHaveLength(2)
+  const earliest = outfits.records.find((row) => row.code === 'OUTFIT')!
+  expect(earliest.note).toBe('')
+  expect(earliest.updatedAt).toBe(earliest.createdAt)
+  expect(outfits.records.find((row) => row.code === 'ONLYCODE')?.image).toBe('')
+  expect(outfits.images.size).toBe(1)
+  expect((await readHomeSchemeSnapshot()).records[0].metadata).toEqual(
+    createEmptyHomeSchemeMetadata()
+  )
+})
+
+// Optional local regression against an original archive; never check private user data into Git.
+it.skipIf(!process.env.LEGACY_BACKUP_ZIP)(
+  'restores the original user ZIP into isolated IndexedDB',
+  async () => {
+    const file = new File([await readFile(process.env.LEGACY_BACKUP_ZIP!)], 'original.zip')
+    await assertBackupKind(file, 'all')
+    const outer = unzipSync(new Uint8Array(await file.arrayBuffer()))
+    const outfitManifest = JSON.parse(strFromU8(unzipSync(outer['outfits/1.zip'])['manifest.json']))
+    const homeManifest = JSON.parse(strFromU8(unzipSync(outer['home/1.zip'])['manifest.json']))
+    const plan = await prepareAllDataBackup(file)
+    const result = await applyAllDataBackup(plan, async () => ({}))
+    expect(result?.every((row) => !row.error && !row.failed)).toBe(true)
+    const outfits = await readOutfitSnapshot()
+    expect(outfits.records).toHaveLength(outfitManifest.outfits.length)
+    expect(outfits.images.size).toBe(
+      outfitManifest.outfits.filter((row: { image: string }) => row.image).length
+    )
+    expect(outfits.ignoredCodes.sort()).toEqual(outfitManifest.ignoredCodes.sort())
+    const homes = await readHomeSchemeSnapshot()
+    expect(homes.records).toHaveLength(homeManifest.homeSchemes.length)
+    expect(homes.images.size).toBe(
+      homeManifest.homeSchemes.filter((row: { image: string | null }) => row.image).length
+    )
+    expect((await readCameraFavorites()).records).toEqual(plan.camera.records)
+    expect((await readCameraFavorites()).covers.size).toBe(plan.camera.covers.size)
+    expect(await loadResonanceRecords()).toHaveLength(plan.resonance.length)
+    expect((await loadWardrobe()).entries).toEqual(plan.wardrobe!.entries)
+    const again = await applyAllDataBackup(await prepareAllDataBackup(file), async () => ({}))
+    expect(again?.every((row) => !row.error && !row.failed)).toBe(true)
+    expect((await readOutfitSnapshot()).records).toHaveLength(outfits.records.length)
+    expect((await readHomeSchemeSnapshot()).records).toHaveLength(homes.records.length)
+  }
+)
 it.each([false, true])(
   'round-trips all five modules, covers, tags and ignores without portable directory authorization (network HTTP: %s)',
   async (networkHttp) => {
@@ -291,41 +468,93 @@ it('continues other modules and reports an incomplete module without rolling bac
   expect((await readCameraFavorites()).records).toHaveLength(1)
   expect(await loadResonanceRecords()).toHaveLength(1)
 })
-it('collects module parts into one ZIP and merges empty modules without clearing existing data', async () => {
-  await saveOutfit(outfit('ONE'))
-  await saveOutfit(outfit('TWO'))
-  await saveCameraFavorite(camera(), null)
-  await saveCameraFavorite(camera('camera-two', 'CAMERA2'), null)
-  const oldOutfit = OUTFIT_BACKUP_LIMITS.records,
-    oldCamera = CAMERA_BACKUP_LIMITS.records
-  OUTFIT_BACKUP_LIMITS.records = 1
-  CAMERA_BACKUP_LIMITS.records = 1
-  let file!: File
-  try {
-    file = await exported()
-  } finally {
-    OUTFIT_BACKUP_LIMITS.records = oldOutfit
-    CAMERA_BACKUP_LIMITS.records = oldCamera
+it.each([1, 2])(
+  'restores split v%s bundles and empty modules without clearing existing data',
+  async (version) => {
+    await saveOutfit(outfit('ONE'))
+    await saveOutfit(outfit('TWO'))
+    await saveCameraFavorite(camera(), null)
+    await saveCameraFavorite(camera('camera-two', 'CAMERA2'), null)
+    const oldOutfit = OUTFIT_BACKUP_LIMITS.records,
+      oldCamera = CAMERA_BACKUP_LIMITS.records
+    OUTFIT_BACKUP_LIMITS.records = 1
+    CAMERA_BACKUP_LIMITS.records = 1
+    let file!: File
+    try {
+      file = await exported()
+    } finally {
+      OUTFIT_BACKUP_LIMITS.records = oldOutfit
+      CAMERA_BACKUP_LIMITS.records = oldCamera
+    }
+    file = await legacyBundle(file, version, 2, 1)
+    await resetOutfitDatabase()
+    await saveHomeScheme({
+      code: 'KEEP',
+      name: '保留',
+      schemeType: 'home',
+      tags: [],
+      note: '',
+      metadata: createEmptyHomeSchemeMetadata()
+    })
+    const resonance = (await parseResonanceFile({ 77: [['2026-01-01', '1020100347']] })).records
+    await saveResonanceRecords(resonance)
+    const plan = await prepareAllDataBackup(file)
+    expect(plan.outfits).toHaveLength(2)
+    expect(plan.camera.records).toHaveLength(2)
+    await applyAllDataBackup(plan, async () => ({}))
+    expect((await readOutfitSnapshot()).records).toHaveLength(2)
+    expect((await readCameraFavorites()).records).toHaveLength(2)
+    expect((await readHomeSchemeSnapshot()).records[0].code).toBe('KEEP')
+    expect(await loadResonanceRecords()).toEqual(resonance)
   }
+)
+
+it.each([1, 2])(
+  'restores an empty v%s bundle without clearing existing records',
+  async (version) => {
+    const file = await legacyBundle(await exported(), version, 1, 1)
+    await seed()
+    const before = await loadWardrobe()
+    const results = await applyAllDataBackup(await prepareAllDataBackup(file), async () => ({}))
+    expect(results?.every((row) => !row.error && !row.failed && !row.saved)).toBe(true)
+    expect((await readOutfitSnapshot()).records).toHaveLength(1)
+    expect((await readHomeSchemeSnapshot()).records).toHaveLength(1)
+    expect((await readCameraFavorites()).records).toHaveLength(1)
+    expect(await loadResonanceRecords()).toHaveLength(1)
+    expect((await loadWardrobe()).entries).toEqual(before.entries)
+  }
+)
+
+it.each([1, 2])('rejects incomplete or corrupted v%s bundles before writes', async (version) => {
+  await seed()
+  const file = await legacyBundle(await exported(), version, 1, 1)
   await resetOutfitDatabase()
-  await saveHomeScheme({
-    code: 'KEEP',
-    name: '保留',
-    schemeType: 'home',
-    tags: [],
-    note: '',
-    metadata: createEmptyHomeSchemeMetadata()
+  for (const module of [
+    'outfits',
+    'home',
+    'camera',
+    'resonance',
+    ...(version === 2 ? ['wardrobe'] : [])
+  ]) {
+    const missing = await repack(file, (files) => {
+      const manifest = JSON.parse(strFromU8(files['backup.json']))
+      for (const entry of manifest.entries.filter(
+        (row: { module: string }) => row.module === module
+      ))
+        delete files[entry.path]
+      manifest.entries = manifest.entries.filter((row: { module: string }) => row.module !== module)
+      files['backup.json'] = strToU8(JSON.stringify(manifest))
+    })
+    await expect(prepareAllDataBackup(missing)).rejects.toMatchObject({ reason: 'incomplete' })
+  }
+  const corrupted = await repack(file, (files) => {
+    files['resonance/1.json'] = strToU8('{}')
   })
-  const resonance = (await parseResonanceFile({ 77: [['2026-01-01', '1020100347']] })).records
-  await saveResonanceRecords(resonance)
-  const plan = await prepareAllDataBackup(file)
-  expect(plan.outfits).toHaveLength(2)
-  expect(plan.camera.records).toHaveLength(2)
-  await applyAllDataBackup(plan, async () => ({}))
-  expect((await readOutfitSnapshot()).records).toHaveLength(2)
-  expect((await readCameraFavorites()).records).toHaveLength(2)
-  expect((await readHomeSchemeSnapshot()).records[0].code).toBe('KEEP')
-  expect(await loadResonanceRecords()).toEqual(resonance)
+  await expect(prepareAllDataBackup(corrupted)).rejects.toMatchObject({
+    reason: 'verification_failed'
+  })
+  expect((await readOutfitSnapshot()).records).toHaveLength(0)
+  expect((await readHomeSchemeSnapshot()).records).toHaveLength(0)
 })
 
 it('detects wardrobe-only data and merges ownership without revoking local pieces', async () => {
@@ -509,7 +738,51 @@ it('uses legacy backup scope inference in the conflict dialog', async () => {
   expect((await loadWardrobe()).regionScope).toBe('cn')
 })
 
-it('rejects legacy full backups without wardrobe and rejects invalid wardrobe before restoring', async () => {
+it.each(['invalid', 'unreadable'] as const)(
+  'restores a v1 bundle even when the unrelated local wardrobe is %s',
+  async (state) => {
+    await seed()
+    const file = await legacyBundle(await exported(), 1, 1, 1)
+    await resetOutfitDatabase()
+    const invalid = { broken: true }
+    await runStoreRequest('wardrobe', 'readwrite', (store) => store.put(invalid, 'current'))
+    const originalGet = IDBObjectStore.prototype.get
+    let wardrobeReads = 0
+    const get = vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key
+    ) {
+      if (this.name === 'wardrobe') {
+        wardrobeReads++
+        if (state === 'unreadable') throw new DOMException('Wardrobe unavailable', 'UnknownError')
+      }
+      return originalGet.call(this, key)
+    })
+    const chooseRegion = vi.fn(async () => null)
+    const onModule = vi.fn()
+    try {
+      const plan = await prepareAllDataBackup(file)
+      expect(plan.wardrobe).toBeNull()
+      const results = await applyAllDataBackup(plan, async () => ({}), onModule, chooseRegion)
+      expect(results).toHaveLength(4)
+      expect(results?.every((row) => row.saved === 1 && !row.failed && !row.error)).toBe(true)
+      expect(chooseRegion).not.toHaveBeenCalled()
+      expect(onModule.mock.calls.flat()).not.toContain('wardrobe')
+      expect(wardrobeReads).toBe(0)
+      expect((await readOutfitSnapshot()).records).toHaveLength(1)
+      expect((await readHomeSchemeSnapshot()).records).toHaveLength(1)
+      expect((await readCameraFavorites()).records).toHaveLength(1)
+      expect(await loadResonanceRecords()).toHaveLength(1)
+    } finally {
+      get.mockRestore()
+    }
+    expect(await runStoreRequest('wardrobe', 'readonly', (store) => store.get('current'))).toEqual(
+      invalid
+    )
+  }
+)
+
+it('restores legacy full backups without touching local wardrobe and rejects invalid wardrobe', async () => {
   await seed()
   const file = await exported()
   const legacy = await repack(file, (files) => {
@@ -521,7 +794,15 @@ it('rejects legacy full backups without wardrobe and rejects invalid wardrobe be
     )
     files['backup.json'] = strToU8(JSON.stringify(manifest))
   })
-  await expect(prepareAllDataBackup(legacy)).rejects.toThrow('unsupported_format')
+  const plan = await prepareAllDataBackup(legacy)
+  expect(plan.wardrobe).toBeNull()
+  const localWardrobe = await loadWardrobe()
+  const chooseRegion = vi.fn(async () => null)
+  const results = await applyAllDataBackup(plan, async () => ({}), undefined, chooseRegion)
+  expect(results).toHaveLength(4)
+  expect(results?.every((result) => !result.error && !result.failed)).toBe(true)
+  expect(chooseRegion).not.toHaveBeenCalled()
+  expect(await loadWardrobe()).toEqual(localWardrobe)
   const invalid = await repack(
     file,
     (files) => {

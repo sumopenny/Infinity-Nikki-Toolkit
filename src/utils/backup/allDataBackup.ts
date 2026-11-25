@@ -49,7 +49,7 @@ interface BundleEntry {
 }
 interface BundleManifest {
   format: typeof FORMAT
-  version: 2
+  version: 1 | 2
   exportedAt: string
   entries: BundleEntry[]
 }
@@ -58,7 +58,7 @@ export interface AllDataPlan {
   home: PreparedHomeSchemeBackup[]
   camera: FavoriteLibrary
   resonance: ResonanceRecord[]
-  wardrobe: WardrobeSnapshot
+  wardrobe: WardrobeSnapshot | null
 }
 export interface ModuleImportResult {
   module: BackupModule
@@ -219,7 +219,7 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
   if (
     !manifest ||
     manifest.format !== FORMAT ||
-    manifest.version !== 2 ||
+    ![1, 2].includes(manifest.version) ||
     !Array.isArray(manifest.entries) ||
     manifest.entries.length !== blobs.size - 1
   )
@@ -244,7 +244,10 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
     files.get(entry.module)!.push(new File([blob], entry.path, { type: blob.type }))
   }
   if (
-    MODULES.some((module) => !files.get(module)!.length) ||
+    // Total backups before v2 did not include the personal wardrobe.
+    MODULES.some(
+      (module) => !(module === 'wardrobe' && manifest.version === 1) && !files.get(module)!.length
+    ) ||
     files.get('resonance')!.length !== 1 ||
     files.get('wardrobe')!.length > 1
   )
@@ -269,7 +272,7 @@ export async function prepareAllDataBackup(file: File): Promise<AllDataPlan> {
     await parseResonanceFile(JSON.parse(await files.get('resonance')![0].text()), true)
   ).records
   const wardrobeFile = files.get('wardrobe')![0]
-  const wardrobe = parseWardrobeBackup(await wardrobeFile.text())
+  const wardrobe = wardrobeFile ? parseWardrobeBackup(await wardrobeFile.text()) : null
   return { outfits, home, camera, resonance, wardrobe }
 }
 
@@ -283,13 +286,14 @@ export async function applyAllDataBackup(
   const cameraPlan = planCameraImport(await readCameraFavorites(), plan.camera)
   const choices = cameraPlan.conflicts.length ? await resolveConflict(cameraPlan) : {}
   if (choices === null) return null
-  const localWardrobe = await readWardrobeSnapshot()
+  // v1 bundles can omit wardrobe entirely; unrelated local data must not block restoration.
+  const localWardrobe = plan.wardrobe ? await readWardrobeSnapshot() : null
   let finalRegion: WardrobeRegionScope | undefined
-  if (hasWardrobeSnapshot(plan.wardrobe)) {
+  if (plan.wardrobe && hasWardrobeSnapshot(plan.wardrobe)) {
     const incoming = wardrobeRegionScope(plan.wardrobe)
-    const local = wardrobeRegionScope(localWardrobe)
-    finalRegion = hasWardrobeSnapshot(localWardrobe) ? local : incoming
-    if (hasWardrobeSnapshot(localWardrobe) && local !== incoming) {
+    const local = wardrobeRegionScope(localWardrobe!)
+    finalRegion = hasWardrobeSnapshot(localWardrobe!) ? local : incoming
+    if (hasWardrobeSnapshot(localWardrobe!) && local !== incoming) {
       if (!resolveWardrobeRegion) throw new Error('WARDROBE_REGION_CONFIRMATION_REQUIRED')
       const selected = await resolveWardrobeRegion({ local, incoming })
       if (selected === null) return null
@@ -302,6 +306,7 @@ export async function applyAllDataBackup(
   }
   const results: ModuleImportResult[] = []
   for (const module of MODULES) {
+    if (module === 'wardrobe' && !plan.wardrobe) continue
     onModule?.(module)
     const result: ModuleImportResult = { module, saved: 0, skipped: 0, failed: 0 }
     try {
@@ -328,12 +333,12 @@ export async function applyAllDataBackup(
         Object.assign(
           result,
           await mergeWardrobe(
-            plan.wardrobe,
+            plan.wardrobe!,
             finalRegion === undefined
               ? undefined
               : {
                   regionScope: finalRegion,
-                  expectedRegionScope: wardrobeRegionScope(localWardrobe)
+                  expectedRegionScope: wardrobeRegionScope(localWardrobe!)
                 }
           )
         )

@@ -39,8 +39,12 @@ const raw = (id = 'one', code = 'CODE1') => ({
   createdAt: '2026-07-31T00:00:00.000Z'
 })
 
-it('imports current backups into the global database and keeps code deduplication', async () => {
-  const file = archive([raw()], { 'images/one.webp': new Uint8Array(await webp().arrayBuffer()) })
+it.each([1, 2, 3, 4])('imports outfit v%s and keeps code deduplication', async (version) => {
+  const file = archive(
+    [raw()],
+    { 'images/one.webp': new Uint8Array(await webp().arrayBuffer()) },
+    version
+  )
   expect(await importOutfitBackup(file)).toMatchObject({ addedCount: 1, failedCount: 0 })
   expect((await readOutfitSnapshot()).records[0]).toMatchObject({ note: '旧备注', tags: ['甜美'] })
   expect(await importOutfitBackup(file)).toMatchObject({
@@ -48,6 +52,41 @@ it('imports current backups into the global database and keeps code deduplicatio
     duplicateCount: 1,
     failedCount: 0
   })
+})
+
+it('imports v1 without ignoredCodes and rejects malformed ignores in every version', async () => {
+  const files = unzipSync(
+    new Uint8Array(
+      await archive(
+        [raw()],
+        {
+          'images/one.webp': new Uint8Array(await webp().arrayBuffer())
+        },
+        1
+      ).arrayBuffer()
+    )
+  )
+  const manifest = JSON.parse(strFromU8(files['manifest.json']))
+  delete manifest.ignoredCodes
+  const pack = () =>
+    new File(
+      [zipSync({ ...files, 'manifest.json': strToU8(JSON.stringify(manifest)) })],
+      'legacy.zip'
+    )
+  expect(await importOutfitBackup(pack())).toMatchObject({ addedCount: 1, failedCount: 0 })
+  await resetOutfitDatabase()
+  for (const version of [1, 2, 3, 4]) {
+    manifest.version = version
+    for (const invalid of [null, 'invalid', [123], ['']]) {
+      manifest.ignoredCodes = invalid
+      await expect(prepareOutfitBackup(pack())).rejects.toThrow('outfit_ignored_codes_invalid')
+    }
+    if (version > 1) {
+      delete manifest.ignoredCodes
+      await expect(prepareOutfitBackup(pack())).rejects.toThrow('outfit_ignored_codes_invalid')
+    }
+  }
+  expect((await readOutfitSnapshot()).records).toHaveLength(0)
 })
 it('exports and restores current records, pending records, images and persistent ignores', async () => {
   await saveOutfit(input('CODE1'))
@@ -139,13 +178,17 @@ it('exports complete independently importable parts', async () => {
 
 // 多格式往返必须保留字节、类型、扩展名及备注编辑后的图片。
 it.each([
-  ['png', false],
-  ['jpg', false],
-  ['png', true],
-  ['jpg', true]
+  ['png', false, 3],
+  ['jpg', false, 3],
+  ['png', true, 3],
+  ['jpg', true, 3],
+  ['png', false, 4],
+  ['jpg', false, 4],
+  ['png', true, 4],
+  ['jpg', true, 4]
 ] as const)(
-  'round-trips original %s after encoding fallback (prepared=%s)',
-  async (extension, prepared) => {
+  'round-trips original %s after encoding fallback (prepared=%s, version=%s)',
+  async (extension, prepared, version) => {
     const { vi } = await import('vitest')
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.stubGlobal('document', {
@@ -172,6 +215,10 @@ it.each([
     const entries = unzipSync(new Uint8Array(await backup.arrayBuffer()))
     expect(JSON.parse(strFromU8(entries['manifest.json'])).version).toBe(4)
     expect(entries['images/' + edited.image]).toEqual(bytes)
+    const manifest = JSON.parse(strFromU8(entries['manifest.json']))
+    manifest.version = version
+    entries['manifest.json'] = strToU8(JSON.stringify(manifest))
+    backup = new File([zipSync(entries)], 'backup.zip')
     await resetOutfitDatabase()
     const result = prepared
       ? await (await prepareOutfitBackup(backup)).apply()
@@ -205,7 +252,7 @@ it('round trips source URLs including repeated and encoded parameters', async ()
   expect((await readOutfitSnapshot()).records[0].sourceUrl).toBe(sourceUrl)
 })
 
-it.each([1, 2, 3])('rejects obsolete outfit backup version %s before writing', async (version) => {
+it.each([0, 5, 99])('rejects unknown outfit backup version %s before writing', async (version) => {
   const file = archive(
     [raw()],
     { 'images/one.webp': new Uint8Array(await webp().arrayBuffer()) },

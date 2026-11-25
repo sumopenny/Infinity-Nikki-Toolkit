@@ -94,19 +94,19 @@ const definitions = {
   all: {
     name: 'backup.json',
     format: 'infinity-nikki-all-data-backup',
-    versions: [2],
+    versions: [1, 2],
     limits: ALL_DATA_BACKUP_LIMITS
   },
   outfits: {
     name: 'manifest.json',
     format: 'infinity-nikki-outfit-backup',
-    versions: [4],
+    versions: [1, 2, 3, 4],
     limits: OUTFIT_BACKUP_LIMITS
   },
   home: {
     name: 'manifest.json',
     format: 'infinity-nikki-home-scheme-backup',
-    versions: [2],
+    versions: [1, 2],
     limits: HOME_BACKUP_LIMITS
   },
   camera: {

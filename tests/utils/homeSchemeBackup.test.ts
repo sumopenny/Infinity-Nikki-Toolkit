@@ -72,9 +72,14 @@ describe('home scheme ZIP backup', () => {
     ).rejects.toThrow('home_scheme_backup_format_unsupported')
   })
 
-  it.each([false, true])(
-    'round-trips current metadata and image bytes (prepared=%s)',
-    async (prepared) => {
+  it.each([
+    [1, false],
+    [1, true],
+    [2, false],
+    [2, true]
+  ] as const)(
+    'round-trips v%s metadata and image bytes (prepared=%s)',
+    async (version, prepared) => {
       await addHomeSchemeTag('庭院')
       const saved = await saveHomeScheme({
         ...input(),
@@ -102,7 +107,9 @@ describe('home scheme ZIP backup', () => {
         updatedAt: saved.updatedAt
       })
       await reset()
-      const file = new File([bytes], 'old.zip')
+      manifest.version = version
+      entries['manifest.json'] = strToU8(JSON.stringify(manifest))
+      const file = archive(entries)
       const restored = prepared
         ? await (await prepareHomeSchemeBackup(file)).apply()
         : await importHomeSchemeBackup(file)
@@ -206,12 +213,12 @@ it('round-trips a PNG fallback with its actual extension', async () => {
   expect(new Uint8Array(await image.blob.arrayBuffer())).toEqual(bytes)
 })
 
-it('rejects the obsolete home backup version before writing', async () => {
+it.each([0, 3, 99])('rejects unknown home backup version %s before writing', async (version) => {
   const file = archive({
     'manifest.json': strToU8(
       JSON.stringify({
         format: 'infinity-nikki-home-scheme-backup',
-        version: 1,
+        version,
         tags: [],
         homeSchemes: []
       })
