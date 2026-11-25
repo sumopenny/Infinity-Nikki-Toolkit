@@ -36,6 +36,22 @@ run_worker_first = ["/api", "/api/*"]
 
 [observability]
 enabled = true
+head_sampling_rate = 1
+redact_query_string = false
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 0.1
+persist = true
+
+[observability.issue_detection]
+enabled = true
 
 [version_metadata]
 binding = "VERSION_METADATA"

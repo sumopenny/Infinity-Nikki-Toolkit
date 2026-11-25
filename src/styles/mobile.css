@@ -1331,12 +1331,14 @@
   }
   .dialog-panel,
   .outfit-editor-panel,
-  .outfit-detail-panel,
-  .note-dialog-panel {
+  .outfit-detail-panel {
     width: 100%;
     max-width: 100%;
     max-height: min(100%, var(--mobile-dialog-space));
     border-radius: var(--mobile-dialog-radius);
+  }
+  .note-dialog-panel {
+    max-height: min(100%, var(--mobile-dialog-space));
   }
   .outfit-editor-panel {
     height: min(100%, var(--mobile-dialog-space));

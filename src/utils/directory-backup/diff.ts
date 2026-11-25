@@ -14,6 +14,7 @@ import {
   BATCH_RECORDS,
   countBrowserRecords,
   loadConfig,
+  backupDirectorySource,
   readRevision,
   moduleRange,
   type Checkpoint,
@@ -91,10 +92,10 @@ async function readDiskSnapshot(config: BackupConfig, module: BackupModule) {
   }
   const marker = await readRoot(root)
   if (
-    marker.sourceId !== config.sourceId ||
+    marker.sourceId !== backupDirectorySource(config) ||
     (config.backupId && marker.backupId !== config.backupId)
   )
-    throw new Error('目录属于其他存档，请重新预览')
+    throw new Error('备份目录身份已变化，请重新选择目录并确认使用')
   let dir: FileSystemDirectoryHandle
   try {
     dir = await moduleDirectory(root, module)
@@ -298,6 +299,14 @@ export async function confirmEnable(
             revision: expected.revision
           }
         current.generations[module] = createUuid()
+        if (!incremental && fingerprint && complete) {
+          store.put({
+            key: `checkpoint:${module}`,
+            binding: current.binding,
+            generation: current.generations[module],
+            digest: fingerprint
+          } satisfies Checkpoint)
+        }
         if (incremental) {
           store.put({ ...checkpoint!, generation: current.generations[module] })
           // 比对覆盖了该修订的完整数据，在同一事务中替换旧任务；后续编辑会生成新修订。

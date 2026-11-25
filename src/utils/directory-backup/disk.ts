@@ -56,6 +56,7 @@ export interface Operation {
   payload?: number
 }
 export interface BatchReceipt {
+  writerId?: string
   sourceId: string
   binding: string
   changes: DirtyChange[]
@@ -354,6 +355,7 @@ export async function validateStage(
   if (
     m.receipt &&
     (!UUID.test(m.receipt.sourceId) ||
+      (m.receipt.writerId !== undefined && !UUID.test(m.receipt.writerId)) ||
       !UUID.test(m.receipt.binding) ||
       !Array.isArray(m.receipt.changes) ||
       m.receipt.changes.length > 256 ||

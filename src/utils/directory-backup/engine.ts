@@ -12,6 +12,7 @@ import { locked, withAllBackupLocks, withExclusiveBusiness } from './coordinatio
 import {
   BATCH_RECORDS,
   browserBaseline,
+  backupDirectorySource,
   assertBrowserBaseline,
   type BrowserBaseline,
   active,
@@ -135,17 +136,18 @@ export async function backupRoot(config: BackupConfig): Promise<FileSystemDirect
   if (root) {
     const marker = await readRoot(root)
     if (
-      marker.sourceId !== config.sourceId ||
+      marker.sourceId !== backupDirectorySource(config) ||
       (config.backupId && marker.backupId !== config.backupId)
     )
       throw new Error('目录身份与绑定不符。请先预览恢复，或选择新的空目录；不会覆盖原备份。')
     return root
   }
-  if (config.backupId)
-    throw new Error('原备份目录已移动或被删除，请重新选择目录。')
+  if (config.backupId) throw new Error('原备份目录已移动或被删除，请重新选择目录。')
   for await (const _entry of config.handle.entries()) {
     void _entry
-    throw new Error('请选择专用空文件夹；未知非空目录不会被修改。')
+    throw new Error(
+      '当前文件夹不是有效的暖立方备份目录。请新建一个空文件夹用于备份，或重新选择正确的文件夹。'
+    )
   }
   const created = config.handle
   const backupId = createUuid()
@@ -168,6 +170,7 @@ export async function backupRoot(config: BackupConfig): Promise<FileSystemDirect
   return created
 }
 export interface DirectoryBindingPreview {
+  sourceId?: string
   binding: string
   backupId?: string
   enabled: BackupConfig['enabled']
@@ -184,13 +187,18 @@ export async function bindDirectory(
     if (!marker) {
       for await (const _entry of handle.entries()) {
         void _entry
-        throw new Error('请选择专用空文件夹；未知非空目录不会被修改。')
+        throw new Error(
+          '当前文件夹不是有效的暖立方备份目录。请新建一个空文件夹用于备份，或重新选择正确的文件夹。'
+        )
       }
     }
     const config = await loadConfig()
-    if (marker && marker.sourceId !== config.sourceId)
-      throw new Error('发现已有存档，请先从目录恢复或选择新子目录。')
+    if (marker && marker.sourceId !== config.sourceId && expected?.sourceId !== marker.sourceId)
+      throw new Error('发现已有存档，请先预览并确认使用该目录。')
+    if (expected?.sourceId !== undefined && expected.sourceId !== marker?.sourceId)
+      throw new Error('目录在预览后已变化，请重新预览')
     const revisions: Partial<Record<BackupModule, string>> = {}
+    const fingerprints: Partial<Record<BackupModule, string>> = {}
     if (expected) {
       if (marker?.backupId !== expected.backupId) throw new Error('目录在预览后已变化，请重新预览')
       const root = await locateRoot(handle)
@@ -202,6 +210,8 @@ export async function bindDirectory(
         if (root) {
           try {
             const dir = await moduleDirectory(root, module)
+            if ((await discoverStages(dir)).length)
+              throw new Error('目录存在未完成批次，请先预览并确认续写')
             const bytes = await readBytes(dir, '_系统/备份信息.json', MAX_JSON_BYTES)
             if (bytes) fingerprint = await digest(bytes)
           } catch (error) {
@@ -210,33 +220,43 @@ export async function bindDirectory(
         }
         if (preview.fingerprint !== fingerprint) throw new Error('目录在预览后已变化，请重新预览')
         revisions[module] = preview.revision
+        fingerprints[module] = fingerprint
       }
     }
-    const result = await updateConfig((current) => {
-      if (
-        current.sourceId !== config.sourceId ||
-        (expected &&
-          (current.binding !== expected.binding ||
-            MODULES.some((module) => current.enabled[module] !== expected.enabled[module])))
-      )
-        throw new Error('备份设置在预览后已变化，请重新预览')
-      current.handle = handle
-      current.directoryName = handle.name
-      current.binding = createUuid()
-      current.backupId = marker?.backupId
-      current.paused = false
-      current.emptyApprovals = {}
-      if (marker && expected)
+    const result = await updateConfig(
+      (current) => {
+        if (
+          current.sourceId !== config.sourceId ||
+          (expected &&
+            (current.binding !== expected.binding ||
+              MODULES.some((module) => current.enabled[module] !== expected.enabled[module])))
+        )
+          throw new Error('备份设置在预览后已变化，请重新预览')
+        current.handle = handle
+        current.directoryName = handle.name
+        current.binding = createUuid()
+        current.backupId = marker?.backupId
+        current.directorySourceId =
+          marker?.sourceId !== current.sourceId ? marker?.sourceId : undefined
+        current.paused = false
+        current.emptyApprovals = {}
+        if (marker && expected)
+          for (const module of MODULES) {
+            const diff = expected.diffs[module]
+            if (diff?.emptyApproved)
+              current.emptyApprovals[module] = {
+                backupId: marker.backupId,
+                revision: diff.revision
+              }
+          }
         for (const module of MODULES) {
-          const diff = expected.diffs[module]
-          if (diff?.emptyApproved)
-            current.emptyApprovals[module] = { backupId: marker.backupId, revision: diff.revision }
+          current.initialized[module] = false
+          current.generations[module] = createUuid()
         }
-      for (const module of MODULES) {
-        current.initialized[module] = false
-        current.generations[module] = createUuid()
-      }
-    }, revisions)
+      },
+      revisions,
+      fingerprints
+    )
     result.handle = handle
     // 建立根身份也持有全部写盘锁，防止其他标签页同时初始化同一个目录。
     // 选择目录不启用任何模块，不写业务数据；正常编辑不被这里的写盘锁阻塞。
@@ -322,7 +342,12 @@ async function commitDisk(
     module,
     operations,
     undefined,
-    { sourceId: config.sourceId, binding: config.generations[module], changes },
+    {
+      sourceId: backupDirectorySource(config),
+      writerId: config.sourceId,
+      binding: config.generations[module],
+      changes
+    },
     true
   )
   const bytes = await readBytes(dir, '_系统/备份信息.json', MAX_JSON_BYTES)
@@ -350,8 +375,11 @@ async function resumePending(
       await finishStage(dir, id)
       continue
     }
-    if (verified[i]!.receipt?.sourceId !== config.sourceId)
-      throw new Error('待续写批次不属于当前存档')
+    if (
+      verified[i]!.receipt?.sourceId !== backupDirectorySource(config) ||
+      (verified[i]!.receipt?.writerId ?? verified[i]!.receipt?.sourceId) !== config.sourceId
+    )
+      throw new Error('发现其他存档的未完成批次，请先检查备份并确认续写')
     const stage = await applyStage(dir, id, module, false)
     const bytes = await readBytes(dir, '_系统/备份信息.json', MAX_JSON_BYTES)
     if (!bytes) throw new Error('续写后模块信息丢失')
@@ -816,7 +844,7 @@ export async function readModuleStatus(
       if (!root) throw new Error('原备份目录已移动或被删除，请重新选择目录。')
       const marker = await readRoot(root)
       if (
-        marker.sourceId !== config.sourceId ||
+        marker.sourceId !== backupDirectorySource(config) ||
         (config.backupId && marker.backupId !== config.backupId)
       )
         throw new Error('目录身份与绑定不符，请检查备份目录。')

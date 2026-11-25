@@ -1,6 +1,11 @@
+import { readOutfitCollection } from '../../src/utils/outfit/outfitStorage'
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resumeSource, previewRestore } from '../../src/utils/directory-backup/restore'
+import {
+  resumeSource,
+  previewRestore,
+  restoreSelected
+} from '../../src/utils/directory-backup/restore'
 import { dirtyChanges } from '../../src/utils/directory-backup/repository'
 import {
   digest,
@@ -66,4 +71,27 @@ describe('目录恢复回归', () => {
     await expect(resumeSource(asHandle(directory), 'outfits')).rejects.toThrow('存档')
     expect(disk.events.filter((e) => ['write', 'delete'].includes(e.kind))).toEqual([])
   })
+})
+
+it('refreshes the outfit collection from the committed callback after releasing restore locks', async () => {
+  const { config, directory } = await setup()
+  await putOutfit('REFRESH-AFTER-RESTORE')
+  await sync(config)
+  const preview = await previewRestore(asHandle(directory))
+  const refreshes: Promise<unknown>[] = []
+  await restoreSelected(
+    asHandle(directory),
+    preview,
+    ['outfits'],
+    () => {},
+    () => {
+      refreshes.push(
+        readOutfitCollection().then(
+          (library) => ({ ids: library.outfits.map((outfit) => outfit.id) }),
+          (error) => ({ error: String(error) })
+        )
+      )
+    }
+  )
+  expect(await Promise.all(refreshes)).toEqual([{ ids: ['REFRESH-AFTER-RESTORE'] }])
 })

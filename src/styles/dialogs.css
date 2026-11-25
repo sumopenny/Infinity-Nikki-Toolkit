@@ -1426,7 +1426,7 @@
 .confirm-dialog-panel {
   --dialog-accent: var(--notice-info);
   position: relative;
-  width: min(540px, 100%);
+  width: min(440px, 100%);
   max-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
@@ -1447,6 +1447,16 @@
   --dialog-accent: #e6949e;
 }
 
+.confirm-dialog-panel.is-brand {
+  --dialog-accent: var(--primary-button-bg);
+  --dialog-primary-dark-text: var(--primary-text);
+  --dialog-ghost-bg: var(--surface);
+  --dialog-ghost-border: var(--line);
+  --dialog-ghost-text: var(--heading);
+}
+:root[data-theme='dark'] .confirm-dialog-panel.is-brand {
+  --dialog-accent: var(--primary-button-bg);
+}
 .confirm-dialog-heading {
   display: flex;
   align-items: center;
@@ -1495,7 +1505,7 @@
   overscroll-behavior: contain;
   padding: 20px 28px 24px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.75;
   overflow-wrap: anywhere;
 }
@@ -1517,7 +1527,7 @@
 .confirm-dialog-section h3 {
   margin: 0 0 6px;
   color: var(--heading);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
 }
 .confirm-dialog-section ul {
@@ -1533,122 +1543,36 @@
 
 .photo-transfer-dialog {
   --dialog-accent: var(--pink-deep);
-  width: min(520px, calc(100vw - 28px));
-  min-height: 258px;
-  padding-bottom: 28px;
-  overflow: hidden;
+  width: min(520px, 100%);
 }
-
-.photo-transfer-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 28px 30px 22px;
-}
-
-.photo-transfer-header h2 {
-  margin-bottom: 0;
-  color: var(--heading);
-  font-size: clamp(22px, 3vw, 28px);
-  line-height: 1.1;
-}
-
-.photo-transfer-header .confirm-dialog-close {
-  width: 48px;
-  height: 48px;
-  margin: -2px 0 0;
-  background: color-mix(in srgb, var(--heading) 7%, transparent);
-}
-
-@supports not (color: color-mix(in srgb, black, white)) {
-  .photo-transfer-header .confirm-dialog-close {
-    background: rgba(76, 66, 64, 0.07);
-  }
-
-  :where(:root[data-theme='dark']) .photo-transfer-header .confirm-dialog-close {
-    background: rgba(255, 248, 244, 0.07);
-  }
-}
-
-.photo-transfer-header .confirm-dialog-close svg {
-  width: 25px;
-  height: 25px;
-}
-
 .photo-transfer-progress {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin: 28px 30px 0;
+  padding: 12px 0;
 }
-
 .photo-transfer-progress-track {
   flex: 1;
+  min-width: 0;
 }
-
 .photo-transfer-progress strong {
-  min-width: 64px;
   color: var(--heading);
   font-size: 16px;
   font-weight: 800;
-  text-align: right;
+  white-space: nowrap;
 }
-
-.photo-transfer-summary,
-.photo-transfer-failures,
-.photo-transfer-cancelled {
-  margin: 14px 30px 0;
+.photo-transfer-summary {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
 }
-
+.confirm-dialog-content .photo-transfer-failures,
+.confirm-dialog-content .photo-transfer-cancelled {
+  margin-top: 14px;
+}
 .photo-transfer-failures {
   color: var(--danger, #a94f55);
 }
-
 .photo-transfer-cancelled {
   color: var(--warning, #a46a24);
-}
-
-.photo-transfer-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: 28px 30px 0;
-}
-
-.photo-transfer-actions .confirm-dialog-button {
-  min-width: 124px;
-  min-height: 52px;
-  padding: 12px 24px;
-  border-radius: 18px;
-  font-size: 17px;
-}
-
-@media (max-width: 560px) {
-  .photo-transfer-dialog {
-    width: min(100%, calc(100vw - 24px));
-  }
-  .photo-transfer-header {
-    padding: 22px 20px 18px;
-  }
-  .photo-transfer-progress {
-    margin: 22px 20px 0;
-  }
-  .photo-transfer-summary,
-  .photo-transfer-failures,
-  .photo-transfer-cancelled {
-    margin-left: 20px;
-    margin-right: 20px;
-  }
-  .photo-transfer-actions {
-    margin: 22px 20px 0;
-  }
-  .photo-transfer-actions .confirm-dialog-button {
-    width: 100%;
-  }
 }
 
 /* 关闭按钮与“关于网站”一致的悬浮圆形样式 */
@@ -1673,7 +1597,7 @@
   background: var(--icon-button-hover-bg);
 }
 
-/* 短按钮靠右排列；备份入口留在左侧。 */
+/* 默认操作靠右；双按钮确认弹窗在下方统一为等宽胶囊。 */
 .confirm-dialog-actions {
   flex: 0 0 auto;
   display: flex;
@@ -1742,6 +1666,20 @@
     border-color var(--motion-base) ease,
     color var(--motion-base) ease;
 }
+/* 仅匹配恰好两个操作按钮的底栏，保留单按钮和三按钮布局。 */
+.confirm-dialog-actions:has(> .confirm-dialog-button:first-child:nth-last-child(2)) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+.confirm-dialog-actions > .confirm-dialog-button:first-child:nth-last-child(2),
+.confirm-dialog-actions > .confirm-dialog-button:first-child:nth-last-child(2) + .confirm-dialog-button {
+  width: 100%;
+  box-sizing: border-box;
+  margin-inline: 0;
+  border-radius: 999px;
+}
+
 .confirm-dialog-button.primary {
   background: var(--dialog-accent, var(--notice-info));
   box-shadow: none;
@@ -2649,21 +2587,24 @@
 }
 
 /* 多账号选择弹窗内的表单样式 */
-/* 确认弹窗面板默认是“图标/内容/关闭按钮”三列网格，本弹窗没有图标和关闭按钮，改为单列纵向排列，避免表单被挤到右侧窄列；同时面板默认 overflow: hidden 会裁切账号下拉菜单，覆盖为 visible */
 .cleanup-account-panel {
-  grid-template-columns: minmax(0, 1fr);
   overflow: visible;
-  gap: 14px;
+}
+.cleanup-account-content {
+  overflow: visible;
+}
+.cleanup-account-content > p {
+  margin-bottom: 16px;
 }
 
 .cleanup-account-form {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .cleanup-account-input-label {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* 账号下拉：触发按钮保持输入框外观，展开菜单复刻顶栏下拉的毛玻璃卡片样式 */
@@ -2683,7 +2624,7 @@
   border-radius: 10px;
   background: var(--surface-strong);
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
 }
@@ -2765,7 +2706,7 @@
   border-radius: calc(var(--ui-radius) - 4px);
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
 }
 
@@ -2791,7 +2732,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -2944,27 +2885,6 @@
   margin: 0;
   color: var(--notice-warning);
   font-size: 12px;
-}
-
-.note-dialog-panel .note-dialog-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 2;
-  display: grid;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  background: var(--icon-button-bg);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.note-dialog-panel .note-dialog-close:hover {
-  background: var(--icon-button-hover-bg);
 }
 
 /* 窄屏时反馈弹窗占满可视区，保证问卷可滚动填写 */

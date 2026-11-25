@@ -9,6 +9,17 @@
   -webkit-backdrop-filter: var(--frost-surface-filter, blur(18px) saturate(160%));
   backdrop-filter: var(--frost-surface-filter, blur(18px) saturate(160%));
 }
+/* 主页全屏壁纸下的导航使用更轻的磨砂，其他模块保持原材质。 */
+@media (min-width: 900px) {
+  :root[data-surface-style='frosted'] .is-homepage-shell :is(.app-header, .home-sidebar-material) {
+    --frost-surface-bg: rgb(255 255 255 / 60%);
+    --frost-surface-filter: blur(8px) saturate(160%);
+  }
+  :root[data-theme='dark'][data-surface-style='frosted']
+    .is-homepage-shell :is(.app-header, .home-sidebar-material) {
+    --frost-surface-bg: rgb(15 15 18 / 55%);
+  }
+}
 /* 大图控件和照片选择工具栏使用更轻的磨砂，顶栏及手机导航保持原参数。 */
 :root[data-surface-style='frosted'] :is(.preview-material, .selection-bar) {
   --frost-surface-bg: rgb(255 255 255 / 75%);
@@ -81,6 +92,14 @@
   :root[data-surface-style='glass'] .material-surface[data-refraction='true'] {
     backdrop-filter: var(--nav-glass-filter) blur(2px) saturate(145%);
   }
+}
+/* 主页侧栏使用通用材质，但保持贴边外形及现有菜单定位。 */
+:root[data-surface-style='glass'] .home-sidebar-material {
+  border-width: 0 1px 0 0;
+}
+:root[data-surface-style='glass'] .home-sidebar-material::before {
+  background: none;
+  box-shadow: none;
 }
 /* 全宽电脑顶栏单独减轻雾面，反光只留在上下边缘；手机胶囊参数不变。 */
 @media (min-width: 900px) {
@@ -213,7 +232,7 @@
 @media (min-width: 900px) {
   :root[data-surface-style='frosted']
     .app-header
-    :is(.view-menu-button, .tools-menu-button, .more-menu-button):is(
+    :is(.header-menu-button, .header-icon-button):is(
       :hover,
       [aria-expanded='true']
     ):not(:disabled) {

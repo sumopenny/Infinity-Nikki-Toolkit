@@ -44,7 +44,7 @@ it.each(['国服', '国际服'])(
     const wrapper = await open()
     try {
       const dialog = document.querySelector<HTMLElement>('.wardrobe-restore-region')!
-      const confirm = dialog.querySelector<HTMLButtonElement>('.primary-button')!
+      const confirm = dialog.querySelector<HTMLButtonElement>('.confirm-dialog-button.primary')!
       expect(confirm.disabled).toBe(true)
       expect(dialog.textContent).toContain('本地：国服')
       expect(dialog.textContent).toContain('备份：国际服')

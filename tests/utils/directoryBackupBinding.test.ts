@@ -256,3 +256,41 @@ it.each(['browser', 'disk'] as const)(
     expect(disk.events.some((event) => ['write', 'delete'].includes(event.kind))).toBe(false)
   }
 )
+
+it('binds an existing archive from another browser without restoring data and continues backup', async () => {
+  const { config, directory, disk } = await setup()
+  await putOutfit('OLD01')
+  await sync(config)
+  const marker = (await inspectRoot(asHandle(directory)))!
+  const before = new Map(disk.files)
+  await resetDatabase()
+  await putOutfit('NEW01')
+  const current = await loadConfig()
+  expect(current.sourceId).not.toBe(marker.sourceId)
+  disk.events = []
+  const chosen = await bindDirectory(asHandle(directory), {
+    binding: current.binding,
+    backupId: marker.backupId,
+    sourceId: marker.sourceId,
+    enabled: { ...current.enabled },
+    diffs: {}
+  })
+  expect(chosen.sourceId).toBe(current.sourceId)
+  expect(chosen.directorySourceId).toBe(marker.sourceId)
+  expect(chosen.paused).toBe(false)
+  expect(disk.files).toEqual(before)
+  expect(await repository.countBrowserRecords('outfits')).toBe(1)
+  const diff = await estimateBackupDiff(chosen, 'outfits')
+  expect(diff).toMatchObject({ added: 1, removed: 1 })
+  vi.spyOn(repository, 'loadConfig').mockResolvedValue(chosen)
+  await confirmEnable('outfits', diff)
+  vi.restoreAllMocks()
+  expect((await sync(await reloadConfig(directory))).state).toBe('synced')
+  const { previewRestore } = await import('../../src/utils/directory-backup/restore')
+  expect((await previewRestore(asHandle(directory))).modules[0]).toMatchObject({
+    ready: true,
+    backupCount: 1
+  })
+  expect(disk.files.has('搭配码/记录/NEW01.json')).toBe(true)
+  expect(disk.files.has('搭配码/记录/OLD01.json')).toBe(false)
+})

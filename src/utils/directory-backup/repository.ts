@@ -46,6 +46,7 @@ export interface BackupConfig {
   sourceId: string
   binding: string
   backupId?: string
+  directorySourceId?: string
   handle?: FileSystemDirectoryHandle
   directoryName?: string
   paused: boolean
@@ -54,6 +55,10 @@ export interface BackupConfig {
   generations: Record<BackupModule, string>
   /** 仅针对明确确认过的空库覆盖，绑定指定磁盘和浏览器修订号。 */
   emptyApprovals?: Partial<Record<BackupModule, { backupId: string; revision: string }>>
+}
+/** Directory provenance is independent of the browser that is currently writing it. */
+export function backupDirectorySource(config: BackupConfig): string {
+  return config.directorySourceId ?? config.sourceId
 }
 export interface ModuleProgress {
   enabled: boolean
@@ -147,7 +152,8 @@ export async function loadConfig(): Promise<BackupConfig> {
 /** UI 只更新指定字段，绝不能用过期的整份配置覆盖另一标签页刚修改的模块。 */
 export async function updateConfig(
   update: (current: BackupConfig) => void,
-  expectedRevisions: Partial<Record<BackupModule, string>> = {}
+  expectedRevisions: Partial<Record<BackupModule, string>> = {},
+  bindingFingerprints: Partial<Record<BackupModule, string>> = {}
 ): Promise<BackupConfig> {
   await loadConfig()
   const result = await runDatabaseTransaction([BACKUP_SETTINGS_STORE], 'readwrite', async (tx) => {
@@ -163,6 +169,17 @@ export async function updateConfig(
         throw new Error('浏览器数据在预览后已变化，请重新预览')
     }
     update(current)
+    for (const module of MODULES) {
+      const fingerprint = bindingFingerprints[module]
+      if (fingerprint) {
+        store.put({
+          key: `checkpoint:${module}`,
+          binding: current.binding,
+          generation: current.generations[module],
+          digest: fingerprint
+        } satisfies Checkpoint)
+      }
+    }
     store.put(current)
     return current
   })
@@ -289,7 +306,8 @@ export async function acknowledgeStage(
         digest: manifestDigest
       } satisfies Checkpoint)
       if (
-        stage.receipt?.sourceId !== config.sourceId ||
+        !stage.receipt ||
+        (stage.receipt.writerId ?? stage.receipt.sourceId) !== config.sourceId ||
         stage.receipt.binding !== current.generations[module]
       )
         return

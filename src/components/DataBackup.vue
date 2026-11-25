@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { useModuleOperation } from '../composables/useOperationCoordinator'
-import CollectionActions from './CollectionActions.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import TreeCollapse from './TreeCollapse.vue'
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import {
   DatabaseBackup,
-  Download,
   X,
-  AlertTriangle,
   ShieldCheck,
-  Pause,
-  FolderPlus,
   Shirt,
   House,
   Camera,
   Folder,
   ChevronRight,
+  CircleCheck,
+  CircleMinus,
+  CircleAlert,
+  ArrowRight,
+  RefreshCw,
   RotateCcw
 } from 'lucide-vue-next'
 
@@ -44,7 +45,11 @@ import {
   resumeSource,
   type RestorePreview
 } from '../utils/directory-backup/restore'
-import { browserBaseline, type BrowserBaseline } from '../utils/directory-backup/repository'
+import {
+  browserBaseline,
+  backupDirectorySource,
+  type BrowserBaseline
+} from '../utils/directory-backup/repository'
 import { rebuildBackupDirectory } from '../utils/directory-backup/rebuild'
 import type { BackupModule } from '../utils/directory-backup/changeJournal'
 import {
@@ -89,16 +94,17 @@ const busy = ref(false)
 const recoveryHandle = shallowRef<FileSystemDirectoryHandle | null>(null)
 const recoveryPreview = shallowRef<RestorePreview | null>(null)
 const previewOpen = ref(false)
+const managementOpen = ref(false)
 const previewTrigger = ref<HTMLButtonElement | null>(null)
 const restoreTrigger = ref<HTMLButtonElement | null>(null)
-const confirmationDialog = ref<HTMLDialogElement | null>(null)
+const confirmationVisible = ref(false)
 const confirmation = ref({ title: '', body: '', confirm: '', danger: false })
 const recoveryMode = ref<'restore' | 'inspect' | 'existing'>('restore')
 const selected = ref<BackupModule[]>([])
 const recoveryProgress = ref('')
 const recoveryError = ref('')
-const sourceOwned = computed(
-  () => !!recoveryPreview.value && recoveryPreview.value.sourceId === config.value?.sourceId
+const rebuildTarget = computed(() =>
+  previewOpen.value ? (recoveryHandle.value ?? config.value?.handle) : config.value?.handle
 )
 let resolveConfirmation: ((value: boolean) => void) | undefined
 const icons = { outfits: Shirt, home: House, camera: Camera }
@@ -214,7 +220,7 @@ async function runManualBackup() {
   }
 }
 function answer(value: boolean) {
-  confirmationDialog.value?.close()
+  confirmationVisible.value = false
   resolveConfirmation?.(value)
   resolveConfirmation = undefined
 }
@@ -225,8 +231,7 @@ async function ask(
   confirm = t('确认继续', 'Continue')
 ): Promise<boolean> {
   confirmation.value = { title, body, danger, confirm }
-  await nextTick()
-  confirmationDialog.value?.showModal()
+  confirmationVisible.value = true
   return new Promise((resolve) => {
     resolveConfirmation = resolve
   })
@@ -253,8 +258,8 @@ async function selectDirectory() {
     !(await ask(
       t('选择专用备份文件夹', 'Choose a dedicated backup folder'),
       t(
-        '请在文档或自己的资料目录中新建专用空文件夹，再选择它。不要直接选择桌面、磁盘根目录或混有其他资料的文件夹。',
-        'Create a dedicated empty folder in Documents or your data directory, then select it. Avoid the desktop, disk root, or folders containing other files.'
+        '请新建一个空文件夹，专门存放暖立方备份；如果之前已有备份，也可以选择原来的备份文件夹。不要直接选择桌面、整个磁盘或存放其他资料的文件夹。',
+        'Create an empty folder just for Nikki Cube backups, or select your existing backup folder. Do not select the desktop, an entire drive, or a folder containing other files.'
       )
     ))
   )
@@ -318,20 +323,26 @@ async function authorize() {
   }
 }
 async function confirmDiff(module: BackupModule, diff: BackupDiff): Promise<boolean> {
-  if (!diff.backupCount || (diff.added === 0 && diff.updated === 0 && diff.removed === 0))
+  const metadataChanged = diff.changes.some(
+    (change) => change.kind === 'tags' || change.kind === 'ignored'
+  )
+  if (
+    (!diff.backupCount && !metadataChanged) ||
+    (diff.added === 0 && diff.updated === 0 && diff.removed === 0 && !metadataChanged)
+  )
     return true
   if (
     !(await ask(
       t('核对电脑副本变更', 'Review backup changes'),
       t(
         `${titleFor(module)}：新增 ${diff.added} 条、修改 ${diff.updated} 条、从电脑副本删除 ${diff.removed} 条。\n浏览器当前 ${diff.browserCount} 条，电脑副本 ${diff.backupCount} 条。\n自动备份只保留最新状态，不能撤销误删或误改。`,
-        `${titleFor(module)}: add ${diff.added}, update ${diff.updated}, delete ${diff.removed}. Browser: ${diff.browserCount}; backup: ${diff.backupCount}. Only the latest state is kept.`
+        `${titleFor(module)}: add ${diff.added}, update ${diff.updated}, delete ${diff.removed}. Browser: ${diff.browserCount}; backup: ${diff.backupCount}. Tags and ignored-code settings are also synced. Only the latest state is kept.`
       ),
-      diff.removed > 0
+      diff.removed > 0 || metadataChanged
     ))
   )
     return false
-  if (diff.removed === diff.backupCount && diff.browserCount === 0)
+  if (diff.backupCount > 0 && diff.removed === diff.backupCount && diff.browserCount === 0)
     return ask(
       t('再次确认：将清空电脑副本', 'Confirm erasing this backup'),
       t(
@@ -361,6 +372,17 @@ async function toggleModule(module: BackupModule) {
           'Please grant folder permission. Editing is unaffected.'
         )
       )
+    if (current.handle) {
+      const marker = await inspectRoot(current.handle)
+      if (
+        marker &&
+        (marker.sourceId !== backupDirectorySource(current) ||
+          (current.backupId && marker.backupId !== current.backupId))
+      ) {
+        await showPreview(current.handle, 'existing')
+        return
+      }
+    }
     const diff = await estimateBackupDiff(current, module)
     if (!(await confirmDiff(module, diff))) return
     await confirmEnable(module, diff)
@@ -514,23 +536,57 @@ async function confirmRestore() {
     finishNotice()
   }
 }
-async function createSeparateArchive() {
-  previewOpen.value = false
-  await selectDirectory()
-}
 async function useExisting() {
   const handle = recoveryHandle.value,
     current = config.value
-  if (!handle || !current || !sourceOwned.value) return
+  if (!handle || !current || !recoveryPreview.value) return
   busy.value = true
   beginNotice(t('正在核对并绑定已有目录…', 'Checking and binding existing folder…'))
   try {
     const marker = await inspectRoot(handle)
-    const prospective: BackupConfig = { ...current, handle, backupId: marker?.backupId }
+    const preview = recoveryPreview.value
+    if (!marker || marker.backupId !== preview.backupId || marker.sourceId !== preview.sourceId)
+      throw new Error(
+        t('目录在预览后已变化，请重新预览', 'The folder changed after preview. Please check again.')
+      )
+    if (
+      marker.sourceId !== backupDirectorySource(current) &&
+      !(await ask(
+        t('使用这个备份目录', 'Use this backup folder'),
+        t(
+          '将保留网站当前数据，不恢复旧备份。已开启的自动备份模块会在核对差异后更新目录。请确认其他浏览器或设备不再向此目录写入。',
+          'Current website data will be retained without restoring old backups. Enabled modules will update the folder after reviewing differences. Make sure other browsers and devices are no longer writing to this folder.'
+        ),
+        false,
+        t('继续', 'Continue')
+      ))
+    )
+      return
+    const prospective: BackupConfig = {
+      ...current,
+      handle,
+      backupId: marker.backupId,
+      directorySourceId: marker.sourceId
+    }
     const diffs: Partial<Record<BackupModule, BackupDiff & { emptyApproved?: boolean }>> = {}
     for (const module of MODULES)
       if (current.enabled[module]) {
+        const item = preview.modules.find((entry) => entry.module === module)
+        if (
+          item &&
+          !item.ready &&
+          !item.missing &&
+          item.message !== '首次备份尚未完整完成，不能按完整模块恢复'
+        )
+          throw new Error(titleFor(module) + '：' + item.message)
         const diff = await estimateBackupDiff(prospective, module)
+        if (item?.ready && item.fingerprint !== diff.fingerprint)
+          throw new Error(
+            t(
+              '目录在预览后已变化，请重新预览',
+              'The folder changed after preview. Please check again.'
+            )
+          )
         if (!(await confirmDiff(module, diff))) return
         diffs[module] = {
           ...diff,
@@ -540,7 +596,8 @@ async function useExisting() {
       }
     await bindDirectory(handle, {
       binding: current.binding,
-      backupId: marker?.backupId,
+      backupId: marker.backupId,
+      sourceId: marker.sourceId,
       enabled: { ...current.enabled },
       diffs
     })
@@ -561,7 +618,7 @@ async function useExisting() {
   }
 }
 async function rebuildCurrent() {
-  const handle = recoveryHandle.value ?? config.value?.handle
+  const handle = rebuildTarget.value
   if (!handle) return
   beginNotice(t('正在统计浏览器数据…', 'Counting browser records…'))
   let counts: string[]
@@ -581,14 +638,18 @@ async function rebuildCurrent() {
   }
   if (
     !(await ask(
-      t('以当前浏览器数据重建', 'Rebuild from browser data'),
+      t('重新生成备份', 'Regenerate backup'),
       t(
-        '这是一项手动重建，将用当前浏览器的三个模块完整替换这份电脑备份：\n' +
+        '目标目录：' +
+          handle.name +
+          '\n将使用网站当前的全部三个模块替换此目录中的旧备份：\n' +
           counts.join('；') +
-          '。\n自动备份开关保持原状。新副本全部写入并校验完成后才切换，随后删除旧副本；需要同时容纳新旧副本的空间。',
-        'Manually replace this computer archive with all three current browser modules: ' +
+          '。\n网站当前数据不变，此目录将成为当前备份目录，自动备份开关保持原状。需要同时容纳新旧副本的空间。',
+        'Target folder: ' +
+          handle.name +
+          '\nReplace its backup with all three current browser modules: ' +
           counts.join('; ') +
-          '. Switches stay unchanged. The new copy is verified before switching and the old copy is then removed. Space for both copies is required.'
+          '. Website data stays unchanged. This folder becomes the active backup folder. Switches stay unchanged. Space for both copies is required.'
       ),
       true,
       t('继续核对', 'Continue review')
@@ -603,7 +664,7 @@ async function rebuildCurrent() {
         'The old copy cannot be recovered after rebuilding. Empty browser modules produce empty backups. Confirm that no other browser, origin, or device is writing this folder.'
       ),
       true,
-      t('确认重建', 'Rebuild now')
+      t('确认替换旧备份', 'Replace old backup')
     ))
   )
     return
@@ -642,12 +703,15 @@ async function rebuildCurrent() {
 function closeRecovery() {
   if (busy.value) return
   previewOpen.value = false
-  const trigger = previewTrigger.value?.disabled ? restoreTrigger.value : previewTrigger.value
+  const trigger =
+    recoveryMode.value === 'inspect' && !previewTrigger.value?.disabled
+      ? previewTrigger.value
+      : restoreTrigger.value
   trigger?.focus({ preventScroll: true })
 }
 onBeforeUnmount(() => {
   resolveConfirmation?.(false)
-  if (confirmationDialog.value?.open) confirmationDialog.value.close()
+  confirmationVisible.value = false
 })
 
 const coordinate = useModuleOperation('directory-backup')
@@ -656,58 +720,46 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
 </script>
 <template>
   <section class="backup-page">
-    <header class="gallery-header backup-heading">
-      <div class="collection-title-row"
-        ><h2>{{ text('数据备份', 'Data backup') }}</h2></div
-      >
-      <CollectionActions :label="text('备份操作', 'Backup actions')">
-        <button
-          class="primary-button"
-          type="button"
-          :disabled="
-            busy || running || !config?.handle || !hasEnabled || !supported || config?.paused
-          "
-          @click="runManualBackup"
-          ><Download :size="15" aria-hidden="true" /><span class="collection-action-label">{{
-            text('立即备份', 'Back up now')
-          }}</span></button
-        >
-        <template #secondary
-          ><button
-            ref="restoreTrigger"
-            type="button"
-            :disabled="busy || running || !supported"
-            @click="restorePicker"
-            ><RotateCcw :size="15" aria-hidden="true" />{{
-              text('从目录恢复', 'Restore from folder')
-            }}</button
-          ></template
-        >
-      </CollectionActions>
-    </header>
     <div class="backup-directory">
       <Folder class="backup-icon" :size="28" aria-hidden="true" />
       <strong>{{ text('备份目录', 'Backup folder') }}</strong>
-      <span class="backup-directory-name">{{
-        config?.directoryName || text('尚未选择', 'No folder selected')
-      }}</span>
+      <span
+        class="backup-directory-name"
+        :class="{ 'has-directory': config?.directoryName }"
+        :title="config?.directoryName"
+        >{{ config?.directoryName || text('尚未选择', 'No folder selected') }}</span
+      >
       <span v-if="sharedError" class="backup-directory-error" role="alert">{{ sharedError }}</span>
       <div class="backup-directory-actions"
-        ><button
-          class="backup-button"
-          ref="previewTrigger"
-          type="button"
-          :disabled="busy || running || !config?.handle || !supported"
-          :aria-expanded="previewOpen"
-          aria-controls="backup-directory-preview"
-          @click="inspectCurrent"
-          >{{ text('目录预览', 'Folder preview') }}</button
         ><button
           class="backup-button"
           type="button"
           :disabled="busy || running || !supported"
           @click="selectDirectory"
-          >{{ text('选择目录', 'Choose folder') }}</button
+          >{{
+            config?.handle ? text('更换目录', 'Change folder') : text('选择目录', 'Choose folder')
+          }}</button
+        >
+        <button
+          class="backup-button"
+          ref="restoreTrigger"
+          type="button"
+          :disabled="busy || running || !supported"
+          @click="restorePicker"
+          ><RotateCcw :size="15" aria-hidden="true" />{{
+            text('从目录恢复', 'Restore from folder')
+          }}</button
+        >
+        <button
+          class="primary-button backup-refresh-button"
+          type="button"
+          :disabled="
+            busy || running || !config?.handle || !hasEnabled || !supported || config?.paused
+          "
+          @click="runManualBackup"
+          ><RefreshCw :size="15" aria-hidden="true" /><span class="collection-action-label">{{
+            text('刷新备份', 'Refresh backup')
+          }}</span></button
         ></div
       >
     </div>
@@ -718,34 +770,45 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
         class="backup-preview"
         aria-labelledby="backup-preview-title"
       >
-        <header
-          ><DatabaseBackup :size="23" /><div
-            ><h2 id="backup-preview-title"
-              >{{ t('目录预览', 'Folder preview') }} · {{ recoveryHandle?.name }}</h2
-            ></div
-          ><button
+        <header>
+          <DatabaseBackup :size="23" aria-hidden="true" />
+          <div class="backup-preview-heading">
+            <h2 id="backup-preview-title">{{ t('目录预览', 'Folder preview') }}</h2>
+            <span aria-hidden="true">·</span>
+            <span class="backup-preview-folder"
+              ><Folder :size="16" aria-hidden="true" />{{ recoveryHandle?.name }}</span
+            >
+          </div>
+          <button
             type="button"
             class="auto-backup-close"
             :disabled="busy"
             :aria-label="t('收起预览', 'Collapse preview')"
             @click="closeRecovery"
-            ><X :size="19" /></button
-        ></header>
+            ><X :size="19"
+          /></button>
+        </header>
         <div class="backup-preview-content">
-          <p>{{
-            t(
-              '先只读检查完整性。恢复会按模块完整替换浏览器数据，不是合并导入；坏记录或缺图只阻止对应模块。',
-              'Read-only verification comes first. Restoration replaces complete modules rather than merging. Corruption blocks only the affected module.'
-            )
-          }}</p>
+          <div class="backup-preview-table-head">
+            <span>{{ t('备份模块', 'Module') }}</span>
+            <span
+              >{{ t('当前数据', 'Current data')
+              }}<small>{{ t('恢复前', 'Before restore') }}</small></span
+            >
+            <span class="backup-preview-direction" aria-hidden="true"></span>
+            <span
+              >{{ t('目录备份', 'Folder backup')
+              }}<small>{{ t('恢复后', 'After restore') }}</small></span
+            >
+            <span>{{ t('状态', 'Status') }}</span>
+          </div>
           <section
-            v-for="item in recoveryPreview?.modules"
+            v-for="item in recoveryPreview.modules"
             :key="item.module"
             class="backup-preview-row"
-            :class="{ invalid: !item.ready }"
           >
-            <label class="app-checkbox-label"
-              ><input
+            <label class="app-checkbox-label">
+              <input
                 v-model="selected"
                 class="app-checkbox"
                 style="--checkbox-size: 18px"
@@ -753,22 +816,54 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
                 :value="item.module"
                 :disabled="!item.ready || busy"
               />
-              <component :is="icons[item.module]" :size="17" /><strong>{{
-                titleFor(item.module)
-              }}</strong></label
-            >
-            <div class="auto-backup-restore-counts"
+              <component
+                :is="icons[item.module]"
+                :size="23"
+                class="backup-icon"
+                aria-hidden="true"
+              />
+              <span class="backup-preview-module"
+                ><strong>{{ titleFor(item.module) }}</strong
+                ><small>{{ date(item.lastSuccess) }}</small></span
+              >
+            </label>
+            <div class="backup-preview-count"
+              ><span class="backup-preview-mobile-label">{{
+                t('当前数据（恢复前）', 'Current data (before)')
+              }}</span
               ><span
-                >{{ t('浏览器', 'Browser') }} <b>{{ item.browserCount.toLocaleString() }}</b>
-                {{ t('条', 'records') }}</span
-              ><span>→</span>
-              <span
-                >{{ t('备份', 'Backup') }} <b>{{ item.backupCount.toLocaleString() }}</b>
-                {{ t('条', 'records') }}</span
+                ><b>{{ item.browserCount.toLocaleString() }}</b> {{ t('条', 'records') }}</span
               ></div
             >
-            <small>{{ date(item.lastSuccess) }}</small>
-            <p :class="{ 'auto-backup-error-text': !item.ready }">{{ item.message }}</p>
+            <span class="backup-preview-direction"
+              ><ArrowRight
+                v-if="item.ready && selected.includes(item.module)"
+                :size="18"
+                aria-hidden="true"
+            /></span>
+            <div class="backup-preview-count"
+              ><span class="backup-preview-mobile-label">{{
+                t('目录备份（恢复后）', 'Folder backup (after)')
+              }}</span
+              ><span
+                ><b>{{ item.backupCount.toLocaleString() }}</b> {{ t('条', 'records') }}</span
+              ></div
+            >
+            <div class="backup-preview-state">
+              <span
+                class="backup-preview-pill"
+                :class="{ ready: item.ready, problem: !item.ready && !item.missing }"
+                :title="item.message"
+                ><component
+                  :is="item.ready ? CircleCheck : item.missing ? CircleMinus : CircleAlert"
+                  :size="16"
+                  aria-hidden="true"
+                />{{
+                  item.ready ? t('可以恢复', 'Restorable') : t('暂不可恢复', 'Not ready')
+                }}</span
+              >
+              <small v-if="!item.ready && !item.missing">{{ item.message }}</small>
+            </div>
             <button
               v-if="item.canResume"
               class="auto-backup-secondary"
@@ -778,40 +873,14 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
               >{{ t('确认续写 / 清理暂存并复查', 'Resume / Clean temporary files') }}</button
             >
           </section>
-          <div v-if="recoveryMode === 'existing'" class="auto-backup-existing"
-            ><p>{{
+          <div class="backup-preview-warning"
+            ><CircleAlert :size="18" aria-hidden="true" /><p>{{
               t(
-                '仅选择已有目录不会覆盖或清空它。可先恢复，也可选择其他空目录保存当前数据。',
-                'Selecting an existing folder never overwrites it. Restore it, or choose another empty folder for current data.'
+                '将所选模块的当前数据替换为目录备份中的数据，不是合并导入。未选中的模块不受影响。',
+                'Replace current data in selected modules with folder backups, rather than merging. Unselected modules are unaffected.'
               )
-            }}</p
-            ><div class="auto-backup-actions">
-              <button type="button" :disabled="busy" @click="createSeparateArchive"
-                ><FolderPlus :size="15" />{{
-                  t('选择其他空目录', 'Choose another empty folder')
-                }}</button
-              >
-            </div></div
+            }}</p></div
           >
-          <details class="auto-backup-tools auto-backup-rebuild"
-            ><summary>{{ t('高级：以当前数据重建', 'Advanced: rebuild this archive') }}</summary>
-            <p>{{
-              t(
-                '不会自动覆盖已有目录。只有明确确认重建，才会用浏览器数据替换旧副本。',
-                'Existing folders are never overwritten automatically. Rebuilding explicitly replaces the old copy with browser data.'
-              )
-            }}</p>
-            <button
-              type="button"
-              class="auto-backup-secondary"
-              :disabled="busy"
-              @click="rebuildCurrent"
-              >{{ t('重建 / 完成上次重建', 'Rebuild / Finish interrupted rebuild') }}</button
-            >
-          </details>
-          <p v-if="recoveryProgress" class="auto-backup-notice" role="status">{{
-            recoveryProgress
-          }}</p>
           <p v-if="recoveryError" class="auto-backup-notice error" role="alert">{{
             recoveryError
           }}</p>
@@ -828,7 +897,8 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
           <button
             v-else
             type="button"
-            class="confirm-dialog-button primary"
+            class="confirm-dialog-button"
+            :class="recoveryMode === 'existing' ? 'ghost' : 'primary'"
             :disabled="busy || !selected.length"
             @click="confirmRestore"
             >{{
@@ -836,12 +906,12 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
             }}</button
           >
           <button
-            v-if="recoveryMode === 'existing' && sourceOwned"
+            v-if="recoveryMode === 'existing'"
             type="button"
-            class="confirm-dialog-button ghost dialog-action-control"
-            :disabled="busy"
+            class="confirm-dialog-button primary"
+            :disabled="busy || !config"
             @click="useExisting"
-            >{{ t('确认绑定此目录', 'Bind this folder') }}</button
+            >{{ t('使用这个目录', 'Use this folder') }}</button
           >
         </footer>
       </section>
@@ -893,40 +963,117 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
         ></article
       >
     </div>
-    <details class="backup-safety">
-      <summary
-        ><ChevronRight :size="18" aria-hidden="true" />{{
-          text('校验与安全复制', 'Verification and safe copying')
-        }}</summary
+    <section class="backup-safety">
+      <button
+        class="backup-management-toggle"
+        type="button"
+        :aria-expanded="managementOpen"
+        aria-controls="backup-management-content"
+        @click="managementOpen = !managementOpen"
       >
-      <div class="backup-safety-body"
-        ><p>{{
-          text(
-            '复制前请暂停写盘并完成校验；暂停期间的新修改不会包含在副本中。',
-            'Pause writes and verify before copying. Changes made while paused are not included.'
-          )
-        }}</p
-        ><div class="backup-actions"
-          ><button
-            class="backup-button"
-            type="button"
-            :disabled="busy || running || !config?.handle || !supported"
-            @click="inspectCurrent"
-            ><ShieldCheck :size="17" aria-hidden="true" />{{
-              text('完整性检查', 'Check integrity')
-            }}</button
-          ><button
-            class="backup-button"
-            type="button"
-            :disabled="busy || running || !config?.handle || !supported"
-            @click="pauseOrResume"
-            ><Pause :size="17" aria-hidden="true" />{{
-              config?.paused ? t('恢复自动备份', 'Resume backup') : text('暂停写盘', 'Pause writes')
-            }}</button
-          ></div
-        ></div
-      >
-    </details>
+        <ChevronRight :size="18" aria-hidden="true" />{{ t('备份管理', 'Backup management') }}
+        <span class="backup-management-hint">{{
+          t('日常使用可忽略此处', 'Not needed for everyday use')
+        }}</span>
+      </button>
+      <TreeCollapse :open="managementOpen" id="backup-management-content">
+        <div class="backup-safety-body backup-management">
+          <div class="backup-management-row">
+            <span class="backup-management-icon"
+              ><ShieldCheck :size="22" aria-hidden="true"
+            /></span>
+            <div class="backup-management-copy">
+              <strong>{{ t('检查备份', 'Check backup') }}</strong>
+              <p>{{
+                t(
+                  '检查当前备份目录中的文件是否完整、能否恢复。',
+                  'Check whether files in the current backup folder are complete and restorable.'
+                )
+              }}</p>
+            </div>
+            <button
+              class="backup-button"
+              type="button"
+              :disabled="busy || running || !config?.handle || !supported"
+              ref="previewTrigger"
+              :aria-expanded="previewOpen"
+              aria-controls="backup-directory-preview"
+              @click="inspectCurrent"
+              >{{ t('开始检查', 'Check now') }}</button
+            >
+          </div>
+          <div class="backup-management-row">
+            <span class="backup-management-icon"><Folder :size="22" aria-hidden="true" /></span>
+            <div class="backup-management-copy">
+              <strong>{{ t('安全复制备份', 'Copy backup safely') }}</strong>
+              <p>{{
+                config?.paused
+                  ? t(
+                      '自动备份已暂停。请确认校验通过后再复制，复制完成后恢复自动备份。',
+                      'Automatic backup is paused. Copy only after verification succeeds, then resume backup.'
+                    )
+                  : t(
+                      '更换电脑或复制文件夹前，先完成备份、暂停自动更新并检查。',
+                      'Finish backup, pause updates and verify before copying or moving to another computer.'
+                    )
+              }}</p>
+              <p>{{
+                t(
+                  '暂停期间的新修改不会包含在副本中。',
+                  'Changes made while paused are not included in the copy.'
+                )
+              }}</p>
+            </div>
+            <button
+              class="backup-button"
+              type="button"
+              :disabled="busy || running || !config?.handle || !supported"
+              @click="pauseOrResume"
+              >{{
+                config?.paused
+                  ? t('恢复自动备份', 'Resume backup')
+                  : t('准备安全复制', 'Prepare safe copy')
+              }}</button
+            >
+          </div>
+          <div class="backup-management-row">
+            <span class="backup-management-icon"><RefreshCw :size="22" aria-hidden="true" /></span>
+            <div class="backup-management-copy">
+              <strong>{{ t('重新生成备份', 'Regenerate backup') }}</strong>
+              <p>{{
+                t(
+                  '以网站当前的全部模块数据为准，替换目录中的旧备份。网站数据不变。',
+                  'Replace the old backup with all current website modules. Website data stays unchanged.'
+                )
+              }}</p>
+              <p class="backup-management-target"
+                >{{
+                  previewOpen
+                    ? t('目标：正在预览的目录', 'Target: previewed folder')
+                    : t('目标：当前备份目录', 'Target: current backup folder')
+                }}
+                · {{ rebuildTarget?.name || t('尚未选择', 'Not selected') }}</p
+              >
+            </div>
+            <button
+              class="backup-button"
+              type="button"
+              :disabled="busy || running || !rebuildTarget || !supported"
+              @click="rebuildCurrent"
+              >{{ t('重新生成备份', 'Regenerate backup') }}</button
+            >
+          </div>
+          <template v-if="!previewOpen">
+            <p v-if="recoveryProgress" class="auto-backup-notice" role="status">{{
+              recoveryProgress
+            }}</p>
+            <p v-if="recoveryError" class="auto-backup-notice error" role="alert">{{
+              recoveryError
+            }}</p>
+          </template>
+        </div>
+      </TreeCollapse>
+    </section>
     <button v-if="hasPermissionIssue" class="backup-button" @click="authorize">{{
       t('重新授权', 'Reauthorize')
     }}</button
@@ -940,35 +1087,18 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
       serviceError
     }}</p>
   </section>
-  <Teleport to="body">
-    <dialog
-      ref="confirmationDialog"
-      class="auto-backup-dialog auto-backup-confirm"
-      @cancel.prevent="answer(false)"
-    >
-      <header
-        ><AlertTriangle
-          v-if="confirmation.danger"
-          :size="22"
-          class="auto-backup-error-text"
-        /><h2>{{ confirmation.title }}</h2></header
-      >
-      <div class="auto-backup-dialog-content"
-        ><p class="auto-backup-confirm-copy">{{ confirmation.body }}</p></div
-      >
-      <footer class="confirm-dialog-actions"
-        ><button
-          type="button"
-          class="confirm-dialog-button ghost dialog-action-control"
-          @click="answer(false)"
-          >{{ t('取消', 'Cancel') }}</button
-        >
-        <button type="button" class="confirm-dialog-button primary" @click="answer(true)">{{
-          confirmation.confirm
-        }}</button></footer
-      >
-    </dialog>
-  </Teleport>
+  <ConfirmDialog
+    brand
+    :visible="confirmationVisible"
+    :title="confirmation.title"
+    :message="confirmation.body"
+    :tone="confirmation.danger ? 'danger' : 'info'"
+    :confirm-label="confirmation.confirm"
+    :cancel-label="t('取消', 'Cancel')"
+    :close-label="t('关闭', 'Close')"
+    @confirm="answer(true)"
+    @cancel="answer(false)"
+  />
 </template>
 
 <style scoped>
@@ -988,7 +1118,7 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
   }
 }
 .backup-page {
-  padding: 8px 0 28px;
+  padding: 0 0 28px;
   color: var(--text);
   --backup-secondary: var(--text);
   --backup-secondary: color-mix(in srgb, var(--text) 80%, var(--surface));
@@ -1002,9 +1132,6 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
   display: flex;
   align-items: center;
   gap: 12px;
-}
-.backup-heading {
-  margin-bottom: 20px;
 }
 h2,
 p {
@@ -1027,7 +1154,7 @@ p {
   padding: 9px 18px;
   background: var(--surface-strong);
   border: 1px solid var(--line);
-  border-radius: calc(var(--radius-sm) + 2px);
+  border-radius: calc(var(--radius-sm) + 6px);
   color: var(--heading);
   font: inherit;
   font-weight: 600;
@@ -1040,13 +1167,26 @@ p {
   background: var(--interactive-hover-bg);
   border-color: var(--interactive-hover-border);
 }
-.backup-button.primary {
-  background: var(--primary-button-bg);
-  border-color: var(--primary-button-bg);
-  color: var(--heading);
+.backup-refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 18px;
+  border-radius: calc(var(--radius-sm) + 6px);
+  font-size: inherit;
 }
-.backup-button.primary:hover:not(:disabled) {
-  background: var(--primary-button-bg-hover);
+.backup-refresh-button,
+.backup-refresh-button:hover,
+.backup-refresh-button:active {
+  box-shadow: none;
+}
+.backup-refresh-button:hover {
+  transform: none;
+}
+.backup-refresh-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 button:disabled {
   opacity: 0.48;
@@ -1059,6 +1199,7 @@ input:focus-visible {
   outline-offset: 4px;
 }
 .backup-directory {
+  margin-top: 18px;
   padding: 16px 20px;
   border: 1px solid var(--line);
   border-radius: calc(var(--radius-md) + 4px);
@@ -1074,12 +1215,19 @@ input:focus-visible {
   flex-shrink: 0;
 }
 .backup-directory-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--backup-secondary);
-  overflow-wrap: anywhere;
   min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--backup-secondary);
+}
+.backup-directory-name.has-directory {
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--soft-accent);
+  color: var(--pink-deep);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 .backup-directory-error {
   flex: 1 1 260px;
@@ -1208,8 +1356,59 @@ input:focus-visible {
   border-radius: calc(var(--radius-md) + 4px);
   background: var(--surface);
 }
-.backup-safety summary {
+.backup-management-row {
   display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+}
+.backup-management-row + .backup-management-row {
+  border-top: 1px solid var(--line-soft);
+}
+.backup-management-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent-subtle);
+  color: var(--pink-deep);
+}
+.backup-management-copy {
+  flex: 1;
+  min-width: 0;
+}
+.backup-management-copy strong {
+  color: var(--heading);
+  font-size: 15px;
+}
+.backup-management-copy p {
+  margin-top: 4px;
+  color: var(--backup-secondary);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.backup-management-target {
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .backup-management-row {
+    flex-wrap: wrap;
+  }
+  .backup-management-row > button {
+    margin-left: auto;
+  }
+}
+.backup-management-toggle {
+  display: flex;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--heading);
+  font-family: inherit;
+  text-align: left;
+  border-radius: inherit;
   align-items: center;
   gap: 10px;
   padding: 18px 22px;
@@ -1218,11 +1417,25 @@ input:focus-visible {
   cursor: pointer;
   list-style: none;
 }
-.backup-safety summary::-webkit-details-marker {
-  display: none;
+.backup-management-hint {
+  color: var(--backup-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
 }
-.backup-safety[open] summary svg {
+.backup-management-toggle svg {
+  flex: none;
+  transition: transform 160ms ease-in;
+}
+.backup-management-toggle[aria-expanded='true'] svg {
   transform: rotate(90deg);
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-spring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .backup-management-toggle svg {
+    transition: none;
+  }
 }
 .backup-safety-body {
   padding: 0 22px 22px;
@@ -1371,67 +1584,144 @@ input:focus-visible {
   background: var(--surface);
 }
 .backup-preview > header {
-  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 .backup-preview > header > svg {
   flex: none;
   color: var(--pink-deep);
 }
-.backup-preview > header > div {
+.backup-preview-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   flex: 1;
   min-width: 0;
+  color: var(--muted);
 }
 .backup-preview h2 {
   color: var(--heading);
-  font-size: 18px;
+  font-size: 20px;
+}
+.backup-preview-folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
-.backup-preview-content > p {
-  font-size: 14px;
-  line-height: 1.7;
-  margin-bottom: 16px;
-}
+.backup-preview-table-head,
 .backup-preview-row {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) auto;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 28px minmax(0, 1fr) minmax(0, 1.2fr);
   align-items: center;
-  gap: 6px 24px;
-  padding: 16px 0;
-  border-top: 1px solid var(--line-soft);
+  gap: 12px;
+  padding: 12px 14px;
+}
+.backup-preview-table-head {
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--heading);
+  font-weight: 600;
+}
+.backup-preview-table-head > :not(:first-child),
+.backup-preview-count {
+  text-align: center;
+}
+.backup-preview-row {
+  border-bottom: 1px solid var(--line-soft);
 }
 .backup-preview-row label {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   color: var(--heading);
 }
-.backup-preview-row .auto-backup-restore-counts {
-  margin: 0;
+.backup-preview-module {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
-.backup-preview-row > p {
-  margin: 0;
-  text-align: right;
-  font-size: 13px;
-  line-height: 1.7;
+.backup-preview-row small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--backup-secondary);
+  overflow-wrap: anywhere;
+}
+.backup-preview-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--heading);
+}
+.backup-preview-table-head small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.backup-preview-direction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pink-deep);
+}
+.backup-preview-count b {
+  font-size: 16px;
+}
+.backup-preview-mobile-label {
+  display: none;
+}
+.backup-preview-state {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.backup-preview-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 12px;
+}
+.backup-preview-pill.ready {
+  color: var(--backup-success);
+  background: var(--surface-soft);
+  background: color-mix(in srgb, var(--notice-success) 12%, var(--surface));
+}
+.backup-preview-pill.problem {
+  color: var(--notice-error);
 }
 .backup-preview-row > button {
   grid-column: 1 / -1;
   justify-self: start;
 }
-.backup-preview-row small {
-  display: block;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--backup-secondary);
-  overflow-wrap: anywhere;
+.backup-preview-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  color: var(--notice-warning);
+  background: var(--surface-soft);
+  background: color-mix(in srgb, var(--notice-warning) 9%, var(--surface));
+  line-height: 1.6;
+}
+.backup-preview-warning svg {
+  flex: none;
 }
 .backup-preview > footer {
   --dialog-accent: var(--primary-button-bg);
   --dialog-primary-dark-text: var(--primary-text);
-  margin-top: 20px;
+  margin-top: 16px;
   padding: 0;
+  border-top: 0;
+  align-items: center;
   flex-wrap: wrap;
 }
 @media (max-width: 1100px) {
@@ -1469,13 +1759,72 @@ input:focus-visible {
   .backup-preview {
     padding: 16px;
   }
-  .backup-preview-row {
-    grid-template-columns: 1fr;
+  .backup-preview-table-head {
+    display: none;
   }
-  .backup-preview-row > p {
+  .backup-preview-row {
+    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+    padding-inline: 0;
+  }
+  .backup-preview-row label,
+  .backup-preview-state {
+    grid-column: 1 / -1;
+  }
+  .backup-preview-state {
+    justify-items: start;
     text-align: left;
   }
-  .backup-safety summary {
+
+  .backup-preview-mobile-label {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .backup-management-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+  }
+  .backup-management-row + .backup-management-row {
+    border-top: 1px solid var(--line-soft);
+  }
+  .backup-management-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: var(--radius-sm);
+    background: var(--surface-accent-subtle);
+    color: var(--pink-deep);
+  }
+  .backup-management-copy {
+    flex: 1;
+    min-width: 0;
+  }
+  .backup-management-copy strong {
+    color: var(--heading);
+    font-size: 15px;
+  }
+  .backup-management-copy p {
+    margin-top: 4px;
+    color: var(--backup-secondary);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .backup-management-target {
+    font-size: 12px;
+  }
+  @media (max-width: 760px) {
+    .backup-management-row {
+      flex-wrap: wrap;
+    }
+    .backup-management-row > button {
+      margin-left: auto;
+    }
+  }
+  .backup-management-toggle {
     padding: 17px;
   }
   .backup-safety-body {
@@ -1506,13 +1855,6 @@ input:focus-visible {
 .auto-backup-close:hover {
   background: var(--icon-button-hover-bg);
 }
-.auto-backup-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0;
-}
-.auto-backup-actions button,
 .auto-backup-secondary {
   display: inline-flex;
   align-items: center;
@@ -1531,26 +1873,13 @@ input:focus-visible {
     border-color var(--motion-fast),
     transform var(--motion-fast);
 }
-.auto-backup-actions button:hover:not(:disabled),
 .auto-backup-secondary:hover:not(:disabled) {
   background: var(--menu-hover-bg);
   border-color: var(--menu-hover-border);
   color: var(--menu-hover-text);
 }
-.auto-backup-actions button:active:not(:disabled),
 .auto-backup-secondary:active:not(:disabled) {
   transform: scale(0.98);
-}
-.auto-backup-directory-row .auto-backup-actions {
-  flex: none;
-  flex-wrap: nowrap;
-}
-.auto-backup-directory-row .auto-backup-actions button {
-  white-space: nowrap;
-}
-.auto-backup-directory-row .auto-backup-actions {
-  order: -1;
-  flex-wrap: wrap;
 }
 .auto-backup-tools summary {
   color: var(--muted);
@@ -1579,54 +1908,6 @@ input:focus-visible {
 .auto-backup-error-text {
   color: var(--notice-error);
 }
-.auto-backup-dialog {
-  position: fixed;
-  inset: 0;
-  margin: auto;
-  width: min(650px, calc(100vw - 32px));
-  max-height: 86vh;
-  max-height: 86dvh;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface-strong);
-  color: var(--text);
-  box-shadow: var(--dialog-shadow);
-  font-size: 13px;
-  line-height: 1.7;
-}
-.auto-backup-dialog[open] {
-  display: flex;
-  flex-direction: column;
-}
-.auto-backup-dialog::backdrop {
-  background: var(--overlay-bg);
-}
-.auto-backup-dialog > header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--line-soft);
-  flex: none;
-}
-.auto-backup-dialog > header > svg {
-  color: var(--pink-deep);
-}
-.auto-backup-dialog h2 {
-  margin: 0;
-  font-size: 17px;
-  color: var(--heading);
-}
-.auto-backup-dialog-content {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 18px 22px;
-}
-.auto-backup-dialog-content > p {
-  margin: 0 0 14px;
-}
 .auto-backup-restore-counts {
   display: flex;
   gap: 12px;
@@ -1636,27 +1917,6 @@ input:focus-visible {
 }
 .auto-backup-secondary {
   margin-top: 8px;
-}
-.auto-backup-dialog > footer {
-  --dialog-accent: var(--primary-button-bg);
-  --dialog-primary-dark-text: var(--primary-text);
-  padding: 12px 22px;
-  border-top: 1px solid var(--line-soft);
-  flex: none;
-}
-.auto-backup-existing {
-  padding-top: 16px;
-  margin-top: 16px;
-  border-top: 1px solid var(--line-soft);
-}
-.auto-backup-existing p {
-  margin: 0;
-}
-.auto-backup-confirm {
-  width: min(510px, calc(100vw - 32px));
-}
-.auto-backup-confirm-copy {
-  white-space: pre-line;
 }
 @media (prefers-reduced-motion: no-preference) {
   .auto-backup-panel {

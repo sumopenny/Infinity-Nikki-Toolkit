@@ -45,7 +45,7 @@ watch(
     <Transition name="confirm-dialog">
       <div
         v-if="visible"
-        class="note-dialog"
+        class="confirm-dialog note-dialog"
         role="dialog"
         aria-modal="true"
         :aria-label="title"
@@ -54,20 +54,20 @@ watch(
         @keydown.right.stop
         @keydown.delete.stop
       >
-        <section ref="panelRef" class="note-dialog-panel" tabindex="-1">
-          <button
-            class="note-dialog-close"
-            type="button"
-            :title="closeLabel"
-            :aria-label="closeLabel"
-            :disabled="busy"
-            @click="emit('cancel')"
-            ><X :size="19" aria-hidden="true"
-          /></button>
-          <header>
+        <section ref="panelRef" class="confirm-dialog-panel note-dialog-panel" tabindex="-1">
+          <header class="confirm-dialog-heading">
             <h2>{{ title }}</h2>
+            <button
+              class="confirm-dialog-close note-dialog-close"
+              type="button"
+              :title="closeLabel"
+              :aria-label="closeLabel"
+              :disabled="busy"
+              @click="emit('cancel')"
+              ><X :size="19" aria-hidden="true"
+            /></button>
           </header>
-          <div class="note-dialog-content">
+          <div class="confirm-dialog-content note-dialog-content">
             <label :for="'photo-note-input'">{{ label }}</label>
             <input
               id="photo-note-input"
@@ -79,7 +79,7 @@ watch(
             />
             <span>{{ value.length }}/{{ maxLength }}</span>
           </div>
-          <footer>
+          <footer class="confirm-dialog-actions">
             <button
               type="button"
               class="confirm-dialog-button ghost"

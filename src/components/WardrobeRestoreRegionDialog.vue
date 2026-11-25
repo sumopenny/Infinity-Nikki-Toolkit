@@ -27,25 +27,33 @@ useModalFocus(visible, panel, () => emit('cancel'))
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
+    <Transition name="confirm-dialog" appear @before-leave="(el) => el.setAttribute('inert', '')">
       <div
         v-if="conflict"
-        class="dialog-overlay wardrobe-restore-region"
+        class="confirm-dialog wardrobe-restore-region"
         role="dialog"
         aria-modal="true"
         aria-labelledby="wardrobe-restore-region-title"
         @click.self="emit('cancel')"
       >
-        <section ref="panel" class="dialog-panel wardrobe-restore-region-panel" tabindex="-1">
-          <header class="resonance-import-header">
+        <section
+          ref="panel"
+          class="confirm-dialog-panel wardrobe-restore-region-panel"
+          tabindex="-1"
+        >
+          <header class="confirm-dialog-heading">
             <h2 id="wardrobe-restore-region-title">{{
               t('确认衣橱展示区服', 'Choose wardrobe display region')
             }}</h2>
-            <button type="button" :aria-label="t('关闭', 'Close')" @click="emit('cancel')"
+            <button
+              class="confirm-dialog-close"
+              type="button"
+              :aria-label="t('关闭', 'Close')"
+              @click="emit('cancel')"
               ><X :size="19"
             /></button>
           </header>
-          <div class="wardrobe-restore-region-body">
+          <div class="confirm-dialog-content wardrobe-restore-region-body">
             <p>{{
               t(
                 '本地衣橱与备份的区服不同，请选择恢复后的展示区服。',
@@ -57,7 +65,8 @@ useModalFocus(visible, panel, () => emit('cancel'))
               {{ t('备份：', 'Backup: ') + label(conflict.incoming) }}</p
             >
             <div
-              v-segmented-indicator class="resonance-choice-row"
+              v-segmented-indicator
+              class="resonance-choice-row"
               role="group"
               :aria-label="t('最终展示区服', 'Final display region')"
             >
@@ -78,13 +87,13 @@ useModalFocus(visible, panel, () => emit('cancel'))
               )
             }}</p>
           </div>
-          <footer class="resonance-import-footer">
+          <footer class="confirm-dialog-actions">
             <button type="button" class="confirm-dialog-button ghost" @click="emit('cancel')">{{
               t('取消', 'Cancel')
             }}</button>
             <button
               type="button"
-              class="primary-button"
+              class="confirm-dialog-button primary"
               :disabled="selected === null"
               @click="selected && emit('confirm', selected)"
               >{{ t('确认区服并恢复', 'Confirm and restore') }}</button
@@ -100,25 +109,24 @@ useModalFocus(visible, panel, () => emit('cancel'))
 .wardrobe-restore-region {
   z-index: 1600;
 }
-.wardrobe-restore-region-panel {
-  width: min(560px, calc(100vw - 28px));
-  max-height: 90dvh;
-  overflow-y: auto;
+.wardrobe-restore-region-panel .confirm-dialog-button.primary {
+  background: var(--primary-button-bg);
+  color: var(--primary-text);
+}
+.wardrobe-restore-region-panel .confirm-dialog-button.primary:hover:not(:disabled) {
+  background: var(--primary-button-bg-hover);
+  color: var(--primary-hover-text);
 }
 .wardrobe-restore-region-body {
   display: grid;
   gap: 16px;
-  padding: 20px 26px;
-  color: var(--text);
-  font-size: 13px;
-  line-height: 1.7;
 }
 .wardrobe-restore-region-body p {
   margin: 0;
 }
 .wardrobe-restore-region-hint {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .resonance-choice-row {
   width: 100%;
@@ -126,8 +134,5 @@ useModalFocus(visible, panel, () => emit('cancel'))
 .resonance-choice {
   flex: 1;
   justify-content: center;
-}
-.resonance-import-footer {
-  flex-wrap: wrap;
 }
 </style>

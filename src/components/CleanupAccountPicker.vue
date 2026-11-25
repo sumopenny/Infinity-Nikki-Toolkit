@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
-import { ChevronDown } from 'lucide-vue-next'
+import { ChevronDown, X } from 'lucide-vue-next'
 import type { LocaleMessages } from '../i18n'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 
@@ -112,77 +112,84 @@ watch(cleanAllAccounts, (checked) => {
         @keydown="handleDialogKeydown"
       >
         <section class="confirm-dialog-panel is-warning cleanup-account-panel">
-          <div class="confirm-dialog-content">
+          <header class="confirm-dialog-heading">
             <h2>{{ messages.accountDialogTitle }}</h2>
+            <button
+              class="confirm-dialog-close"
+              type="button"
+              :aria-label="messages.accountCancel"
+              @click="emit('cancel')"
+              ><X :size="19"
+            /></button>
+          </header>
+          <div class="confirm-dialog-content cleanup-account-content">
             <p>{{ messages.accountDialogMessage }}</p>
-          </div>
-
-          <div class="cleanup-account-form">
-            <label class="cleanup-account-input-label" :for="selectId">{{
-              messages.accountInputLabel
-            }}</label>
-            <div
-              ref="dropdownWrapRef"
-              class="cleanup-account-select-wrap"
-              @keydown="handleDropdownKeydown"
-            >
-              <button
-                :id="selectId"
-                ref="selectRef"
-                type="button"
-                class="cleanup-account-select"
-                :class="{ 'is-placeholder': !selectedAccount, open: menuOpen }"
-                :disabled="cleanAllAccounts"
-                aria-haspopup="listbox"
-                :aria-expanded="menuOpen"
-                @click="toggleMenu()"
+            <div class="cleanup-account-form">
+              <label class="cleanup-account-input-label" :for="selectId">{{
+                messages.accountInputLabel
+              }}</label>
+              <div
+                ref="dropdownWrapRef"
+                class="cleanup-account-select-wrap"
+                @keydown="handleDropdownKeydown"
               >
-                <span>{{ selectedAccount || messages.accountSelectPlaceholder }}</span>
-                <ChevronDown :size="14" aria-hidden="true" />
-              </button>
-              <DesktopMenuTransition>
-                <div
-                  v-if="menuOpen"
-                  class="cleanup-account-menu"
-                  role="listbox"
-                  :aria-label="messages.accountInputLabel"
+                <button
+                  :id="selectId"
+                  ref="selectRef"
+                  type="button"
+                  class="cleanup-account-select"
+                  :class="{ 'is-placeholder': !selectedAccount, open: menuOpen }"
+                  :disabled="cleanAllAccounts"
+                  aria-haspopup="listbox"
+                  :aria-expanded="menuOpen"
+                  @click="toggleMenu()"
                 >
-                  <button
-                    v-for="account in accounts"
-                    :key="account"
-                    type="button"
-                    role="option"
-                    :aria-selected="selectedAccount === account"
-                    :class="{ active: selectedAccount === account }"
-                    @click="selectAccount(account)"
+                  <span>{{ selectedAccount || messages.accountSelectPlaceholder }}</span>
+                  <ChevronDown :size="14" aria-hidden="true" />
+                </button>
+                <DesktopMenuTransition>
+                  <div
+                    v-if="menuOpen"
+                    class="cleanup-account-menu"
+                    role="listbox"
+                    :aria-label="messages.accountInputLabel"
                   >
-                    <span>{{ account }}</span>
-                  </button>
-                </div>
-              </DesktopMenuTransition>
-            </div>
-            <div class="cleanup-account-options">
-              <label class="cleanup-account-all app-checkbox-label">
-                <input
-                  v-model="cleanAllAccounts"
-                  class="app-checkbox"
-                  style="--checkbox-size: 13px"
-                  type="checkbox"
-                />
-                <span>{{ messages.allAccounts }}</span>
-              </label>
-              <label class="cleanup-account-all app-checkbox-label">
-                <input
-                  v-model="rememberChoice"
-                  class="app-checkbox"
-                  style="--checkbox-size: 13px"
-                  type="checkbox"
-                />
-                <span>{{ messages.rememberChoice }}</span>
-              </label>
+                    <button
+                      v-for="account in accounts"
+                      :key="account"
+                      type="button"
+                      role="option"
+                      :aria-selected="selectedAccount === account"
+                      :class="{ active: selectedAccount === account }"
+                      @click="selectAccount(account)"
+                    >
+                      <span>{{ account }}</span>
+                    </button>
+                  </div>
+                </DesktopMenuTransition>
+              </div>
+              <div class="cleanup-account-options">
+                <label class="cleanup-account-all app-checkbox-label">
+                  <input
+                    v-model="cleanAllAccounts"
+                    class="app-checkbox"
+                    style="--checkbox-size: 13px"
+                    type="checkbox"
+                  />
+                  <span>{{ messages.allAccounts }}</span>
+                </label>
+                <label class="cleanup-account-all app-checkbox-label">
+                  <input
+                    v-model="rememberChoice"
+                    class="app-checkbox"
+                    style="--checkbox-size: 13px"
+                    type="checkbox"
+                  />
+                  <span>{{ messages.rememberChoice }}</span>
+                </label>
+              </div>
             </div>
           </div>
-
           <div class="confirm-dialog-actions">
             <button class="confirm-dialog-button ghost" type="button" @click="emit('cancel')">
               {{ messages.accountCancel }}

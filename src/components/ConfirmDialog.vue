@@ -19,6 +19,7 @@ const props = defineProps<{
   consequence?: string
   secondaryLabel?: string
   tone: ConfirmDialogTone
+  brand?: boolean
   confirmLabel: string
   cancelLabel?: string
   closeLabel: string
@@ -54,7 +55,7 @@ useModalFocus(visible, panelRef, () => emit('cancel'), undefined, initialFocus)
         :aria-label="title"
         @click.self="emit('cancel')"
       >
-        <section ref="panelRef" class="confirm-dialog-panel" :class="`is-${tone}`" tabindex="-1">
+        <section ref="panelRef" class="confirm-dialog-panel" :class="[`is-${tone}`, { 'is-brand': brand }]" tabindex="-1">
           <header class="confirm-dialog-heading">
             <div class="confirm-dialog-icon" aria-hidden="true">
               <svg v-if="tone === 'danger'" viewBox="0 0 24 24">

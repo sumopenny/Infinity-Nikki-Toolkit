@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { ImportPlan } from '../utils/photo-params/favorites'
 import type { CameraChoices } from '../utils/backup/allDataBackup'
@@ -58,58 +59,68 @@ function keydown(event: KeyboardEvent) {
 </script>
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
-      <div v-if="visible && plan" class="dialog-overlay camera-conflict-overlay" @keydown="keydown">
+    <Transition name="confirm-dialog" appear @before-leave="(el) => el.setAttribute('inert', '')">
+      <div v-if="visible && plan" class="confirm-dialog camera-conflict-overlay" @keydown="keydown">
         <section
           ref="panel"
-          class="dialog-panel camera-conflict-panel"
+          class="confirm-dialog-panel camera-conflict-panel"
           role="dialog"
           aria-modal="true"
           aria-labelledby="camera-import-title"
         >
-          <header
-            ><h2 id="camera-import-title">{{
-              t('处理导入冲突', 'Resolve import conflicts')
-            }}</h2></header
-          >
-          <p>{{
-            t(
-              '以下相机参数记录 ID 相同但内容不同。请选择保留哪份；参数码重复的其他记录将跳过。',
-              'These camera records have matching IDs but different content. Choose a version; other duplicate codes are skipped.'
-            )
-          }}</p>
-          <div class="camera-conflict-tools"
-            ><button type="button" :disabled="disabled" @click="chooseAll('local')">{{
-              t('全部保留本地', 'Keep all local')
-            }}</button
-            ><button type="button" :disabled="disabled" @click="chooseAll('incoming')">{{
-              t('全部使用导入', 'Use all imported')
-            }}</button></div
-          >
-          <label v-for="item in plan.conflicts" :key="item.id" class="camera-conflict-row">
-            <span
-              >{{ item.name
-              }}<small
-                >{{ t('本地', 'Local') }}:
-                {{ plan.base.find((record) => record.id === item.id)?.name }} ·
-                {{ plan.base.find((record) => record.id === item.id)?.updatedAt }}<br />{{
-                  t('导入', 'Imported')
-                }}: {{ item.updatedAt }}</small
-              ></span
+          <header class="confirm-dialog-heading"
+            ><h2 id="camera-import-title">{{ t('处理导入冲突', 'Resolve import conflicts') }}</h2
+            ><button
+              class="confirm-dialog-close"
+              type="button"
+              :disabled="disabled"
+              :aria-label="t('取消', 'Cancel')"
+              @click="emit('cancel')"
+              ><X :size="19" /></button
+          ></header>
+          <div class="confirm-dialog-content">
+            <p>{{
+              t(
+                '以下相机参数记录 ID 相同但内容不同。请选择保留哪份；参数码重复的其他记录将跳过。',
+                'These camera records have matching IDs but different content. Choose a version; other duplicate codes are skipped.'
+              )
+            }}</p>
+            <div class="camera-conflict-tools"
+              ><button type="button" :disabled="disabled" @click="chooseAll('local')">{{
+                t('全部保留本地', 'Keep all local')
+              }}</button
+              ><button type="button" :disabled="disabled" @click="chooseAll('incoming')">{{
+                t('全部使用导入', 'Use all imported')
+              }}</button></div
             >
-            <select v-model="choices[item.id]" :disabled="disabled"
-              ><option value="local">{{ t('保留本地', 'Keep local') }}</option
-              ><option value="incoming">{{ t('使用导入', 'Use imported') }}</option></select
-            >
-          </label>
-          <p v-if="error" role="alert">{{ error }}</p>
-          <footer
-            ><button type="button" :disabled="disabled" @click="emit('cancel')">{{
-              t('取消', 'Cancel')
-            }}</button
+            <label v-for="item in plan.conflicts" :key="item.id" class="camera-conflict-row">
+              <span
+                >{{ item.name
+                }}<small
+                  >{{ t('本地', 'Local') }}:
+                  {{ plan.base.find((record) => record.id === item.id)?.name }} ·
+                  {{ plan.base.find((record) => record.id === item.id)?.updatedAt }}<br />{{
+                    t('导入', 'Imported')
+                  }}: {{ item.updatedAt }}</small
+                ></span
+              >
+              <select v-model="choices[item.id]" :disabled="disabled"
+                ><option value="local">{{ t('保留本地', 'Keep local') }}</option
+                ><option value="incoming">{{ t('使用导入', 'Use imported') }}</option></select
+              >
+            </label>
+            <p v-if="error" role="alert">{{ error }}</p>
+          </div>
+          <footer class="confirm-dialog-actions"
+            ><button
+              class="confirm-dialog-button ghost"
+              type="button"
+              :disabled="disabled"
+              @click="emit('cancel')"
+              >{{ t('取消', 'Cancel') }}</button
             ><button
               type="button"
-              class="primary-button"
+              class="confirm-dialog-button primary"
               :disabled="disabled"
               @click="emit('confirm', { ...choices })"
               >{{ t('确认导入', 'Import') }}</button
@@ -125,24 +136,14 @@ function keydown(event: KeyboardEvent) {
   z-index: 1600;
 }
 .camera-conflict-panel {
-  width: min(740px, calc(100vw - 28px));
-  max-height: 90dvh;
-  overflow: auto;
-  padding: 24px;
-  box-sizing: border-box;
-  border-radius: 20px;
-  background: var(--surface-strong);
-  color: var(--text);
+  --dialog-accent: var(--pink-deep);
+  --dialog-primary-dark-text: white;
+  --dialog-ghost-bg: var(--surface-strong);
+  --dialog-ghost-border: var(--line);
+  --dialog-ghost-text: var(--text);
+  width: min(740px, 100%);
 }
-h2 {
-  font-size: 21px;
-  margin: 0;
-}
-p {
-  font-size: 13px;
-  line-height: 1.6;
-}
-button,
+.camera-conflict-tools button,
 select {
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -158,11 +159,6 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-button.primary-button {
-  background: var(--pink-deep);
-  color: white;
-  border-color: var(--pink-deep);
-}
 .camera-conflict-tools {
   display: flex;
   gap: 8px;
@@ -175,7 +171,7 @@ button.primary-button {
   justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: 15px;
 }
 .camera-conflict-row > span {
   min-width: 0;
@@ -184,24 +180,13 @@ button.primary-button {
 small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
   margin-top: 6px;
 }
 select {
   max-width: 150px;
 }
-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border-top: 1px solid var(--line);
-  margin-top: 24px;
-  padding-top: 18px;
-}
 @media (max-width: 560px) {
-  .camera-conflict-panel {
-    padding: 18px;
-  }
   .camera-conflict-row {
     flex-wrap: wrap;
   }

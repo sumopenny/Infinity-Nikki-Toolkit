@@ -136,50 +136,12 @@
 }
 
 .note-dialog {
-  position: fixed;
   z-index: 150;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(44, 35, 35, 0.28);
-  backdrop-filter: blur(3px);
-}
-
-.note-dialog-panel {
-  position: relative;
-  width: min(440px, 100%);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface-strong);
-  box-shadow: 0 22px 70px rgba(54, 39, 39, 0.2);
-}
-
-.note-dialog-panel > header,
-.note-dialog-panel > footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 22px;
-}
-
-.note-dialog-panel > header {
-  padding-right: 64px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.note-dialog-panel h2 {
-  margin: 0;
-  color: var(--heading);
-  font-size: 20px;
 }
 
 .note-dialog-content {
   display: grid;
   gap: 9px;
-  padding: 22px;
 }
 
 .note-dialog-content label {
@@ -207,16 +169,6 @@
   justify-self: end;
   color: var(--muted);
   font-size: 12px;
-}
-
-.note-dialog-panel > footer {
-  justify-content: flex-end;
-  gap: 12px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.note-dialog-panel .confirm-dialog-button {
-  min-width: 96px;
 }
 
 .note-dialog-panel .confirm-dialog-button.primary {

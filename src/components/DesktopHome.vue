@@ -95,6 +95,9 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
     data-testid="desktop-home"
     @click.self="wallpaperOpen && closeWallpaper()"
   >
+    <Teleport v-if="wallpaperSource" to="#home-wallpaper-layer">
+      <div class="home-wallpaper-image" :style="wallpaperStyle" aria-hidden="true"></div>
+    </Teleport>
     <div class="home-hero-copy" @click.self="wallpaperOpen && closeWallpaper()">
       <div class="home-hero-text">
         <p class="home-eyebrow"
@@ -189,14 +192,11 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   padding: clamp(28px, 6vh, 72px) clamp(24px, 6vw, 88px) clamp(32px, 13vh, 112px);
   overflow: hidden;
   border-radius: 0;
-  isolation: isolate;
   color: white;
   color: color-mix(in srgb, var(--share-ink), white var(--home-text-lightness, 100%));
 }
-.desktop-home::before {
-  content: '';
+.home-wallpaper-image {
   position: absolute;
-  z-index: -1;
   inset: calc(-2 * var(--home-background-blur, 0px));
   background-image: var(--home-wallpaper, none);
   background-size: cover;
@@ -332,7 +332,6 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   background: transparent;
   color: inherit;
   text-align: left;
-  transition: background var(--motion-base);
 }
 .home-overview button + button {
   border-left: 1px solid rgba(174, 128, 132, 0.25);
@@ -342,15 +341,12 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   --overview-icon-bg: #f8dce4;
 }
 .home-overview button[data-view='home'] {
-  --overview-icon: #829a5b;
+  --overview-icon: #b18b43;
   --overview-icon-bg: #f3e8d6;
 }
 .home-overview button[data-view='favorites'] {
   --overview-icon: #779b5b;
   --overview-icon-bg: #e6ebd8;
-}
-.home-overview button:hover:not(:disabled) {
-  background: rgba(201, 132, 134, 0.1);
 }
 .home-overview-icon {
   display: grid;
@@ -361,6 +357,23 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   border-radius: 50%;
   color: var(--overview-icon);
   background: var(--overview-icon-bg);
+  transition:
+    transform 200ms ease-out,
+    background-color 200ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-overview button:hover:not(:disabled) .home-overview-icon {
+    transform: scale(1.08);
+    background: color-mix(in srgb, var(--overview-icon-bg) 88%, var(--overview-icon));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-overview-icon {
+    transition: none;
+  }
+  .home-overview button:hover:not(:disabled) .home-overview-icon {
+    transform: none;
+  }
 }
 .home-overview-icon svg {
   width: 72%;

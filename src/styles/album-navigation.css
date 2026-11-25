@@ -37,6 +37,25 @@
   padding: 0;
 }
 
+/* 主页壁纸是一张独立的全视口背景，导航和内容共享同一画面。 */
+#home-wallpaper-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.app-shell.is-homepage-shell {
+  isolation: isolate;
+}
+.home-sidebar-material {
+  position: absolute;
+  z-index: -1;
+  inset: -10px 0 0 calc(-1 * clamp(8px, 1vw, 20px));
+  pointer-events: none;
+  background: var(--top-bg);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
 .home-nav-label {
   display: inline-flex;
   align-items: center;

@@ -1363,10 +1363,6 @@ async function clearData() {
     message: locale.value.app.clearDataFirstConfirmMessage,
     sections: locale.value.app.clearDataSections,
     consequence: locale.value.app.clearDataConsequence,
-    secondaryLabel: locale.value.app.clearDataBackup,
-    onSecondary: async () => {
-      await allDataBackupRef.value?.exportData()
-    },
     tone: 'danger',
     confirmLabel: locale.value.app.clearDataConfirm,
     cancelLabel: locale.value.app.dialogCancel
@@ -2301,7 +2297,12 @@ function importAllDataFromMenu() {
 </script>
 
 <template>
-  <div ref="appShellRef" class="app-shell">
+  <div
+    ref="appShellRef"
+    class="app-shell"
+    :class="{ 'is-homepage-shell': activeView === 'landing' }"
+  >
+    <div v-if="activeView === 'landing'" id="home-wallpaper-layer" aria-hidden="true"></div>
     <SkeletonSweep global />
     <PageScrollbar
       :label="language === 'zh' ? '页面滚动' : 'Page scroll'"
@@ -2433,6 +2434,11 @@ function importAllDataFromMenu() {
       }"
     >
       <div class="sidebar-column">
+        <div
+          v-if="activeView === 'landing'"
+          class="home-sidebar-material material-surface"
+          aria-hidden="true"
+        ></div>
         <AlbumViewSwitcher
           class="desktop-navigation"
           :active-view="activeView"

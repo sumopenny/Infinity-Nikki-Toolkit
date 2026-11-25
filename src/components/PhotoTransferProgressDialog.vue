@@ -31,19 +31,17 @@ const percent = computed(() => {
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear @before-leave="el => el.setAttribute('inert', '')">
+    <Transition name="confirm-dialog" appear @before-leave="(el) => el.setAttribute('inert', '')">
       <div
         v-if="visible"
-        class="dialog-overlay photo-transfer-overlay"
+        class="confirm-dialog photo-transfer-overlay"
         role="dialog"
         aria-modal="true"
         :aria-label="title"
       >
-        <section class="dialog-panel photo-transfer-dialog">
-          <header class="photo-transfer-header">
-            <div>
-              <h2>{{ title }}</h2>
-            </div>
+        <section class="confirm-dialog-panel photo-transfer-dialog">
+          <header class="confirm-dialog-heading">
+            <h2>{{ title }}</h2>
             <button
               v-if="!isRunning"
               type="button"
@@ -53,26 +51,30 @@ const percent = computed(() => {
               ><X :size="18"
             /></button>
           </header>
-          <div
-            v-if="!preparing"
-            class="photo-transfer-progress"
-            role="progressbar"
-            :aria-valuemin="0"
-            :aria-valuemax="100"
-            :aria-valuenow="percent"
-          >
-            <div class="photo-transfer-progress-track progress-track"
-              ><span class="progress-fill" :style="{ width: `${percent}%` }"></span
-            ></div>
-            <strong>{{ completed }} / {{ total }}</strong>
+          <div class="confirm-dialog-content">
+            <div
+              v-if="!preparing"
+              class="photo-transfer-progress"
+              role="progressbar"
+              :aria-valuemin="0"
+              :aria-valuemax="100"
+              :aria-valuenow="percent"
+            >
+              <div class="photo-transfer-progress-track progress-track"
+                ><span class="progress-fill" :style="{ width: `${percent}%` }"></span
+              ></div>
+              <strong>{{ completed }} / {{ total }}</strong>
+            </div>
+            <p v-if="preparing" class="photo-transfer-summary">{{ title }}...</p>
+            <p v-if="failedNames.length" class="photo-transfer-failures"
+              >{{ failedLabel }}: {{ failedNames.slice(0, 4).join(', ')
+              }}<template v-if="failedNames.length > 4">
+                (+{{ failedNames.length - 4 }})</template
+              ></p
+            >
+            <p v-if="isCancelled" class="photo-transfer-cancelled">{{ cancelledLabel }}</p>
           </div>
-          <p v-if="preparing" class="photo-transfer-summary">{{ title }}...</p>
-          <p v-if="failedNames.length" class="photo-transfer-failures"
-            >{{ failedLabel }}: {{ failedNames.slice(0, 4).join(', ')
-            }}<template v-if="failedNames.length > 4"> (+{{ failedNames.length - 4 }})</template></p
-          >
-          <p v-if="isCancelled" class="photo-transfer-cancelled">{{ cancelledLabel }}</p>
-          <footer class="photo-transfer-actions">
+          <footer class="confirm-dialog-actions photo-transfer-actions">
             <button
               v-if="isRunning && canCancel"
               type="button"

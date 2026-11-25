@@ -21,6 +21,7 @@ import { locked, withExclusiveBusiness } from './coordination'
 import { locateRoot, permission } from './engine'
 import {
   acknowledgeStage,
+  backupDirectorySource,
   setting,
   countBrowserRecords,
   readRevision,
@@ -521,7 +522,11 @@ export async function resumeSource(handle: FileSystemDirectoryHandle, module: Ba
       if (checked[i]) {
         const stage = await applyStage(dir, id, module, false)
         const current = await setting<BackupConfig>('config')
-        if (current?.sourceId === info.sourceId && current.backupId === info.backupId) {
+        if (
+          current &&
+          backupDirectorySource(current) === info.sourceId &&
+          current.backupId === info.backupId
+        ) {
           const bytes = await readBytes(dir, '_系统/备份信息.json', MAX_JSON_BYTES)
           if (!bytes) throw new Error('续写后模块信息丢失，暂存批次已保留，请重试')
           await acknowledgeStage(current, module, stage, await digest(bytes))
@@ -576,9 +581,10 @@ export async function restoreSelected(
             throw error
           }
           restored.push(MODULE_LABELS[module])
-          onCommitted?.(module)
         })
       )
+      // Refresh may initialize tags, so release the business write lock first.
+      onCommitted?.(module)
     } catch (error) {
       announceBackupChange()
       const text = error instanceof Error ? error.message : String(error)

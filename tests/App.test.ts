@@ -506,6 +506,11 @@ describe('App lifecycle coordination', () => {
     expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('landing')
     expect(wrapper.find('.header-search').exists()).toBe(false)
     expect(home.find('img').exists()).toBe(false)
+    expect(wrapper.get('.app-shell').classes()).toContain('is-homepage-shell')
+    expect(wrapper.find('#home-wallpaper-layer').exists()).toBe(true)
+    expect(wrapper.find('.sidebar-column > .home-sidebar-material.material-surface').exists()).toBe(
+      true
+    )
     expect(home.get('.home-wallpaper-button').attributes('disabled')).toBeUndefined()
     await home.get('.home-wallpaper-button').trigger('click')
     expect(home.find('.home-wallpaper-drawer').exists()).toBe(true)
@@ -535,6 +540,9 @@ describe('App lifecycle coordination', () => {
     await home.get('[data-view="all"]').trigger('click')
     expect(wrapper.getComponent({ name: 'TopBar' }).props('activeView')).toBe('all')
     expect(wrapper.findComponent({ name: 'DesktopHome' }).exists()).toBe(false)
+    expect(wrapper.get('.app-shell').classes()).not.toContain('is-homepage-shell')
+    expect(wrapper.find('#home-wallpaper-layer').exists()).toBe(false)
+    expect(wrapper.find('.home-sidebar-material').exists()).toBe(false)
     wrapper.getComponent({ name: 'AlbumViewSwitcher' }).vm.$emit('changeView', 'landing')
     await nextTick()
     expect(wrapper.findComponent({ name: 'DesktopHome' }).exists()).toBe(true)

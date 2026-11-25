@@ -66,6 +66,7 @@ async function publishBinding(
       current.directoryName = handle.name
       current.binding = binding
       current.backupId = info.backupId
+      delete current.directorySourceId
       // 保留最新的模块开关和暂停设置；不重置其他窗口在重建期间调整的偏好。
       for (const { module, manifest, sha } of prepared) {
         const generation = createUuid()
@@ -228,6 +229,7 @@ export async function rebuildBackupDirectory(
         )
         const scratch = {
           ...config,
+          directorySourceId: identity.sourceId,
           binding: createUuid(),
           initialized: { ...config.initialized, [module]: false }
         }

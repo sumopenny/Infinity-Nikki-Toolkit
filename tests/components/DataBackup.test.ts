@@ -39,7 +39,7 @@ it('shows three real module states and prevents running a backup without a folde
       .findAll('[role="switch"]')
       .every((button) => button.attributes('aria-checked') === 'false')
   ).toBe(true)
-  const run = wrapper.findAll('button').find((button) => button.text() === '立即备份')!
+  const run = wrapper.findAll('button').find((button) => button.text() === '刷新备份')!
   expect(run.attributes('disabled')).toBeDefined()
   expect(wrapper.text()).not.toContain('尚未接入')
   wrapper.unmount()
@@ -109,18 +109,15 @@ it('enables an unchanged backup without a confirmation dialog or success notice'
   const enable = vi
     .spyOn(backupDiff, 'confirmEnable')
     .mockResolvedValue(directoryBackup.config.value!)
-  const show = vi.fn()
   const dispatch = vi.spyOn(window, 'dispatchEvent')
   const wrapper = render()
-  for (const dialog of wrapper.findAll('dialog'))
-    Object.defineProperty(dialog.element, 'showModal', { value: show })
   await wrapper.find('[role="switch"]').trigger('click')
   await flushPromises()
   expect(enable).toHaveBeenCalledWith(
     'outfits',
     expect.objectContaining({ added: 0, updated: 0, removed: 0 })
   )
-  expect(show).not.toHaveBeenCalled()
+  expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   expect(
     dispatch.mock.calls.some(
       ([event]) =>
@@ -181,15 +178,21 @@ it('expands the current directory preview below the directory bar without openin
   directoryBackup.config.value!.directoryName = handle.name
   vi.spyOn(backupRestore, 'previewRestore').mockResolvedValue(previewFixture())
   const wrapper = render()
-  const trigger = wrapper.findAll('button').find((button) => button.text() === '目录预览')!
+  expect(wrapper.get('.backup-directory').findAll('button')).toHaveLength(3)
+  const managementToggle = wrapper.get('.backup-management-toggle')
+  expect(managementToggle.attributes('aria-expanded')).toBe('false')
+  await managementToggle.trigger('click')
+  expect(managementToggle.attributes('aria-expanded')).toBe('true')
+  const trigger = wrapper.findAll('button').find((button) => button.text() === '开始检查')!
   expect(trigger.attributes('aria-expanded')).toBe('false')
   await trigger.trigger('click')
   await flushPromises()
   const preview = wrapper.get('.backup-page .backup-preview')
-  expect(preview.get('h2').text()).toBe('目录预览 · 5756')
+  expect(preview.get('h2').text()).toBe('目录预览')
+  expect(preview.get('.backup-preview-folder').text()).toBe('5756')
   expect(preview.findAll('.backup-preview-row')).toHaveLength(3)
   expect(preview.findAll('input[type="checkbox"]')).toHaveLength(3)
-  expect(wrapper.findAll('dialog')).toHaveLength(1)
+  expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   expect(wrapper.find('.tree-collapse').classes()).toContain('is-open')
   expect(
     wrapper.get('.backup-directory').element.compareDocumentPosition(preview.element) &
@@ -220,19 +223,13 @@ it('shows restoration selection inline and keeps the destructive confirmation in
   await flushPromises()
   const preview = wrapper.get('.backup-preview')
   expect(preview.findAll('input[type="checkbox"]')).toHaveLength(3)
-  const showModal = vi.fn()
-  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
-    configurable: true,
-    value: showModal
-  })
   await preview
     .findAll('button')
     .find((button) => button.text() === '恢复所选模块')!
     .trigger('click')
   await flushPromises()
-  expect(showModal).toHaveBeenCalledOnce()
+  expect(wrapper.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
   expect(restore).not.toHaveBeenCalled()
   wrapper.unmount()
   await flushPromises()
-  Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal')
 })
