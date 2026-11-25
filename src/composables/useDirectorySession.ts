@@ -141,9 +141,14 @@ export function useDirectorySession(options: DirectorySessionOptions) {
 
   async function restoreSavedDirectory() {
     activeOperation.value = 'loading'
+    const timedOut = new Set<FileSystemDirectoryHandle>()
+    const checkPermission = (handle: FileSystemDirectoryHandle) =>
+      ensureReadWritePermission(handle, false, () => {
+        timedOut.add(handle)
+      })
     const savedRoot = getSavedX6GameDirectoryHandle()
     const rootPermission = savedRoot
-      .then((root) => root?.name === 'X6Game' && ensureReadWritePermission(root, false))
+      .then((root) => root?.name === 'X6Game' && checkPermission(root))
       .catch(() => false)
     try {
       if (readLocalStorage(ALBUM_ACCESS_MODE_KEY) === 'compatible') {
@@ -158,9 +163,15 @@ export function useDirectorySession(options: DirectorySessionOptions) {
       const game = root && uid ? { root, uid } : undefined
       const album = { directory: saved, game }
       remembered.value = album
-      const granted = game ? await rootPermission : await ensureReadWritePermission(saved, false)
+      const granted = game ? await rootPermission : await checkPermission(saved)
       if (!granted) {
-        showInfo(text.value.restoreHint)
+        if (timedOut.has(game?.root ?? saved)) {
+          // 本次会话不再向失效句柄请求授权；持久化记录保留到用户重新选择成功。
+          remembered.value = null
+          showInfo(text.value.restoreTimeout)
+        } else {
+          showInfo(text.value.restoreHint)
+        }
         return
       }
       await openRememberedAlbum(album, 'startup')

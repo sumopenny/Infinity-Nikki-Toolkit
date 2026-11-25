@@ -22,15 +22,40 @@ export function getSupportedDirectoryPicker(
 
 export async function ensureReadWritePermission(
   handle: FileSystemDirectoryHandle,
-  requestPermission: boolean
+  requestPermission: boolean,
+  onQueryTimeout?: () => void
 ): Promise<boolean> {
   const options = { mode: 'readwrite' as const }
   if (handle.queryPermission) {
-    const current = await handle.queryPermission(options)
+    const current = requestPermission
+      ? await handle.queryPermission(options)
+      : await queryPermissionWithoutBlocking(handle, options)
+    if (current === 'timeout') {
+      onQueryTimeout?.()
+      return false
+    }
     if (current === 'granted') return true
     if (!requestPermission) return false
   }
   if (!requestPermission && handle.requestPermission) return false
   if (!handle.requestPermission) return true
   return (await handle.requestPermission(options)) === 'granted'
+}
+
+/** 旧句柄的原生查询可能挂起；超时与正常的 prompt 状态分开，提示重新选择目录。 */
+async function queryPermissionWithoutBlocking(
+  handle: FileSystemDirectoryHandle,
+  options: { mode: 'readwrite' }
+): Promise<PermissionState | 'timeout'> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      handle.queryPermission!(options),
+      new Promise<'timeout'>((resolve) => {
+        timer = setTimeout(() => resolve('timeout'), 3000)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
 }
