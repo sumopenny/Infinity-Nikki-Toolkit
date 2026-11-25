@@ -70,3 +70,6 @@ coverage/
 # Local Worker secrets
 .dev.vars
 .dev.vars.*
+
+# Local visual review evidence
+.impeccable/review/

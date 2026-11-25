@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import DesktopMenuTransition from './DesktopMenuTransition.vue'
-import { ChevronLeft, House } from 'lucide-vue-next'
+import { ChevronLeft, House, CircleCheck, CircleAlert, LoaderCircle } from 'lucide-vue-next'
 import { onBeforeUnmount, ref } from 'vue'
 import { useCompactLayout } from '../composables/useCompactLayout'
 import type { LocaleMessages } from '../i18n'
@@ -16,9 +16,12 @@ export type AlbumView =
   | 'animations'
   | 'favorites'
   | 'trash'
+  | 'backup'
 
 defineProps<{
   activeView: AlbumView
+  backupLabel?: string
+  backupStatus?: { state: 'pending' | 'syncing' | 'success' | 'warning'; label: string }
   homeLabel?: string
   allCount: number
   outfitsCount: number
@@ -185,5 +188,72 @@ function selectView(view: AlbumView) {
         </div>
       </DesktopMenuTransition>
     </div>
+    <div v-if="!compact" class="album-view-item"
+      ><button
+        class="album-view-button backup-nav"
+        type="button"
+        :class="{ active: activeView === 'backup' }"
+        :aria-pressed="activeView === 'backup'"
+        :disabled="disabled"
+        :title="backupStatus?.label"
+        :aria-label="
+          backupStatus ? `${backupLabel ?? '数据备份'}：${backupStatus.label}` : undefined
+        "
+        @click="selectView('backup')"
+        ><span>{{ backupLabel ?? '数据备份' }}</span
+        ><span
+          v-if="backupStatus"
+          class="backup-nav-status"
+          :data-state="backupStatus.state"
+          aria-hidden="true"
+          ><CircleCheck v-if="backupStatus.state === 'success'" :size="16" /><CircleAlert
+            v-else-if="backupStatus.state === 'warning'"
+            :size="16" /><LoaderCircle
+            v-else-if="backupStatus.state === 'syncing'"
+            :size="16" /></span></button
+    ></div>
   </nav>
 </template>
+
+<style scoped>
+.backup-nav.active {
+  background: var(--yellow-soft);
+}
+.backup-nav-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  pointer-events: none;
+  color: var(--notice-error);
+}
+.backup-nav-status[data-state='pending']::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.backup-nav-status[data-state='success'] {
+  color: var(--notice-success);
+}
+.backup-nav-status[data-state='warning'] {
+  color: var(--notice-warning);
+}
+.backup-nav-status[data-state='syncing'] {
+  color: var(--pink-deep);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .backup-nav-status[data-state='syncing'] svg {
+    animation: backup-nav-spin 1s linear infinite;
+  }
+}
+@keyframes backup-nav-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

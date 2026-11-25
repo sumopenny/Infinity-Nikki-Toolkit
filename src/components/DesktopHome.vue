@@ -7,6 +7,7 @@ import type { AlbumView } from './AlbumViewSwitcher.vue'
 
 const props = defineProps<{
   language: 'zh' | 'en'
+  nickname?: string | null
   disabled: boolean
   allCount: number
   outfitsCount: number
@@ -96,7 +97,9 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   >
     <div class="home-hero-copy" @click.self="wallpaperOpen && closeWallpaper()">
       <div class="home-hero-text">
-        <p class="home-eyebrow">{{ t('无限暖暖 · 工具集', 'Infinity Nikki · Toolkit') }}</p>
+        <p class="home-eyebrow"
+          >{{ t('你好，', 'Hello, ') }}{{ nickname || t('搭配师', 'Stylist') }}</p
+        >
         <h1>{{ t('欢迎回到暖立方', 'Welcome back to NikkiCube') }}</h1>
         <p class="home-description">{{
           t(

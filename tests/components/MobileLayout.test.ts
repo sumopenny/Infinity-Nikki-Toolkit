@@ -146,7 +146,9 @@ describe('mobile navigation and collection controls', () => {
       }
     })
     wrappers.push(wrapper)
-    const entry = wrapper.findAll('.album-view-item')[3]!
+    const entry = wrapper
+      .findAll('.album-view-item')
+      .find((item) => item.find('.resonance-nav-arrow').exists())!!
     await entry.trigger('pointerenter', { pointerType: 'touch' })
     await entry.trigger('mouseenter')
     await entry.get('button').trigger('click')

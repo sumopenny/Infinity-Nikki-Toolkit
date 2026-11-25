@@ -9,9 +9,15 @@ import {
 import { diagnosticFetch } from '../errorReporting/diagnosticFetch'
 import { throwIfSignalAborted } from '../abortSignal'
 // 奇想手账按所选区服验证角色；凭据只随当前请求发送，不进入持久化层。
-import { decodePearpal } from './resonancePearpalData'
+import { uncompress } from 'snappyjs'
 import type { ResonanceRecord } from './resonanceTypes'
 import { PEARPAL_REGIONS, type PearpalRegion } from './pearpalRegions'
+
+// 手账响应先解压 snappy，再按 JSON 解码。
+export function decodePearpal(buffer: ArrayBuffer): unknown {
+  const decoded = uncompress(new Uint8Array(buffer))
+  return JSON.parse(new TextDecoder().decode(decoded)) as unknown
+}
 
 export interface ResonanceCredentials {
   token: string

@@ -453,7 +453,7 @@ function openDonate() {
 
     <div v-show="compact" class="mobile-header-row">
       <button
-        v-if="activeView !== 'animations'"
+        v-if="activeView !== 'animations' && activeView !== 'backup'"
         ref="mobileSearchTrigger"
         type="button"
         :class="{ 'has-search': searchQuery?.trim() }"
@@ -552,7 +552,10 @@ function openDonate() {
           :messages="{ like: messages.like, likeTooltip: messages.likeTooltip }"
         />
       </Teleport>
-      <div v-if="activeView !== 'animations' && activeView !== 'landing'" class="header-search">
+      <div
+        v-if="activeView !== 'animations' && activeView !== 'landing' && activeView !== 'backup'"
+        class="header-search"
+      >
         <input
           :value="searchQuery ?? ''"
           type="search"

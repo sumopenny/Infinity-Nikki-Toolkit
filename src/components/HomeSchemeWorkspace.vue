@@ -7,6 +7,7 @@ import {
 import { vSelectableCard } from '../utils/selectableCard'
 import PhotoSelectionBadge from './PhotoSelectionBadge.vue'
 import { vImageSkeleton } from '../utils/imageSkeleton'
+import { backupDeleteWarning } from '../utils/directory-backup/engine'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
 import {
@@ -577,10 +578,16 @@ async function save() {
 
 async function removeScheme(item: HomeSchemeItem) {
   return trackOperation(async () => {
-    if (isBusy.value || !(await props.confirmAction(props.messages.deleteConfirm))) return
+    if (
+      isBusy.value ||
+      !(await props.confirmAction(
+        props.messages.deleteConfirm + (await backupDeleteWarning('home', props.language))
+      ))
+    )
+      return
     busy.value = true
     try {
-      await deleteHomeScheme(item)
+      await deleteHomeScheme(item, true)
       schemes.value = schemes.value.filter((entry) => entry.id !== item.id)
       selectedSchemeIds.value = new Set([...selectedSchemeIds.value].filter((id) => id !== item.id))
       if (previewScheme.value?.id === item.id) closePreview()
@@ -664,9 +671,24 @@ async function deleteSelectedSchemes() {
     const selected = [...selectedSchemes.value]
     busy.value = true
     try {
-      if (!(await props.confirmAction(props.messages.deleteSelectedConfirm(selected.length))))
+      if (
+        !(await props.confirmAction(
+          props.messages.deleteSelectedConfirm(selected.length) +
+            (await backupDeleteWarning('home', props.language))
+        ))
+      )
         return
-      await deleteHomeSchemes(selected)
+      if (
+        selected.length === schemes.value.length &&
+        (await backupDeleteWarning('home', props.language)) &&
+        !(await props.confirmAction(
+          props.language === 'zh'
+            ? '这次删除覆盖全部家园方案。同步后电脑副本中的全部方案与图片也会删除，不能撤销。确定继续吗？'
+            : 'This deletes every home scheme and its image from the computer backup too. This cannot be undone. Continue?'
+        ))
+      )
+        return
+      await deleteHomeSchemes(selected, true)
       const deletedIds = new Set(selected.map((item) => item.id))
       schemes.value = schemes.value.filter((item) => !deletedIds.has(item.id))
       selectedSchemeIds.value = new Set(

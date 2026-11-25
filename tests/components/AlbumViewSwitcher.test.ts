@@ -21,15 +21,22 @@ describe('album view controls', () => {
     })
 
     expect(wrapper.findAll('button').map((button) => button.text())).toEqual([
-      '全部照片12 张',
+      '主页',
+      '我的相册12 张',
       '搭配码4 张',
       '家园方案5 个方案',
-      '共鸣',
       '相机参数3 张',
-      '最近删除2 张'
+      '共鸣',
+      '数据备份'
     ])
-    await wrapper.findAll('button')[5].trigger('click')
-    expect(wrapper.emitted('changeView')).toEqual([['trash']])
+    await wrapper.get('.backup-nav').trigger('click')
+    expect(wrapper.emitted('changeView')).toEqual([['backup']])
+    await wrapper.setProps({ backupStatus: { state: 'warning', label: '备份目录需要重新授权' } })
+    const backup = wrapper.get('.backup-nav')
+    expect(backup.get('.backup-nav-status').attributes('data-state')).toBe('warning')
+    expect(backup.attributes('title')).toBe('备份目录需要重新授权')
+    expect(backup.attributes('aria-label')).toBe('数据备份：备份目录需要重新授权')
+    expect(backup.findAll('button')).toHaveLength(0)
   })
 
   it('turns the resonance arrow right and opens the submenu on hover', async () => {
@@ -48,7 +55,9 @@ describe('album view controls', () => {
       }
     })
 
-    const resonanceItem = wrapper.findAll('.album-view-item')[3]
+    const resonanceItem = wrapper
+      .findAll('.album-view-item')
+      .find((item) => item.find('.resonance-nav-arrow').exists())!
     const arrow = resonanceItem.find('.resonance-nav-arrow')
     expect(arrow.classes()).not.toContain('is-open')
     await resonanceItem.trigger('pointerenter', { pointerType: 'mouse' })
@@ -85,7 +94,9 @@ it('localizes the resonance submenu and updates it when the language changes', a
     }
   })
   try {
-    const item = wrapper.findAll('.album-view-item')[3]!
+    const item = wrapper
+      .findAll('.album-view-item')
+      .find((item) => item.find('.resonance-nav-arrow').exists())!!
     await item.trigger('pointerenter', { pointerType: 'mouse' })
     expect(item.findAll('[role="menuitem"]').map((button) => button.text())).toEqual([
       'Resonance records',

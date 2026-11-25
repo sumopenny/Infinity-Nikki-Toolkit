@@ -504,3 +504,11 @@ See the [chart licenses](public/outfit-chart-licenses.txt) for the third-party n
 ## Workers deployment
 
 Daily updates target `main`; `pages` preserves the Pages deployment. See [deployment instructions](docs/workers-deployment.md) for build variables, D1 bindings, secrets, branch settings and acceptance checks.
+
+### Automatic folder backup
+
+On desktop, open **Data backup** in the sidebar, choose a dedicated empty folder, and enable outfit codes, home schemes, or camera favorites individually. All switches are off by default. Updates require the page to remain running in a supported browser with valid folder permission. Browser storage remains primary; folder backups mirror the latest state, including deletions, without history.
+
+The selected folder directly contains the three module folders. Records use full IDs in `记录/<ID>.json`; images use `图片/<ID>.<actual extension>`. Metadata, a single integrity index, and resumable write batches live under each module's `_系统` directory. Invalid IDs and case collisions stop the module rather than renumbering records.
+
+The page supports manual runs, integrity checks, pausing writes for safe copying, module restoration, and explicit rebuilding. Original game photos, wardrobe data, and resonance records are outside automatic folder backup; use the existing ZIP exports for migration.

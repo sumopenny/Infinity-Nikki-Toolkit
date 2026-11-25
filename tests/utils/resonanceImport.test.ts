@@ -20,7 +20,7 @@ import {
   PEARPAL_NO_RECORDS,
   PEARPAL_UID_MISMATCH
 } from '../../src/utils/resonance/resonanceImport'
-import { decodePearpal } from '../../src/utils/resonance/resonancePearpalData'
+import { decodePearpal } from '../../src/utils/resonance/resonanceImport'
 import {
   parseResonanceCookie,
   resonanceBookmarkScript,

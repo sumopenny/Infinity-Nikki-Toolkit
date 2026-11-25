@@ -1,4 +1,8 @@
 <script setup lang="ts">
+const DataBackup = lazyFeature(
+  () => import('./components/DataBackup.vue'),
+  () => language.value
+)
 import { animations, openAnimationKey } from './utils/evolutionAnimations'
 const EvolutionAnimations = lazyFeature(
   () => import('./components/EvolutionAnimations.vue'),
@@ -71,6 +75,30 @@ import { archiveCloudMessages } from './i18n/messages/archiveCloud'
 import ArchiveCloudDialog from './components/ArchiveCloudDialog.vue'
 const archiveCloud = useArchiveCloudSync((task) => operations.run('archive-cloud', task))
 provide(archiveCloudKey, archiveCloud)
+import { useDirectoryBackupLifecycle, directoryBackup } from './composables/useDirectoryBackup'
+import {
+  getBackupButtonStatus,
+  backupButtonStatusMessages
+} from './utils/directory-backup/buttonStatus'
+import { browserBaseline } from './utils/directory-backup/repository'
+import {
+  pendingEnabledBackups,
+  flushBackupsBeforeReset,
+  pauseBackupsForBrowserReset
+} from './utils/directory-backup/engine'
+useDirectoryBackupLifecycle()
+const directoryBackupStatus = computed(() => {
+  const result = getBackupButtonStatus({
+    config: directoryBackup.config.value,
+    statuses: directoryBackup.statuses,
+    running: directoryBackup.running.value,
+    scheduled: directoryBackup.scheduled.value,
+    initialStatusLoading: directoryBackup.initialStatusLoading.value,
+    supported: directoryBackup.supported.value,
+    serviceError: directoryBackup.serviceError.value
+  })
+  return { state: result.state, label: backupButtonStatusMessages[language.value][result.reason] }
+})
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
 import { clearAllBrowserData, subscribeDatabaseVersionMismatch } from './utils/file-system/database'
 
@@ -369,12 +397,14 @@ function isAlbumView(value: string | null): value is AlbumView {
       'makeup',
       'animations',
       'favorites',
+      'backup',
       'trash'
     ].includes(value)
   )
 }
 function viewForLayout(view: AlbumView): AlbumView {
-  return compactLayout.value && (view === 'all' || view === 'trash' || view === 'landing')
+  return compactLayout.value &&
+    (view === 'all' || view === 'trash' || view === 'landing' || view === 'backup')
     ? 'outfits'
     : view
 }
@@ -509,6 +539,16 @@ function refreshAfterArchiveSync() {
     'archive-cloud'
   )
 }
+function refreshAfterDirectoryRestore(event: Event) {
+  return refreshModules(
+    ((event as CustomEvent<string[]>).detail ?? []).filter((key) =>
+      ['outfits', 'home', 'camera'].includes(key)
+    ),
+    language.value === 'zh'
+      ? '数据恢复成功，部分界面刷新失败，请重新加载页面查看。'
+      : 'Data restored; some views could not refresh. Reload to view them.'
+  )
+}
 function refreshAfterAllImport() {
   return refreshModules(
     ['outfits', 'home', 'camera', 'wardrobe', 'resonance'],
@@ -641,6 +681,21 @@ function createErrorStatus(error: unknown, fallback: StatusState): StatusState {
   }
   return status
 }
+type BackupNoticeDetail = {
+  source: string
+  message: string | null
+  tone?: 'success' | 'error' | 'info'
+  loading?: boolean
+}
+function handleBackupNotice(event: Event) {
+  const { source, message, tone, loading } = (event as CustomEvent<BackupNoticeDetail>).detail
+  if (loading) {
+    updateLoadingNotice(source, message)
+  } else {
+    updateLoadingNotice(source, null)
+    if (message) showStatus({ message, tone: tone ?? 'success', source })
+  }
+}
 // A single top notice protects users when an old site build meets a newer local database.
 const databaseVersionNotice = () =>
   showStatus({
@@ -653,6 +708,8 @@ onMounted(() => {
   stopDatabaseVersionNotice = subscribeDatabaseVersionMismatch(databaseVersionNotice)
 })
 onBeforeUnmount(() => stopDatabaseVersionNotice?.())
+onMounted(() => window.addEventListener('nuan-backup-notice', handleBackupNotice))
+onBeforeUnmount(() => window.removeEventListener('nuan-backup-notice', handleBackupNotice))
 // 云端进度复用一条顶部通知，结束、失败或关闭后立即撤下。
 watch(
   [archiveCloud.visible, archiveCloud.phase, archiveCloud.action, language],
@@ -1316,13 +1373,54 @@ async function clearData() {
   })
   if (!confirmed || isAnyFileOperationBusy.value) return
 
+  let resetBaseline: Awaited<ReturnType<typeof browserBaseline>>
+  try {
+    resetBaseline = await browserBaseline()
+  } catch (error) {
+    publishStatus(createErrorStatus(error, { type: 'readFailed' }))
+    return
+  }
+  const stillClear = () =>
+    openConfirmDialog({
+      title: language.value === 'zh' ? '仍然清除本站数据？' : 'Clear browser data anyway?',
+      message:
+        language.value === 'zh'
+          ? '未备份的最新修改可能丢失。电脑上已保存的副本会保留，但不保证包含最新修改。'
+          : 'Unbacked-up edits may be lost. Existing computer copies are preserved, but may not include the latest edits.',
+      tone: 'danger',
+      confirmLabel: language.value === 'zh' ? '仍然清除' : 'Clear anyway',
+      cancelLabel: locale.value.app.dialogCancel
+    })
+  try {
+    if (await pendingEnabledBackups()) {
+      const first = await openConfirmDialog({
+        title: language.value === 'zh' ? '还有待备份修改' : 'Backup changes are pending',
+        tone: 'warning',
+        message:
+          language.value === 'zh'
+            ? '是否先尝试完成电脑备份？未完成的最新修改在清除浏览器后无法找回。'
+            : 'Try completing the computer backup first? Pending edits cannot be recovered after clearing the browser.',
+        confirmLabel: language.value === 'zh' ? '先尝试备份' : 'Try backup first',
+        cancelLabel: language.value === 'zh' ? '暂不备份' : 'Not now'
+      })
+      const backedUp = first && (await flushBackupsBeforeReset())
+      if (!backedUp) {
+        resetBaseline = await browserBaseline()
+        if (!(await stillClear())) return
+      }
+    }
+  } catch {
+    resetBaseline = await browserBaseline()
+    if (!(await stillClear())) return
+  }
+
   await operations.run('website-reset', async () => {
     suppressLocalPersistence = true
     try {
       photoActionParsing.reset()
       photoParams.close()
       await invalidateCacheWrites()
-      await clearAllBrowserData()
+      await pauseBackupsForBrowserReset(() => clearAllBrowserData(), resetBaseline)
       localStorage.clear()
       sessionStorage.clear()
       publishStatus({
@@ -1592,6 +1690,7 @@ async function updateOutfitLibrary(announce = true, promptSharedAccess = announc
 
 /** 切换相册视图并清空上个视图的选中状态（重复点击当前视图不清空）。参数：view 为目标视图；电脑端进入搭配码时按用户偏好显示操作指南。 */
 function changeAlbumView(view: AlbumView, afterArchiveExit = false) {
+  if (compactLayout.value && view === 'backup') view = 'outfits'
   if (navigationBusy.value) return
   clearTimeout(archiveToolbarExitTimer)
   archiveToolbarExitTimer = undefined
@@ -2174,6 +2273,7 @@ onMounted(() => {
     topBarResizeObserver.observe(topBarElement)
   })
   window.addEventListener('resize', updateSidebarStickyOffset)
+  window.addEventListener('nuan-directory-restored', refreshAfterDirectoryRestore)
   window.addEventListener('focus', scheduleFocusRefresh)
   document.addEventListener('visibilitychange', scheduleFocusRefresh)
 })
@@ -2186,6 +2286,7 @@ onBeforeUnmount(() => {
   disposeStatusNotice()
   topBarResizeObserver?.disconnect()
   window.removeEventListener('resize', updateSidebarStickyOffset)
+  window.removeEventListener('nuan-directory-restored', refreshAfterDirectoryRestore)
   window.removeEventListener('focus', scheduleFocusRefresh)
   document.removeEventListener('visibilitychange', scheduleFocusRefresh)
   releasePhotoUrls(photos.value)
@@ -2320,6 +2421,7 @@ function importAllDataFromMenu() {
         'is-homepage': activeView === 'landing',
         'without-album':
           !hasAlbum &&
+          activeView !== 'backup' &&
           activeView !== 'landing' &&
           activeView !== 'outfits' &&
           activeView !== 'home' &&
@@ -2338,6 +2440,8 @@ function importAllDataFromMenu() {
           :all-count="photos.length"
           :outfits-count="outfits.length"
           :home-schemes-count="homeSchemesCount"
+          :backup-status="directoryBackupStatus"
+          :backup-label="mobileText('数据备份', 'Data backup')"
           :resonance-label="locale.viewNav.resonance"
           :favorite-count="cameraFavoriteCodes.length"
           :favorite-count-text="`${cameraFavoriteCodes.length} ${language === 'zh' ? '项' : 'items'}`"
@@ -2363,6 +2467,7 @@ function importAllDataFromMenu() {
         ></aside>
         <AdaptiveFilterPanel
           v-if="
+            activeView !== 'backup' &&
             activeView !== 'landing' &&
             activeView !== 'wardrobe' &&
             activeView !== 'makeup' &&
@@ -2436,6 +2541,7 @@ function importAllDataFromMenu() {
       >
         <DesktopHome
           :language="language"
+          :nickname="gameAlbumProfile?.nickname"
           :disabled="navigationBusy"
           :all-count="photos.length"
           :outfits-count="outfits.length"
@@ -2446,6 +2552,9 @@ function importAllDataFromMenu() {
           @status="(message, tone) => showStatus({ message, tone })"
         />
       </section>
+      <section v-else-if="activeView === 'backup'" class="album-content"
+        ><DataBackup :language="language"
+      /></section>
       <section v-else class="album-content" :aria-label="locale.app.albumContentAria">
         <AlbumNoteNotice
           v-if="albumNotes?.blocked && ['all', 'trash'].includes(activeView)"

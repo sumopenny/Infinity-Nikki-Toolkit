@@ -1,4 +1,5 @@
 import { reportPartialFailure } from '../errorReporting/errorReporter'
+import { markConfirmedDeletion } from '../directory-backup/changeJournal'
 import {
   databaseRequest as outfitRequest,
   runDatabaseTransaction as outfitTransaction
@@ -277,11 +278,15 @@ export async function deleteOutfitTag(removedTag: string) {
     return { tags, previousRecords, updatedRecords }
   })
 }
-export async function deleteOutfits(outfits: OutfitItem[]): Promise<OutfitDeleteResult> {
+export async function deleteOutfits(
+  outfits: OutfitItem[],
+  confirmed = false
+): Promise<OutfitDeleteResult> {
   return outfitTransaction(
     [OUTFITS_STORE, OUTFIT_IMAGES_STORE, OUTFIT_IGNORED_CODES_STORE],
     'readwrite',
     async (tx) => {
+      if (confirmed) markConfirmedDeletion(tx, 'outfits')
       const records = tx.objectStore(OUTFITS_STORE),
         deleted: OutfitItem[] = [],
         failedNames: string[] = []
@@ -308,8 +313,8 @@ export async function deleteOutfits(outfits: OutfitItem[]): Promise<OutfitDelete
     }
   )
 }
-export async function deleteOutfit(item: OutfitItem): Promise<void> {
-  const result = await deleteOutfits([item])
+export async function deleteOutfit(item: OutfitItem, confirmed = false): Promise<void> {
+  const result = await deleteOutfits([item], confirmed)
   if (result.failedNames.length) throw new Error('outfit_record_changed')
 }
 

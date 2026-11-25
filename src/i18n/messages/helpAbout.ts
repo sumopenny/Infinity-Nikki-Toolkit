@@ -135,7 +135,8 @@ export const helpAboutZh: HelpAboutMessages = {
       entry: '更多 → 数据备份',
       steps: [
         {
-          desktop: '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。',
+          desktop:
+            '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。左侧「数据备份」可将搭配码、家园方案和相机收藏自动保存到电脑专用文件夹；只保留最新状态，删除会同步。',
           mobile: '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。'
         },
         {
@@ -281,7 +282,7 @@ export const helpAboutEn: HelpAboutMessages = {
       steps: [
         {
           desktop:
-            'Choose “Export all data”, then “Import all data” on the new device. Back up original game photos separately.',
+            'Choose “Export all data”, then “Import all data” on the new device. Back up original game photos separately. Data backup in the sidebar can automatically save outfits, home schemes, and camera favorites to a dedicated folder. It keeps the latest state and mirrors deletions.',
           mobile:
             'Use “Export all data” to save a backup, then choose “Import all data” on the new device. Back up original game photos separately.'
         },
