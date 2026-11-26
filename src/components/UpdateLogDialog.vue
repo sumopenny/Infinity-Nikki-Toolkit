@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [dismissal: boolean | 'forever']
   openHelp: []
+  afterClose: []
 }>()
 const dontShowAgain = ref(false)
 const dontShowEverAgain = ref(false)
@@ -40,7 +41,7 @@ watch(
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear>
+    <Transition name="confirm-dialog" appear @after-leave="emit('afterClose')">
       <div
         v-if="visible"
         class="dialog-overlay update-log-dialog"

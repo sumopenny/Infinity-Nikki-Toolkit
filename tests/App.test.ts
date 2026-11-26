@@ -391,7 +391,7 @@ describe('App lifecycle coordination', () => {
       expect(profileCard.get('.album-profile-name .album-profile-level').text()).toBe('99级')
       expect(profileCard.findAll('.album-profile-times dt').map((item) => item.text())).toEqual([
         '角色创建时间',
-        '更新时间'
+        gameAlbumMessages.zh.profileUpdatedAt
       ])
       expect(profileCard.findAll('time').map((item) => item.text())).toEqual([
         '2024-12-05 10:46',
@@ -427,7 +427,7 @@ describe('App lifecycle coordination', () => {
       expect(accountTrigger.text()).toBe(`UID ${secondUid}`)
       expect(topBar.get('.album-name-button').text()).toBe(`UID ${secondUid}`)
       await topBar.get('.album-name-button').trigger('click')
-      expect(topBar.get('.album-profile-name').text()).toBe(`UID ${secondUid}`)
+      expect(topBar.get('.album-profile-name > span').text()).toBe(`UID ${secondUid}`)
       expect(topBar.find('.album-profile-level').exists()).toBe(false)
       expect(topBar.get('.album-profile-times > div:last-child dd').text()).toBe('暂无数据')
       expect(saveGameAlbumDirectory).toHaveBeenLastCalledWith(root, albums[secondUid], secondUid)
@@ -1088,6 +1088,39 @@ describe('App lifecycle coordination', () => {
     }
   })
 
+  it('waits for startup dialogs before reminding, remembers dismissal, and reopens from the menu', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const wrapper = mount(App, { global: { stubs: { Teleport: true } } })
+    try {
+      await flushPromises()
+      const reminder = wrapper.getComponent({ name: 'DataStorageReminder' })
+      const updates = wrapper.getComponent({ name: 'UpdateLogDialog' })
+      expect(reminder.props('visible')).toBe(false)
+      updates.vm.$emit('openHelp')
+      updates.vm.$emit('afterClose')
+      await flushPromises()
+      expect(reminder.props('visible')).toBe(false)
+      wrapper.getComponent({ name: 'HelpAboutDialog' }).vm.$emit('close')
+      await flushPromises()
+      expect(updates.props('visible')).toBe(true)
+      updates.vm.$emit('close', true)
+      await flushPromises()
+      expect(reminder.props('visible')).toBe(false)
+      updates.vm.$emit('afterClose')
+      await flushPromises()
+      expect(reminder.props('visible')).toBe(true)
+      reminder.vm.$emit('close', true)
+      await flushPromises()
+      expect(localStorage.getItem('infinity-nikki-data-reminder-dismissed')).toBe('true')
+      wrapper.getComponent({ name: 'TopBar' }).vm.$emit('openDataReminder')
+      await flushPromises()
+      expect(reminder.props('visible')).toBe(true)
+      reminder.vm.$emit('close', true)
+      await flushPromises()
+      expect(reminder.props('visible')).toBe(false)
+    } finally { wrapper.unmount() }
+  })
+
   it.each([false, true])(
     'finishes the archive exit before unmounting controls (reduced motion=%s)',
     async (reducedMotion) => {
@@ -1731,6 +1764,7 @@ describe('App lifecycle coordination', () => {
     'offers X6Game authorization on initial outfits view unless dismissed (%s)',
     async (dismissed) => {
       getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+      localStorage.setItem('infinity-nikki-data-reminder-dismissed', 'true')
       localStorage.setItem('infinity-nikki-active-view', 'outfits')
       localStorage.setItem(
         'infinity-nikki-about-state',

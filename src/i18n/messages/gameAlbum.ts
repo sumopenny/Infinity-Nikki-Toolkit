@@ -13,6 +13,12 @@ export const gameAlbumMessages = {
     restoreTimeout:
       '已保存的目录授权查询超时，请重新选择目录：游戏相册请选择 X6Game，独立相册请重新打开原文件夹。',
     authorizationPath: '推荐授权路径：...\\InfinityNikki Launcher\\InfinityNikki\\X6Game',
+    authorizationFeaturesTitle: '授权X6Game后，你还可以：',
+    authorizationFeatures: [
+      { title: '账号切换', description: '快速切换已有账号相册，根据 UID 识别角色昵称。' },
+      { title: '角色资料', description: '在右上角相册菜单中查看角色头像、等级等信息。' },
+      { title: '头像装扮', description: '为本站展示的角色头像更换喜欢的头像框。' }
+    ],
     noAccounts: '这个 X6Game 中没有可打开的高画质相册。请确认游戏内已经拍过照。',
     missingAccount: '该账号的高画质相册已找不到。可切换到其他可用账号，或重新选择X6Game。',
     account,
@@ -21,7 +27,7 @@ export const gameAlbumMessages = {
     changeAvatarFrame: '切换头像框',
     profileLevel: (level: number) => `${level}级`,
     profileCreatedAt: '角色创建时间',
-    profileUpdatedAt: '更新时间',
+    profileUpdatedAt: '上次登录时间',
     profileUnknown: '暂无数据',
     pickerAborted: '未打开 X6Game。如选择器无法访问此目录，可以用只读兼容模式打开相册。',
     restoreFailed: '未恢复上次授权。可以重试或重新选择目录。',
@@ -38,6 +44,22 @@ export const gameAlbumMessages = {
       'Checking saved folder access timed out. Select the folder again: choose X6Game for a game album, or reopen the original folder for a standalone album.',
     authorizationPath:
       'Recommended authorization path: ...\\InfinityNikki Launcher\\InfinityNikki\\X6Game',
+    authorizationFeaturesTitle: 'After authorizing X6Game, you can also:',
+    authorizationFeatures: [
+      {
+        title: 'Switch accounts',
+        description:
+          'Quickly switch between existing account albums and identify character names by UID.'
+      },
+      {
+        title: 'Character details',
+        description: 'View your character’s avatar, level, and more in the top-right album menu.'
+      },
+      {
+        title: 'Avatar frames',
+        description: 'Choose a favorite frame for your character’s avatar on this site.'
+      }
+    ],
     noAccounts:
       'No high-quality albums were found in this X6Game folder. Take a photo in the game first.',
     missingAccount:
@@ -48,7 +70,7 @@ export const gameAlbumMessages = {
     changeAvatarFrame: 'Change frame',
     profileLevel: (level: number) => `Level ${level}`,
     profileCreatedAt: 'Character created',
-    profileUpdatedAt: 'Last updated',
+    profileUpdatedAt: 'Last login',
     profileUnknown: 'Unavailable',
     pickerAborted:
       'X6Game was not opened. If the picker cannot access this folder, try read-only compatibility mode.',

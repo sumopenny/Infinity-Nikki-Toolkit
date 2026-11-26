@@ -284,6 +284,21 @@ function report(cause: unknown) {
 }
 async function createPreview() {
   if (props.disabled || importing.value || confirming.value) return
+  if (method.value === 'pearpal') {
+    const missing = [
+      [t.value.roleId, roleid.value],
+      [t.value.token, token.value],
+      [t.value.openId, openid.value]
+    ].filter(([, value]) => !value.trim()).map(([label]) => label)
+    if (missing.length) {
+      emit(
+        'notice',
+        text(`${missing.join('、')}不能为空。`, `Please fill in: ${missing.join(', ')}.`),
+        'warning'
+      )
+      return
+    }
+  }
   if (method.value === 'file' && !fileBytes) {
     error.value = t.value.fileRequired
     return

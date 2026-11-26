@@ -139,6 +139,7 @@ export interface FullLocaleMessages {
     albumMenuAria: string
     viewMenuAria: string
     moreMenuAria: string
+    dataStorageReminder: string
     dataBackup: string
     appMaintenance: string
     aboutToolkit: string

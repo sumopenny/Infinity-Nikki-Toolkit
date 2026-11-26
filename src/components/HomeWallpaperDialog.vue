@@ -363,15 +363,20 @@ function paste(event: ClipboardEvent) {
   color: var(--muted);
 }
 .wallpaper-drawer-enter-active {
-  transition: transform 260ms ease-out;
+  transition:
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease;
 }
 .wallpaper-drawer-leave-active {
-  transition: transform 200ms ease-in;
+  transition:
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease;
   pointer-events: none;
 }
 .wallpaper-drawer-enter-from,
 .wallpaper-drawer-leave-to {
-  transform: translateY(100%);
+  transform: translateY(10px);
+  opacity: 0;
 }
 @media (prefers-reduced-motion: reduce) {
   .wallpaper-drawer-enter-active,

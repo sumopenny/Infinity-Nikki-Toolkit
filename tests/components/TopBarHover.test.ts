@@ -8,6 +8,59 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+it('retains the mobile More menu while the profile editor owns clicks and Escape', async () => {
+  vi.stubGlobal('matchMedia', () => ({
+    matches: true,
+    addEventListener() {},
+    removeEventListener() {}
+  }))
+  const wrapper = mount(TopBar, {
+    props: {
+      directoryName: '',
+      isLoading: false,
+      isDeleting: false,
+      hasAlbumDirectory: false,
+      thumbnailMode: 'default',
+      thumbnailModeOptions: [],
+      themeMode: 'light',
+      language: 'zh',
+      messages: messages.zh.topBar,
+      loadProfile: vi.fn()
+    },
+    global: {
+      stubs: {
+        Teleport: true,
+        Transition: true,
+        LikeCounter: true,
+        MobileProfileCard: {
+          emits: ['editAvatarFrame'],
+          template:
+            '<button class="edit-profile" @click="$emit(\'editAvatarFrame\', \'123\')">Edit</button>'
+        }
+      }
+    }
+  })
+  try {
+    await wrapper.get('.mobile-header-row [aria-label="打开更多菜单"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('.edit-profile').trigger('click')
+    expect(wrapper.emitted('editAvatarFrame')).toEqual([['123']])
+    expect(wrapper.find('.more-menu-panel').exists()).toBe(true)
+    await wrapper.setProps({ profileAvatarEditing: true })
+    document.body.click()
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+    expect(wrapper.find('.more-menu-panel').exists()).toBe(true)
+    await wrapper.setProps({ profileAvatarEditing: false })
+    expect(wrapper.find('.more-menu-panel').exists()).toBe(true)
+    document.body.click()
+    await flushPromises()
+    expect(wrapper.find('.more-menu-panel').exists()).toBe(false)
+  } finally {
+    wrapper.unmount()
+  }
+})
+
 it.each([false, true])(
   'selects the system theme from the view menu (compact=%s)',
   async (compact) => {

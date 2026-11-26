@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleUserRound } from 'lucide-vue-next'
+import { CircleUserRound, Pencil } from 'lucide-vue-next'
 import { computed, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useAnimatedHeadFrame } from '../composables/useAnimatedHeadFrame'
 import { headFrames } from '../utils/animatedHeadFrames'
@@ -13,9 +13,10 @@ const props = defineProps<{
   uid: string
   profile?: GameAlbumProfile
   language: Language
+  editableUid?: boolean
 }>()
 
-const emit = defineEmits<{ openAvatarSimulator: [] }>()
+const emit = defineEmits<{ openAvatarSimulator: []; editUid: [] }>()
 
 const copy = computed(() => gameAlbumMessages[props.language])
 const { avatars, load } = useProfileAvatar()
@@ -134,21 +135,33 @@ function onAvatarError(event: Event) {
         <CircleUserRound v-else :size="26" aria-hidden="true" />
       </div>
       <div class="album-profile-name-group">
-        <p class="album-profile-name">
+        <div class="album-profile-name">
           <span>{{ profile?.nickname || copy.account(uid) }}</span>
           <span v-if="profile?.level != null" class="album-profile-level">
             {{ copy.profileLevel(profile.level) }}
           </span>
-        </p>
-        <div class="album-profile-details">
-          <p v-if="profile?.nickname" class="album-profile-uid">{{ copy.account(uid) }}</p>
           <button
             type="button"
             class="album-profile-frame-button"
+            :disabled="!avatarUrl"
             @click="emit('openAvatarSimulator')"
           >
             {{ copy.changeAvatarFrame }}
           </button>
+        </div>
+        <div class="album-profile-details">
+          <slot name="uid">
+            <p v-if="profile?.nickname" class="album-profile-uid">{{ copy.account(uid) }}</p>
+            <button
+              v-if="editableUid"
+              type="button"
+              class="album-profile-edit-uid"
+              :aria-label="language === 'zh' ? '更换 UID' : 'Change UID'"
+              :title="language === 'zh' ? '更换 UID' : 'Change UID'"
+              @click="emit('editUid')"
+              ><Pencil :size="14" aria-hidden="true"
+            /></button>
+          </slot>
         </div>
       </div>
     </div>
@@ -268,6 +281,7 @@ function onAvatarError(event: Event) {
 
 .album-profile-details {
   display: flex;
+  min-height: 30px;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
@@ -275,6 +289,7 @@ function onAvatarError(event: Event) {
 }
 
 .album-profile .album-profile-frame-button {
+  flex-shrink: 0;
   width: auto;
   min-height: 30px;
   margin-inline-start: auto;
@@ -285,6 +300,15 @@ function onAvatarError(event: Event) {
   color: var(--menu-hover-text);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.album-profile .album-profile-edit-uid {
+  width: 24px;
+  min-height: 30px;
+  justify-content: center;
+  padding: 2px 4px;
+  color: var(--menu-hover-text);
+  font-size: 12px;
 }
 
 .album-profile-times {

@@ -29,7 +29,7 @@ const props = defineProps<{
   compact: boolean
   messages: HelpAboutMessages
 }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; afterClose: [] }>()
 
 const dialogId = useId()
 const panelRef = ref<HTMLElement | null>(null)
@@ -94,7 +94,7 @@ function closeDialog() {
 
 <template>
   <Teleport to="body">
-    <Transition name="confirm-dialog" appear>
+    <Transition name="confirm-dialog" appear @after-leave="emit('afterClose')">
       <div
         v-if="visible"
         class="dialog-overlay help-about-dialog"

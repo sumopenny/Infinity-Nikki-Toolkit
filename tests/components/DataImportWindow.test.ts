@@ -44,6 +44,24 @@ afterEach(() => {
 })
 const submit = () =>
   document.querySelector<HTMLButtonElement>('.resonance-import-footer .primary-button')!
+
+it.each(['zh', 'en'] as const)('warns about empty credentials before starting an import (%s)', async (language) => {
+  await wrapper.setProps({ language })
+  const dialog = wrapper.getComponent({ name: 'ResonanceImportDialog' })
+  dialog.vm.$emit('update:roleid', '123456789')
+  dialog.vm.$emit('update:token', '   ')
+  dialog.vm.$emit('update:openid', '')
+  await flushPromises()
+  const fetchSnapshot = vi.spyOn(resonanceImport, 'fetchPearpalSnapshot')
+  submit().click()
+  await flushPromises()
+  expect(wrapper.emitted('notice')?.at(-1)).toEqual([
+    language === 'zh' ? 'Momo Token、Momo ID不能为空。' : 'Please fill in: Momo Token, Momo ID.',
+    'warning'
+  ])
+  expect(fetchSnapshot).not.toHaveBeenCalled()
+  expect(document.querySelector('.data-import-progress')).toBeNull()
+})
 async function preview(raw: unknown) {
   document
     .querySelectorAll<HTMLButtonElement>('.resonance-choice-row:first-child button')[1]!

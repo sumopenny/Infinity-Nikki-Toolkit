@@ -50,6 +50,7 @@ import { archiveBackgrounds, useArchiveBackground } from '../composables/useArch
 import LikeCounter from './LikeCounter.vue'
 import DesktopInstallDialog from './DesktopInstallDialog.vue'
 import GameAlbumProfileCard from './GameAlbumProfileCard.vue'
+import MobileProfileCard from './MobileProfileCard.vue'
 import type { GameAlbumProfile } from '../composables/useGameAlbumProfiles'
 // 收款码图片，通过 Vite 打包以保证构建后路径正确
 import wxQrCode from '../../img/wx.jpg'
@@ -76,6 +77,8 @@ const props = defineProps<{
   hasAlbumDirectory: boolean
   gameAlbumUid?: string
   gameAlbumProfile?: GameAlbumProfile
+  loadProfile?: (uid: string) => Promise<GameAlbumProfile | null>
+  profileAvatarEditing?: boolean
   canRestoreDirectory?: boolean
   gameDirectoryActionLabel?: string
   thumbnailMode: ThumbnailMode
@@ -100,7 +103,7 @@ const emit = defineEmits<{
   clearDirectory: []
   openCleanup: []
   openAvatarSimulator: []
-  editAvatarFrame: []
+  editAvatarFrame: [uid?: string]
   openFortuneTime: []
   openParseTools: []
   clearCache: []
@@ -116,6 +119,7 @@ const emit = defineEmits<{
   changeThumbnailSize: [size: ThumbnailSize]
   openUpdateLog: []
   openHelpAbout: []
+  openDataReminder: []
   updateSearch: [value: string]
 }>()
 
@@ -369,6 +373,8 @@ function openFeedback() {
 
 /** 处理页面外点击和 Esc，关闭当前菜单或打赏/反馈弹窗。参数：event 为鼠标或键盘事件。 */
 function handleDocumentInteraction(event: MouseEvent | KeyboardEvent) {
+  // The profile editor sits above the retained menu and owns outside clicks/Escape.
+  if (props.profileAvatarEditing) return
   if (event instanceof KeyboardEvent) {
     if (event.key !== 'Escape') return
     if (mobileSearchOpen.value) {
@@ -398,7 +404,7 @@ function handleDocumentInteraction(event: MouseEvent | KeyboardEvent) {
   if (
     !headerRef.value?.contains(target) &&
     !insideSearch &&
-    !dropdownRef.value?.contains(target) &&
+    !event.composedPath().includes(dropdownRef.value as EventTarget) &&
     !menuTrigger.value?.contains(target)
   )
     closeMenus()
@@ -1101,6 +1107,12 @@ function openDonate() {
                 class="more-menu-content"
                 @scroll.passive="updateMenuScroll"
               >
+                <MobileProfileCard
+                  v-if="compact && loadProfile"
+                  :language="language"
+                  :load-profile="loadProfile"
+                  @edit-avatar-frame="(uid) => emit('editAvatarFrame', uid)"
+                />
                 <section class="more-menu-group" aria-labelledby="more-backup-heading">
                   <h3 id="more-backup-heading">{{ messages.dataBackup }}</h3>
                   <div class="more-backup-actions">
@@ -1121,6 +1133,10 @@ function openDonate() {
                       }}</span></button
                     >
                   </div>
+                  <button type="button" @click="runMenuAction(() => emit('openDataReminder'))">
+                    <BookOpen :size="16" aria-hidden="true" />
+                    <span>{{ messages.dataStorageReminder }}</span>
+                  </button>
                 </section>
                 <section class="more-menu-group" aria-labelledby="more-maintenance-heading">
                   <h3 id="more-maintenance-heading">{{ messages.appMaintenance }}</h3>

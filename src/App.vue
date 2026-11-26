@@ -119,11 +119,15 @@ import {
   Download,
   Folder,
   Heart,
+  IdCard,
+  Image,
   Plus,
   Trash2,
-  Upload
+  Upload,
+  UsersRound
 } from 'lucide-vue-next'
 import UpdateLogDialog from './components/UpdateLogDialogContent.vue'
+import DataStorageReminder from './components/DataStorageReminder.vue'
 import HelpAboutDialog from './components/HelpAboutDialogContent.vue'
 import AlbumEntryHelp from './components/AlbumEntryHelp.vue'
 import AlbumViewSwitcher, { type AlbumView } from './components/AlbumViewSwitcher.vue'
@@ -153,12 +157,15 @@ const profileAvatarEditor = shallowRef<{
   save: (avatar: ProfileAvatar) => void
 } | null>(null)
 const profileAvatars = useProfileAvatar()
-function openProfileAvatarEditor() {
-  const uid = gameAlbum.value?.uid
+function openAvatarSimulator() {
+  profileAvatarEditor.value = null
+  isAvatarSimulatorVisible.value = true
+}
+function openProfileAvatarEditor(uid = gameAlbum.value?.uid) {
   if (!uid) return
   profileAvatars.load(uid)
   profileAvatarEditor.value = {
-    url: gameAlbumProfile.value?.avatarUrl ?? null,
+    url: gameAlbumProfiles.get(uid)?.avatarUrl ?? null,
     saved: profileAvatars.avatars.get(uid),
     save: (avatar) => profileAvatars.save(uid, avatar)
   }
@@ -315,6 +322,10 @@ const isOutfitGuideVisible = ref(false)
 const isOutfitSummaryVisible = ref(false)
 const isOutfitGuideDismissed = ref(readLocalStorage(OUTFIT_GUIDE_DISMISSED_KEY) === 'true')
 const isUpdateLogVisible = ref(false)
+const DATA_REMINDER_DISMISSED_KEY = 'infinity-nikki-data-reminder-dismissed'
+const isDataReminderDismissed = ref(readLocalStorage(DATA_REMINDER_DISMISSED_KEY) === 'true')
+const isDataReminderVisible = ref(false)
+const pendingDataReminder = ref(!isDataReminderDismissed.value)
 const isHelpAboutVisible = ref(false)
 // 标记使用帮助是否从更新记录窗口跳来，关闭帮助后返回更新记录窗口
 const returnToUpdateLog = ref(false)
@@ -455,6 +466,8 @@ const directoryState = ref<DirectoryState>({ type: 'none' })
 const gameAlbum = shallowRef<GameAlbumBinding | null>(null)
 const gameAlbumText = computed(() => gameAlbumMessages[language.value])
 const { profiles: gameAlbumProfiles, loadProfile: loadGameAlbumProfile } = useGameAlbumProfiles()
+const savedProfileUid = readLocalStorage('nikki-manual-profile-uid')
+if (savedProfileUid) void loadGameAlbumProfile(savedProfileUid)
 const gameAlbumProfile = computed(() =>
   gameAlbum.value ? (gameAlbumProfiles.get(gameAlbum.value.uid) ?? undefined) : undefined
 )
@@ -1104,7 +1117,14 @@ async function replaceAlbum(
 
 async function setAlbumFavorites(targets: PhotoItem[], favorite: boolean) {
   const directory = albumDirectoryHandle.value
-  if (!directory || !targets.length || isCompatibleAlbum.value || notesBlocked.value || isAnyFileOperationBusy.value) return
+  if (
+    !directory ||
+    !targets.length ||
+    isCompatibleAlbum.value ||
+    notesBlocked.value ||
+    isAnyFileOperationBusy.value
+  )
+    return
   await operations.run('photo-favorites', async () => {
     try {
       const metadata = await savePhotoFavorites(
@@ -1819,6 +1839,30 @@ function closeUpdateLog(dismissal: boolean | 'forever') {
 function openHelpAbout() {
   isHelpAboutVisible.value = true
 }
+
+function showPendingDataReminder() {
+  if (
+    appDisposed ||
+    !pendingDataReminder.value ||
+    isUpdateLogVisible.value ||
+    isHelpAboutVisible.value ||
+    returnToUpdateLog.value
+  ) return
+  pendingDataReminder.value = false
+  isDataReminderVisible.value = true
+}
+function openDataReminder() {
+  pendingDataReminder.value = false
+  isDataReminderVisible.value = true
+}
+function closeDataReminder(dismissed: boolean) {
+  isDataReminderDismissed.value = dismissed
+  if (!suppressLocalPersistence) {
+    if (dismissed) writeLocalStorage(DATA_REMINDER_DISMISSED_KEY, 'true')
+    else removeLocalStorage(DATA_REMINDER_DISMISSED_KEY)
+  }
+  isDataReminderVisible.value = false
+}
 function closeHelpAbout() {
   isHelpAboutVisible.value = false
   // 从更新记录窗口跳来时，关闭帮助窗口后仍返回更新记录窗口。
@@ -2254,7 +2298,9 @@ function updateSidebarStickyOffset() {
 let startupReady: Promise<unknown> = Promise.resolve()
 let initialOutfitScanStarted = false
 let promptX6GameOnInitialOutfitScan = false
-const isStartupNoticeVisible = computed(() => isUpdateLogVisible.value || isHelpAboutVisible.value)
+const isStartupNoticeVisible = computed(
+  () => isUpdateLogVisible.value || isHelpAboutVisible.value || isDataReminderVisible.value || pendingDataReminder.value
+)
 
 async function ensureInitialOutfitScan() {
   await startupReady
@@ -2307,6 +2353,7 @@ onMounted(() => {
   const directoryReady = restoreSavedDirectory()
   startupReady = Promise.allSettled([collectionReady, directoryReady])
   if (!updateLogDismissal.value) isUpdateLogVisible.value = true
+  else showPendingDataReminder()
   // 重型游戏目录扫描推迟到首次进入搭配码，避免打开其他模块时争用 I/O。
   void ensureInitialOutfitScan()
   nextTick(() => {
@@ -2369,6 +2416,8 @@ function importAllDataFromMenu() {
       :is-deleting="isDeleting || isTrashBusy"
       :has-album-directory="hasAlbum"
       :game-album-uid="gameAlbum?.uid"
+      :load-profile="loadGameAlbumProfile"
+      :profile-avatar-editing="isAvatarSimulatorVisible && !!profileAvatarEditor"
       :game-album-profile="gameAlbumProfile"
       :can-restore-directory="canRestoreDirectory && !isCompatibleAlbum"
       :game-directory-action-label="gameDirectoryActionLabel"
@@ -2406,7 +2455,7 @@ function importAllDataFromMenu() {
       :read-only-hint="compatibleMessages.writeDisabled"
       @clear-directory="clearDirectory"
       @open-cleanup="openCleanupDialog"
-      @open-avatar-simulator="profileAvatarEditor = null; isAvatarSimulatorVisible = true"
+      @open-avatar-simulator="openAvatarSimulator"
       @edit-avatar-frame="openProfileAvatarEditor"
       @open-fortune-time="isFortuneTimeVisible = true"
       @open-parse-tools="openParseTools"
@@ -2421,6 +2470,7 @@ function importAllDataFromMenu() {
       @toggle-theme="toggleTheme"
       @open-update-log="openUpdateLog"
       @open-help-about="openHelpAbout"
+      @open-data-reminder="openDataReminder"
       @update-search="searchQuery = $event"
     />
 
@@ -2755,9 +2805,6 @@ function importAllDataFromMenu() {
                   <span class="album-entry-badge">{{ locale.grid.recommended }}</span></h3
                 >
                 <p>{{ locale.grid.gameDirectoryHint }}</p>
-                <p class="recommended-path album-authorization-path">{{
-                  gameAlbumText.authorizationPath
-                }}</p>
               </div>
               <div class="empty-album-action-row">
                 <button
@@ -2778,6 +2825,25 @@ function importAllDataFromMenu() {
                   {{ gameDirectoryActionLabel }}
                 </button>
               </div>
+              <p class="album-authorization-features-title">{{
+                gameAlbumText.authorizationFeaturesTitle
+              }}</p>
+              <ul class="album-authorization-features">
+                <li v-for="(feature, index) in gameAlbumText.authorizationFeatures" :key="index">
+                  <component
+                    :is="[UsersRound, IdCard, Image][index]"
+                    :size="24"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <h4>{{ feature.title }}</h4>
+                    <p>{{ feature.description }}</p>
+                  </div>
+                </li>
+              </ul>
+              <p class="recommended-path album-authorization-path">{{
+                gameAlbumText.authorizationPath
+              }}</p>
             </div>
             <div class="album-entry-alternatives" :class="{ 'is-single': compactLayout }">
               <button
@@ -3400,6 +3466,7 @@ function importAllDataFromMenu() {
       :dismissed="updateLogDismissal"
       :language="language"
       @close="closeUpdateLog"
+      @after-close="showPendingDataReminder"
       @open-help="openHelpFromUpdateLog"
     />
 
@@ -3409,6 +3476,15 @@ function importAllDataFromMenu() {
       :compact="compactLayout"
       :language="language"
       @close="closeHelpAbout"
+      @after-close="showPendingDataReminder"
+    />
+
+    <DataStorageReminder
+      :visible="isDataReminderVisible"
+      :dismissed="isDataReminderDismissed"
+      :language="language"
+      :can-auto-backup="!compactLayout && directoryBackup.supported.value"
+      @close="closeDataReminder"
     />
 
     <CleanupDialog

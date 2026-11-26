@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import HomeWallpaperDialog from './HomeWallpaperDialog.vue'
+import HomeWaterSurface from './HomeWaterSurface.vue'
 import { useHomeWallpaper } from '../composables/useHomeWallpaper'
 import { ArrowRight, Camera, House, Image, ImagePlus, Sparkles } from 'lucide-vue-next'
 import type { AlbumView } from './AlbumViewSwitcher.vue'
@@ -58,6 +59,52 @@ const wallpaper = useHomeWallpaper((failure) => {
 })
 const { style: wallpaperStyle, source: wallpaperSource } = wallpaper
 const wallpaperTrigger = ref<HTMLButtonElement | null>(null)
+const heroTilt = ref<HTMLDivElement | null>(null)
+let tiltFrame: number | undefined
+let tiltPreference: MediaQueryList | undefined
+let tiltX = 0
+let tiltY = 0
+
+function resetHeroTilt() {
+  if (tiltFrame !== undefined) cancelAnimationFrame(tiltFrame)
+  tiltFrame = undefined
+  heroTilt.value?.classList.remove('is-tracking')
+  heroTilt.value?.style.removeProperty('--hero-tilt-x')
+  heroTilt.value?.style.removeProperty('--hero-tilt-y')
+}
+
+function moveHeroTilt(event: PointerEvent) {
+  if (event.pointerType !== 'mouse' || !tiltPreference?.matches) return
+  // Measure the stationary wrapper, never the transformed glass surface.
+  const target = heroTilt.value
+  if (!target) return
+  const bounds = target.getBoundingClientRect()
+  if (!bounds.width || !bounds.height) return
+  const clamp = (value: number) => Math.max(-1, Math.min(1, value))
+  tiltX = -2 * clamp(((event.clientY - bounds.top) / bounds.height - 0.5) * 2)
+  tiltY = 2 * clamp(((event.clientX - bounds.left) / bounds.width - 0.5) * 2)
+  if (tiltFrame !== undefined) return
+  tiltFrame = requestAnimationFrame(() => {
+    tiltFrame = undefined
+    target.classList.add('is-tracking')
+    target.style.setProperty('--hero-tilt-x', `${tiltX.toFixed(3)}deg`)
+    target.style.setProperty('--hero-tilt-y', `${tiltY.toFixed(3)}deg`)
+  })
+}
+
+onMounted(() => {
+  if (typeof window.matchMedia !== 'function') return
+  tiltPreference = window.matchMedia(
+    '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)'
+  )
+  tiltPreference.addEventListener('change', resetHeroTilt)
+  window.addEventListener('blur', resetHeroTilt)
+})
+onBeforeUnmount(() => {
+  resetHeroTilt()
+  tiltPreference?.removeEventListener('change', resetHeroTilt)
+  window.removeEventListener('blur', resetHeroTilt)
+})
 function closeWallpaper(restoreFocus = false) {
   wallpaper.persist()
   wallpaperOpen.value = false
@@ -96,20 +143,30 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
     @click.self="wallpaperOpen && closeWallpaper()"
   >
     <Teleport v-if="wallpaperSource" to="#home-wallpaper-layer">
-      <div class="home-wallpaper-image" :style="wallpaperStyle" aria-hidden="true"></div>
+      <div class="home-wallpaper-image" :style="wallpaperStyle" aria-hidden="true">
+        <HomeWaterSurface :source="wallpaperSource" :paused="wallpaperOpen || disabled" />
+      </div>
     </Teleport>
     <div class="home-hero-copy" @click.self="wallpaperOpen && closeWallpaper()">
-      <div class="home-hero-text">
-        <p class="home-eyebrow"
-          >{{ t('你好，', 'Hello, ') }}{{ nickname || t('搭配师', 'Stylist') }}</p
-        >
-        <h1>{{ t('欢迎回到暖立方', 'Welcome back to NikkiCube') }}</h1>
-        <p class="home-description">{{
-          t(
-            '相册管理 · 搭配收藏 · 家园方案 · 相机参数 · 暖暖档案',
-            'Albums · Outfits · Home schemes · Camera parameters · Nikki archive'
-          )
-        }}</p>
+      <div
+        ref="heroTilt"
+        class="home-hero-tilt"
+        @pointermove="moveHeroTilt"
+        @pointerleave="resetHeroTilt"
+        @pointercancel="resetHeroTilt"
+      >
+        <div class="home-hero-text">
+          <p class="home-eyebrow"
+            >{{ t('你好，', 'Hello, ') }}{{ nickname || t('搭配师', 'Stylist') }}</p
+          >
+          <h1>{{ t('欢迎回到暖立方', 'Welcome back to NikkiCube') }}</h1>
+          <p class="home-description">{{
+            t(
+              '相册管理 · 搭配收藏 · 家园方案 · 相机参数 · 暖暖档案',
+              'Albums · Outfits · Home schemes · Camera parameters · Nikki archive'
+            )
+          }}</p>
+        </div>
       </div>
       <div class="home-hero-actions" @click.self="wallpaperOpen && closeWallpaper()">
         <button class="home-guide-button" type="button" @click="emit('openHelp')">
@@ -182,6 +239,7 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
 
 <style scoped>
 .desktop-home {
+  --home-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   display: grid;
   flex: 1;
@@ -218,9 +276,23 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   width: fit-content;
   max-width: 100%;
   padding: 16px 22px;
-  background: rgba(255, 255, 255, 0.08);
-  background: color-mix(in srgb, var(--surface) 12%, transparent);
+  background: rgba(255, 255, 255, 0.3);
+  background: color-mix(in srgb, var(--surface) 30%, transparent);
   backdrop-filter: blur(8px);
+}
+.home-hero-tilt {
+  width: fit-content;
+  max-width: 100%;
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .home-hero-tilt .home-hero-text {
+    transform: perspective(1000px) rotateX(var(--hero-tilt-x, 0deg))
+      rotateY(var(--hero-tilt-y, 0deg));
+    transition: transform 500ms var(--home-motion-ease);
+  }
+  .home-hero-tilt.is-tracking .home-hero-text {
+    transition-duration: 180ms;
+  }
 }
 .home-eyebrow {
   margin: 0 0 8px;
@@ -358,12 +430,12 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   color: var(--overview-icon);
   background: var(--overview-icon-bg);
   transition:
-    transform 200ms ease-out,
+    transform 220ms var(--home-motion-ease),
     background-color 200ms ease-out;
 }
 @media (hover: hover) and (pointer: fine) {
   .home-overview button:hover:not(:disabled) .home-overview-icon {
-    transform: scale(1.08);
+    transform: translateY(-2px) scale(1.04);
     background: color-mix(in srgb, var(--overview-icon-bg) 88%, var(--overview-icon));
   }
 }
@@ -403,5 +475,72 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
 
 :global(:root[data-theme='dark']) .home-overview-text strong {
   color: var(--heading);
+}
+
+/* Entrance uses translate independently of the controls' hover/press transforms. */
+@keyframes home-content-enter {
+  from {
+    opacity: 0.12;
+    translate: 0 15px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+.home-hero-text,
+.home-hero-actions,
+.home-overview button > span {
+  animation: home-content-enter 1s var(--home-motion-ease) backwards;
+}
+.home-hero-actions {
+  animation-delay: 40ms;
+}
+.home-overview button > span {
+  animation-delay: 80ms;
+}
+.home-overview-text,
+.home-guide-button svg,
+.home-wallpaper-button svg {
+  transition: transform 220ms var(--home-motion-ease);
+}
+.home-wallpaper-button {
+  transition: background 220ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-overview button:hover:not(:disabled) .home-overview-text {
+    transform: translateY(-2px);
+  }
+  .home-guide-button:hover svg:last-child {
+    transform: translateX(3px);
+  }
+  .home-wallpaper-button:hover svg {
+    transform: translateY(-2px);
+  }
+}
+.home-overview button:focus-visible:not(:disabled) .home-overview-text {
+  transform: translateY(-2px);
+}
+.home-overview button:active:not(:disabled) > span {
+  transform: scale(0.98);
+  transition-duration: 90ms;
+}
+.home-guide-button:active svg,
+.home-wallpaper-button:active svg {
+  transform: scale(0.98);
+  transition-duration: 90ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-hero-text,
+  .home-hero-actions,
+  .home-overview button > span {
+    animation: none;
+  }
+  .home-overview button > span,
+  .home-guide-button svg,
+  .home-wallpaper-button svg {
+    transition: none;
+    transform: none !important;
+  }
 }
 </style>
