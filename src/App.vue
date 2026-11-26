@@ -388,6 +388,7 @@ const {
   locale,
   themeMode,
   autoParseActionsEnabled,
+  homeWaterEffectEnabled,
   thumbnailMode,
   outfitThumbnailMode,
   homeThumbnailMode,
@@ -2561,6 +2562,11 @@ function importAllDataFromMenu() {
           @change-view="changeAlbumView"
         />
 
+        <label v-if="activeView === 'landing' && !compactLayout" class="home-water-toggle">
+          <span>{{ mobileText('水波效果', 'Water ripple effect') }}</span>
+          <input v-model="homeWaterEffectEnabled" type="checkbox" role="switch" />
+        </label>
+
         <aside
           v-if="activeView === 'wardrobe'"
           v-show="!compactLayout"
@@ -2651,6 +2657,7 @@ function importAllDataFromMenu() {
       >
         <DesktopHome
           :language="language"
+          :water-effect-enabled="homeWaterEffectEnabled"
           :backup-status="directoryBackupStatus"
           :nickname="gameAlbumProfile?.nickname"
           :disabled="navigationBusy"

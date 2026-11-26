@@ -872,7 +872,6 @@
     color-mix(in srgb, var(--pink-deep) 13%, var(--surface-strong)),
     color-mix(in srgb, #d9b86a 10%, var(--surface-strong))
   );
-  box-shadow: 0 10px 26px color-mix(in srgb, var(--pink-deep) 18%, transparent);
 }
 @supports not (color: color-mix(in srgb, black, white)) {
   .update-log-entry.is-current {
@@ -883,25 +882,23 @@
       rgba(247.98, 239.01, 239.27, 1),
       rgba(251.2, 247.9, 240.1, 1)
     );
-    box-shadow: 0 10px 26px rgba(201, 132, 134, 0.18);
   }
   :where(:root[data-theme='dark']) .update-log-entry.is-current {
     border: 1px solid rgba(239, 176, 178, 0.4);
     border-radius: 16px;
     background: linear-gradient(120deg, rgba(54.56, 46.37, 50.11, 1), rgba(46, 42.7, 38.5, 1));
-    box-shadow: 0 10px 26px rgba(239, 176, 178, 0.18);
   }
 }
-.update-log-entry.is-current .update-log-version {
+.update-log-version.is-current {
   background: var(--title-gradient);
   font-size: 13px;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--pink-deep) 35%, transparent);
 }
 @supports not (color: color-mix(in srgb, black, white)) {
-  .update-log-entry.is-current .update-log-version {
+  .update-log-version.is-current {
     box-shadow: 0 2px 8px rgba(201, 132, 134, 0.35);
   }
-  :where(:root[data-theme='dark']) .update-log-entry.is-current .update-log-version {
+  :where(:root[data-theme='dark']) .update-log-version.is-current {
     box-shadow: 0 2px 8px rgba(239, 176, 178, 0.35);
   }
 }
@@ -909,7 +906,7 @@
   color: var(--heading);
   font-weight: 400;
 }
-:root[data-theme='dark'] .update-log-entry.is-current .update-log-version {
+:root[data-theme='dark'] .update-log-version.is-current {
   color: #6b4a4d;
 }
 .update-log-current ul,
@@ -2983,7 +2980,7 @@
   .update-log-version {
     font-size: 13px;
   }
-  .update-log-entry.is-current .update-log-version {
+  .update-log-version.is-current {
     font-size: 15px;
   }
   .update-log-current li,

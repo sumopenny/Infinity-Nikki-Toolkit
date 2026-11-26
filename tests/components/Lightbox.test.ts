@@ -38,6 +38,75 @@ function createPhoto(name: string): PhotoItem {
 }
 
 describe('Lightbox preview navigation', () => {
+  it('docks by dragging the handle, restores cancelled drags, and keeps zoom independent', async () => {
+    loadPhotoMock.mockResolvedValue('blob:photo')
+    const wrapper = mount(Lightbox, {
+      props: { photo: createPhoto('drag.png'), hasPrevious: false, hasNext: false,
+        isDeleting: false, isFavorite: false, keyboardEnabled: true, mode: 'album',
+        messages: messages.zh.lightbox, dateMessages: messages.zh.date },
+      global: { stubs: { Teleport: true } }
+    })
+    try {
+      await flushPromises()
+      const handle = wrapper.get('.lightbox-drag-handle')
+      const footer = wrapper.get('.lightbox-footer')
+      const element = handle.element as HTMLElement
+      element.setPointerCapture = vi.fn()
+      element.hasPointerCapture = () => true
+      element.releasePointerCapture = vi.fn()
+      const offset = () => parseFloat((footer.element as HTMLElement).style.getPropertyValue('--toolbar-offset'))
+      const horizontal = () => parseFloat((footer.element as HTMLElement).style.getPropertyValue('--toolbar-x'))
+      Object.defineProperty(footer.element, 'clientWidth', { configurable: true, value: 900 })
+      Object.defineProperty(footer.element, 'offsetHeight', { value: 50 })
+      Object.defineProperty(wrapper.get('.lightbox-toolbar').element, 'offsetWidth', { value: 300 })
+      vi.spyOn(footer.element, 'getBoundingClientRect').mockImplementation(() => ({
+        top: window.innerHeight - 12 - 50 + offset(),
+        left: 16 + horizontal(), width: 900, height: 50
+      } as DOMRect))
+      const pointer = async (type: string, y: number, x = 300) => {
+        const event = new Event(type, { bubbles: true, cancelable: true })
+        Object.assign(event, { pointerId: 1, button: 0, clientX: x, clientY: y })
+        element.dispatchEvent(event)
+        await flushPromises()
+      }
+      await pointer('pointerdown', 700)
+      await pointer('pointermove', 10)
+      expect(footer.classes()).toContain('is-dragging')
+      expect(offset()).toBeLessThan(0)
+      await pointer('pointerup', 10, 450)
+      expect(horizontal()).toBe(150)
+      expect(footer.classes()).toContain('is-idle')
+      expect(parseFloat((footer.element as HTMLElement).style.getPropertyValue('--toolbar-hide'))).toBeLessThan(0)
+      await footer.trigger('pointerenter')
+      expect(footer.classes()).not.toContain('is-idle')
+      const top = offset()
+      expect(top).toBeLessThan(0)
+      expect(footer.classes()).not.toContain('is-dragging')
+      await pointer('pointerdown', 10)
+      await pointer('pointermove', 700)
+      await pointer('pointercancel', 700)
+      expect(offset()).toBe(top)
+      await wrapper.get('[aria-label="' + messages.zh.lightbox.zoomIn + '"]').trigger('click')
+      expect(wrapper.get('.lightbox-zoom-controls').text()).toContain('125%')
+      expect(offset()).toBe(top)
+      await pointer('pointerdown', 10)
+      await pointer('pointerup', 900, 2000)
+      expect(offset()).toBe(0)
+      expect(horizontal()).toBe(300)
+      expect(footer.classes()).toContain('is-idle')
+      expect(parseFloat((footer.element as HTMLElement).style.getPropertyValue('--toolbar-hide'))).toBeGreaterThan(0)
+      Object.defineProperty(footer.element, 'clientWidth', { configurable: true, value: 400 })
+      window.dispatchEvent(new Event('resize'))
+      await flushPromises()
+      expect(horizontal()).toBe(50)
+      expect(wrapper.emitted('close')).toBeUndefined()
+      await handle.trigger('keydown', { key: 'ArrowUp' })
+      expect(offset()).toBe(top)
+      await handle.trigger('keydown', { key: 'ArrowDown' })
+      expect(offset()).toBe(0)
+    } finally { wrapper.unmount() }
+  })
+
   it('rotates once, blocks navigation and deletion while saving, and reports the saved result', async () => {
     let finish!: () => void
     const rotateSource = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))

@@ -251,14 +251,31 @@
   max-height: calc(100% - 80px);
   margin: 0;
   pointer-events: none;
+  transform: translate(var(--toolbar-x, 0px), calc(var(--toolbar-offset, 0px) + var(--toolbar-idle-offset, 0px)));
   transition: transform 0.24s ease;
 }
-/* 向下移出一半，始终保留可悬停的工具栏入口。 */
+.lightbox-footer.is-dragging {
+  transition: none;
+}
+.lightbox-toolbar .lightbox-drag-handle {
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.lightbox-toolbar .lightbox-drag-handle:active {
+  cursor: grabbing;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lightbox-footer { transition: none; }
+}
+/* 顶部和底部共用半隐藏与浮现，只改变隐藏方向和距离。 */
 .lightbox-footer.is-idle {
-  transform: translateY(calc(75% + max(12px, env(safe-area-inset-bottom, 0px))));
+  --toolbar-idle-offset: var(--toolbar-hide);
 }
 .lightbox-footer:has(:focus-visible) {
-  transform: translateY(0);
+  --toolbar-idle-offset: 0px;
 }
 
 .lightbox-caption {
@@ -381,4 +398,9 @@
   font-size: 13px;
   text-align: center;
   pointer-events: none;
+}
+
+.lightbox-footer.is-top .lightbox-rotation-notice {
+  top: calc(100% + 10px);
+  bottom: auto;
 }

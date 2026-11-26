@@ -821,14 +821,10 @@
     background: transparent;
     color: var(--muted);
     font-size: 11px;
-    transition:
-      background-color 150ms ease,
-      color 150ms ease,
-      box-shadow 150ms ease;
+    transition: color 150ms ease;
   }
   .mobile-navigation button[aria-current='page'] {
-    background: var(--soft-accent);
-    color: var(--heading);
+    color: var(--pink-deep);
     font-weight: 700;
   }
   .mobile-navigation button span {

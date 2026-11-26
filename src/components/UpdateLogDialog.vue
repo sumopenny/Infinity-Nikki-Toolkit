@@ -76,11 +76,11 @@ watch(
           </header>
           <div class="update-log-body">
             <section>
-              <h3 class="update-log-section-title"
-                >{{ messages.currentTitle }}【{{ messages.currentDate }}】</h3
-              >
+              <h3 class="update-log-section-title">
+                <span class="update-log-version is-current">{{ messages.currentVersion }}</span>
+                <span>【{{ messages.currentDate }}】</span>
+              </h3>
               <article class="update-log-entry is-current update-log-current">
-                <span class="update-log-version">{{ messages.currentVersion }}</span>
                 <ul
                   ><li v-for="(item, index) in messages.currentItems" :key="index"
                     ><template v-if="typeof item === 'string'">{{ item }}</template

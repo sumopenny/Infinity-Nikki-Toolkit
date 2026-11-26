@@ -109,14 +109,24 @@ onBeforeUnmount(cancelPress)
   transform-origin: center 65%;
   transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-/* 按压只缩放内容，背景由材质和选中态管理，保持玻璃与触摸范围稳定。 */
+.mobile-navigation-content > svg {
+  transition:
+    transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    stroke-width 150ms ease;
+}
+.mobile-navigation button[aria-current='page'] .mobile-navigation-content > svg {
+  transform: scale(1.2);
+  stroke-width: 2.3;
+}
+/* 按压缩放内容，选中仅放大图标，保持布局与触摸范围稳定。 */
 .mobile-navigation button:is(:active, .is-pressed):not(:disabled) .mobile-navigation-content {
   transform: translateY(1px) scale(0.94);
   transition: transform 80ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
   .mobile-navigation button,
-  .mobile-navigation button .mobile-navigation-content {
+  .mobile-navigation button .mobile-navigation-content,
+  .mobile-navigation-content > svg {
     transition: none;
   }
   .mobile-navigation button:is(:active, .is-pressed):not(:disabled) .mobile-navigation-content {

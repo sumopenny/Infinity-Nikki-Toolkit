@@ -24,6 +24,7 @@ const SURFACE_STYLE_KEY = 'infinity-nikki-surface-style'
 const MOBILE_NAV_STYLE_KEY = 'infinity-nikki-mobile-nav-style'
 const THEME_STORAGE_KEY = 'infinity-nikki-theme-mode'
 const LANGUAGE_STORAGE_KEY = 'infinity-nikki-language'
+const HOME_WATER_EFFECT_KEY = 'infinity-nikki-home-water-effect'
 const AUTO_PARSE_ACTIONS_STORAGE_KEY = 'infinity-nikki-auto-parse-actions'
 
 function isLanguage(value: string | null): value is Language {
@@ -69,6 +70,10 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
   const language = ref<Language>(isLanguage(storedLanguage) ? storedLanguage : DEFAULT_LANGUAGE)
   const locale = computed(() => messages[language.value])
   const autoParseActionsEnabled = ref(storedAutoParseActions === 'true')
+  const homeWaterEffectEnabled = ref(readLocalStorage(HOME_WATER_EFFECT_KEY) !== 'false')
+  watch(homeWaterEffectEnabled, (value) => {
+    if (canPersist()) writeLocalStorage(HOME_WATER_EFFECT_KEY, String(value))
+  })
   let themeSwitchFrame: number | undefined
   const thumbnailMode = ref<ThumbnailMode>(
     isThumbnailMode(storedThumbnailMode) ? storedThumbnailMode : 'default'
@@ -231,6 +236,7 @@ export function useAppPreferences({ compactLayout, canPersist, onStatus }: AppPr
     locale,
     themeMode,
     autoParseActionsEnabled,
+    homeWaterEffectEnabled,
     thumbnailMode,
     outfitThumbnailMode,
     homeThumbnailMode,

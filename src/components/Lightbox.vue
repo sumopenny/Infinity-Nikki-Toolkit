@@ -6,6 +6,7 @@ import {
   Copy,
   Edit3,
   Heart,
+  GripVertical,
   Pencil,
   RotateCcw,
   RotateCw,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-vue-next'
 import GlassSurfaceFilter from './GlassSurfaceFilter.vue'
 import { useGlassSurface } from '../composables/useGlassSurface'
+import { useCompactLayout } from '../composables/useCompactLayout'
 import type { LocaleMessages } from '../i18n'
 import type { OutfitMessages } from '../i18n'
 import { isAlbumPhoto, type PhotoDisplayItem, type PhotoItem } from '../utils/photoGrouping'
@@ -27,6 +29,7 @@ import { loadImageUrlWithSize, loadPhotoWithRetryAndSize } from '../utils/photoL
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { reportError as captureDiagnosticError } from '../utils/errorReporting/errorReporter'
 
+const isCompactLayout = useCompactLayout()
 const { glassFilterId, refractsBackdrop } = useGlassSurface()
 const glassSurfaceAttributes = {
   'data-refraction': refractsBackdrop || undefined,
@@ -108,6 +111,103 @@ const viewportSize = ref({ width: 0, height: 0 })
 const controlsVisible = ref(true)
 let controlsTimer: ReturnType<typeof setTimeout> | undefined
 let toolbarHovered = false
+const toolbarFooter = ref<HTMLElement | null>(null)
+const toolbarDock = ref<'top' | 'bottom'>('bottom')
+const toolbarX = ref(0)
+const toolbarBounds = ref({ x: 0, baseY: 0, top: 0, bottom: 12, height: 0 })
+const toolbarDrag = ref<{
+  id: number
+  grabX: number
+  grabY: number
+  x: number
+  y: number
+  handle: HTMLElement
+} | null>(null)
+let toolbarObserver: ResizeObserver | undefined
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+const toolbarStyle = computed(() => {
+  const { x, baseY, top, bottom, height } = toolbarBounds.value
+  return {
+    '--toolbar-x': `${clamp(toolbarDrag.value?.x ?? toolbarX.value, -x, x)}px`,
+    '--toolbar-offset': `${toolbarDrag.value?.y ?? (toolbarDock.value === 'top' ? top - baseY : 0)}px`,
+    '--toolbar-hide': `${toolbarDock.value === 'top' ? -top - height * 0.75 : bottom + height * 0.75}px`
+  }
+})
+function measureToolbar() {
+  const footer = toolbarFooter.value
+  if (!footer || isCompactLayout.value) return
+  const bottom = parseFloat(getComputedStyle(footer).bottom) || 12
+  const height = footer.offsetHeight
+  const baseY = Math.max(0, viewportSize.value.height - bottom - height)
+  toolbarBounds.value = {
+    x: Math.max(0, (footer.clientWidth - (footer.querySelector<HTMLElement>('.lightbox-toolbar')?.offsetWidth ?? footer.clientWidth)) / 2),
+    baseY,
+    top: Math.min(baseY, bottom),
+    bottom,
+    height
+  }
+}
+watch([toolbarFooter, isCompactLayout], () => {
+  toolbarObserver?.disconnect()
+  if (isCompactLayout.value) {
+    finishToolbarDrag()
+    return
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    toolbarObserver = new ResizeObserver(measureToolbar)
+    if (toolbarFooter.value) {
+      toolbarObserver.observe(toolbarFooter.value)
+      const toolbar = toolbarFooter.value.querySelector('.lightbox-toolbar')
+      if (toolbar) toolbarObserver.observe(toolbar)
+    }
+  }
+  measureToolbar()
+}, { flush: 'post' })
+function startToolbarDrag(event: PointerEvent) {
+  if (isCompactLayout.value || event.button !== 0 || toolbarDrag.value || !toolbarFooter.value) return
+  measureToolbar()
+  const handle = event.currentTarget as HTMLElement
+  // Start at the rendered position, including any ongoing reveal animation.
+  const rect = toolbarFooter.value.getBoundingClientRect()
+  const x = clamp(toolbarX.value, -toolbarBounds.value.x, toolbarBounds.value.x)
+  const y = rect.top - toolbarBounds.value.baseY
+  handle.setPointerCapture(event.pointerId)
+  toolbarDrag.value = { id: event.pointerId, grabX: event.clientX - x, grabY: event.clientY - y, x, y, handle }
+  showControls()
+}
+function moveToolbarDrag(event: PointerEvent) {
+  const drag = toolbarDrag.value
+  if (!drag || drag.id !== event.pointerId) return
+  const { x, baseY, bottom } = toolbarBounds.value
+  drag.x = clamp(event.clientX - drag.grabX, -x, x)
+  drag.y = clamp(event.clientY - drag.grabY, -baseY, bottom)
+}
+function finishToolbarDrag(event?: PointerEvent) {
+  const drag = toolbarDrag.value
+  if (!drag || (event && drag.id !== event.pointerId)) return
+  const dropped = event?.type === 'pointerup'
+  if (dropped) {
+    moveToolbarDrag(event)
+    toolbarX.value = drag.x
+    toolbarDock.value = toolbarBounds.value.baseY + drag.y + toolbarBounds.value.height / 2 < viewportSize.value.height / 2 ? 'top' : 'bottom'
+  }
+  toolbarDrag.value = null
+  if (drag.handle.hasPointerCapture(drag.id)) drag.handle.releasePointerCapture(drag.id)
+  if (dropped) {
+    toolbarHovered = false
+    clearControlsTimer()
+    controlsVisible.value = false
+  } else {
+    showControls()
+  }
+}
+function handleToolbarKeydown(event: KeyboardEvent) {
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+  event.preventDefault()
+  measureToolbar()
+  toolbarDock.value = event.key === 'ArrowUp' ? 'top' : 'bottom'
+  showControls()
+}
 function clearControlsTimer() {
   clearTimeout(controlsTimer)
   controlsTimer = undefined
@@ -120,6 +220,7 @@ function showControls() {
     () => {
       if (
         toolbarHovered ||
+        toolbarDrag.value !== null ||
         rotating.value ||
         !props.keyboardEnabled ||
         (document.activeElement?.matches(':focus-visible') &&
@@ -204,6 +305,7 @@ function updateViewportSize() {
     width: window.visualViewport?.width ?? window.innerWidth,
     height: window.visualViewport?.height ?? window.innerHeight
   }
+  measureToolbar()
 }
 
 /** 优先读取并解码用户主动打开的原图；尺寸直接复用解码结果，不再二次探测。参数：nextPhoto 为待显示照片。 */
@@ -243,6 +345,7 @@ watch(
       showControls()
     }
     if (!nextPhoto) {
+      finishToolbarDrag()
       previewLoadToken += 1
       previewAbortController?.abort()
       previewAbortController = null
@@ -295,6 +398,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  finishToolbarDrag()
+  toolbarObserver?.disconnect()
   previewLoadToken++
   clearControlsTimer()
   previewAbortController?.abort()
@@ -390,8 +495,10 @@ onUnmounted(() => {
           </button>
         </div>
         <div
+          ref="toolbarFooter"
           class="lightbox-footer"
-          :class="{ 'is-idle': !controlsVisible }"
+          :class="{ 'is-idle': !controlsVisible && toolbarDrag === null, 'is-top': !isCompactLayout && toolbarDock === 'top', 'is-dragging': toolbarDrag !== null }"
+          :style="isCompactLayout ? undefined : toolbarStyle"
           @pointerenter="enterToolbar"
           @pointerleave="leaveToolbar"
           @pointerdown="showControls"
@@ -405,6 +512,22 @@ onUnmounted(() => {
             class="lightbox-toolbar material-surface preview-material"
             v-bind="glassSurfaceAttributes"
           >
+            <button
+              v-if="!isCompactLayout"
+              type="button"
+              class="lightbox-drag-handle"
+              :title="messages.dragToolbar"
+              :aria-label="messages.dragToolbar"
+              @pointerdown.stop.prevent="startToolbarDrag"
+              @pointermove.stop="moveToolbarDrag"
+              @pointerup.stop="finishToolbarDrag"
+              @pointercancel.stop="finishToolbarDrag"
+              @lostpointercapture="finishToolbarDrag"
+              @keydown="handleToolbarKeydown"
+              @click.stop
+            >
+              <GripVertical :size="18" />
+            </button>
             <div v-if="mode === 'outfit' && outfit && outfitMessages" class="lightbox-outfit-meta">
               <span
                 ><strong>{{ outfitMessages.tagsTitle }}：</strong

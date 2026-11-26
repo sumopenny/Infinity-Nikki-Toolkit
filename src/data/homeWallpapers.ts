@@ -20,7 +20,7 @@ export const defaultHomeWallpaper = 'wallpaper-1'
 
 export function wallpaperUrl(wallpaper: HomeWallpaper, thumbnail = false) {
   const path = encodeImagePath('wallpapers/' + wallpaper.file)
-  return IMAGEKIT_IMAGES + path + '?tr=' + (thumbnail ? 'w-480,' : '') + 'f-webp,q-70'
+  return IMAGEKIT_IMAGES + path + '?tr=' + (thumbnail ? 'w-480,f-webp,q-40' : 'f-webp,q-60')
 }
 
 export function defaultWallpaperId(): string | null {

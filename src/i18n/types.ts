@@ -351,6 +351,7 @@ export interface FullLocaleMessages {
     favorite: string
     removeFavorite: string
     zoomIn: string
+    dragToolbar: string
     zoomOut: string
     resetZoom: string
     editNote: string

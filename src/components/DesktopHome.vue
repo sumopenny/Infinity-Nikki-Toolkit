@@ -15,6 +15,7 @@ const props = defineProps<{
   outfitsCount: number
   homeSchemesCount: number
   favoriteCount: number
+  waterEffectEnabled?: boolean
   backupStatus?: BackupButtonStatus
 }>()
 const emit = defineEmits<{
@@ -153,7 +154,7 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   >
     <Teleport v-if="wallpaperSource" to="#home-wallpaper-layer">
       <div class="home-wallpaper-image" :style="wallpaperStyle" aria-hidden="true">
-        <HomeWaterSurface :source="wallpaperSource" :paused="wallpaperOpen || disabled" />
+        <HomeWaterSurface v-if="waterEffectEnabled !== false" :source="wallpaperSource" :paused="wallpaperOpen || disabled" />
       </div>
     </Teleport>
     <div class="home-hero-copy" @click.self="wallpaperOpen && closeWallpaper()">
@@ -620,12 +621,12 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   }
 }
 .home-hero-text,
-.home-hero-actions,
+.home-hero-actions > button,
 .home-backup-notice > *,
 .home-overview button > span {
   animation: home-content-enter 1s var(--home-motion-ease) backwards;
 }
-.home-hero-actions {
+.home-hero-actions > button {
   animation-delay: 40ms;
 }
 .home-backup-notice > *,
@@ -668,7 +669,7 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
 }
 @media (prefers-reduced-motion: reduce) {
   .home-hero-text,
-  .home-hero-actions,
+  .home-hero-actions > button,
   .home-backup-notice > *,
   .home-overview button > span {
     animation: none;
