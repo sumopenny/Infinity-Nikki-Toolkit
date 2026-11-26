@@ -97,7 +97,7 @@ const directoryBackupStatus = computed(() => {
     supported: directoryBackup.supported.value,
     serviceError: directoryBackup.serviceError.value
   })
-  return { state: result.state, label: backupButtonStatusMessages[language.value][result.reason] }
+  return { ...result, label: backupButtonStatusMessages[language.value][result.reason] }
 })
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
 import { subscribeDatabaseVersionMismatch } from './utils/file-system/database'
@@ -2651,6 +2651,7 @@ function importAllDataFromMenu() {
       >
         <DesktopHome
           :language="language"
+          :backup-status="directoryBackupStatus"
           :nickname="gameAlbumProfile?.nickname"
           :disabled="navigationBusy"
           :all-count="photos.length"

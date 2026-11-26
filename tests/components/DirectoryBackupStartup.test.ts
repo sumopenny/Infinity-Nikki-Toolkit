@@ -1,13 +1,15 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   directoryBackup,
+  refreshDirectoryBackup,
   useDirectoryBackupLifecycle
 } from '../../src/composables/useDirectoryBackup'
 
 const mocks = vi.hoisted(() => ({
   syncModule: vi.fn(),
+  checkBackupDirectory: vi.fn().mockResolvedValue(null),
   loadConfig: vi.fn(),
   readModuleStatus: vi.fn()
 }))
@@ -20,6 +22,7 @@ vi.mock('../../src/utils/directory-backup/engine', () => ({
       ])
     ),
   loadConfig: mocks.loadConfig,
+  checkBackupDirectory: mocks.checkBackupDirectory,
   readModuleStatus: mocks.readModuleStatus,
   syncModule: mocks.syncModule,
   pendingEnabledBackups: vi.fn().mockResolvedValue(false),
@@ -27,6 +30,7 @@ vi.mock('../../src/utils/directory-backup/engine', () => ({
 }))
 
 beforeEach(() => {
+  mocks.checkBackupDirectory.mockResolvedValue(null)
   directoryBackup.config.value = null
   directoryBackup.running.value = false
   directoryBackup.scheduled.value = false
@@ -39,6 +43,80 @@ beforeEach(() => {
       lastSuccess: null,
       state: 'disabled'
     })
+})
+
+it('coalesces focus and visible events, updates failures and recovers on the next return', async () => {
+  mocks.loadConfig.mockResolvedValue({
+    handle: { name: 'folder' },
+    paused: false,
+    enabled: { outfits: true, home: false, camera: false },
+    initialized: { outfits: true, home: false, camera: false }
+  })
+  mocks.readModuleStatus.mockImplementation(async (_config, module, check) => ({
+    enabled: module === 'outfits',
+    count: 1,
+    lastSuccess: '2026-11-04T01:00:00Z',
+    state: module === 'outfits' ? 'synced' : 'disabled',
+    ...(module === 'outfits' ? await check : {})
+  }))
+  const host = mount(
+    defineComponent({
+      setup() {
+        useDirectoryBackupLifecycle()
+        return () => h('div')
+      }
+    })
+  )
+  try {
+    await flushPromises()
+    const before = mocks.loadConfig.mock.calls.length
+    mocks.checkBackupDirectory.mockResolvedValue({ state: 'error', error: 'directory missing' })
+    window.dispatchEvent(new Event('focus'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
+    expect(mocks.loadConfig).toHaveBeenCalledTimes(before + 1)
+    expect(directoryBackup.statuses.outfits.state).toBe('error')
+    expect(directoryBackup.scheduled.value).toBe(false)
+    mocks.loadConfig.mockRejectedValueOnce(new Error('cannot load config'))
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(directoryBackup.serviceError.value).toBe('cannot load config')
+    mocks.checkBackupDirectory.mockResolvedValue(null)
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
+    expect(directoryBackup.statuses.outfits.state).toBe('synced')
+    expect(directoryBackup.statuses.outfits.error).toBeUndefined()
+    expect(directoryBackup.serviceError.value).toBe('')
+  } finally {
+    host.unmount()
+  }
+})
+
+it('discards an old directory check after a newer configuration has been refreshed', async () => {
+  const oldConfig = { binding: 'old' }
+  const newConfig = { binding: 'new' }
+  let release!: (value: { state: string; error: string }) => void
+  mocks.loadConfig.mockResolvedValueOnce(oldConfig).mockResolvedValueOnce(newConfig)
+  mocks.checkBackupDirectory.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = resolve
+      })
+  )
+  mocks.readModuleStatus.mockImplementation(async (_config, _module, check) => ({
+    enabled: true,
+    count: 1,
+    lastSuccess: '2026-11-04T01:00:00Z',
+    state: 'synced',
+    ...(await check)
+  }))
+  const old = refreshDirectoryBackup()
+  await flushPromises()
+  await refreshDirectoryBackup()
+  release({ state: 'error', error: 'old directory missing' })
+  await old
+  expect(directoryBackup.config.value).toBe(newConfig)
+  expect(directoryBackup.statuses.outfits.state).toBe('synced')
 })
 afterEach(() => {
   vi.useRealTimers()

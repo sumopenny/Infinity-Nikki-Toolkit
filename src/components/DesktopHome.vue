@@ -3,8 +3,9 @@ import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import HomeWallpaperDialog from './HomeWallpaperDialog.vue'
 import HomeWaterSurface from './HomeWaterSurface.vue'
 import { useHomeWallpaper } from '../composables/useHomeWallpaper'
-import { ArrowRight, Camera, House, Image, ImagePlus, Sparkles } from 'lucide-vue-next'
+import { ArrowRight, Camera, House, Image, ImagePlus, ShieldAlert, Sparkles } from 'lucide-vue-next'
 import type { AlbumView } from './AlbumViewSwitcher.vue'
+import type { BackupButtonStatus } from '../utils/directory-backup/buttonStatus'
 
 const props = defineProps<{
   language: 'zh' | 'en'
@@ -14,6 +15,7 @@ const props = defineProps<{
   outfitsCount: number
   homeSchemesCount: number
   favoriteCount: number
+  backupStatus?: BackupButtonStatus
 }>()
 const emit = defineEmits<{
   navigate: [view: AlbumView]
@@ -21,6 +23,13 @@ const emit = defineEmits<{
   status: [message: string, tone: 'error']
 }>()
 const t = (zh: string, en: string) => (props.language === 'zh' ? zh : en)
+const backupNotice = computed(() => {
+  const status = props.backupStatus
+  if (!status || status.state === 'syncing' || status.state === 'success') return null
+  return status.reason === 'not-enabled' || status.reason === 'directory-missing'
+    ? 'not-enabled'
+    : 'warning'
+})
 const collections = computed(() => [
   { view: 'all' as const, icon: Image, label: t('照片', 'Photos'), count: props.allCount },
   {
@@ -81,8 +90,8 @@ function moveHeroTilt(event: PointerEvent) {
   const bounds = target.getBoundingClientRect()
   if (!bounds.width || !bounds.height) return
   const clamp = (value: number) => Math.max(-1, Math.min(1, value))
-  tiltX = -2 * clamp(((event.clientY - bounds.top) / bounds.height - 0.5) * 2)
-  tiltY = 2 * clamp(((event.clientX - bounds.left) / bounds.width - 0.5) * 2)
+  tiltX = -5 * clamp(((event.clientY - bounds.top) / bounds.height - 0.5) * 2)
+  tiltY = 5 * clamp(((event.clientX - bounds.left) / bounds.width - 0.5) * 2)
   if (tiltFrame !== undefined) return
   tiltFrame = requestAnimationFrame(() => {
     tiltFrame = undefined
@@ -186,6 +195,42 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
           }}<ImagePlus :size="16" aria-hidden="true" />
         </button>
       </div>
+      <section
+        v-if="backupNotice"
+        class="home-backup-notice"
+        :class="{ 'is-warning': backupNotice === 'warning', 'is-hidden': wallpaperOpen }"
+        :inert="wallpaperOpen || undefined"
+        :aria-hidden="wallpaperOpen || undefined"
+        aria-live="polite"
+        :aria-label="t('自动备份提醒', 'Automatic backup reminder')"
+      >
+        <span class="home-backup-icon" aria-hidden="true">
+          <ShieldAlert :size="32" :stroke-width="1.6" />
+        </span>
+        <div class="home-backup-copy">
+          <strong>{{
+            backupNotice === 'warning'
+              ? t('备份出现异常', 'Backup needs attention')
+              : t('当前未开启自动备份', 'Automatic backup is not enabled')
+          }}</strong>
+          <p>{{
+            backupNotice === 'warning'
+              ? t('最新修改尚未备份，请及时处理', 'Recent changes are not backed up. Please check.')
+              : t(
+                  '数据丢失后，若无其他备份将无法找回',
+                  'Lost data cannot be recovered without another backup.'
+                )
+          }}</p>
+        </div>
+        <button type="button" :disabled="disabled" @click="emit('navigate', 'backup')">
+          {{
+            backupNotice === 'warning'
+              ? t('查看原因', 'View details')
+              : t('开启备份', 'Enable backup')
+          }}
+          <ArrowRight :size="16" aria-hidden="true" />
+        </button>
+      </section>
     </div>
 
     <nav
@@ -356,6 +401,85 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
 .home-wallpaper-button:hover {
   background: rgba(255, 248, 239, 0.24);
 }
+.home-backup-notice {
+  --backup-accent: #cb6486;
+  --backup-tint: #fbe7ee;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 20px;
+  padding: 16px 20px;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--backup-tint) 86%, transparent);
+  box-shadow: 0 6px 20px rgba(104, 49, 79, 0.14);
+  backdrop-filter: blur(12px);
+  color: #542f3c;
+  text-shadow: none;
+}
+.home-backup-notice.is-warning {
+  --backup-accent: #bd7a19;
+  --backup-tint: #fff0dd;
+  color: #5c3425;
+}
+.home-backup-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--backup-accent) 10%, transparent);
+  color: var(--backup-accent);
+}
+.home-backup-copy {
+  min-width: 0;
+  padding-left: 14px;
+  border-left: 1px solid color-mix(in srgb, var(--backup-accent) 24%, transparent);
+}
+.home-backup-copy strong {
+  font-size: 17px;
+  line-height: 1.4;
+}
+.home-backup-copy p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.home-backup-notice button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 36px;
+  margin-left: 8px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--backup-accent);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+}
+.home-backup-notice button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+@media (max-width: 600px) {
+  .home-backup-notice {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+  }
+  .home-backup-copy {
+    flex: 1;
+  }
+  .home-backup-notice button {
+    margin-left: auto;
+  }
+}
 .desktop-home:not(.has-wallpaper) {
   color: var(--text);
 }
@@ -378,15 +502,18 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   backdrop-filter: blur(8px);
   color: var(--text);
 }
-.home-overview {
+.home-overview,
+.home-backup-notice {
   transition: opacity 180ms ease;
 }
-.home-overview.is-hidden {
+.home-overview.is-hidden,
+.home-backup-notice.is-hidden {
   opacity: 0;
   pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .home-overview {
+  .home-overview,
+  .home-backup-notice {
     transition: none;
   }
 }
@@ -491,17 +618,20 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
 }
 .home-hero-text,
 .home-hero-actions,
+.home-backup-notice > *,
 .home-overview button > span {
   animation: home-content-enter 1s var(--home-motion-ease) backwards;
 }
 .home-hero-actions {
   animation-delay: 40ms;
 }
+.home-backup-notice > *,
 .home-overview button > span {
   animation-delay: 80ms;
 }
 .home-overview-text,
 .home-guide-button svg,
+.home-backup-notice button svg,
 .home-wallpaper-button svg {
   transition: transform 220ms var(--home-motion-ease);
 }
@@ -512,7 +642,8 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   .home-overview button:hover:not(:disabled) .home-overview-text {
     transform: translateY(-2px);
   }
-  .home-guide-button:hover svg:last-child {
+  .home-guide-button:hover svg:last-child,
+  .home-backup-notice button:hover:not(:disabled) svg {
     transform: translateX(3px);
   }
   .home-wallpaper-button:hover svg {
@@ -527,6 +658,7 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   transition-duration: 90ms;
 }
 .home-guide-button:active svg,
+.home-backup-notice button:active:not(:disabled) svg,
 .home-wallpaper-button:active svg {
   transform: scale(0.98);
   transition-duration: 90ms;
@@ -534,11 +666,13 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
 @media (prefers-reduced-motion: reduce) {
   .home-hero-text,
   .home-hero-actions,
+  .home-backup-notice > *,
   .home-overview button > span {
     animation: none;
   }
   .home-overview button > span,
   .home-guide-button svg,
+  .home-backup-notice button svg,
   .home-wallpaper-button svg {
     transition: none;
     transform: none !important;

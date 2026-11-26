@@ -505,6 +505,14 @@ export async function moduleDirectory(
 }
 
 export async function readRoot(root: FileSystemDirectoryHandle): Promise<RootManifest> {
+  const identity = await readRootIdentity(root)
+  if (!identity) throw new Error('模块备份身份缺失')
+  return identity
+}
+
+export async function readRootIdentity(
+  root: FileSystemDirectoryHandle
+): Promise<RootManifest | null> {
   let identity: RootManifest | undefined
   for (const module of MODULES) {
     const value = await readJson<ModuleManifest>(
@@ -518,8 +526,7 @@ export async function readRoot(root: FileSystemDirectoryHandle): Promise<RootMan
       throw new Error('模块来源身份不一致')
     identity = next
   }
-  if (!identity) throw new Error('模块备份身份缺失')
-  return identity
+  return identity ?? null
 }
 export async function writeRoot(root: FileSystemDirectoryHandle, identity: RootManifest) {
   for (const module of MODULES) {

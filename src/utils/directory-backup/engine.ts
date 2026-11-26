@@ -1,4 +1,4 @@
-import { readRoot, writeRoot } from './disk'
+import { readRoot, readRootIdentity, writeRoot } from './disk'
 import { cloneJsonData } from '../cloneJsonData'
 import {
   BACKUP_SETTINGS_STORE,
@@ -41,7 +41,6 @@ import {
   type SuccessReceipt
 } from './repository'
 import {
-  MODULE_NAMES,
   FORMAT,
   VERSION,
   MODULES,
@@ -115,32 +114,24 @@ export async function permission(
 export async function locateRoot(
   handle: FileSystemDirectoryHandle
 ): Promise<FileSystemDirectoryHandle | null> {
-  for (const module of MODULES) {
-    if (await readBytes(handle, `${MODULE_NAMES[module]}/_系统/备份信息.json`, MAX_JSON_BYTES)) {
-      await readRoot(handle)
-      return handle
-    }
-  }
-  return null
+  return (await inspectRoot(handle)) ? handle : null
 }
 export async function inspectRoot(handle: FileSystemDirectoryHandle): Promise<RootManifest | null> {
-  const root = await locateRoot(handle)
-  if (!root) return null
-  return await readRoot(root)
+  return readRootIdentity(handle)
 }
-export async function backupRoot(config: BackupConfig): Promise<FileSystemDirectoryHandle> {
+/** 只读校验目录及绑定；空目录仅允许用于尚未建立的备份。 */
+async function checkedRoot(config: BackupConfig): Promise<RootManifest | null> {
   if (!config.handle) throw new Error('请先选择备份目录')
   if (!(await permission(config.handle)))
     throw new BackupStateError('permission', '目录授权失效，请点击重新授权')
-  const root = await locateRoot(config.handle)
-  if (root) {
-    const marker = await readRoot(root)
+  const marker = await inspectRoot(config.handle)
+  if (marker) {
     if (
       marker.sourceId !== backupDirectorySource(config) ||
       (config.backupId && marker.backupId !== config.backupId)
     )
       throw new Error('目录身份与绑定不符。请先预览恢复，或选择新的空目录；不会覆盖原备份。')
-    return root
+    return marker
   }
   if (config.backupId) throw new Error('原备份目录已移动或被删除，请重新选择目录。')
   for await (const _entry of config.handle.entries()) {
@@ -149,7 +140,26 @@ export async function backupRoot(config: BackupConfig): Promise<FileSystemDirect
       '当前文件夹不是有效的暖立方备份目录。请新建一个空文件夹用于备份，或重新选择正确的文件夹。'
     )
   }
-  const created = config.handle
+  return null
+}
+
+export async function checkBackupDirectory(
+  config: BackupConfig
+): Promise<Pick<ModuleProgress, 'state' | 'error'> | null> {
+  if (!config.handle || config.paused || !MODULES.some((module) => config.enabled[module]))
+    return null
+  try {
+    await checkedRoot(config)
+    return null
+  } catch (error) {
+    return { state: backupErrorState(error), error: messageFor(error) }
+  }
+}
+
+export async function backupRoot(config: BackupConfig): Promise<FileSystemDirectoryHandle> {
+  const marker = await checkedRoot(config)
+  if (marker) return config.handle!
+  const created = config.handle!
   const backupId = createUuid()
   const info: RootManifest = {
     format: FORMAT,
@@ -802,7 +812,8 @@ export async function syncModule(
 }
 export async function readModuleStatus(
   config: BackupConfig,
-  module: BackupModule
+  module: BackupModule,
+  directoryCheck?: Promise<Pick<ModuleProgress, 'state' | 'error'> | null>
 ): Promise<ModuleProgress> {
   const receipt = await setting<SuccessReceipt>(`success:${module}`)
   const saved = receipt?.binding === config.binding ? receipt : undefined
@@ -822,10 +833,8 @@ export async function readModuleStatus(
     status.state = 'paused'
     return status
   }
-  if (!(await permission(config.handle))) {
-    status.state = 'permission'
-    return status
-  }
+  const directoryError = await (directoryCheck ?? checkBackupDirectory(config))
+  if (directoryError) return { ...status, ...directoryError }
   const error = await setting<{
     binding: string
     message: string
@@ -837,18 +846,10 @@ export async function readModuleStatus(
     return status
   }
   // 仅在曾成功备份了非空数据、而浏览器记录突然归零时核验磁盘。
-  // 日常状态刷新不枚举记录/图片，也不访问磁盘；这里全程只读。
+  // 日常状态刷新只检查目录身份，不枚举记录/图片；这里全程只读。
   if (saved && saved.count > 0 && (await countBrowserRecords(module)) === 0) {
     try {
-      const root = await locateRoot(config.handle)
-      if (!root) throw new Error('原备份目录已移动或被删除，请重新选择目录。')
-      const marker = await readRoot(root)
-      if (
-        marker.sourceId !== backupDirectorySource(config) ||
-        (config.backupId && marker.backupId !== config.backupId)
-      )
-        throw new Error('目录身份与绑定不符，请检查备份目录。')
-      const dir = await moduleDirectory(root, module)
+      const dir = await moduleDirectory(config.handle, module)
       await guardUnexpectedEmpty(config, dir, module)
     } catch (cause) {
       status.error = messageFor(cause)

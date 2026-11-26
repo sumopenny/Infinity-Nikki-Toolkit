@@ -4,6 +4,7 @@ import {
   loadConfig,
   countBrowserRecords,
   readModuleStatus,
+  checkBackupDirectory,
   supportsBackup,
   syncModule,
   type BackupConfig,
@@ -30,6 +31,7 @@ let currentRun: Promise<void> | undefined
 let lastErrorFingerprint = ''
 let requestedAgain = false
 let refreshGeneration = 0
+let foregroundRefresh: Promise<void> | undefined
 function backupNotice(
   source: string,
   message: string | null,
@@ -57,24 +59,33 @@ export const directoryBackup = {
 
 export async function refreshDirectoryBackup(completeRun = false): Promise<void> {
   const generation = ++refreshGeneration
-  const latest = await loadConfig()
-  const values = await Promise.all(MODULES.map((module) => readModuleStatus(latest, module)))
-  if (generation !== refreshGeneration) return
-  config.value = latest
-  for (const [i, module] of MODULES.entries()) {
-    if (
-      !completeRun &&
-      running.value &&
-      ['syncing', 'initializing'].includes(statuses[module].state)
+  try {
+    const latest = await loadConfig()
+    const directoryCheck = checkBackupDirectory(latest)
+    const values = await Promise.all(
+      MODULES.map((module) => readModuleStatus(latest, module, directoryCheck))
     )
-      continue
-    Object.assign(
-      statuses[module],
-      { error: undefined, processed: undefined, total: undefined },
-      values[i]
-    )
+    if (generation !== refreshGeneration) return
+    config.value = latest
+    for (const [i, module] of MODULES.entries()) {
+      if (
+        !completeRun &&
+        running.value &&
+        ['syncing', 'initializing'].includes(statuses[module].state)
+      )
+        continue
+      Object.assign(
+        statuses[module],
+        { error: undefined, processed: undefined, total: undefined },
+        values[i]
+      )
+    }
+    serviceError.value = ''
+  } catch (error) {
+    if (generation !== refreshGeneration) return
+    serviceError.value = error instanceof Error ? error.message : String(error)
+    throw error
   }
-  serviceError.value = ''
 }
 
 export function runDirectoryBackup(notifyAutomaticSuccess = true): Promise<void> {
@@ -236,12 +247,10 @@ async function checkUnexpectedEmpty(): Promise<void> {
 }
 const onChange = () => scheduleDirectoryBackup()
 const onFocus = () => {
+  if (document.visibilityState === 'hidden' || foregroundRefresh) return
   // 回到页面时静默刷新状态；仅失败需要通知用户。
-  void refreshDirectoryBackup()
-    .then(() => {
-      if (MODULES.some((module) => ['waiting', 'initializing'].includes(statuses[module].state)))
-        scheduleDirectoryBackup(false)
-    })
+  foregroundRefresh = refreshDirectoryBackup()
+    .then(() => scheduleDirectoryBackup(false))
     .catch((error) => {
       backupNotice(
         'directory-backup-background-check',
@@ -250,8 +259,15 @@ const onFocus = () => {
         'error'
       )
     })
+    .finally(() => {
+      foregroundRefresh = undefined
+    })
 }
 const onVisibility = () => {
+  if (document.visibilityState === 'visible') {
+    onFocus()
+    return
+  }
   if (
     document.visibilityState === 'hidden' &&
     directoryBackup.hasEnabled.value &&
@@ -287,6 +303,7 @@ export function useDirectoryBackupLifecycle() {
   })
   onBeforeUnmount(() => {
     if (--users > 0) return
+    ++refreshGeneration
     clearTimeout(timer)
     clearInterval(emptyCheckTimer)
     emptyCheckTimer = undefined

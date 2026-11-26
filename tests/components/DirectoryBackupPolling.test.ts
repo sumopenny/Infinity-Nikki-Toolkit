@@ -20,6 +20,7 @@ vi.mock('../../src/utils/directory-backup/engine', () => ({
       ])
     ),
   loadConfig: mocks.loadConfig,
+  checkBackupDirectory: vi.fn().mockResolvedValue(null),
   readModuleStatus: mocks.readModuleStatus,
   countBrowserRecords: mocks.countBrowserRecords,
   pendingEnabledBackups: vi.fn().mockResolvedValue(false),

@@ -71,14 +71,19 @@ describe('异常归零保护', () => {
     expect((await sync(config)).state).toBe('synced')
   })
 
-  it('无异常时状态检查不读取磁盘文件', async () => {
+  it('无异常时状态检查只读取备份身份信息，不扫描业务数据或写盘', async () => {
     const { config, disk } = await setup()
     await putOutfit('SAFE_NORMAL')
     await sync(config)
     disk.events = []
     const state = await readModuleStatus(config, 'outfits')
     expect(state.state).toBe('synced')
-    expect(disk.events).toEqual([])
+    expect(disk.events).toHaveLength(3)
+    expect(
+      disk.events.every(
+        (event) => event.kind === 'read' && event.path.endsWith('/_系统/备份信息.json')
+      )
+    ).toBe(true)
   })
 
   it('浏览器单独丢失整个记录表时停止该模块写盘，保留原备份', async () => {
