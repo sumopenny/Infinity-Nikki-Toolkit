@@ -1847,7 +1847,8 @@ function showPendingDataReminder() {
     isUpdateLogVisible.value ||
     isHelpAboutVisible.value ||
     returnToUpdateLog.value
-  ) return
+  )
+    return
   pendingDataReminder.value = false
   isDataReminderVisible.value = true
 }
@@ -2299,7 +2300,11 @@ let startupReady: Promise<unknown> = Promise.resolve()
 let initialOutfitScanStarted = false
 let promptX6GameOnInitialOutfitScan = false
 const isStartupNoticeVisible = computed(
-  () => isUpdateLogVisible.value || isHelpAboutVisible.value || isDataReminderVisible.value || pendingDataReminder.value
+  () =>
+    isUpdateLogVisible.value ||
+    isHelpAboutVisible.value ||
+    isDataReminderVisible.value ||
+    pendingDataReminder.value
 )
 
 async function ensureInitialOutfitScan() {
@@ -3343,10 +3348,10 @@ function importAllDataFromMenu() {
       :favorite-label="
         photoParamsSaved
           ? language === 'zh'
-            ? '已收藏'
+            ? '已保存'
             : 'Saved'
           : language === 'zh'
-            ? '收藏参数'
+            ? '保存参数'
             : 'Save parameters'
       "
       @favorite="saveCameraFavoriteFromParams"

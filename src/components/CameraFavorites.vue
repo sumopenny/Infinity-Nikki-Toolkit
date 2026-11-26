@@ -212,8 +212,8 @@ async function removeTag(tag: string) {
       count &&
       !(await props.confirmAction(
         t(
-          '删除标签“' + tag + '”？将从 ' + count + ' 条收藏中移除此标签，收藏本身会保留。',
-          'Remove tag “' + tag + '” from ' + count + ' favorites? The favorites will be kept.'
+          '删除标签“' + tag + '”？将从 ' + count + ' 条参数中移除此标签，参数本身会保留。',
+          'Remove tag “' + tag + '” from ' + count + ' parameter records? The records will be kept.'
         ),
         t('删除标签', 'Delete tag')
       ))
@@ -432,10 +432,10 @@ async function removeSelected() {
     if (
       !(await props.confirmAction(
         t(
-          '删除选中的 ' + ids.length + ' 条参数收藏？原照片不会删除。',
-          'Delete ' + ids.length + ' selected favorites? Original photos will be kept.'
+          '删除选中的 ' + ids.length + ' 条相机参数？原照片不会删除。',
+          'Delete ' + ids.length + ' selected parameters? Original photos will be kept.'
         ) + (await backupDeleteWarning('camera', props.language)),
-        t('删除参数收藏', 'Delete camera favorites')
+        t('删除相机参数', 'Delete camera parameters')
       ))
     )
       return
@@ -446,8 +446,8 @@ async function removeSelected() {
         (await backupDeleteWarning('camera', props.language)) &&
         !(await props.confirmAction(
           t(
-            '这次删除覆盖全部相机参数收藏。同步后电脑副本中的全部记录与封面也会删除，不能撤销。确定继续吗？',
-            'This deletes every camera favorite and its cover from the computer copy too. Continue?'
+            '这次删除覆盖全部相机参数。同步后电脑副本中的全部记录与封面也会删除，不能撤销。确定继续吗？',
+            'This also deletes all camera parameters and their covers from the computer copy. Continue?'
           )
         ))
       )
@@ -455,7 +455,7 @@ async function removeSelected() {
       await deleteCameraFavorites(ids, true)
       selectedIds.value = new Set()
       notifyChanged()
-      emit('status', t('已删除选中的收藏', 'Selected favorites deleted'), 'success')
+      emit('status', t('已删除选中的参数', 'Selected parameters deleted'), 'success')
     } catch (caught) {
       report(caught, 'removeSelected')
     } finally {
@@ -468,13 +468,13 @@ function report(caught: unknown, action = 'operation', downloadFiles?: File[]) {
     captureDiagnosticError(caught, { module: 'camera-favorites', action })
   const message =
     caught instanceof DuplicateCameraCodeError
-      ? t('该参数已收藏', 'These parameters are already saved')
+      ? t('该参数已保存', 'These parameters are already saved')
       : action === 'importBackup' &&
           caught instanceof Error &&
           caught.message === '无法读取 ZIP 备份'
         ? t(
-            '无法解压相机收藏备份，请确认文件是完整的 ZIP。',
-            'Could not unzip the camera favorites backup. Check that the ZIP is complete.'
+            '无法解压相机参数备份，请确认文件是完整的 ZIP。',
+            'Could not unzip the camera parameters backup. Check that the ZIP is complete.'
           )
         : caught instanceof Error
           ? caught.message
@@ -483,7 +483,7 @@ function report(caught: unknown, action = 'operation', downloadFiles?: File[]) {
   if (downloadFiles?.length) emit('status', message, 'error', downloadFiles)
   else emit('status', message, 'error')
 }
-/** 列表只读取收藏元数据，封面由可见卡片按需读取。 */
+/** 列表只读取参数元数据，封面由可见卡片按需读取。 */
 async function rotatePreviewSource() {
   const item = previewRecord.value
   if (!item?.cover || busy.value) return
@@ -544,7 +544,7 @@ function closeEditor() {
   closeTagInput()
   setCover(null)
 }
-/** 编辑已有收藏时先读取单张封面，读取失败则保留原记录。 */
+/** 编辑已有参数时先读取单张封面，读取失败则保留原记录。 */
 async function openEditor(
   item: CameraFavorite | null = null,
   result: PhotoParamsResult | null = null,
@@ -790,10 +790,10 @@ async function remove(item: CameraFavorite) {
       busy.value ||
       !(await props.confirmAction(
         t(
-          '删除这条参数收藏？原照片不会删除。',
-          'Delete this favorite? The original photo will be kept.'
+          '删除这条相机参数？原照片不会删除。',
+          'Delete these parameters? The original photo will be kept.'
         ) + (await backupDeleteWarning('camera', props.language)),
-        t('删除参数收藏', 'Delete camera favorite')
+        t('删除相机参数', 'Delete camera parameters')
       ))
     )
       return
@@ -801,7 +801,7 @@ async function remove(item: CameraFavorite) {
     try {
       await deleteCameraFavorite(item.id, true)
       notifyChanged()
-      emit('status', t('已删除收藏', 'Favorite deleted'), 'success')
+      emit('status', t('已删除参数', 'Parameters deleted'), 'success')
     } catch (caught) {
       report(caught, 'remove')
     } finally {
@@ -992,16 +992,16 @@ function handleImportChoices(value: typeof choices.value) {
       </div>
       <CollectionActions
         mobile-target="#camera-tag-actions"
-        :label="t('收藏操作', 'Favorite actions')"
+        :label="t('参数操作', 'Parameter actions')"
         ><button
           class="primary-button"
           type="button"
-          :aria-label="t('添加方案', 'Add preset')"
-          :title="t('添加方案', 'Add preset')"
+          :aria-label="t('添加参数', 'Add parameters')"
+          :title="t('添加参数', 'Add parameters')"
           :disabled="busy"
           @click="openEditor()"
           ><Plus :size="15" aria-hidden="true" /><span class="collection-action-label">{{
-            t('添加方案', 'Add preset')
+            t('添加参数', 'Add parameters')
           }}</span></button
         ><template #secondary>
           <input
@@ -1053,7 +1053,7 @@ function handleImportChoices(value: typeof choices.value) {
       <p>{{
         library.records.length
           ? t('试试调整搜索或筛选条件。', 'Try changing your search or filters.')
-          : t('添加参数码，或从照片参数窗口收藏。', 'Add a code or save from photo parameters.')
+          : t('添加参数码，或从照片参数窗口保存。', 'Add a code or save from photo parameters.')
       }}</p>
       <MobileEmptyScreenshot v-if="!library.records.length" page="camera" :language="language" />
     </div>
@@ -1138,7 +1138,7 @@ function handleImportChoices(value: typeof choices.value) {
           <!-- 手机来源与标签同排，来源靠左、标签靠右；电脑标签仍位于标题旁。 -->
           <div class="camera-source-tag"
             ><span class="camera-source-label">{{
-              item.source === 'manual' ? t('手动收藏', 'Manual') : t('照片解析', 'Photo parsing')
+              item.source === 'manual' ? t('手动添加', 'Manual') : t('照片解析', 'Photo parsing')
             }}</span
             ><span v-if="item.tag" class="camera-card-tag mobile-only" :title="item.tag"
               ><span>{{ item.tag }}</span></span
@@ -1217,8 +1217,8 @@ function handleImportChoices(value: typeof choices.value) {
           <header>
             <h2 id="camera-editor-title">{{
               editing
-                ? t('编辑相机参数', 'Edit camera favorite')
-                : t('收藏相机参数', 'Save camera parameters')
+                ? t('编辑相机参数', 'Edit camera parameters')
+                : t('保存相机参数', 'Save camera parameters')
             }}</h2>
             <button
               type="button"
@@ -1394,7 +1394,7 @@ function handleImportChoices(value: typeof choices.value) {
               class="confirm-dialog-button primary"
               type="submit"
               :disabled="busy || coverReading || parsing || !parsed || !name.trim()"
-              >{{ busy ? t('保存中…', 'Saving…') : t('保存收藏', 'Save favorite') }}</button
+              >{{ busy ? t('保存中…', 'Saving…') : t('保存参数', 'Save parameters') }}</button
             >
           </footer>
         </form>
@@ -1467,7 +1467,7 @@ function handleImportChoices(value: typeof choices.value) {
     :uid-required="false"
     :messages="messages"
     :saved="true"
-    :favorite-label="t('已收藏', 'Saved')"
+    :favorite-label="t('已保存', 'Saved')"
     @close="detail = null"
     @copy="detail && copy(detail.result.rawCameraParams)"
   />

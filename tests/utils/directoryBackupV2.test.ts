@@ -55,7 +55,7 @@ it('writes complete IDs and a single metadata index directly under the selected 
     image: { path: `图片/${id}.png` }
   })
   expect(
-    [...disk.files.keys()].every((path) => /^(搭配码|家园方案|相机参数收藏)\//.test(path))
+    [...disk.files.keys()].every((path) => /^(搭配码|家园方案|相机参数)\//.test(path))
   ).toBe(true)
   expect([...disk.files.keys()].some((path) => path.includes('写入中/'))).toBe(false)
 })
@@ -125,8 +125,8 @@ it('resumes an image extension change and cleans the previous extension after co
   const record = { ...outfit('FORMAT01'), image: 'FORMAT01.webp', imageSize: blob.size }
   const sha256 = await digest(await blob.arrayBuffer())
   await runDatabaseTransaction([OUTFITS_STORE, OUTFIT_IMAGES_STORE], 'readwrite', async (tx) => {
-    tx.objectStore(OUTFITS_STORE).put(record)
-    tx.objectStore(OUTFIT_IMAGES_STORE).put({
+    await tx.objectStore(OUTFITS_STORE).put(record)
+    await tx.objectStore(OUTFIT_IMAGES_STORE).put({
       id: record.id,
       blob,
       size: blob.size,

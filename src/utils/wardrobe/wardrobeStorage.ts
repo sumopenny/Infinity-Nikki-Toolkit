@@ -1,4 +1,4 @@
-import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runDatabaseTransaction } from '../file-system/transaction'
 import { runStoreRequest } from '../file-system/database'
 import type { WardrobeCatalog } from './wardrobeCatalog'
 import { wardrobeRegionScope, type WardrobeRegionScope } from './wardrobeRegion'
@@ -43,13 +43,13 @@ export async function updateWardrobe(
 ): Promise<WardrobeSnapshot> {
   return runDatabaseTransaction(['wardrobe'], 'readwrite', async (tx) => {
     const store = tx.objectStore('wardrobe')
-    const value: unknown = await databaseRequest(store.get('current'))
+    const value: unknown = await store.get('current')
     const current = value === undefined ? emptyWardrobe() : validateWardrobe(value)
     if (expected !== undefined && JSON.stringify(current) !== expected)
       throw new Error('WARDROBE_CHANGED')
     const result = validateWardrobe(change(current))
     result.updatedAt = new Date().toISOString()
-    store.put(result, 'current')
+    await store.put(result, 'current')
     return result
   })
 }

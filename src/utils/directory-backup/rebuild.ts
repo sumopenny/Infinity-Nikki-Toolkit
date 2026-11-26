@@ -1,5 +1,5 @@
 import { BACKUP_SETTINGS_STORE, BACKUP_DIRTY_STORE } from '../file-system/database'
-import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runDatabaseTransaction } from '../file-system/transaction'
 import { createUuid } from '../uuid'
 import { withAllBackupLocks } from './coordination'
 import {
@@ -21,6 +21,7 @@ import { verifyModule } from './restore'
 import {
   MODULES,
   MODULE_NAMES,
+  MODULE_LABELS,
   UUID,
   type RootManifest,
   type ModuleManifest,
@@ -58,7 +59,7 @@ async function publishBinding(
     'readwrite',
     async (tx) => {
       const settings = tx.objectStore(BACKUP_SETTINGS_STORE)
-      const current = await databaseRequest<BackupConfig | undefined>(settings.get('config'))
+      const current = await (settings.get('config') as Promise<BackupConfig | undefined>)
       if (!current || current.sourceId !== expectedSource)
         throw new Error('浏览器身份已改变；新磁盘副本已保留，请重新选择目录')
       const binding = createUuid()
@@ -72,8 +73,8 @@ async function publishBinding(
         const generation = createUuid()
         current.generations[module] = generation
         current.initialized[module] = true
-        settings.put({ key: `checkpoint:${module}`, binding, generation, digest: sha })
-        settings.put({
+        await settings.put({ key: `checkpoint:${module}`, binding, generation, digest: sha })
+        await settings.put({
           key: `success:${module}`,
           binding,
           count: manifest.count,
@@ -81,15 +82,15 @@ async function publishBinding(
           at: manifest.lastSuccess,
           revision: manifest.sourceRevision
         })
-        settings.delete(`scan:${module}`)
-        settings.delete(`error:${module}`)
+        await settings.delete(`scan:${module}`)
+        await settings.delete(`error:${module}`)
         const revision =
-          (await databaseRequest<Revision | undefined>(settings.get(revisionKey(module))))
-            ?.revision ?? ''
+          (await (settings.get(revisionKey(module)) as Promise<Revision | undefined>))?.revision ??
+          ''
         if (revision === manifest.sourceRevision)
-          tx.objectStore(BACKUP_DIRTY_STORE).delete(moduleRange(module))
+          await tx.objectStore(BACKUP_DIRTY_STORE).delete(moduleRange(module))
       }
-      settings.put(current)
+      await settings.put(current)
     }
   )
 }
@@ -242,7 +243,7 @@ export async function rebuildBackupDirectory(
             await assertBrowserBaseline(baseline)
             return true
           },
-          (done, total) => progress(`正在重建${MODULE_NAMES[module]}：${done}/${total}`)
+          (done, total) => progress(`正在重建${MODULE_LABELS[module]}：${done}/${total}`)
         )
         await verifyModule(root, module, undefined, newDir)
         for (const path of await files(newDir)) {

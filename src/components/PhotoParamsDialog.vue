@@ -10,7 +10,7 @@ const OutfitParseDialog = defineAsyncComponent(() => import('./OutfitParseDialog
 import { useCompactLayout } from '../composables/useCompactLayout'
 import { useBodyScrollLock } from '../utils/bodyScrollLock'
 import { useModalFocus } from '../composables/useModalFocus'
-import { Share2, Bookmark, Columns2, Rows2, Copy, ScanSearch, X } from 'lucide-vue-next'
+import { Share2, Save, Columns2, Rows2, Copy, ScanSearch, X } from 'lucide-vue-next'
 import { isAlbumPhoto, readPhotoFile } from '../utils/photoGrouping'
 import type { PhotoItem } from '../utils/photoGrouping'
 import type { PhotoParamsProgress, PhotoParamsResult } from '../utils/photo-params/types'
@@ -162,7 +162,7 @@ function markImageFailed(title: string, name: string) {
               class="photo-params-favorite-button"
               :disabled="saved"
               @click="emit('favorite')"
-              ><Bookmark :size="16" />{{ favoriteLabel }}</button
+              ><Save :size="16" />{{ favoriteLabel }}</button
             >
             <button
               type="button"

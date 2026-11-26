@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 // @vitest-environment node
 import 'fake-indexeddb/auto'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -19,6 +20,7 @@ import {
 } from '../../src/utils/resonance/resonanceStorage'
 afterEach(async () => {
   await new Promise<void>((resolve, reject) => {
+    closeDatabase()
     const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = () => resolve()
     request.onerror = () => reject(request.error)
@@ -26,10 +28,10 @@ afterEach(async () => {
 })
 it('rejects a write whose request succeeds but whose transaction aborts', async () => {
   await expect(
-    runStoreRequest('local-state', 'readwrite', (store) => {
-      const request = store.put('new', 'value')
-      request.addEventListener('success', () => store.transaction.abort())
-      return request
+    runStoreRequest('local-state', 'readwrite', async (store) => {
+      const result = await store.put('new', 'value')
+      store.transaction.abort()
+      return result
     })
   ).rejects.toThrow()
   expect(
@@ -75,9 +77,10 @@ it('cache clearing preserves UID, directory authorization, favorites and resonan
   await clearSavedParseCaches()
   expect(transactions).toHaveBeenCalledTimes(1)
   transactions.mockRestore()
-  expect(
-    await runStoreRequest('local-state', 'readonly', (store) => store.getAllKeys())
-  ).toEqual(['current-album-directory', 'current-camera-param-uids'])
+  expect(await runStoreRequest('local-state', 'readonly', (store) => store.getAllKeys())).toEqual([
+    'current-album-directory',
+    'current-camera-param-uids'
+  ])
   expect(await runStoreRequest('camera-params', 'readonly', (store) => store.count())).toBe(1)
   expect(await runStoreRequest('resonance-records', 'readonly', (store) => store.count())).toBe(1)
 })

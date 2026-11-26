@@ -1,5 +1,5 @@
 import { cloneJsonData } from '../cloneJsonData'
-import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runDatabaseTransaction } from '../file-system/transaction'
 import { emptyWardrobe, validateWardrobe, wardrobeBaseline } from '../wardrobe/wardrobeSchema'
 import {
   archiveModules,
@@ -35,9 +35,7 @@ export async function readArchiveLocalPreview(
     async (tx) => {
       const output: ArchiveLocalPreview = { data: {}, errors: {} }
       for (const module of selected) {
-        const value: unknown = await databaseRequest(
-          tx.objectStore(stores[module]).get(keys[module])
-        )
+        const value: unknown = await tx.objectStore(stores[module]).get(keys[module])
         try {
           Object.assign(output.data, { [module]: decode(module, value) })
         } catch {
@@ -72,9 +70,7 @@ export async function replaceArchiveLocal(
     'readwrite',
     async (tx) => {
       for (const module of selected) {
-        const value: unknown = await databaseRequest(
-          tx.objectStore(stores[module]).get(keys[module])
-        )
+        const value: unknown = await tx.objectStore(stores[module]).get(keys[module])
         if (
           expected[module] === undefined ||
           archiveBaseline(module, decode(module, value) as ArchiveLocal[ArchiveModule]) !==
@@ -87,7 +83,7 @@ export async function replaceArchiveLocal(
           module === 'resonance'
             ? snapshot.resonance!.records
             : { ...validateWardrobe(snapshot.wardrobe!.data), updatedAt: new Date().toISOString() }
-        tx.objectStore(stores[module]).put(value, keys[module])
+        await tx.objectStore(stores[module]).put(value, keys[module])
       }
     }
   )

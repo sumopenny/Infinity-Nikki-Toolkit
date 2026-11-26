@@ -44,7 +44,7 @@ export async function* exportCameraBackup(
     'favorites.json',
     CAMERA_BACKUP_LIMITS
   )
-  const base = backupBaseName('相机参数收藏')
+  const base = backupBaseName('相机参数')
   for (let i = 0; i < parts.length; i++) {
     yield {
       fileName: backupPartName(base, i, parts.length),
@@ -98,7 +98,7 @@ export async function readCameraBackup(file: Blob): Promise<FavoriteLibrary> {
     }
   })
   if (tooLarge) throw new Error('备份解压后的体积过大')
-  if (otherBackup) throw new Error('这不是相机收藏备份；若选择的是总备份，请到“全部数据”入口导入')
+  if (otherBackup) throw new Error('这不是相机参数备份；若选择的是总备份，请到“全部数据”入口导入')
   if (invalid || !files['favorites.json']) throw new Error('备份格式无效')
   if (
     Object.values(files).reduce((sum, bytes) => sum + bytes.length, 0) >

@@ -108,13 +108,13 @@ export const helpAboutZh: HelpAboutMessages = {
       ]
     },
     camera: {
-      title: '解析照片或收藏相机参数',
+      title: '解析照片或保存相机参数',
       entry: '工具 → 参数/搭配码解析',
       steps: [
         '选择游戏原图。若提示填写 UID，请使用拍这张照片的游戏账号 UID。',
-        '解析后可以收藏相机参数。',
+        '解析后可以保存相机参数。',
         {
-          desktop: '已有参数码可从「相机参数 → 添加收藏」直接添加。',
+          desktop: '已有参数码可从「相机参数 → 添加参数」直接添加。',
           mobile: '已有参数码可在底部导航进入「相机参数」，点「+」直接添加。'
         }
       ]
@@ -136,7 +136,7 @@ export const helpAboutZh: HelpAboutMessages = {
       steps: [
         {
           desktop:
-            '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。左侧「数据备份」可将搭配码、家园方案和相机收藏自动保存到电脑专用文件夹；只保留最新状态，删除会同步。',
+            '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。左侧「数据备份」可将搭配码、家园方案和相机参数自动保存到电脑专用文件夹；只保留最新状态，删除会同步。',
           mobile: '换设备时先「导出全部数据」，再到新设备「导入全部数据」。游戏原图需另存。'
         },
         {
@@ -259,7 +259,7 @@ export const helpAboutEn: HelpAboutMessages = {
         'Choose an original game photo. If asked for a UID, enter the game account UID used to take it.',
         'Save camera parameters from the results.',
         {
-          desktop: 'If you have a code, use Camera parameters → Add favorite.',
+          desktop: 'If you have a code, use Camera parameters → Add parameters.',
           mobile: 'If you have a code, open Camera parameters in the bottom navigation and tap +.'
         }
       ]
@@ -282,7 +282,7 @@ export const helpAboutEn: HelpAboutMessages = {
       steps: [
         {
           desktop:
-            'Choose “Export all data”, then “Import all data” on the new device. Back up original game photos separately. Data backup in the sidebar can automatically save outfits, home schemes, and camera favorites to a dedicated folder. It keeps the latest state and mirrors deletions.',
+            'Choose “Export all data”, then “Import all data” on the new device. Back up original game photos separately. Data backup in the sidebar can automatically save outfits, home schemes, and camera parameters to a dedicated folder. It keeps the latest state and mirrors deletions.',
           mobile:
             'Use “Export all data” to save a backup, then choose “Import all data” on the new device. Back up original game photos separately.'
         },

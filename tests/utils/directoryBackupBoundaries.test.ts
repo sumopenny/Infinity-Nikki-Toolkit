@@ -182,7 +182,7 @@ describe('原有入口、升级和跨目录边界', () => {
     await saveCameraFavorite(camera('CAM-PART', '保留本地'), null, camera('CAM-PART'))
     const preview = await previewRestore(asHandle(directory)),
       committed: string[] = []
-    const cameraPath = [...disk.files.keys()].find((p) => p.includes('相机参数收藏/记录/'))!
+    const cameraPath = [...disk.files.keys()].find((p) => p.includes('相机参数/记录/'))!
     await expect(
       restoreSelected(
         asHandle(directory),

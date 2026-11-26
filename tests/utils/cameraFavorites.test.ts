@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import { assertBackupKind } from '../../src/utils/backup/backupDetector'
 // @vitest-environment node
 import 'fake-indexeddb/auto'
@@ -52,6 +53,7 @@ const record = (id = 'one', code = 'ABC'): CameraFavorite => ({
 })
 beforeEach(async () => {
   await new Promise<void>((resolve, reject) => {
+    closeDatabase()
     const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = () => resolve()
     request.onerror = () => reject(request.error)
@@ -264,7 +266,7 @@ describe('complete camera backup', () => {
   it('distinguishes another backup type from an invalid camera archive', async () => {
     await expect(
       readCameraBackup(new Blob([zipSync({ 'backup.json': strToU8('{}') })]))
-    ).rejects.toThrow('这不是相机收藏备份')
+    ).rejects.toThrow('这不是相机参数备份')
     await expect(
       readCameraBackup(new Blob([zipSync({ 'other.json': strToU8('{}') })]))
     ).rejects.toThrow('备份格式无效')

@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import 'fake-indexeddb/auto'
 import { clearAllBrowserData, DB_NAME, DB_VERSION } from '../../src/utils/file-system/database'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -70,6 +71,7 @@ describe('directoryStorage', () => {
   it('ignores legacy outfit parse results after the parser cache version changes', async () => {
     const code = 'legacy1A2B3C#'
     await new Promise<void>((resolve) => {
+      closeDatabase()
       const request = indexedDB.deleteDatabase(DB_NAME)
       request.onsuccess = request.onerror = request.onblocked = () => resolve()
     })

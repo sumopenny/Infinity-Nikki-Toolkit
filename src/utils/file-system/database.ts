@@ -1,3 +1,5 @@
+import type { NikkiSchema } from './schema'
+import { openDB, type IDBPDatabase, type IDBPObjectStore } from 'idb'
 import type { BackupModule, ChangeKind } from '../directory-backup/changeJournal'
 // 所有本地数据共用升级入口，避免先打开不同模块时漏建存储。
 export const DB_NAME = 'nikki'
@@ -58,18 +60,30 @@ export function isDatabaseConnectionLost(error: unknown): boolean {
   )
 }
 
-export function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-    request.onupgradeneeded = () => {
-      const db = request.result
+export type DatabaseMode = 'readonly' | 'readwrite'
+// 动态备份适配器按表名选择不同值类型，读取入口负责校验。
+export type DatabaseStore<
+  M extends DatabaseMode = 'readwrite',
+  S extends string = string
+> = IDBPObjectStore<unknown, string[], S, M>
+
+/** 独立结构检查使用新连接；业务事务统一通过 getDatabase 复用连接。 */
+export async function openDb(): Promise<IDBPDatabase<NikkiSchema>> {
+  let connection: IDBPDatabase<NikkiSchema> | undefined
+  let blocked = false
+  let rejectBlocked!: (error: Error) => void
+  const blockedResult = new Promise<never>((_, reject) => {
+    rejectBlocked = reject
+  })
+  const opening = openDB<NikkiSchema>(DB_NAME, DB_VERSION, {
+    upgrade(db, _oldVersion, _newVersion, transaction) {
       const outfits = db.objectStoreNames.contains(OUTFITS_STORE)
-        ? request.transaction!.objectStore(OUTFITS_STORE)
+        ? transaction.objectStore(OUTFITS_STORE)
         : db.createObjectStore(OUTFITS_STORE, { keyPath: 'id' })
       // Pending outfits omit codeKey, so multiple empty codes remain valid.
       if (!outfits.indexNames.contains('code'))
         outfits.createIndex('code', 'codeKey', { unique: true })
-      for (const name of [OUTFIT_IMAGES_STORE, OUTFIT_GAME_SOURCES_STORE]) {
+      for (const name of [OUTFIT_IMAGES_STORE, OUTFIT_GAME_SOURCES_STORE] as const) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' })
       }
       if (!db.objectStoreNames.contains(OUTFIT_TAGS_STORE)) db.createObjectStore(OUTFIT_TAGS_STORE)
@@ -81,7 +95,7 @@ export function openDb(): Promise<IDBDatabase> {
         'wardrobe',
         CAMERA_COVERS_STORE,
         CAMERA_TAGS_STORE
-      ]) {
+      ] as const) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name)
       }
       if (!db.objectStoreNames.contains(BACKUP_DIRTY_STORE))
@@ -91,113 +105,115 @@ export function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(BACKUP_RESTORE_STORE))
         db.createObjectStore(BACKUP_RESTORE_STORE, { keyPath: ['module', 'kind', 'id'] })
       const favorites = db.objectStoreNames.contains(CAMERA_PARAMS_STORE)
-        ? request.transaction!.objectStore(CAMERA_PARAMS_STORE)
+        ? transaction.objectStore(CAMERA_PARAMS_STORE)
         : db.createObjectStore(CAMERA_PARAMS_STORE, { keyPath: 'id' })
       if (!favorites.indexNames.contains('code'))
         favorites.createIndex('code', 'code', { unique: true })
       const schemes = db.objectStoreNames.contains(HOME_SCHEMES_STORE)
-        ? request.transaction!.objectStore(HOME_SCHEMES_STORE)
+        ? transaction.objectStore(HOME_SCHEMES_STORE)
         : db.createObjectStore(HOME_SCHEMES_STORE, { keyPath: 'id' })
       if (!schemes.indexNames.contains('code'))
         schemes.createIndex('code', 'code', { unique: true })
       if (!db.objectStoreNames.contains(HOME_IMAGES_STORE))
         db.createObjectStore(HOME_IMAGES_STORE, { keyPath: 'id' })
       if (!db.objectStoreNames.contains(HOME_TAGS_STORE)) db.createObjectStore(HOME_TAGS_STORE)
+    },
+    blocked() {
+      blocked = true
+      rejectBlocked(new Error('数据库升级被其他页面占用，请关闭本站其他标签页后重试。'))
+    },
+    blocking() {
+      connection?.close()
+      invalidate(connection)
+    },
+    terminated() {
+      invalidate(connection)
     }
-    request.onsuccess = () => {
-      const db = request.result
-      db.onversionchange = () => db.close()
-      resolve(db)
-    }
-    request.onerror = () => {
-      if (request.error?.name === 'VersionError') {
-        notifyVersionMismatch()
-        reject(new Error('DATABASE_VERSION_MISMATCH', { cause: request.error }))
-      } else reject(request.error)
-    }
-    request.onblocked = () => {
-      reject(new Error('数据库升级被其他页面占用，请关闭本站其他标签页后重试。'))
-      // 阻塞解除后请求可能仍成功，关闭无人使用的连接。
-      request.onsuccess = () => request.result.close()
-    }
+  }).then((db) => {
+    connection = db
+    if (blocked) db.close()
+    return db
   })
-}
-
-/** Resolve writes only after the transaction has committed. */
-export async function runStoreRequest<T>(
-  storeName: string,
-  mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> {
-  // 业务单请求写入也接入事务日志；内部配置和暂存表不递归包装。
-  if (mode === 'readwrite' && Boolean(BACKUP_MONITORED_STORES[storeName])) {
-    const { runDatabaseTransaction, databaseRequest } = await import('./transaction')
-    return runDatabaseTransaction([storeName], mode, (tx) =>
-      databaseRequest(action(tx.objectStore(storeName)))
-    )
+  try {
+    return await Promise.race([opening, blockedResult])
+  } catch (error) {
+    if (error instanceof Error && error.name === 'VersionError') {
+      notifyVersionMismatch()
+      throw new Error('DATABASE_VERSION_MISMATCH', { cause: error })
+    }
+    throw error
   }
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    let request: IDBRequest<T> | undefined
-    let result: T
-    let tx: IDBTransaction | undefined
-    try {
-      tx = db.transaction(storeName, mode)
-      tx.oncomplete = () => {
-        db.close()
-        resolve(result)
-      }
-      tx.onabort = () => {
-        db.close()
-        reject(tx?.error ?? request?.error ?? new Error('IndexedDB transaction aborted'))
-      }
-      tx.onerror = () => {
-        /* onabort reports the final transaction failure. */
-      }
-      request = action(tx.objectStore(storeName))
-      request.onsuccess = () => {
-        result = request!.result
-      }
-    } catch (error) {
-      try {
-        tx?.abort()
-      } catch {
-        /* Transaction may already be inactive. */
-      }
-      db.close()
-      reject(error)
-    }
-  })
 }
 
-/** 在同一事务内清空全部存储表，包含收藏、图片、授权和迁移来源；失败时整体回滚。 */
+let shared: Promise<IDBPDatabase<NikkiSchema>> | undefined
+let current: IDBPDatabase<NikkiSchema> | undefined
+let factory: IDBFactory | undefined
+function invalidate(db: IDBPDatabase<NikkiSchema> | undefined): void {
+  if (db && current === db) {
+    shared = undefined
+    current = undefined
+  }
+}
+export function getDatabase(): Promise<IDBPDatabase<NikkiSchema>> {
+  if (factory !== indexedDB) {
+    closeDatabase()
+    factory = indexedDB
+  }
+  if (!shared) {
+    const pending = openDb()
+      .then((db) => {
+        if (shared !== pending) {
+          db.close()
+          throw new DOMException('Database opening was cancelled', 'AbortError')
+        }
+        current = db
+        return db
+      })
+      .catch((error) => {
+        if (shared === pending) shared = undefined
+        throw error
+      })
+    shared = pending
+  }
+  return shared
+}
+export function closeDatabase(): void {
+  current?.close()
+  current = undefined
+  shared = undefined
+}
+
+/** 单请求与多表操作复用提交、回滚及备份追踪逻辑。 */
+export function runStoreRequest<T>(
+  storeName: string,
+  mode: 'readonly',
+  action: (store: DatabaseStore<'readonly'>) => Promise<T>
+): Promise<T>
+export function runStoreRequest<T>(
+  storeName: string,
+  mode: 'readwrite',
+  action: (store: DatabaseStore<'readwrite'>) => Promise<T>
+): Promise<T>
+export function runStoreRequest<T, M extends DatabaseMode>(
+  storeName: string,
+  mode: M,
+  action: (store: DatabaseStore<M>) => Promise<T>
+): Promise<T>
+export async function runStoreRequest<T, M extends DatabaseMode>(
+  storeName: string,
+  mode: M,
+  action: (store: DatabaseStore<M>) => Promise<T>
+): Promise<T> {
+  const { runDatabaseTransaction } = await import('./transaction')
+  return runDatabaseTransaction([storeName], mode, (tx) => action(tx.objectStore(storeName)))
+}
+
+/** 原子清空全部表，不把全站重置转换为电脑备份的删除任务。 */
 export async function clearAllBrowserData(): Promise<void> {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    let tx: IDBTransaction | undefined
-    try {
-      const names = [...db.objectStoreNames]
-      tx = db.transaction(names, 'readwrite')
-      tx.oncomplete = () => {
-        db.close()
-        resolve()
-      }
-      tx.onabort = () => {
-        db.close()
-        reject(tx?.error ?? new Error('IndexedDB reset aborted'))
-      }
-      tx.onerror = () => {
-        /* onabort reports the final failure. */
-      }
-      for (const name of names) tx.objectStore(name).clear()
-    } catch (error) {
-      try {
-        tx?.abort()
-      } catch {
-        /* Transaction may already be inactive. */
-      }
-      db.close()
-      reject(error)
-    }
+  const { runMaintenanceTransaction } = await import('./transaction')
+  const db = await getDatabase()
+  await runMaintenanceTransaction([...db.objectStoreNames], async (tx) => {
+    for (const name of tx.objectStoreNames) await tx.objectStore(name).clear()
   })
+  closeDatabase()
 }

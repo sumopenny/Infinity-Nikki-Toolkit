@@ -107,7 +107,7 @@ describe('异常归零保护', () => {
     await putOutfit('UNTRUSTED')
     await sync(config)
     await runDatabaseTransaction([OUTFITS_STORE], 'readwrite', async (tx) => {
-      tx.objectStore(OUTFITS_STORE).clear()
+      await tx.objectStore(OUTFITS_STORE).clear()
     })
     expect((await dirtyChanges('outfits')).some((x) => x.key[1] === 'reset' && !x.intent)).toBe(
       true

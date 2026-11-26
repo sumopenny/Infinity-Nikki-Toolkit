@@ -797,7 +797,7 @@ async function removeTag(tag: string) {
   })
 }
 
-/** 家园与搭配、相机收藏共用触摸排序组件，只在存储层应用新顺序。 */
+/** 家园与搭配、相机参数共用触摸排序组件，只在存储层应用新顺序。 */
 async function reorderTags(next: string[]) {
   return trackOperation(async () => {
     if (isBusy.value) return

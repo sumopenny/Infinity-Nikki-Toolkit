@@ -5,7 +5,7 @@ import {
   OUTFIT_IGNORED_CODES_STORE,
   runStoreRequest
 } from '../file-system/database'
-import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runDatabaseTransaction } from '../file-system/transaction'
 import { createUuid } from '../uuid'
 import { ADAPTERS, normalTags, presentImage, type StoredImage } from './adapters'
 import { locateRoot } from './engine'
@@ -59,22 +59,20 @@ export interface BackupDiff {
 async function comparisonBatch(module: BackupModule, after?: string) {
   const a = ADAPTERS[module]
   return runDatabaseTransaction([a.records, a.images], 'readonly', async (tx) => {
-    const rows = await databaseRequest<unknown[]>(
-      tx
-        .objectStore(a.records)
-        .getAll(
-          after === undefined ? undefined : IDBKeyRange.lowerBound(after, true),
-          BATCH_RECORDS
-        )
-    )
+    const rows = await (tx
+      .objectStore(a.records)
+      .getAll(
+        after === undefined ? undefined : IDBKeyRange.lowerBound(after, true),
+        BATCH_RECORDS
+      ) as Promise<unknown[]>)
     return Promise.all(
       rows.map(async (raw) => {
         const record = a.validate(raw)
         let imageSha = module === 'camera' ? record.cover?.sha256 : undefined
         if (module !== 'camera' && presentImage(module, record)) {
-          const image = await databaseRequest<StoredImage | undefined>(
-            tx.objectStore(a.images).get(record.id)
-          )
+          const image = await (tx.objectStore(a.images).get(record.id) as Promise<
+            StoredImage | undefined
+          >)
           if (!image) throw new Error(`数据库图片缺失：${record.id}`)
           imageSha = image.sha256
         }
@@ -262,18 +260,17 @@ export async function confirmEnable(
       async (tx) => {
         const store = tx.objectStore(BACKUP_SETTINGS_STORE)
         const revision =
-          (await databaseRequest<Revision | undefined>(store.get(revisionKey(module))))?.revision ??
-          ''
-        const current = await databaseRequest<BackupConfig>(store.get('config'))
+          (await (store.get(revisionKey(module)) as Promise<Revision | undefined>))?.revision ?? ''
+        const current = await (store.get('config') as Promise<BackupConfig>)
         if (revision !== expected.revision || current?.binding !== expected.binding)
           throw new Error('浏览器数据在确认期间发生变化，请重新预览')
-        const checkpoint = await databaseRequest<Checkpoint | undefined>(
-          store.get(`checkpoint:${module}`)
-        )
-        const receipt = await databaseRequest<SuccessReceipt | undefined>(
-          store.get(`success:${module}`)
-        )
-        const previousError = await databaseRequest(store.get(`error:${module}`))
+        const checkpoint = await (store.get(`checkpoint:${module}`) as Promise<
+          Checkpoint | undefined
+        >)
+        const receipt = await (store.get(`success:${module}`) as Promise<
+          SuccessReceipt | undefined
+        >)
+        const previousError = await store.get(`error:${module}`)
         const incremental =
           complete &&
           !previousError &&
@@ -300,7 +297,7 @@ export async function confirmEnable(
           }
         current.generations[module] = createUuid()
         if (!incremental && fingerprint && complete) {
-          store.put({
+          await store.put({
             key: `checkpoint:${module}`,
             binding: current.binding,
             generation: current.generations[module],
@@ -308,21 +305,21 @@ export async function confirmEnable(
           } satisfies Checkpoint)
         }
         if (incremental) {
-          store.put({ ...checkpoint!, generation: current.generations[module] })
+          await store.put({ ...checkpoint!, generation: current.generations[module] })
           // 比对覆盖了该修订的完整数据，在同一事务中替换旧任务；后续编辑会生成新修订。
           const dirty = tx.objectStore(BACKUP_DIRTY_STORE)
-          dirty.delete(moduleRange(module))
+          await dirty.delete(moduleRange(module))
           for (const change of expected.changes)
-            dirty.put({
+            await dirty.put({
               key: [module, change.kind, change.id],
               revision,
               at: new Date().toISOString(),
               ...(change.deleted ? { intent: 'confirmed-delete' as const } : {})
             } satisfies DirtyChange)
         }
-        store.delete(`scan:${module}`)
-        store.delete(`error:${module}`)
-        store.put(current)
+        await store.delete(`scan:${module}`)
+        await store.delete(`error:${module}`)
+        await store.put(current)
         return current
       }
     )

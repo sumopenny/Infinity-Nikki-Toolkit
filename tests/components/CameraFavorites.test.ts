@@ -284,16 +284,16 @@ describe('camera favorite UI', () => {
   it('offers manual addition without an album and requires successful parsing before saving', async () => {
     const view = create()
     await flushPromises()
-    button('添加方案').click()
+    button('添加参数').click()
     await flushPromises()
-    expect(button('保存收藏').disabled).toBe(true)
+    expect(button('保存参数').disabled).toBe(true)
     const input = document.querySelector<HTMLTextAreaElement>('textarea:not([readonly])')!
     input.value = 'ABC'
     input.dispatchEvent(new Event('input', { bubbles: true }))
     await flushPromises()
     await vi.advanceTimersByTimeAsync(500)
     await flushPromises()
-    expect(button('保存收藏').disabled).toBe(false)
+    expect(button('保存参数').disabled).toBe(false)
     document
       .querySelector('form')!
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
@@ -308,7 +308,7 @@ describe('camera favorite UI', () => {
   it('invalidates a parsed result when the input changes and retains the form on failure', async () => {
     const view = create()
     await flushPromises()
-    button('添加方案').click()
+    button('添加参数').click()
     await flushPromises()
     const input = document.querySelector<HTMLTextAreaElement>('textarea:not([readonly])')!
     input.value = 'ABC'
@@ -319,7 +319,7 @@ describe('camera favorite UI', () => {
     input.value = 'invalid'
     input.dispatchEvent(new Event('input', { bubbles: true }))
     await flushPromises()
-    expect(button('保存收藏').disabled).toBe(true)
+    expect(button('保存参数').disabled).toBe(true)
     mocks.parse.mockResolvedValue(null)
     await vi.advanceTimersByTimeAsync(500)
     await flushPromises()
@@ -371,7 +371,7 @@ describe('camera favorite UI', () => {
     await flushPromises()
     expect(mocks.read).toHaveBeenCalledOnce()
     expect(document.querySelector('form')).toBeNull()
-    expect(view.emitted('status')?.at(-1)).toEqual(['该参数已收藏', 'error'])
+    expect(view.emitted('status')?.at(-1)).toEqual(['该参数已保存', 'error'])
     expect(mocks.save).not.toHaveBeenCalled()
   })
 })
@@ -448,7 +448,7 @@ describe('camera favorite selection and resources', () => {
     await vi.waitFor(() => expect(document.querySelector('.photo-params-dialog')).not.toBeNull())
     expect(document.querySelector('.photo-params-dialog')?.textContent).toContain('回眸')
     expect(document.querySelector('.photo-params-dialog')?.textContent).toContain('晴天')
-    expect(button('已收藏').disabled).toBe(true)
+    expect(button('已保存').disabled).toBe(true)
     expect(view.get('.camera-favorite-card').attributes('aria-checked')).toBe('false')
   })
   it('selects through the badge, keeps actions separate and skips preview without a cover', async () => {
@@ -615,7 +615,7 @@ describe('camera favorite automatic parsing', () => {
   async function open() {
     const view = create()
     await flushPromises()
-    button('添加方案').click()
+    button('添加参数').click()
     await flushPromises()
     return view
   }
@@ -635,7 +635,7 @@ describe('camera favorite automatic parsing', () => {
     await enter(' A B C\n')
     await vi.advanceTimersByTimeAsync(600)
     expect(mocks.parse).toHaveBeenCalledTimes(1)
-    expect(button('保存收藏').disabled).toBe(false)
+    expect(button('保存参数').disabled).toBe(false)
   })
   it('cancels pending parsing on clear, close and unmount', async () => {
     const view = await open()
@@ -643,13 +643,13 @@ describe('camera favorite automatic parsing', () => {
     await enter('')
     await vi.advanceTimersByTimeAsync(600)
     expect(mocks.parse).not.toHaveBeenCalled()
-    expect(button('保存收藏').disabled).toBe(true)
+    expect(button('保存参数').disabled).toBe(true)
     await enter('ABC')
     button('取消').click()
     await flushPromises()
     await vi.advanceTimersByTimeAsync(600)
     expect(mocks.parse).not.toHaveBeenCalled()
-    button('添加方案').click()
+    button('添加参数').click()
     await flushPromises()
     await enter('ABC')
     view.unmount()
@@ -680,7 +680,7 @@ describe('camera favorite automatic parsing', () => {
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flushPromises()
     expect(mocks.save.mock.calls[0][0].result.rawCameraParams).toBe('NEW')
-    button('添加方案').click()
+    button('添加参数').click()
     await flushPromises()
     mocks.parse.mockImplementationOnce(
       () =>
@@ -706,7 +706,7 @@ describe('camera favorite automatic parsing', () => {
     })
     await vi.advanceTimersByTimeAsync(600)
     expect(mocks.parse).not.toHaveBeenCalled()
-    expect(button('保存收藏').disabled).toBe(false)
+    expect(button('保存参数').disabled).toBe(false)
     mocks.parse.mockResolvedValue(null)
     await enter('bad')
     await vi.advanceTimersByTimeAsync(500)
@@ -719,7 +719,7 @@ describe('camera favorite automatic parsing', () => {
     await enter('GOOD')
     await vi.advanceTimersByTimeAsync(500)
     await flushPromises()
-    expect(button('保存收藏').disabled).toBe(false)
+    expect(button('保存参数').disabled).toBe(false)
   })
 })
 
@@ -859,7 +859,7 @@ describe('camera cover conversion', () => {
       expect(
         document.querySelector('.camera-favorite-editor [role="status"]')?.textContent
       ).toContain('读取失败')
-      expect(button('保存收藏').disabled).toBe(false)
+      expect(button('保存参数').disabled).toBe(false)
       await submit()
       expect(mocks.save).toHaveBeenCalledTimes(1)
       if (previous) expect(mocks.save.mock.calls[0][1]).not.toBeNull()
@@ -980,7 +980,7 @@ it('does not read saved covers while the favorites page is inactive', async () =
   await view.setProps({ active: true })
   await flushPromises()
   expect(mocks.readCover).toHaveBeenCalledOnce()
-  expect(view.get('.stored-image img').attributes('src')).toBe('blob:cover')
+  await vi.waitFor(() => expect(view.get('.stored-image img').attributes('src')).toBe('blob:cover'))
   await view.setProps({ active: false })
   expect(view.find('.stored-image img').exists()).toBe(false)
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:cover')
@@ -998,7 +998,7 @@ it('skips focus refresh for an inactive module and while its editor is open', as
   window.dispatchEvent(new Event('focus'))
   await flushPromises()
   expect(mocks.read).toHaveBeenCalledOnce()
-  button('添加方案').click()
+  button('添加参数').click()
   await flushPromises()
   mocks.read.mockClear()
   window.dispatchEvent(new Event('focus'))

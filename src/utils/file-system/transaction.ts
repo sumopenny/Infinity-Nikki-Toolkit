@@ -1,5 +1,6 @@
+import type { IDBPTransaction, IDBPDatabase } from 'idb'
 import { annotateDiagnosticError } from '../errorReporting/errorReporter'
-import { isDatabaseConnectionLost, openDb } from './database'
+import { closeDatabase, getDatabase, isDatabaseConnectionLost, type DatabaseMode } from './database'
 import {
   announceBackupChange,
   changedModules,
@@ -9,86 +10,76 @@ import {
 } from '../directory-backup/changeJournal'
 import { withBusinessWrites } from '../directory-backup/coordination'
 
-export function databaseRequest<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
+export type DatabaseTransaction<M extends DatabaseMode = 'readwrite'> = IDBPTransaction<
+  unknown,
+  string[],
+  M
+>
 
-/** 事务内只等待 IDB 请求；文件、图片处理放在外部，提交后才返回成功。 */
-export async function runDatabaseTransaction<T>(
+/** 事务内只等待数据库请求；文件、图片和哈希准备在事务外完成。 */
+export async function runDatabaseTransaction<T, M extends DatabaseMode>(
   stores: string[],
-  mode: IDBTransactionMode,
-  action: (tx: IDBTransaction) => Promise<T>
+  mode: M,
+  action: (tx: DatabaseTransaction<M>) => Promise<T>
 ): Promise<T> {
+  const tracked = needsJournal(stores, mode)
   try {
-    return await (needsJournal(stores, mode)
-      ? withBusinessWrites(changedModules(stores), () =>
-          runTransactionAttempt(stores, mode, action)
-        )
-      : runTransactionAttempt(stores, mode, action))
+    return await (tracked
+      ? withBusinessWrites(changedModules(stores), () => execute(stores, mode, action, true))
+      : execute(stores, mode, action, false))
   } catch (error) {
     if (mode !== 'readonly' || !isDatabaseConnectionLost(error)) throw error
-    return runTransactionAttempt(stores, mode, action)
+    closeDatabase()
+    return execute(stores, mode, action, false)
   }
 }
 
-async function runTransactionAttempt<T>(
+/** 恢复与重置专用：调用方持有独占锁，并负责日志与修订的原子调整。 */
+export function runMaintenanceTransaction<T>(
   stores: string[],
-  mode: IDBTransactionMode,
-  action: (tx: IDBTransaction) => Promise<T>
+  action: (tx: DatabaseTransaction) => Promise<T>
+): Promise<T> {
+  return execute(stores, 'readwrite', action, false)
+}
+
+async function execute<T, M extends DatabaseMode>(
+  stores: string[],
+  mode: M,
+  action: (tx: DatabaseTransaction<M>) => Promise<T>,
+  tracked: boolean
 ): Promise<T> {
   const detail = { stage: 'indexeddb-transaction', context: { stores, mode } }
-  const db = await openDb().catch((error) => {
-    throw annotateDiagnosticError(error, detail)
-  })
-  return new Promise((resolve, reject) => {
-    let tx: IDBTransaction | undefined
-    let result: T
-    let failure: unknown
+  try {
+    const db = await getDatabase()
+    // 动态备份适配器跨不同值类型的表，统一执行器保留运行时校验边界。
+    const tx: DatabaseTransaction<M> = (db as IDBPDatabase).transaction(
+      tracked ? journalStores(stores) : stores,
+      mode
+    )
+    // 立即监听提交失败，包括 action 同步抛错后产生的中止。
+    const done = tx.done
+    void done.catch(() => undefined)
     try {
-      const tracked = needsJournal(stores, mode)
-      tx = db.transaction(tracked ? journalStores(stores) : stores, mode)
-      tx.oncomplete = () => {
-        db.close()
-        if (tracked) announceBackupChange()
-        resolve(result)
-      }
-      tx.onabort = () => {
-        db.close()
-        reject(
-          annotateDiagnosticError(
-            failure ?? tx!.error ?? new Error('IndexedDB transaction aborted'),
-            detail
-          )
-        )
-      }
-      tx.onerror = () => {
-        /* onabort reports the final failure */
-      }
-      const execution = tracked ? prepareJournal(tx).then(action) : action(tx)
-      execution
-        .then((value) => {
-          result = value
-        })
-        .catch((error) => {
-          failure = error
-          try {
-            tx!.abort()
-          } catch {
-            db.close()
-            reject(annotateDiagnosticError(error, detail))
-          }
-        })
+      const value = await action(
+        tracked
+          ? ((await prepareJournal(
+              tx as DatabaseTransaction<'readwrite'>
+            )) as DatabaseTransaction<M>)
+          : tx
+      )
+      await done
+      if (tracked) announceBackupChange()
+      return value
     } catch (error) {
       try {
-        tx?.abort()
+        tx.abort()
       } catch {
-        /* already inactive */
+        /* Already completed or aborted. */
       }
-      db.close()
-      reject(annotateDiagnosticError(error, detail))
+      await done.catch(() => undefined)
+      throw error
     }
-  })
+  } catch (error) {
+    throw annotateDiagnosticError(error, detail)
+  }
 }

@@ -7,9 +7,10 @@ export const VERSION = 2
 export const MODULE_NAMES: Record<BackupModule, string> = {
   outfits: '搭配码',
   home: '家园方案',
-  camera: '相机参数收藏'
+  camera: '相机参数'
 }
-export const MODULE_LABELS = { ...MODULE_NAMES, camera: '相机参数收藏' }
+// 目录名与界面标签统一使用模块名称。
+export const MODULE_LABELS = MODULE_NAMES
 export const MODULES: BackupModule[] = ['outfits', 'home', 'camera']
 export const HASH = /^[a-f0-9]{64}$/
 export const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i

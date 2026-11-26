@@ -10,7 +10,6 @@ import {
 } from '../backup/zipBackup'
 import { HOME_SCHEMES_STORE, HOME_IMAGES_STORE, HOME_TAGS_STORE } from '../file-system/database'
 import {
-  homeRequest,
   homeTransaction,
   readHomeSchemeSnapshot,
   readHomeSchemeLibrary,
@@ -334,8 +333,8 @@ async function applyHomeSchemeBackup({
     async (tx) => {
       const store = tx.objectStore(HOME_SCHEMES_STORE)
       const [current, rawTags] = await Promise.all([
-        homeRequest(store.getAll()),
-        homeRequest(tx.objectStore(HOME_TAGS_STORE).get('default'))
+        store.getAll(),
+        tx.objectStore(HOME_TAGS_STORE).get('default')
       ])
       const codes = new Set(
         current.map((record: HomeSchemeRecord) => normalizeHomeSchemeCode(record.code))
@@ -354,18 +353,18 @@ async function applyHomeSchemeBackup({
           continue
         }
         const id = ids.has(record.id) ? createHomeSchemeId() : record.id
-        store.put({
+        await store.put({
           ...record,
           id,
           image: image ? `${id}.${image.extension}` : null,
           tags: record.tags.filter((tag) => tags.includes(tag))
         })
-        if (image) tx.objectStore(HOME_IMAGES_STORE).put({ ...image, id })
+        if (image) await tx.objectStore(HOME_IMAGES_STORE).put({ ...image, id })
         codes.add(record.code)
         ids.add(id)
         addedCount++
       }
-      tx.objectStore(HOME_TAGS_STORE).put(tags, 'default')
+      await tx.objectStore(HOME_TAGS_STORE).put(tags, 'default')
       return { addedCount, duplicateCount, failedCount: invalidCount }
     }
   )

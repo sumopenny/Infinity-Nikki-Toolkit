@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
 import * as unifiedImport from '../../src/utils/unifiedDataImport'
@@ -80,6 +81,7 @@ afterEach(async () => {
   if (originalScrollTo) Object.defineProperty(HTMLElement.prototype, 'scrollTo', originalScrollTo)
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo
   await new Promise<void>((resolve) => {
+    closeDatabase()
     const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = request.onerror = request.onblocked = () => resolve()
   })

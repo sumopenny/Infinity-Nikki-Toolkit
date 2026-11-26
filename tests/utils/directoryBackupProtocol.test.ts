@@ -9,7 +9,7 @@ import {
   runStoreRequest,
   clearAllBrowserData
 } from '../../src/utils/file-system/database'
-import { databaseRequest, runDatabaseTransaction } from '../../src/utils/file-system/transaction'
+import { runDatabaseTransaction } from '../../src/utils/file-system/transaction'
 import { saveOutfit, deleteOutfitTag } from '../../src/utils/outfit/outfitStorage'
 import {
   saveCameraFavorite,
@@ -80,14 +80,14 @@ const camera = (id: string, tag = '') => ({
 async function replaceNote(id: string, note: string) {
   await runDatabaseTransaction([OUTFITS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(OUTFITS_STORE)
-    const current = await databaseRequest(store.get(id))
-    store.put({ ...current, note })
+    const current = await store.get(id)
+    await store.put({ ...current, note })
   })
 }
 async function remove(id: string) {
   await runDatabaseTransaction([OUTFITS_STORE, OUTFIT_IMAGES_STORE], 'readwrite', async (tx) => {
-    tx.objectStore(OUTFITS_STORE).delete(id)
-    tx.objectStore(OUTFIT_IMAGES_STORE).delete(id)
+    await tx.objectStore(OUTFITS_STORE).delete(id)
+    await tx.objectStore(OUTFIT_IMAGES_STORE).delete(id)
   })
 }
 
@@ -102,7 +102,7 @@ describe('事务与增量读写边界', () => {
     await saveConfig(config)
     await expect(
       runDatabaseTransaction([OUTFITS_STORE], 'readwrite', async (tx) => {
-        tx.objectStore(OUTFITS_STORE).put(outfit('ABORT01'))
+        await tx.objectStore(OUTFITS_STORE).put(outfit('ABORT01'))
         throw new Error('abort business')
       })
     ).rejects.toThrow('abort business')

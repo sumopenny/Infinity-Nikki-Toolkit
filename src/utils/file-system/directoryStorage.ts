@@ -1,6 +1,7 @@
+import type { DatabaseStore, DatabaseMode } from '../file-system/database'
 // 目录句柄存储：使用 IndexedDB 保存和读取相册及 X6Game 目录授权句柄。
 import { runStoreRequest } from './database'
-import { databaseRequest, runDatabaseTransaction } from './transaction'
+import { runDatabaseTransaction } from './transaction'
 const STORE_NAME = 'local-state'
 const SAVED_DIRECTORY_KEY = 'current-album-directory'
 const SAVED_X6GAME_DIRECTORY_KEY = 'current-x6game-directory'
@@ -25,9 +26,9 @@ export interface PhotoActionCacheEntry {
   parsedAt: number
 }
 
-function transaction<T>(
-  mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>
+function transaction<T, M extends DatabaseMode>(
+  mode: M,
+  action: (store: DatabaseStore<M>) => Promise<T>
 ): Promise<T> {
   return runStoreRequest(STORE_NAME, mode, action)
 }
@@ -36,8 +37,8 @@ export async function saveAlbumDirectoryHandle(handle: FileSystemDirectoryHandle
   await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
     const store = tx.objectStore(STORE_NAME)
     await Promise.all([
-      databaseRequest(store.put(handle, SAVED_DIRECTORY_KEY)),
-      databaseRequest(store.delete(SAVED_GAME_ALBUM_UID_KEY))
+      store.put(handle, SAVED_DIRECTORY_KEY),
+      store.delete(SAVED_GAME_ALBUM_UID_KEY)
     ])
   })
 }
@@ -50,9 +51,9 @@ export async function saveGameAlbumDirectory(
   await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
     const store = tx.objectStore(STORE_NAME)
     await Promise.all([
-      databaseRequest(store.put(root, SAVED_X6GAME_DIRECTORY_KEY)),
-      databaseRequest(store.put(album, SAVED_DIRECTORY_KEY)),
-      databaseRequest(store.put(uid, SAVED_GAME_ALBUM_UID_KEY))
+      store.put(root, SAVED_X6GAME_DIRECTORY_KEY),
+      store.put(album, SAVED_DIRECTORY_KEY),
+      store.put(uid, SAVED_GAME_ALBUM_UID_KEY)
     ])
   })
 }
@@ -76,10 +77,7 @@ export async function getSavedAlbumDirectoryHandle(): Promise<FileSystemDirector
 export async function clearSavedAlbumDirectoryHandle(): Promise<void> {
   await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
     const store = tx.objectStore(STORE_NAME)
-    await Promise.all([
-      databaseRequest(store.delete(SAVED_DIRECTORY_KEY)),
-      databaseRequest(store.delete(SAVED_GAME_ALBUM_UID_KEY))
-    ])
+    await Promise.all([store.delete(SAVED_DIRECTORY_KEY), store.delete(SAVED_GAME_ALBUM_UID_KEY)])
   })
 }
 
@@ -131,7 +129,7 @@ export async function savePhotoActionCaches(
   await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
     const store = tx.objectStore(STORE_NAME)
     for (const [photoKey, entry] of entries)
-      store.put(entry, photoActionCacheKey(albumKey, photoKey))
+      await store.put(entry, photoActionCacheKey(albumKey, photoKey))
   })
 }
 
@@ -147,7 +145,7 @@ export async function savePhotoActionCache(
 async function clearCachePrefixes(prefixes: readonly string[]): Promise<void> {
   await runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
     const store = tx.objectStore(STORE_NAME)
-    for (const prefix of prefixes) store.delete(IDBKeyRange.bound(prefix, prefix + '\uffff'))
+    for (const prefix of prefixes) await store.delete(IDBKeyRange.bound(prefix, prefix + '\uffff'))
   })
 }
 
@@ -187,14 +185,9 @@ export async function getSavedPhotoActionCaches(
 ): Promise<Map<string, PhotoActionCacheEntry>> {
   const prefix = PHOTO_ACTION_CACHE_KEY_PREFIX + encodeURIComponent(albumKey) + ':'
   try {
-    let keys: IDBValidKey[] = []
-    const values = await transaction('readonly', (store) => {
+    const [keys, values] = await transaction('readonly', (store) => {
       const range = IDBKeyRange.bound(prefix, prefix + '\uffff')
-      const request = store.getAllKeys(range)
-      request.onsuccess = () => {
-        keys = request.result
-      }
-      return store.getAll(range)
+      return Promise.all([store.getAllKeys(range), store.getAll(range)])
     })
     return new Map(
       values.flatMap((value, index) => {

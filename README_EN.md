@@ -3,7 +3,7 @@
 <div align="center">
   <img src="img/brand-mark.png" alt="Nikki³ NikkiCube" width="72" height="72">
   <p><strong>Nikki³ · Infinity Nikki Toolkit</strong></p>
-  <p>NikkiCube manages albums, outfit codes, home schemes and camera favorites in your browser. Nikki Archive includes resonance records, personal wardrobe and a makeup catalog, alongside backups, optional cloud sync and desktop cleanup.</p>
+  <p>NikkiCube manages albums, outfit codes, home schemes and camera parameters in your browser. Nikki Archive includes resonance records, personal wardrobe and a makeup catalog, alongside backups, optional cloud sync and desktop cleanup.</p>
   <p style="color: orange;">If you run into any issues, please fill out the survey in the site's Feedback section, or report them through GitHub/Gitee Issues or the author's social platforms.</p>
   <p>
     <a href="https://github.com/sumopenny/Infinity-Nikki-Toolkit/releases">GitHub Releases</a> ·
@@ -27,7 +27,7 @@
 
 Use the toolkit here: [https://nikkicube.cc.cd/](https://nikkicube.cc.cd/)
 
-Open it directly without downloading anything. Local features need no sign-in. Outfits, home schemes, camera favorites, and Nikki Archive need no album selection; choose an album only for browsing game photos, and sign in only for resonance and wardrobe cloud sync.
+Open it directly without downloading anything. Local features need no sign-in. Outfits, home schemes, camera parameters, and Nikki Archive need no album selection; choose an album only for browsing game photos, and sign in only for resonance and wardrobe cloud sync.
 
 For local use, see [Local installation](#local-installation).
 
@@ -85,8 +85,8 @@ Save outfit images and share codes, then copy, edit, or parse them.
 
 <div align="center">
   <img src="img/page/home.webp" alt="Mobile home schemes" width="40%">
-  <img src="img/page/camera.webp" alt="Mobile camera favorites" width="40%">
-  <p><sub>Left · Home schemes ｜ Right · Camera favorites</sub></p>
+  <img src="img/page/camera.webp" alt="Mobile camera parameters" width="40%">
+  <p><sub>Left · Home schemes ｜ Right · Camera parameters</sub></p>
 </div>
 
 **Home schemes**
@@ -280,8 +280,8 @@ Click a parsed item to view its details. When multiple forms are available, swit
 ### Camera parameters
 
 <div align="center">
-  <img src="img/screenshots/camera-favorites.webp" alt="Camera favorites" width="80%">
-  <p><sub>Camera parameter favorites</sub></p>
+  <img src="img/screenshots/camera-favorites.webp" alt="Camera parameters" width="80%">
+  <p><sub>Camera parameters</sub></p>
 </div>
 
 <div align="center">
@@ -385,7 +385,7 @@ Open other utilities from Tools. More provides usage help, update notes, and fee
 
 ### Manual backup and migration
 
-From More, choose Export all data to download a ZIP containing outfit plans, home schemes, camera favorites, resonance records, and the wardrobe, including saved scheme images and covers. Transfer the ZIP to another device, then choose Import all data there. **Game album originals are not included; back them up separately.**
+From More, choose Export all data to download a ZIP containing outfit plans, home schemes, camera parameters, resonance records, and the wardrobe, including saved scheme images and covers. Transfer the ZIP to another device, then choose Import all data there. **Game album originals are not included; back them up separately.**
 
 Different import entries handle existing records differently:
 
@@ -481,6 +481,8 @@ The local site connects to the online service for Likes, shared cloud accounts, 
 
 ### Development Commands
 
+For browser storage changes, see the [idb and transaction conventions](docs/browser-storage.md) (Chinese).
+
 Run these commands in the project root:
 
 ```bash
@@ -508,7 +510,7 @@ Daily updates target `main`; `pages` preserves the Pages deployment. See [deploy
 
 ### Automatic folder backup
 
-On desktop, open **Data backup** in the sidebar, choose a dedicated empty folder, and enable outfit codes, home schemes, or camera favorites individually. All switches are off by default. Updates require the page to remain running in a supported browser with valid folder permission. Browser storage remains primary; folder backups mirror the latest state, including deletions, without history.
+On desktop, open **Data backup** in the sidebar, choose a dedicated empty folder, and enable outfit codes, home schemes, or camera parameters individually. All switches are off by default. Updates require the page to remain running in a supported browser with valid folder permission. Browser storage remains primary; folder backups mirror the latest state, including deletions, without history.
 
 The selected folder directly contains the three module folders. Records use full IDs in `记录/<ID>.json`; images use `图片/<ID>.<actual extension>`. Metadata, a single integrity index, and resumable write batches live under each module's `_系统` directory. Invalid IDs and case collisions stop the module rather than renumbering records.
 

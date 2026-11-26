@@ -111,7 +111,7 @@ const icons = { outfits: Shirt, home: House, camera: Camera }
 const titleFor = (module: BackupModule) =>
   props.language === 'zh'
     ? MODULE_LABELS[module]
-    : { outfits: 'Outfit codes', home: 'Home schemes', camera: 'Camera favorites' }[module]
+    : { outfits: 'Outfit codes', home: 'Home schemes', camera: 'Camera parameters' }[module]
 const date = (value: string | null) =>
   value
     ? new Date(value).toLocaleString(props.language === 'zh' ? 'zh-CN' : 'en-US')

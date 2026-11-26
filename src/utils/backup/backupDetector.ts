@@ -118,7 +118,7 @@ const definitions = {
 } as const
 
 const labels = {
-  zh: { all: '全部数据', outfits: '搭配码', home: '家园方案', camera: '相机参数收藏' },
+  zh: { all: '全部数据', outfits: '搭配码', home: '家园方案', camera: '相机参数' },
   en: { all: 'all-data', outfits: 'outfit', home: 'home-scheme', camera: 'camera-favorites' }
 }
 const manifestNames = new Set<string>(Object.values(definitions).map(({ name }) => name))

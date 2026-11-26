@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
 vi.mock('../../src/utils/imageSelection', () => ({
   validateSelectedImage: vi.fn().mockResolvedValue(undefined)
@@ -122,6 +123,7 @@ afterEach(async () => {
   vi.useRealTimers()
   document.body.innerHTML = ''
   await new Promise<void>((resolve, reject) => {
+    closeDatabase()
     const r = indexedDB.deleteDatabase(DB_NAME)
     r.onsuccess = () => resolve()
     r.onerror = () => reject(r.error)

@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import type { BackupConfig, ModuleProgress } from '../../src/utils/directory-backup/engine'
 import { loadConfig, syncModule } from '../../src/utils/directory-backup/engine'
 import {
@@ -175,6 +176,7 @@ export const outfit = (id: string, note = '', image?: Blob) => ({
 })
 export async function resetDatabase() {
   await new Promise<void>((resolve, reject) => {
+    closeDatabase()
     const r = indexedDB.deleteDatabase(DB_NAME)
     r.onsuccess = () => resolve()
     r.onerror = () => reject(r.error)
@@ -209,9 +211,9 @@ export async function putOutfit(id: string, note = '', image?: Blob) {
     [OUTFITS_STORE, ...(image ? [OUTFIT_IMAGES_STORE] : [])],
     'readwrite',
     async (tx) => {
-      tx.objectStore(OUTFITS_STORE).put(raw)
+      await tx.objectStore(OUTFITS_STORE).put(raw)
       if (image)
-        tx.objectStore(OUTFIT_IMAGES_STORE).put({
+        await tx.objectStore(OUTFIT_IMAGES_STORE).put({
           id,
           blob: image,
           size: image.size,

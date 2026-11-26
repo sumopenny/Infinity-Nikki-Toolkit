@@ -4,7 +4,7 @@ import {
   OUTFIT_IGNORED_CODES_STORE,
   runStoreRequest
 } from '../file-system/database'
-import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runDatabaseTransaction } from '../file-system/transaction'
 import { createUuid } from '../uuid'
 import {
   announceBackupChange,
@@ -136,7 +136,7 @@ export async function loadConfig(): Promise<BackupConfig> {
   if (existing?.binding && existing.generations) return existing
   return runDatabaseTransaction([BACKUP_SETTINGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(BACKUP_SETTINGS_STORE)
-    const current = await databaseRequest<BackupConfig | undefined>(store.get('config'))
+    const current = await (store.get('config') as Promise<BackupConfig | undefined>)
     const value = current
       ? {
           ...current,
@@ -145,7 +145,7 @@ export async function loadConfig(): Promise<BackupConfig> {
           generations: current.generations ?? generations()
         }
       : newConfig()
-    store.put(value)
+    await store.put(value)
     return value
   })
 }
@@ -158,13 +158,12 @@ export async function updateConfig(
   await loadConfig()
   const result = await runDatabaseTransaction([BACKUP_SETTINGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(BACKUP_SETTINGS_STORE)
-    const current = await databaseRequest<BackupConfig>(store.get('config'))
+    const current = await (store.get('config') as Promise<BackupConfig>)
     if (!current) throw new Error('浏览器存档已重置，请重新选择目录')
     for (const module of MODULES) {
       if (expectedRevisions[module] === undefined) continue
       const revision =
-        (await databaseRequest<Revision | undefined>(store.get(revisionKey(module))))?.revision ??
-        ''
+        (await (store.get(revisionKey(module)) as Promise<Revision | undefined>))?.revision ?? ''
       if (revision !== expectedRevisions[module])
         throw new Error('浏览器数据在预览后已变化，请重新预览')
     }
@@ -172,7 +171,7 @@ export async function updateConfig(
     for (const module of MODULES) {
       const fingerprint = bindingFingerprints[module]
       if (fingerprint) {
-        store.put({
+        await store.put({
           key: `checkpoint:${module}`,
           binding: current.binding,
           generation: current.generations[module],
@@ -180,7 +179,7 @@ export async function updateConfig(
         } satisfies Checkpoint)
       }
     }
-    store.put(current)
+    await store.put(current)
     return current
   })
   announceBackupChange()
@@ -218,31 +217,22 @@ export async function dirtyChanges(
 export async function confirmedDeletionKeys(
   module: BackupModule
 ): Promise<{ ids: string[]; reset: boolean }> {
-  return runDatabaseTransaction(
-    [BACKUP_DIRTY_STORE],
-    'readonly',
-    (tx) =>
-      new Promise((resolve, reject) => {
-        const ids: string[] = []
-        let reset = false
-        const request = tx.objectStore(BACKUP_DIRTY_STORE).openCursor(moduleRange(module))
-        request.onsuccess = () => {
-          const cursor = request.result
-          if (!cursor) {
-            resolve({ ids, reset })
-            return
-          }
-          const change = cursor.value as DirtyChange
-          if (change.intent === 'confirmed-delete') {
-            if (change.key[1] === 'reset') reset = true
-            if (change.key[1] === 'record') ids.push(change.key[2])
-          }
-          cursor.continue()
-        }
-        request.onerror = () => reject(request.error)
-      })
-  )
+  return runDatabaseTransaction([BACKUP_DIRTY_STORE], 'readonly', async (tx) => {
+    const ids: string[] = []
+    let reset = false
+    let cursor = await tx.objectStore(BACKUP_DIRTY_STORE).openCursor(moduleRange(module))
+    while (cursor) {
+      const change = cursor.value as DirtyChange
+      if (change.intent === 'confirmed-delete') {
+        if (change.key[1] === 'reset') reset = true
+        if (change.key[1] === 'record') ids.push(change.key[2])
+      }
+      cursor = await cursor.continue()
+    }
+    return { ids, reset }
+  })
 }
+
 export async function active(config: BackupConfig, module: BackupModule): Promise<boolean> {
   // 不调用 loadConfig：站点数据被清理后不能自动创建身份，更不能创建一个空备份。
   const fresh = await setting<BackupConfig>('config')
@@ -274,14 +264,14 @@ export async function scanProgress(
 export async function saveScan(config: BackupConfig, module: BackupModule, scan: ScanProgress) {
   await runDatabaseTransaction([BACKUP_SETTINGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(BACKUP_SETTINGS_STORE)
-    const current = await databaseRequest<BackupConfig | undefined>(store.get('config'))
+    const current = await (store.get('config') as Promise<BackupConfig | undefined>)
     if (
       !current ||
       current.binding !== config.binding ||
       current.generations[module] !== config.generations[module]
     )
       throw new Error('备份设置已改变，已停止旧扫描')
-    store.put(scan)
+    await store.put(scan)
   })
 }
 /** 只确认仍对应本批修订的脏项；恢复、关闭、换目录之后的旧批次不能确认新任务。 */
@@ -296,10 +286,10 @@ export async function acknowledgeStage(
     'readwrite',
     async (tx) => {
       const settings = tx.objectStore(BACKUP_SETTINGS_STORE)
-      const current = await databaseRequest<BackupConfig | undefined>(settings.get('config'))
+      const current = await (settings.get('config') as Promise<BackupConfig | undefined>)
       if (!current || current.sourceId !== config.sourceId || current.binding !== config.binding)
         return
-      settings.put({
+      await settings.put({
         key: `checkpoint:${module}`,
         binding: config.binding,
         generation: current.generations[module],
@@ -313,8 +303,8 @@ export async function acknowledgeStage(
         return
       const dirty = tx.objectStore(BACKUP_DIRTY_STORE)
       for (const change of stage.receipt.changes) {
-        const latest = await databaseRequest<DirtyChange | undefined>(dirty.get(change.key))
-        if (latest?.revision === change.revision) dirty.delete(change.key)
+        const latest = await (dirty.get(change.key) as Promise<DirtyChange | undefined>)
+        if (latest?.revision === change.revision) await dirty.delete(change.key)
       }
     }
   )
@@ -328,9 +318,9 @@ export async function acknowledgeUnchanged(
     [BACKUP_SETTINGS_STORE, BACKUP_DIRTY_STORE],
     'readwrite',
     async (tx) => {
-      const current = await databaseRequest<BackupConfig | undefined>(
-        tx.objectStore(BACKUP_SETTINGS_STORE).get('config')
-      )
+      const current = await (tx.objectStore(BACKUP_SETTINGS_STORE).get('config') as Promise<
+        BackupConfig | undefined
+      >)
       if (
         !current ||
         current.binding !== config.binding ||
@@ -339,8 +329,8 @@ export async function acknowledgeUnchanged(
         return
       const store = tx.objectStore(BACKUP_DIRTY_STORE)
       for (const change of changes) {
-        const item = await databaseRequest<DirtyChange | undefined>(store.get(change.key))
-        if (item?.revision === change.revision) store.delete(change.key)
+        const item = await (store.get(change.key) as Promise<DirtyChange | undefined>)
+        if (item?.revision === change.revision) await store.delete(change.key)
       }
     }
   )
@@ -352,7 +342,7 @@ export async function recordSuccess(
 ) {
   await runDatabaseTransaction([BACKUP_SETTINGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(BACKUP_SETTINGS_STORE)
-    const current = await databaseRequest<BackupConfig | undefined>(store.get('config'))
+    const current = await (store.get('config') as Promise<BackupConfig | undefined>)
     if (
       !current ||
       current.binding !== config.binding ||
@@ -361,8 +351,8 @@ export async function recordSuccess(
       return
     current.initialized[module] = true
     if (current.emptyApprovals) delete current.emptyApprovals[module]
-    store.put(current)
-    store.put({
+    await store.put(current)
+    await store.put({
       key: `success:${module}`,
       binding: config.binding,
       count: manifest.count,
@@ -404,20 +394,20 @@ export async function captureBatch(
     ],
     'readonly',
     async (tx) => {
-      const tags = normalTags(module, await databaseRequest(tx.objectStore(a.tags).get(a.tagKey)))
+      const tags = normalTags(module, await tx.objectStore(a.tags).get(a.tagKey))
       const captured: CapturedRecord[] = []
       const changes: DirtyChange[] = []
       const dirty = tx.objectStore(BACKUP_DIRTY_STORE)
-      const tagsChanged = await databaseRequest<DirtyChange | undefined>(
-        dirty.get([module, 'tags', 'default'])
-      )
+      const tagsChanged = await (dirty.get([module, 'tags', 'default']) as Promise<
+        DirtyChange | undefined
+      >)
       if (tagsChanged) changes.push(tagsChanged)
       let imageBytes = 0
       for (const id of ids) {
         const [raw, recordChanged, imageChanged] = await Promise.all([
-          databaseRequest(tx.objectStore(a.records).get(id)),
-          databaseRequest<DirtyChange | undefined>(dirty.get([module, 'record', id])),
-          databaseRequest<DirtyChange | undefined>(dirty.get([module, 'image', id]))
+          tx.objectStore(a.records).get(id),
+          dirty.get([module, 'record', id]) as Promise<DirtyChange | undefined>,
+          dirty.get([module, 'image', id]) as Promise<DirtyChange | undefined>
         ])
         const pending = [recordChanged, imageChanged].filter((value): value is DirtyChange =>
           Boolean(value)
@@ -440,7 +430,7 @@ export async function captureBatch(
             !prev?.image ||
             needsImage(module, prev.value as BackupRecord, record))
         ) {
-          image = await databaseRequest(tx.objectStore(a.images).get(id))
+          image = await tx.objectStore(a.images).get(id)
           const size = imageBlob(module, image).size
           if (captured.length && imageBytes + size > BATCH_IMAGE_BYTES) break
           imageBytes += size
@@ -452,13 +442,10 @@ export async function captureBatch(
       const values = new Map<string, unknown>()
       if (module === 'outfits')
         for (const code of ignored) {
-          values.set(
-            code,
-            await databaseRequest(tx.objectStore(OUTFIT_IGNORED_CODES_STORE).get(code))
-          )
-          const change = await databaseRequest<DirtyChange | undefined>(
-            dirty.get([module, 'ignored', code])
-          )
+          values.set(code, await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).get(code))
+          const change = await (dirty.get([module, 'ignored', code]) as Promise<
+            DirtyChange | undefined
+          >)
           if (change) changes.push(change)
         }
       return { records: captured, ignored: values, tags, imageBytes, changes }
@@ -473,10 +460,10 @@ export async function idleRevision(module: BackupModule): Promise<string | null>
     'readonly',
     async (tx) => {
       const [pending, revision] = await Promise.all([
-        databaseRequest(tx.objectStore(BACKUP_DIRTY_STORE).count(moduleRange(module))),
-        databaseRequest<Revision | undefined>(
-          tx.objectStore(BACKUP_SETTINGS_STORE).get(revisionKey(module))
-        )
+        tx.objectStore(BACKUP_DIRTY_STORE).count(moduleRange(module)),
+        tx.objectStore(BACKUP_SETTINGS_STORE).get(revisionKey(module)) as Promise<
+          Revision | undefined
+        >
       ])
       return pending ? null : (revision?.revision ?? '')
     }
@@ -497,11 +484,11 @@ export async function browserBaseline(): Promise<BrowserBaseline> {
       for (const module of MODULES) {
         revisions[module] =
           (
-            await databaseRequest<Revision | undefined>(
-              tx.objectStore(BACKUP_SETTINGS_STORE).get(revisionKey(module))
-            )
+            await (tx.objectStore(BACKUP_SETTINGS_STORE).get(revisionKey(module)) as Promise<
+              Revision | undefined
+            >)
           )?.revision ?? ''
-        counts[module] = await databaseRequest(tx.objectStore(ADAPTERS[module].records).count())
+        counts[module] = await tx.objectStore(ADAPTERS[module].records).count()
       }
       return { revisions, counts }
     }

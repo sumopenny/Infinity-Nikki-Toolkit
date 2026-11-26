@@ -66,7 +66,7 @@ describe('重新绑定已有目录的预览防冲突', () => {
     expect([...directory.disk.files.keys()]).toEqual([
       '搭配码/_系统/备份信息.json',
       '家园方案/_系统/备份信息.json',
-      '相机参数收藏/_系统/备份信息.json'
+      '相机参数/_系统/备份信息.json'
     ])
     expect((await inspectRoot(asHandle(directory)))?.backupId).toBe(config.backupId)
   })

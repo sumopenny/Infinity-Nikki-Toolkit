@@ -73,7 +73,7 @@ it('resumes the final confirmed deletion after its index was removed and manifes
   await sync(config)
   await runDatabaseTransaction([OUTFITS_STORE], 'readwrite', async (tx) => {
     markConfirmedDeletion(tx, 'outfits')
-    tx.objectStore(OUTFITS_STORE).delete('REC01')
+    await tx.objectStore(OUTFITS_STORE).delete('REC01')
   })
   disk.failOnce((e) => e.kind === 'write' && e.path.endsWith('/_系统/备份信息.json'))
   expect((await sync(config)).state).toBe('error')

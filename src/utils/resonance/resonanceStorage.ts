@@ -1,19 +1,20 @@
+import type { DatabaseStore, DatabaseMode } from '../file-system/database'
 import { cloneResonanceRecords, type ResonanceRecord } from './resonanceTypes'
 
-import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runDatabaseTransaction } from '../file-system/transaction'
 import { runStoreRequest } from '../file-system/database'
 const STORE_NAME = 'resonance-records'
 const RECORDS_KEY = 'current-profile'
 
-function transact<T>(
-  mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>
+function transact<T, M extends DatabaseMode>(
+  mode: M,
+  action: (store: DatabaseStore<M>) => Promise<T>
 ): Promise<T> {
   return runStoreRequest(STORE_NAME, mode, action)
 }
 
 export async function loadResonanceRecords(): Promise<ResonanceRecord[]> {
-  const value = await transact<unknown>('readonly', (store) => store.get(RECORDS_KEY))
+  const value = await transact('readonly', (store) => store.get(RECORDS_KEY))
   if (value === undefined) return []
   if (!Array.isArray(value)) throw new Error('Invalid resonance storage')
   return value as ResonanceRecord[]
@@ -33,7 +34,7 @@ export async function mergeResonanceRecords(
   const imported = cloneResonanceRecords(incoming)
   return runDatabaseTransaction([STORE_NAME], 'readwrite', async (tx) => {
     const store = tx.objectStore(STORE_NAME)
-    const current: unknown = await databaseRequest(store.get(RECORDS_KEY))
+    const current: unknown = await store.get(RECORDS_KEY)
     if (current !== undefined && !Array.isArray(current))
       throw new Error('Invalid resonance storage')
     const records = new Map(
@@ -41,7 +42,7 @@ export async function mergeResonanceRecords(
     )
     for (const record of imported) records.set(record.id, record)
     const merged = [...records.values()]
-    if (imported.length) store.put(merged, RECORDS_KEY)
+    if (imported.length) await store.put(merged, RECORDS_KEY)
     return merged
   })
 }

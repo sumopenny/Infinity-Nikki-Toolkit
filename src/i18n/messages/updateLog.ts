@@ -31,7 +31,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
     },
     {
       title: '优化使用体验。',
-      text: '优化「最近删除」的缩略图加载、拍照动作解析、数据导入和备份恢复。相机收藏分包导出中途失败时，已生成的文件仍可从通知下载。'
+      text: '优化「最近删除」的缩略图加载、拍照动作解析、数据导入和备份恢复。相机参数分包导出中途失败时，已生成的文件仍可从通知下载。'
     }
   ],
   historyTitle: '历史版本记录',
@@ -67,7 +67,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
           text: '可选择随系统自动切换浅色、深色主题，也可以继续使用固定主题。'
         },
         {
-          title: '相机参数收藏添加封面更方便。',
+          title: '相机参数添加封面更方便。',
           text: '支持拖入图片或 Ctrl+V 粘贴剪贴板中的图片。'
         },
         {
@@ -112,7 +112,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
       items: [
         {
           title: '图片浏览与多选操作调整。',
-          text: '相册、搭配码、家园方案、相机收藏及最近删除中的图片，改为单击查看大图。点击图片右下角圆圈可多选，手机端也可长按图片选择。'
+          text: '相册、搭配码、家园方案、相机参数及最近删除中的图片，改为单击查看大图。点击图片右下角圆圈可多选，手机端也可长按图片选择。'
         },
         {
           title: '搭配码新增来源链接，随时回看原帖。',
@@ -166,7 +166,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
         },
         {
           title: '全新骨架加载与扫光动画。',
-          text: '相册、搭配码、家园方案、相机参数收藏、共鸣记录、个人衣橱及妆容图鉴等页面的图片加载体验全面优化。新增与内容布局相匹配的骨架占位、柔和扫光效果和加载完成后的渐入动画，减少加载时的空白与突兀感，让浏览过程更加自然。'
+          text: '相册、搭配码、家园方案、相机参数、共鸣记录、个人衣橱及妆容图鉴等页面的图片加载体验全面优化。新增与内容布局相匹配的骨架占位、柔和扫光效果和加载完成后的渐入动画，减少加载时的空白与突兀感，让浏览过程更加自然。'
         },
         {
           title: '优化页面切换与卡片动画。',
@@ -231,8 +231,8 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
           text: '图片充分利用屏幕空间，风格样式全面优化。'
         },
         {
-          title: '相机参数收藏接入大图预览。',
-          text: '双击有封面的卡片即可查看大图。支持缩放、拖动及前后切换，也可直接复制参数、编辑收藏和查看详情。'
+          title: '相机参数接入大图预览。',
+          text: '双击有封面的卡片即可查看大图。支持缩放、拖动及前后切换，也可直接复制参数、编辑参数和查看详情。'
         },
         {
           title: '批量操作工具栏样式优化。',
@@ -278,7 +278,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
         },
         {
           title: '网站打开更轻快。',
-          text: '衣橱、共鸣、相机收藏、解析工具及图鉴内容会在需要时加载，减少首次打开的等待。优化大量收藏封面的加载与滚动表现，减少后台资源占用。'
+          text: '衣橱、共鸣、相机参数、解析工具及图鉴内容会在需要时加载，减少首次打开的等待。优化大量参数封面的加载与滚动表现，减少后台资源占用。'
         },
         {
           title: '加载与重试更顺畅。',
@@ -290,7 +290,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
         },
         {
           title: '备份导入提示更易懂。',
-          text: '选错备份类型、文件过大、图片缺失或备份损坏时，会给出对应提示。误将总备份导入相机收藏时，会指引前往正确入口；同步优化恢复后的提示和下载保存按钮。'
+          text: '选错备份类型、文件过大、图片缺失或备份损坏时，会给出对应提示。误将总备份导入相机参数时，会指引前往正确入口；同步优化恢复后的提示和下载保存按钮。'
         },
         {
           title: '清除数据前，先看清楚、再做决定。',
@@ -314,7 +314,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
         },
         {
           title: '统一打磨浅色、深色主题与界面细节。',
-          text: '优化按钮、菜单、标签、输入框、卡片和弹窗的配色、圆角、阴影及操作反馈。同步调整相机收藏标签、家园信息区、衣橱提示、共鸣卡片和导入文本框，让各页面的观感更协调，并改善部分旧版浏览器的显示。'
+          text: '优化按钮、菜单、标签、输入框、卡片和弹窗的配色、圆角、阴影及操作反馈。同步调整相机参数标签、家园信息区、衣橱提示、共鸣卡片和导入文本框，让各页面的观感更协调，并改善部分旧版浏览器的显示。'
         },
         {
           title: '其他修复与优化。',
@@ -351,7 +351,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
         },
         {
           title: '修复与维护：',
-          text: '修复家园保存后窗口关闭、长标签换行等问题，优化相机小图与收藏按钮样式。'
+          text: '修复家园保存后窗口关闭、长标签换行等问题，优化相机小图与保存按钮样式。'
         }
       ]
     },
@@ -447,7 +447,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
         },
         {
           title: '改善手机图片上传兼容性：',
-          text: '优化搭配图片和相机参数收藏封面的读取、预览及保存流程，处理选图后报错无法保存的问题。'
+          text: '优化搭配图片和相机参数封面的读取、预览及保存流程，处理选图后报错无法保存的问题。'
         }
       ]
     },
@@ -481,11 +481,11 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
       items: [
         {
           title: '手机网页版正式上线，界面全面升级！',
-          text: '现在可以直接用手机浏览器管理搭配码、家园方案、相机参数收藏和共鸣记录，随时查看、整理与分享你的游戏灵感。新增底部四模块导航，重新设计顶部工具栏、卡片与操作布局，让常用功能更适合手机浏览和触摸操作。'
+          text: '现在可以直接用手机浏览器管理搭配码、家园方案、相机参数和共鸣记录，随时查看、整理与分享你的游戏灵感。新增底部四模块导航，重新设计顶部工具栏、卡片与操作布局，让常用功能更适合手机浏览和触摸操作。'
         },
         {
           title: '现有电脑端数据可迁移到手机：',
-          text: '在电脑端“更多”中选择“导出全部数据”，将生成的 ZIP 文件传给手机，再用手机浏览器打开网站，在“更多”中选择“导入全部数据”，即可迁移搭配码、家园方案、相机参数收藏和共鸣记录。'
+          text: '在电脑端“更多”中选择“导出全部数据”，将生成的 ZIP 文件传给手机，再用手机浏览器打开网站，在“更多”中选择“导入全部数据”，即可迁移搭配码、家园方案、相机参数和共鸣记录。'
         },
         {
           title: '优化手机搜索与筛选：',
@@ -514,7 +514,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
         },
         {
           title: '新增“导出全部数据 / 导入全部数据”：',
-          text: '可在“更多”菜单中一键将搭配码、家园方案、相机参数收藏和共鸣记录打包到一个全部数据备份 ZIP 中。'
+          text: '可在“更多”菜单中一键将搭配码、家园方案、相机参数和共鸣记录打包到一个全部数据备份 ZIP 中。'
         },
         {
           title: '支持数据跨设备迁移：',
@@ -534,19 +534,19 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
       version: 'v1.8.1',
       items: [
         {
-          title: '新增相机参数收藏：',
-          text: '将收藏夹分为“相机参数”和“照片收藏”，支持从照片参数解析窗口直接收藏，或输入相机参数码自动解析后保存。'
+          title: '新增相机参数：',
+          text: '新增“相机参数”模块，支持从照片参数解析窗口直接保存，或输入相机参数码自动解析后保存。'
         },
         {
           title: '支持自定义名称、单标签分类、标签排序与搜索，',
           text: '以及参数复制、编辑、详情查看和批量删除。'
         },
         {
-          title: '支持上传或更换收藏封面，',
+          title: '支持上传或更换参数封面，',
           text: '保存时自动转换为 WebP。'
         },
         {
-          title: '支持相机参数收藏 ZIP 备份导入与导出。',
+          title: '支持相机参数 ZIP 备份导入与导出。',
           text: ''
         }
       ]
@@ -923,7 +923,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
     },
     {
       title: 'Improved everyday use.',
-      text: 'Improved thumbnail loading in Recently Deleted, capture action parsing, data imports, and backup restoration. If an export of camera favorites fails partway through, you can still download completed files from the notification.'
+      text: 'Improved thumbnail loading in Recently Deleted, capture action parsing, data imports, and backup restoration. If an export of camera parameters fails partway through, you can still download completed files from the notification.'
     }
   ],
   historyTitle: 'Previous releases',
@@ -959,7 +959,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
           text: 'Automatically switch between light and dark themes with your system, or keep using a fixed theme.'
         },
         {
-          title: 'Add covers to camera parameter favorites more easily.',
+          title: 'Add covers to camera parameters more easily.',
           text: 'Drag in an image or press Ctrl+V to paste one from the clipboard.'
         },
         {
@@ -1004,7 +1004,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
       items: [
         {
           title: 'Updated image browsing and multiple selection.',
-          text: 'Single-click images in the Album, outfit codes, home schemes, camera favorites, and Recently deleted to preview them. Select multiple items using the circles at the bottom right of images; on mobile, you can also long-press images to select them.'
+          text: 'Single-click images in the Album, outfit codes, home schemes, camera parameters, and Recently deleted to preview them. Select multiple items using the circles at the bottom right of images; on mobile, you can also long-press images to select them.'
         },
         {
           title: 'Source links for outfit codes: revisit the original post.',
@@ -1058,7 +1058,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
         },
         {
           title: 'New skeleton placeholders and shimmer animations.',
-          text: 'Image loading is smoother across the Album, outfit codes, home schemes, camera parameter favorites, Resonance, Wardrobe, and Makeup Catalog. Layout-matched skeleton placeholders, subtle shimmer effects, and fade-in transitions reduce empty spaces and abrupt changes as content appears.'
+          text: 'Image loading is smoother across the Album, outfit codes, home schemes, camera parameters, Resonance, Wardrobe, and Makeup Catalog. Layout-matched skeleton placeholders, subtle shimmer effects, and fade-in transitions reduce empty spaces and abrupt changes as content appears.'
         },
         {
           title: 'Smoother page transitions and card animations.',
@@ -1123,7 +1123,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
           text: 'Images make fuller use of screen space, with refreshed visual styling.'
         },
         {
-          title: 'Large-image previews for camera parameter favorites.',
+          title: 'Large-image previews for camera parameters.',
           text: 'Double-click a card with a cover to preview the image. Zoom, pan, and switch between images, or copy parameters, edit the favorite, and view details directly.'
         },
         {
@@ -1170,7 +1170,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
         },
         {
           title: 'A lighter, faster start.',
-          text: 'Wardrobe, Resonance, camera favorites, decoding tools and catalog content load when needed, reducing the initial wait. Improved cover loading and scrolling for large favorite collections reduce background resource use.'
+          text: 'Wardrobe, Resonance, camera parameters, decoding tools and catalog content load when needed, reducing the initial wait. Improved cover loading and scrolling for large favorite collections reduce background resource use.'
         },
         {
           title: 'Smoother loading and retries.',
@@ -1182,7 +1182,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
         },
         {
           title: 'Clearer backup import messages.',
-          text: 'Get specific guidance for incorrect backup types, oversized files, missing images or damaged backups. Importing a full backup into camera favorites points you to the correct entry. Also improved restore messages and download save buttons.'
+          text: 'Get specific guidance for incorrect backup types, oversized files, missing images or damaged backups. Importing a full backup into camera parameters points you to the correct entry. Also improved restore messages and download save buttons.'
         },
         {
           title: 'Review before clearing your data.',
@@ -1407,7 +1407,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
         },
         {
           title: 'Added Export all data / Import all data: ',
-          text: 'from the More menu, bundle outfit codes, home schemes, camera favorites, and resonance records into a single all-data ZIP backup.'
+          text: 'from the More menu, bundle outfit codes, home schemes, camera parameters, and resonance records into a single all-data ZIP backup.'
         },
         {
           title: 'Supports cross-device transfer: ',

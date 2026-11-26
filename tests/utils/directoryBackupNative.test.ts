@@ -9,7 +9,7 @@ import {
   OUTFIT_IMAGES_STORE,
   runStoreRequest
 } from '../../src/utils/file-system/database'
-import { databaseRequest, runDatabaseTransaction } from '../../src/utils/file-system/transaction'
+import { runDatabaseTransaction } from '../../src/utils/file-system/transaction'
 import { loadConfig } from '../../src/utils/directory-backup/engine'
 import { previewRestore, restoreSelected } from '../../src/utils/directory-backup/restore'
 import { digest } from '../../src/utils/directory-backup/disk'
@@ -140,9 +140,9 @@ describe.runIf(enabled)('Windows 实际文件系统 · 10000 条记录 + 大图�
             async (tx) => {
               for (let i = start; i < Math.min(start + 200, 10000); i++) {
                 const id = `N${String(i).padStart(5, '0')}`
-                tx.objectStore(OUTFITS_STORE).put(outfit(id, '', i < 24 ? image : undefined))
+                await tx.objectStore(OUTFITS_STORE).put(outfit(id, '', i < 24 ? image : undefined))
                 if (i < 24)
-                  tx.objectStore(OUTFIT_IMAGES_STORE).put({
+                  await tx.objectStore(OUTFIT_IMAGES_STORE).put({
                     id,
                     blob: image,
                     size: image.size,
@@ -163,8 +163,8 @@ describe.runIf(enabled)('Windows 实际文件系统 · 10000 条记录 + 大图�
         const spy = vi.spyOn(IDBObjectStore.prototype, 'get')
         await runDatabaseTransaction([OUTFITS_STORE], 'readwrite', async (tx) => {
           const store = tx.objectStore(OUTFITS_STORE),
-            value = await databaseRequest(store.get('N00000'))
-          store.put({ ...value, note: '改名测试' })
+            value = await store.get('N00000')
+          await store.put({ ...value, note: '改名测试' })
         })
         expect((await sync(config)).state).toBe('synced')
         const imageReads = spy.mock.instances.filter(
@@ -185,9 +185,9 @@ describe.runIf(enabled)('Windows 实际文件系统 · 10000 条记录 + 大图�
           'readwrite',
           async (tx) => {
             const store = tx.objectStore(OUTFITS_STORE),
-              value = await databaseRequest(store.get('N00000'))
-            store.put({ ...value, imageSize: image2.size })
-            tx.objectStore(OUTFIT_IMAGES_STORE).put({
+              value = await store.get('N00000')
+            await store.put({ ...value, imageSize: image2.size })
+            await tx.objectStore(OUTFIT_IMAGES_STORE).put({
               id: 'N00000',
               blob: image2,
               size: image2.size,
@@ -203,8 +203,8 @@ describe.runIf(enabled)('Windows 实际文件系统 · 10000 条记录 + 大图�
           [OUTFITS_STORE, OUTFIT_IMAGES_STORE],
           'readwrite',
           async (tx) => {
-            tx.objectStore(OUTFITS_STORE).delete('N00000')
-            tx.objectStore(OUTFIT_IMAGES_STORE).delete('N00000')
+            await tx.objectStore(OUTFITS_STORE).delete('N00000')
+            await tx.objectStore(OUTFIT_IMAGES_STORE).delete('N00000')
           }
         )
         expect((await sync(config)).count).toBe(9999)
@@ -213,8 +213,8 @@ describe.runIf(enabled)('Windows 实际文件系统 · 10000 条记录 + 大图�
         [OUTFITS_STORE, OUTFIT_IMAGES_STORE],
         'readwrite',
         async (tx) => {
-          tx.objectStore(OUTFITS_STORE).clear()
-          tx.objectStore(OUTFIT_IMAGES_STORE).clear()
+          await tx.objectStore(OUTFITS_STORE).clear()
+          await tx.objectStore(OUTFIT_IMAGES_STORE).clear()
         }
       )
       let preview: Awaited<ReturnType<typeof previewRestore>>

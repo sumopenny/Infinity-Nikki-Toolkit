@@ -32,9 +32,9 @@ it('lists healthy outfits without changing unreadable records or silently export
   const missingImage = await saveOutfit(input('NOIMAGE'))
   const badTag = await saveOutfit(input('BADTAG'))
   await runStoreRequest(OUTFIT_IMAGES_STORE, 'readwrite', (store) => store.delete(missingImage.id))
-  await runStoreRequest(OUTFITS_STORE, 'readwrite', (store) => {
-    const read = store.get(badTag.id)
-    read.onsuccess = () => store.put({ ...read.result, tags: ['旧标签'] })
+  await runStoreRequest(OUTFITS_STORE, 'readwrite', async (store) => {
+    const read = await store.get(badTag.id)
+    await store.put({ ...read, tags: ['旧标签'] })
     return store.put({ id: 'broken', version: 0 })
   })
   const result = await readOutfitCollection()
@@ -134,9 +134,10 @@ it('deletes records and images atomically and lifts only manually restored ignor
 it('rolls back image and record writes if the transaction aborts after a successful request', async () => {
   await expect(
     outfitTransaction([OUTFITS_STORE, OUTFIT_IMAGES_STORE], 'readwrite', async (tx) => {
-      tx.objectStore(OUTFIT_IMAGES_STORE).put({ id: 'one', blob: webp() })
+      await tx.objectStore(OUTFIT_IMAGES_STORE).put({ id: 'one', blob: webp() })
       const request = tx.objectStore(OUTFITS_STORE).put({ id: 'one', codeKey: 'CODE1' })
-      request.onsuccess = () => tx.abort()
+      await request
+      tx.abort()
     })
   ).rejects.toThrow()
   expect(await runStoreRequest(OUTFIT_IMAGES_STORE, 'readonly', (store) => store.count())).toBe(0)
@@ -186,11 +187,7 @@ it('reconnects once for a lost read transaction and preserves stored outfits', a
         'Connection to Indexed Database server lost. Refresh the page to try again',
         'UnknownError'
       )
-    return await new Promise<unknown[]>((resolve, reject) => {
-      const request = tx.objectStore(OUTFITS_STORE).getAll()
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
+    return tx.objectStore(OUTFITS_STORE).getAll()
   })
   expect(attempts).toBe(2)
   expect(records).toHaveLength(1)

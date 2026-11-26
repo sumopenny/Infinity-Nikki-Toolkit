@@ -1,9 +1,10 @@
+import type { DatabaseTransaction } from './file-system/transaction'
 import { rotateImageBlob } from './imageRotation'
 import { sha256Hex } from './sha256'
 import type { DirectoryPhotoItem } from './photoGrouping'
 import { ensureReadWritePermission } from './file-system/directoryPermission'
 import { withPhotoWriteLock } from './file-system/photoWriteLock'
-import { databaseRequest, runDatabaseTransaction } from './file-system/transaction'
+import { runDatabaseTransaction } from './file-system/transaction'
 import {
   OUTFITS_STORE,
   OUTFIT_IMAGES_STORE,
@@ -72,10 +73,10 @@ export async function rotateStoredPhoto(
     home: [HOME_SCHEMES_STORE, HOME_IMAGES_STORE],
     camera: [CAMERA_PARAMS_STORE, CAMERA_COVERS_STORE]
   }[kind] as [string, string]
-  const read = (tx: IDBTransaction) =>
+  const read = (tx: DatabaseTransaction<'readonly' | 'readwrite'>) =>
     Promise.all([
-      databaseRequest<SourceRecord | undefined>(tx.objectStore(recordStore).get(id)),
-      databaseRequest<ImageRecord | Blob | undefined>(tx.objectStore(imageStore).get(id))
+      tx.objectStore(recordStore).get(id) as Promise<SourceRecord | undefined>,
+      tx.objectStore(imageStore).get(id) as Promise<ImageRecord | Blob | undefined>
     ])
   const [record, image] = await runDatabaseTransaction([recordStore, imageStore], 'readonly', read)
   if (!record || record.updatedAt !== updatedAt || !image) throw conflict()
@@ -94,8 +95,8 @@ export async function rotateStoredPhoto(
     const now = new Date(Math.max(Date.now(), Date.parse(record.updatedAt) + 1)).toISOString()
     if (kind === 'camera') {
       if (!record.cover) throw conflict()
-      tx.objectStore(imageStore).put(rotated, id)
-      tx.objectStore(recordStore).put({
+      await tx.objectStore(imageStore).put(rotated, id)
+      await tx.objectStore(recordStore).put({
         ...record,
         updatedAt: now,
         cover: {
@@ -107,8 +108,10 @@ export async function rotateStoredPhoto(
         }
       })
     } else {
-      tx.objectStore(imageStore).put({ id, blob: rotated, size: rotated.size, sha256, extension })
-      tx.objectStore(recordStore).put({
+      await tx
+        .objectStore(imageStore)
+        .put({ id, blob: rotated, size: rotated.size, sha256, extension })
+      await tx.objectStore(recordStore).put({
         ...record,
         updatedAt: now,
         image: `${id}.${extension}`,

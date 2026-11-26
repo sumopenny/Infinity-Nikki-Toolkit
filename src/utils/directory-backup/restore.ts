@@ -1,13 +1,12 @@
 import { readRoot, jsonBytes as rootJsonBytes } from './disk'
 import {
-  openDb,
   runStoreRequest,
   BACKUP_DIRTY_STORE,
   BACKUP_SETTINGS_STORE,
   BACKUP_RESTORE_STORE,
   OUTFIT_IGNORED_CODES_STORE
 } from '../file-system/database'
-import { databaseRequest, runDatabaseTransaction } from '../file-system/transaction'
+import { runDatabaseTransaction, runMaintenanceTransaction } from '../file-system/transaction'
 import { createUuid } from '../uuid'
 import { inspectStoredImage, matchesStoredImageExtension } from '../storedImage'
 import {
@@ -78,7 +77,7 @@ export interface RestorePreview {
   rootFingerprint: string
   modules: ModulePreview[]
 }
-interface StagingItem {
+export interface StagingItem {
   module: BackupModule
   kind: 'record' | 'image' | 'tags' | 'ignored' | 'meta'
   id: string
@@ -350,7 +349,7 @@ async function deleteTemp(module: BackupModule) {
 }
 async function saveStaged(items: StagingItem[]) {
   await runDatabaseTransaction([BACKUP_RESTORE_STORE], 'readwrite', async (tx) => {
-    for (const item of items) tx.objectStore(BACKUP_RESTORE_STORE).put(item)
+    for (const item of items) await tx.objectStore(BACKUP_RESTORE_STORE).put(item)
   })
 }
 async function stageModule(
@@ -418,95 +417,72 @@ async function commitRestore(
     BACKUP_SETTINGS_STORE,
     ...(module === 'outfits' ? [OUTFIT_IGNORED_CODES_STORE] : [])
   ]
-  const db = await openDb()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(stores, 'readwrite')
-    let failure: unknown
-    tx.oncomplete = () => {
-      db.close()
-      resolve()
-    }
-    tx.onabort = () => {
-      db.close()
-      reject(failure ?? tx.error ?? new Error('恢复最终提交失败，原数据已保留'))
-    }
-    tx.onerror = () => {
-      /* handled by onabort */
-    }
-    const execute = async () => {
-      const settings = tx.objectStore(BACKUP_SETTINGS_STORE),
-        staged = tx.objectStore(BACKUP_RESTORE_STORE)
-      const revision =
-        (await databaseRequest<Revision | undefined>(settings.get(revisionKey(module))))
-          ?.revision ?? ''
-      const meta = (
-        await databaseRequest<StagingItem | undefined>(staged.get([module, 'meta', 'commit']))
-      )?.value as RestoreMeta | undefined
-      if (
-        !meta?.ready ||
-        meta.token !== token ||
-        meta.baseline !== expectedBaseline ||
-        revision !== expectedBaseline
-      )
-        throw new Error('正式数据或恢复暂存已变化，请重新预览；原数据未清空')
-      tx.objectStore(a.records).clear()
-      tx.objectStore(a.images).clear()
-      tx.objectStore(a.tags).clear()
-      if (module === 'outfits') tx.objectStore(OUTFIT_IGNORED_CODES_STORE).clear()
-      let count = 0
-      // 分页读取元数据，图片每次仅取一条。避免一万次 cursor.continue 的跨进程往返，
-      // 也不把所有 Blob 同时装入内存；下面仍只等待 IDB 请求，属于同一个原子事务。
-      for (const kind of ['record', 'image', 'tags', 'ignored'] as const) {
-        let after: string | undefined
-        while (true) {
-          const lower = after === undefined ? [module, kind] : [module, kind, after]
-          const range = IDBKeyRange.bound(lower, [module, kind, []], after !== undefined)
-          const page = await databaseRequest<StagingItem[]>(
-            staged.getAll(range, kind === 'image' ? 1 : BATCH_RECORDS)
-          )
-          if (!page.length) break
-          for (const item of page) {
+  await runMaintenanceTransaction(stores, async (tx) => {
+    const settings = tx.objectStore(BACKUP_SETTINGS_STORE),
+      staged = tx.objectStore(BACKUP_RESTORE_STORE)
+    const revision =
+      (await (settings.get(revisionKey(module)) as Promise<Revision | undefined>))?.revision ?? ''
+    const meta = (
+      await (staged.get([module, 'meta', 'commit']) as Promise<StagingItem | undefined>)
+    )?.value as RestoreMeta | undefined
+    if (
+      !meta?.ready ||
+      meta.token !== token ||
+      meta.baseline !== expectedBaseline ||
+      revision !== expectedBaseline
+    )
+      throw new Error('正式数据或恢复暂存已变化，请重新预览；原数据未清空')
+    await tx.objectStore(a.records).clear()
+    await tx.objectStore(a.images).clear()
+    await tx.objectStore(a.tags).clear()
+    if (module === 'outfits') await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).clear()
+    let count = 0
+    // 分页读取元数据，图片每次仅取一条。避免一万次 cursor.continue 的跨进程往返，
+    // 也不把所有 Blob 同时装入内存；下面仍只等待 IDB 请求，属于同一个原子事务。
+    for (const kind of ['record', 'image', 'tags', 'ignored'] as const) {
+      let after: string | undefined
+      while (true) {
+        const lower = after === undefined ? [module, kind] : [module, kind, after]
+        const range = IDBKeyRange.bound(lower, [module, kind, []], after !== undefined)
+        const page = await (staged.getAll(range, kind === 'image' ? 1 : BATCH_RECORDS) as Promise<
+          StagingItem[]
+        >)
+        if (!page.length) break
+        await Promise.all(
+          page.map(async (item) => {
             if (item.token !== token || item.module !== module || item.kind !== kind)
               throw new Error('暂存区包含其他恢复任务的数据')
             if (kind === 'record') {
-              tx.objectStore(a.records).put(item.value)
+              await tx.objectStore(a.records).put(item.value)
               count++
             } else if (kind === 'image') {
-              if (a.imageValue === 'blob') tx.objectStore(a.images).put(item.value, item.id)
-              else tx.objectStore(a.images).put(item.value)
-            } else if (kind === 'tags') tx.objectStore(a.tags).put(item.value, a.tagKey)
+              if (a.imageValue === 'blob') await tx.objectStore(a.images).put(item.value, item.id)
+              else await tx.objectStore(a.images).put(item.value)
+            } else if (kind === 'tags') await tx.objectStore(a.tags).put(item.value, a.tagKey)
             else if (module === 'outfits')
-              tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put(item.value)
+              await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put(item.value)
             else throw new Error('恢复暂存区包含意外的忽略码')
-          }
-          after = page.at(-1)!.id
-        }
+          })
+        )
+        after = page.at(-1)!.id
       }
-      if (count !== meta.count) throw new Error('恢复暂存记录数不符')
-      staged.delete(moduleRange(module))
-      const config = await databaseRequest<BackupConfig | undefined>(settings.get('config'))
-      if (config) {
-        config.enabled[module] = false
-        config.initialized[module] = false
-        config.generations[module] = createUuid()
-        settings.put(config) // 其他模块的目录和开关取本事务中的最新值。
-      }
-      settings.put({ key: revisionKey(module), revision: createUuid() } satisfies Revision)
-      settings.delete(`scan:${module}`)
-      settings.delete(`error:${module}`)
-      tx.objectStore(BACKUP_DIRTY_STORE).delete(moduleRange(module))
     }
-    void execute().catch((error) => {
-      failure = error
-      try {
-        tx.abort()
-      } catch {
-        db.close()
-        reject(error)
-      }
-    })
+    if (count !== meta.count) throw new Error('恢复暂存记录数不符')
+    await staged.delete(moduleRange(module))
+    const config = await (settings.get('config') as Promise<BackupConfig | undefined>)
+    if (config) {
+      config.enabled[module] = false
+      config.initialized[module] = false
+      config.generations[module] = createUuid()
+      await settings.put(config) // 其他模块的目录和开关取本事务中的最新值。
+    }
+    await settings.put({ key: revisionKey(module), revision: createUuid() } satisfies Revision)
+    await settings.delete(`scan:${module}`)
+    await settings.delete(`error:${module}`)
+    await tx.objectStore(BACKUP_DIRTY_STORE).delete(moduleRange(module))
   })
 }
+
 export async function resumeSource(handle: FileSystemDirectoryHandle, module: BackupModule) {
   if (!MODULES.includes(module)) throw new Error('未知模块')
   if (!(await permission(handle))) throw new Error('请先授权对恢复来源目录的写入权限')

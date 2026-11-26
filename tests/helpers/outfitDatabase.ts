@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, vi } from 'vitest'
 import { DB_NAME } from '../../src/utils/file-system/database'
@@ -6,6 +7,7 @@ export const webp = (name = 'look.webp', content = 'image', timestamp = 100) =>
   new File(['RIFF0000WEBP' + content], name, { type: 'image/webp', lastModified: timestamp })
 export async function resetOutfitDatabase() {
   await new Promise<void>((resolve, reject) => {
+    closeDatabase()
     const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = () => resolve()
     request.onerror = () => reject(request.error)

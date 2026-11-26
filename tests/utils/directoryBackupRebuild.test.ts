@@ -32,7 +32,7 @@ it('rebuilds to direct module paths and retains switches', async () => {
   })
   expect([...disk.files.keys()].some((path) => path.includes('重建中/'))).toBe(false)
   expect(
-    [...disk.files.keys()].every((path) => /^(搭配码|家园方案|相机参数收藏)\//.test(path))
+    [...disk.files.keys()].every((path) => /^(搭配码|家园方案|相机参数)\//.test(path))
   ).toBe(true)
 })
 it.each(['preparing', 'applying', 'cleanup'])(

@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import { useLegacyJsonClone } from '../helpers/legacyJsonClone'
 import { saveConfig } from '../helpers/directoryBackupFs'
 import 'fake-indexeddb/auto'
@@ -130,11 +131,11 @@ async function putTestRecord(
     [store, ...(imageStore ? [imageStore] : [])],
     'readwrite',
     async (tx) => {
-      tx.objectStore(store).put(value)
+      await tx.objectStore(store).put(value)
       if (imageStore && image) {
         if (image instanceof Blob)
-          tx.objectStore(imageStore).put(image, (value as { id: string }).id)
-        else tx.objectStore(imageStore).put(image)
+          await tx.objectStore(imageStore).put(image, (value as { id: string }).id)
+        else await tx.objectStore(imageStore).put(image)
       }
     }
   )
@@ -159,6 +160,7 @@ describe('原始目录增量备份（模拟 File System Access API）', () => {
   beforeEach(async () => {
     // Reset fake IndexedDB without exposing actual user files.
     await new Promise<void>((resolve, reject) => {
+      closeDatabase()
       const req = indexedDB.deleteDatabase(DB_NAME)
       req.onsuccess = () => resolve()
       req.onerror = () => reject(req.error)
@@ -306,7 +308,7 @@ describe('原始目录增量备份（模拟 File System Access API）', () => {
     expect((await run(original, 'outfits')).count).toBe(1)
     // Clear only target business data: simulates a different browser with empty records.
     await runDatabaseTransaction([OUTFITS_STORE], 'readwrite', async (tx) => {
-      tx.objectStore(OUTFITS_STORE).clear()
+      await tx.objectStore(OUTFITS_STORE).clear()
     })
     const preview = await previewRestore(asHandle(source))
     const outfit = preview.modules.find((item) => item.module === 'outfits')!

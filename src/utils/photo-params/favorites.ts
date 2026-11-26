@@ -1,10 +1,11 @@
+import type { DatabaseStore } from '../file-system/database'
 import {
   runStoreRequest,
   CAMERA_PARAMS_STORE as RECORDS,
   CAMERA_COVERS_STORE as COVERS,
   CAMERA_TAGS_STORE as TAGS
 } from '../file-system/database'
-import { markConfirmedDeletion, markCursorUpdate } from '../directory-backup/changeJournal'
+import { markConfirmedDeletion } from '../directory-backup/changeJournal'
 import { runDatabaseTransaction } from '../file-system/transaction'
 import type { PhotoParamsResult } from './types'
 import { sha256Hex } from '../sha256'
@@ -44,29 +45,23 @@ export interface FavoriteLibrary {
 export const normalizeCameraCode = (code: string) => code.replace(/\s/g, '')
 export class DuplicateCameraCodeError extends Error {
   constructor() {
-    super('该参数已收藏')
+    super('该参数已保存')
     this.name = 'DuplicateCameraCodeError'
   }
 }
 export const cloneFavorite = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 async function transact<T>(
-  mode: IDBTransactionMode,
+  mode: 'readwrite',
   action: (
-    records: IDBObjectStore,
-    covers: IDBObjectStore,
-    done: (value: T) => void,
-    tags: IDBObjectStore
-  ) => void
+    records: DatabaseStore<'readwrite', typeof RECORDS>,
+    covers: DatabaseStore<'readwrite', typeof COVERS>,
+    tags: DatabaseStore<'readwrite', typeof TAGS>
+  ) => Promise<T>
 ): Promise<T> {
   try {
-    return await runDatabaseTransaction(
-      [RECORDS, COVERS, TAGS],
-      mode,
-      (tx) =>
-        new Promise<T>((resolve) =>
-          action(tx.objectStore(RECORDS), tx.objectStore(COVERS), resolve, tx.objectStore(TAGS))
-        )
+    return await runDatabaseTransaction([RECORDS, COVERS, TAGS], mode, (tx) =>
+      action(tx.objectStore(RECORDS), tx.objectStore(COVERS), tx.objectStore(TAGS))
     )
   } catch (error) {
     if (error instanceof DOMException && error.name === 'ConstraintError')
@@ -85,25 +80,24 @@ export function cameraFavoriteTags(library: Pick<FavoriteLibrary, 'records' | 't
 }
 /** 列表可跳过封面；导入导出仍按默认参数读取完整快照。 */
 export async function readCameraFavorites(includeCovers = true): Promise<FavoriteLibrary> {
-  return transact<FavoriteLibrary>('readonly', (records, covers, done, tags) => {
-    const list = records.getAll()
-    const images = includeCovers ? covers.getAll() : null
-    const keys = includeCovers ? covers.getAllKeys() : null
-    const order = tags.get('order')
-    order.onsuccess = () => {
-      const orderedTags = cameraFavoriteTags({ records: list.result, tags: order.result ?? [] })
-      done({
-        records: (list.result as CameraFavorite[]).sort((a, b) =>
-          b.createdAt.localeCompare(a.createdAt)
-        ),
-        covers: new Map(
-          keys && images ? keys.result.map((key, i) => [String(key), images.result[i] as Blob]) : []
-        ),
-        tags: orderedTags
-      })
+  return runDatabaseTransaction([RECORDS, COVERS, TAGS], 'readonly', async (tx) => {
+    const records = tx.objectStore(RECORDS),
+      covers = tx.objectStore(COVERS),
+      tags = tx.objectStore(TAGS)
+    const [list, images, keys, order] = await Promise.all([
+      records.getAll(),
+      includeCovers ? covers.getAll() : [],
+      includeCovers ? covers.getAllKeys() : [],
+      tags.get('order')
+    ])
+    return {
+      records: (list as CameraFavorite[]).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      covers: new Map(keys.map((key, i) => [String(key), images[i] as Blob])),
+      tags: cameraFavoriteTags({ records: list, tags: order ?? [] })
     }
   })
 }
+
 /** 可见卡片和编辑器独立读取所需封面，不保留整库图片。 */
 export async function readCameraFavoriteCover(id: string): Promise<Blob> {
   const blob = await runStoreRequest<Blob | undefined>(COVERS, 'readonly', (store) => store.get(id))
@@ -117,17 +111,11 @@ export async function saveCameraFavoriteTags(next: string[]): Promise<string[]> 
     if (next.some((tag) => !isValidNewCameraFavoriteTag(tag) && !existing.has(tag)))
       throw new Error('新增标签最多5个字符，不能包含逗号')
   }
-  return transact('readwrite', (records, _covers, done, tags) => {
-    const list = records.getAll()
-    const current = tags.get('order')
-    current.onsuccess = () => {
-      const order = cameraFavoriteTags({
-        records: list.result,
-        tags: [...next, ...(current.result ?? [])]
-      })
-      tags.put(order, 'order')
-      done(order)
-    }
+  return transact('readwrite', async (records, _covers, tags) => {
+    const [list, current] = await Promise.all([records.getAll(), tags.get('order')])
+    const order = cameraFavoriteTags({ records: list, tags: [...next, ...(current ?? [])] })
+    await tags.put(order, 'order')
+    return order
   })
 }
 
@@ -160,38 +148,26 @@ export async function saveCameraFavorite(
   )
     throw new Error('新增标签最多5个字符，不能包含逗号')
   if (Boolean(clean.cover) !== Boolean(cover)) throw new Error('封面不完整')
-  await transact<void>('readwrite', (records, covers, done, tags) => {
-    const request = records.get(clean.id)
-    request.onsuccess = () => {
-      if (JSON.stringify(request.result) !== JSON.stringify(expected)) {
-        records.transaction.abort()
-        return
-      }
-      records.put(clean)
-      const order = tags.get('order')
-      order.onsuccess = () =>
-        tags.put(cameraFavoriteTags({ records: [clean], tags: order.result ?? [] }), 'order')
-      // 原封面未变时保留磁盘和 IndexedDB 图片，不因改名重复写入 Blob。
-      if (JSON.stringify(expected?.cover ?? null) !== JSON.stringify(clean.cover)) {
-        if (cover) covers.put(cover, clean.id)
-        else covers.delete(clean.id)
-      }
-      done()
+  await transact('readwrite', async (records, covers, tags) => {
+    const current = await records.get(clean.id)
+    if (JSON.stringify(current) !== JSON.stringify(expected))
+      throw new Error('相机参数已变化，请刷新后重试')
+    await records.put(clean)
+    const order = await tags.get('order')
+    await tags.put(cameraFavoriteTags({ records: [clean], tags: order ?? [] }), 'order')
+    if (JSON.stringify(expected?.cover ?? null) !== JSON.stringify(clean.cover)) {
+      if (cover) await covers.put(cover, clean.id)
+      else await covers.delete(clean.id)
     }
   })
 }
 
 export async function deleteCameraFavorite(id: string, confirmed = false): Promise<void> {
-  await transact<void>('readwrite', (records, covers, done) => {
-    if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
-    records.delete(id)
-    covers.delete(id)
-    done()
-  })
+  await deleteCameraFavorites([id], confirmed)
 }
 
 export function validateFavorite(value: unknown): CameraFavorite {
-  if (!value || typeof value !== 'object') throw new Error('无效的收藏记录')
+  if (!value || typeof value !== 'object') throw new Error('无效的参数记录')
   const r = value as CameraFavorite
   const string = (v: unknown): v is string => typeof v === 'string'
   const fields = (v: unknown) =>
@@ -251,7 +227,7 @@ export function validateFavorite(value: unknown): CameraFavorite {
         r.cover.size < 0 ||
         !/^[a-f0-9]{64}$/.test(r.cover.sha256)))
   ) {
-    throw new Error('收藏数据损坏或格式不支持')
+    throw new Error('参数数据损坏或格式不支持')
   }
   return cloneFavorite(r)
 }
@@ -304,84 +280,64 @@ export async function applyCameraImport(
   choices: Record<string, 'local' | 'incoming'>
 ): Promise<number> {
   const conflictIds = new Set(plan.conflicts.map((record) => record.id))
-  return transact('readwrite', (records, covers, done, tags) => {
-    const request = records.getAll()
-    const order = tags.get('order')
-    order.onsuccess = () => {
-      const stable = (items: CameraFavorite[]) =>
-        JSON.stringify([...items].sort((a, b) => a.id.localeCompare(b.id)))
-      if (
-        stable(request.result) !== stable(plan.base) ||
-        JSON.stringify(
-          cameraFavoriteTags({ records: request.result, tags: order.result ?? [] })
-        ) !== JSON.stringify(plan.baseTags)
-      ) {
-        records.transaction.abort()
-        return
-      }
-      let count = 0
-      for (const record of plan.incoming.records) {
-        if (conflictIds.has(record.id) && choices[record.id] !== 'incoming') continue
-        records.put(record)
-        const cover = plan.incoming.covers.get(record.id)
-        if (cover) covers.put(cover, record.id)
-        else covers.delete(record.id)
-        count++
-      }
-      const mergedTags = cameraFavoriteTags({
-        records: request.result,
-        tags: [...(plan.incoming.tags ?? []), ...plan.baseTags]
-      })
-      tags.put(mergedTags, 'order')
-      done(count)
+  return transact('readwrite', async (records, covers, tags) => {
+    const [current, order] = await Promise.all([records.getAll(), tags.get('order')])
+    const stable = (items: CameraFavorite[]) =>
+      JSON.stringify([...items].sort((a, b) => a.id.localeCompare(b.id)))
+    if (
+      stable(current) !== stable(plan.base) ||
+      JSON.stringify(cameraFavoriteTags({ records: current, tags: order ?? [] })) !==
+        JSON.stringify(plan.baseTags)
+    )
+      throw new Error('相机参数已变化，请重新预览导入')
+    let count = 0
+    for (const record of plan.incoming.records) {
+      if (conflictIds.has(record.id) && choices[record.id] !== 'incoming') continue
+      await records.put(record)
+      const cover = plan.incoming.covers.get(record.id)
+      if (cover) await covers.put(cover, record.id)
+      else await covers.delete(record.id)
+      count++
     }
+    await tags.put(
+      cameraFavoriteTags({
+        records: current,
+        tags: [...(plan.incoming.tags ?? []), ...plan.baseTags]
+      }),
+      'order'
+    )
+    return count
   })
 }
 
 export async function clearCameraFavorites(confirmed = false): Promise<void> {
-  await transact<void>('readwrite', (records, covers, done, tags) => {
+  await transact('readwrite', async (records, covers, tags) => {
     if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
-    records.clear()
-    covers.clear()
-    tags.put([], 'order')
-    done()
+    await Promise.all([records.clear(), covers.clear(), tags.put([], 'order')])
   })
 }
 
-/** 一次事务删除选中记录及其独立封面，不触碰来源照片。 */
+/** Delete parameter records and their covers together, preserving original photos. */
 export async function deleteCameraFavorites(ids: string[], confirmed = false): Promise<void> {
-  await transact<void>('readwrite', (records, covers, done) => {
+  await transact('readwrite', async (records, covers) => {
     if (confirmed) markConfirmedDeletion(records.transaction, 'camera')
-    for (const id of new Set(ids)) {
-      records.delete(id)
-      covers.delete(id)
-    }
-    done()
+    for (const id of new Set(ids)) await Promise.all([records.delete(id), covers.delete(id)])
   })
 }
 
-/** Remove a category from current records atomically, preserving photos and parameter snapshots. */
 export async function deleteCameraFavoriteTag(tag: string): Promise<void> {
-  await transact<void>('readwrite', (records, _covers, done, tags) => {
-    const order = tags.get('order')
-    order.onsuccess = () =>
-      tags.put(
-        (order.result ?? []).filter((value: string) => value !== tag),
-        'order'
-      )
-    const request = records.openCursor()
-    request.onsuccess = () => {
-      const cursor = request.result
-      if (!cursor) {
-        done()
-        return
-      }
+  await transact('readwrite', async (records, _covers, tags) => {
+    const order = await tags.get('order')
+    await tags.put(
+      (order ?? []).filter((value: string) => value !== tag),
+      'order'
+    )
+    let cursor = await records.openCursor()
+    while (cursor) {
       const record = cursor.value as CameraFavorite
-      if (record.tag === tag) {
-        cursor.update({ ...record, tag: '', updatedAt: new Date().toISOString() })
-        markCursorUpdate(records.transaction, 'camera', record.id)
-      }
-      cursor.continue()
+      if (record.tag === tag)
+        await records.put({ ...record, tag: '', updatedAt: new Date().toISOString() })
+      cursor = await cursor.continue()
     }
   })
 }

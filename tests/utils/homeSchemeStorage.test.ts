@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 // @vitest-environment node
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -39,6 +40,7 @@ afterEach(async () => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   await new Promise<void>((resolve, reject) => {
+    closeDatabase()
     const r = indexedDB.deleteDatabase(DB_NAME)
     r.onsuccess = () => resolve()
     r.onerror = () => reject(r.error)
@@ -135,9 +137,10 @@ it('does not recreate a record deleted by another window', async () => {
 it('rolls record and image writes back when a successful request is followed by transaction abort', async () => {
   await expect(
     homeTransaction([HOME_SCHEMES_STORE, HOME_IMAGES_STORE], 'readwrite', async (tx) => {
-      tx.objectStore(HOME_IMAGES_STORE).put({ id: 'one', blob: image() })
+      await tx.objectStore(HOME_IMAGES_STORE).put({ id: 'one', blob: image() })
       const request = tx.objectStore(HOME_SCHEMES_STORE).put({ id: 'one', code: 'CODE1' })
-      request.onsuccess = () => tx.abort()
+      await request
+      tx.abort()
     })
   ).rejects.toThrow()
   expect(await runStoreRequest(HOME_IMAGES_STORE, 'readonly', (store) => store.count())).toBe(0)

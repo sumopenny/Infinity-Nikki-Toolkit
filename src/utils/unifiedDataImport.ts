@@ -1,4 +1,4 @@
-import { databaseRequest, runDatabaseTransaction } from './file-system/transaction'
+import { runDatabaseTransaction } from './file-system/transaction'
 import { parsePearpalResonance, PEARPAL_NO_RECORDS } from './resonance/resonanceImport'
 import { parseResonanceFile } from './resonance/resonanceFile'
 import { cloneResonanceRecords, type ResonanceRecord } from './resonance/resonanceTypes'
@@ -139,7 +139,7 @@ export async function saveDataImport(
     async (tx) => {
       for (const job of jobs) {
         const store = tx.objectStore(job.store)
-        const value: unknown = await databaseRequest(store.get(job.key))
+        const value: unknown = await store.get(job.key)
         const current =
           value === undefined
             ? job.empty
@@ -147,7 +147,7 @@ export async function saveDataImport(
               ? validateWardrobe(value)
               : value
         if (JSON.stringify(current) !== job.expected) throw new Error('LOCAL_CHANGED')
-        store.put(job.value, job.key)
+        await store.put(job.value, job.key)
       }
     }
   )

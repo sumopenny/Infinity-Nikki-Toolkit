@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 import 'fake-indexeddb/auto'
 import { DB_NAME, DB_VERSION, runStoreRequest } from '../../src/utils/file-system/database'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -11,6 +12,7 @@ import type { ResonanceRecord } from '../../src/utils/resonance/resonanceTypes'
 afterEach(async () => {
   vi.restoreAllMocks()
   await new Promise<void>((resolve) => {
+    closeDatabase()
     const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = request.onerror = request.onblocked = () => resolve()
   })

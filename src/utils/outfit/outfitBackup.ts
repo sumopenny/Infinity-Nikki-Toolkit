@@ -23,7 +23,6 @@ import {
   readOutfitCollection,
   prepareOutfitImage,
   outfitTransaction,
-  outfitRequest,
   withOutfitImportLock,
   initializeOutfitTags
 } from './outfitStorage'
@@ -380,9 +379,7 @@ async function importBackup(
     [OUTFIT_TAGS_STORE, OUTFIT_IGNORED_CODES_STORE, OUTFITS_STORE],
     'readwrite',
     async (tx) => {
-      const tags = normalizeOutfitTagList(
-        await outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
-      )
+      const tags = normalizeOutfitTagList(await tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
       for (const raw of manifest.tags) {
         const tag = normalizeOutfitTag(raw)
         if (tags.includes(tag)) continue
@@ -392,11 +389,11 @@ async function importBackup(
         }
         tags.push(tag)
       }
-      tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
+      await tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
       for (const code of manifest.ignoredCodes ?? []) {
         const normalized = normalizeOutfitCode(code)
-        if (!(await outfitRequest(tx.objectStore(OUTFITS_STORE).index('code').get(normalized))))
-          tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put({ code: normalized })
+        if (!(await tx.objectStore(OUTFITS_STORE).index('code').get(normalized)))
+          await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put({ code: normalized })
       }
     }
   )
@@ -412,18 +409,16 @@ async function importBackup(
         async (tx) => {
           const records = tx.objectStore(OUTFITS_STORE)
           const duplicate = record.code
-            ? ((await outfitRequest(records.index('code').get(record.code))) as
-                OutfitRecord | undefined)
+            ? ((await records.index('code').get(record.code)) as OutfitRecord | undefined)
             : undefined
           if (duplicate) {
-            tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
+            await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
             return 'duplicate'
           }
-          const existing = (await outfitRequest(records.get(record.id))) as OutfitRecord | undefined
+          const existing = (await records.get(record.id)) as OutfitRecord | undefined
           if (image && !record.code && existing && !existing.code) {
-            const oldImage = (await outfitRequest(
-              tx.objectStore(OUTFIT_IMAGES_STORE).get(record.id)
-            )) as { sha256: string } | undefined
+            const oldImage = (await tx.objectStore(OUTFIT_IMAGES_STORE).get(record.id)) as
+              { sha256: string } | undefined
             const { id: _id, image: _image, ...old } = normalizeOutfitRecord(existing)
             const { id: _nextId, image: _nextImage, ...next } = { ...record, imageSize: image.size }
             if (JSON.stringify(old) === JSON.stringify(next) && oldImage?.sha256 === image.sha256)
@@ -431,7 +426,7 @@ async function importBackup(
           }
           const id = existing ? createOutfitId() : record.id
           const tags = normalizeOutfitTagList(
-            await outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
+            await tx.objectStore(OUTFIT_TAGS_STORE).get('default')
           )
           const incoming = normalizeOutfitRecord({
             ...record,
@@ -440,9 +435,9 @@ async function importBackup(
             imageSize: image?.size,
             tags: record.tags.filter((tag) => tags.includes(tag))
           })
-          records.put(incoming)
-          if (image) tx.objectStore(OUTFIT_IMAGES_STORE).put({ ...image, id })
-          if (record.code) tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
+          await records.put(incoming)
+          if (image) await tx.objectStore(OUTFIT_IMAGES_STORE).put({ ...image, id })
+          if (record.code) await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(record.code)
           return 'added'
         }
       )

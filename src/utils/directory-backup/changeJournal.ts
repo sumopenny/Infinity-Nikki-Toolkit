@@ -1,3 +1,5 @@
+import type { DatabaseTransaction } from '../file-system/transaction'
+import type { DatabaseStore } from '../file-system/database'
 import {
   BACKUP_DIRTY_STORE,
   BACKUP_SETTINGS_STORE,
@@ -34,17 +36,12 @@ interface Tracking {
   revisions: Map<BackupModule, string>
   confirmedDeletes: Set<BackupModule>
 }
-const contexts = new WeakMap<IDBTransaction, Tracking>()
+const contexts = new WeakMap<DatabaseTransaction, Tracking>()
 
 /** 只等待 IDB 请求；读配置、写业务、推进修订和合并脏项处于同一个事务。 */
-export async function prepareJournal(tx: IDBTransaction): Promise<IDBTransaction> {
-  const config = await new Promise<{ enabled?: Tracking['enabled'] } | undefined>(
-    (resolve, reject) => {
-      const request = tx.objectStore(BACKUP_SETTINGS_STORE).get('config')
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    }
-  )
+export async function prepareJournal(tx: DatabaseTransaction): Promise<DatabaseTransaction> {
+  const config = (await tx.objectStore(BACKUP_SETTINGS_STORE).get('config')) as
+    { enabled?: Tracking['enabled'] } | undefined
   contexts.set(tx, {
     enabled: config?.enabled ?? {},
     revisions: new Map(),
@@ -53,14 +50,14 @@ export async function prepareJournal(tx: IDBTransaction): Promise<IDBTransaction
   return trackTransaction(tx)
 }
 /** 只允许已向用户展示确认框的业务删除入口调用；与删除原子提交。 */
-export function markConfirmedDeletion(tx: IDBTransaction, module: BackupModule): void {
+export function markConfirmedDeletion(tx: DatabaseTransaction, module: BackupModule): void {
   const context = contexts.get(tx)
   if (!context)
     throw new Error('Backup journal must be initialized inside the business transaction')
   context.confirmedDeletes.add(module)
 }
-function mark(
-  tx: IDBTransaction,
+async function mark(
+  tx: DatabaseTransaction,
   module: BackupModule,
   kind: ChangeKind,
   id: string,
@@ -69,30 +66,41 @@ function mark(
   const context = contexts.get(tx)
   if (!context)
     throw new Error('Backup journal must be initialized inside the business transaction')
-  if (!context.revisions.has(module)) {
-    const revision = createUuid()
-    context.revisions.set(module, revision)
-    tx.objectStore(BACKUP_SETTINGS_STORE).put({
-      key: revisionKey(module),
-      revision
-    } satisfies Revision)
+  const writes: Promise<unknown>[] = []
+  try {
+    if (!context.revisions.has(module)) {
+      const revision = createUuid()
+      context.revisions.set(module, revision)
+      writes.push(
+        tx.objectStore(BACKUP_SETTINGS_STORE).put({
+          key: revisionKey(module),
+          revision
+        } satisfies Revision)
+      )
+    }
+    // 关闭时只推进小型模块修订，不积攒永不消费的删除任务；重新开启会显式全量比对。
+    if (context.enabled[module]) {
+      writes.push(
+        tx.objectStore(BACKUP_DIRTY_STORE).put({
+          key: [module, kind, id],
+          revision: context.revisions.get(module)!,
+          at: new Date().toISOString(),
+          ...(deletion && context.confirmedDeletes.has(module)
+            ? { intent: 'confirmed-delete' as const }
+            : {})
+        } satisfies DirtyChange)
+      )
+    }
+  } finally {
+    // 后续请求可能同步抛错；已入队请求中止时仍需有人接收拒绝。
+    for (const write of writes) void write.catch(() => undefined)
   }
-  // 关闭时只推进小型模块修订，不积攒永不消费的删除任务；重新开启会显式全量比对。
-  if (context.enabled[module]) {
-    tx.objectStore(BACKUP_DIRTY_STORE).put({
-      key: [module, kind, id],
-      revision: context.revisions.get(module)!,
-      at: new Date().toISOString(),
-      ...(deletion && context.confirmedDeletes.has(module)
-        ? { intent: 'confirmed-delete' as const }
-        : {})
-    } satisfies DirtyChange)
-  }
+  await Promise.all(writes)
 }
 
-/** 局部代理而非修改 IDB 原型；所有调用保持原生请求和事务回滚语义。 */
-export function trackTransaction(tx: IDBTransaction): IDBTransaction {
-  const cache = new Map<string, IDBObjectStore>()
+/** 局部代理 idb 表方法；业务和日志共享同一个底层事务。 */
+export function trackTransaction(tx: DatabaseTransaction): DatabaseTransaction {
+  const cache = new Map<string, DatabaseStore>()
   const storeFor = (name: string) => {
     const cached = cache.get(name)
     if (cached) return cached
@@ -103,7 +111,6 @@ export function trackTransaction(tx: IDBTransaction): IDBTransaction {
       get(target, prop) {
         if (prop === 'put' || prop === 'add')
           return (value: unknown, key?: IDBValidKey) => {
-            const result = key === undefined ? target[prop](value) : target[prop](value, key)
             const actual =
               key ??
               (typeof target.keyPath === 'string'
@@ -111,26 +118,27 @@ export function trackTransaction(tx: IDBTransaction): IDBTransaction {
                 : undefined)
             const id = entry[1] === 'tags' ? 'default' : String(actual ?? '')
             if (!id) throw new Error('Invalid backup change key')
-            mark(tx, entry[0], entry[1], id)
-            return result
+            const result = key === undefined ? target[prop](value) : target[prop](value, key)
+            return Promise.all([result, mark(tx, entry[0], entry[1], id)]).then(([key]) => key)
           }
         if (prop === 'delete')
           return (key: IDBValidKey | IDBKeyRange) => {
             const result = target.delete(key)
-            mark(
+            const journal = mark(
               tx,
               entry[0],
               key instanceof IDBKeyRange ? 'reset' : entry[1],
               key instanceof IDBKeyRange ? '*' : String(key),
               true
             )
-            return result
+            return Promise.all([result, journal]).then(([value]) => value)
           }
         if (prop === 'clear')
           return () => {
             const result = target.clear()
-            mark(tx, entry[0], 'reset', '*', true)
-            return result
+            return Promise.all([result, mark(tx, entry[0], 'reset', '*', true)]).then(
+              ([value]) => value
+            )
           }
         const value = Reflect.get(target, prop, target)
         return typeof value === 'function' ? value.bind(target) : value
@@ -150,10 +158,6 @@ export function trackTransaction(tx: IDBTransaction): IDBTransaction {
   const context = contexts.get(tx)
   if (context) contexts.set(tracked, context)
   return tracked
-}
-/** 当前业务唯一的 IDBCursor.update 入口，不能从 objectStore.put 代理捕获。 */
-export function markCursorUpdate(tx: IDBTransaction, module: BackupModule, id: string): void {
-  mark(tx, module, 'record', id)
 }
 export function announceBackupChange(): void {
   if (typeof window === 'undefined') return

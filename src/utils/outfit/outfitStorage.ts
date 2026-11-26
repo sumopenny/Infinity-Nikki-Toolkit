@@ -1,9 +1,6 @@
 import { reportPartialFailure } from '../errorReporting/errorReporter'
 import { markConfirmedDeletion } from '../directory-backup/changeJournal'
-import {
-  databaseRequest as outfitRequest,
-  runDatabaseTransaction as outfitTransaction
-} from '../file-system/transaction'
+import { runDatabaseTransaction as outfitTransaction } from '../file-system/transaction'
 import {
   runStoreRequest,
   OUTFITS_STORE,
@@ -44,10 +41,7 @@ export interface OutfitSnapshot {
   tags: string[]
   ignoredCodes: string[]
 }
-export {
-  databaseRequest as outfitRequest,
-  runDatabaseTransaction as outfitTransaction
-} from '../file-system/transaction'
+export { runDatabaseTransaction as outfitTransaction } from '../file-system/transaction'
 export async function hashOutfitBlob(blob: Blob): Promise<string> {
   return sha256Hex(await blob.arrayBuffer())
 }
@@ -74,8 +68,8 @@ export async function prepareOutfitUpload(file: File, id: string): Promise<Prepa
 export async function initializeOutfitTags(): Promise<void> {
   await outfitTransaction([OUTFIT_TAGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(OUTFIT_TAGS_STORE)
-    if ((await outfitRequest(store.get('default'))) === undefined)
-      store.put([...DEFAULT_OUTFIT_TAGS], 'default')
+    if ((await store.get('default')) === undefined)
+      await store.put([...DEFAULT_OUTFIT_TAGS], 'default')
   })
 }
 export async function readOutfitImage(id: string): Promise<Blob> {
@@ -101,9 +95,9 @@ export async function readOutfitRecords(): Promise<{
     'readonly',
     async (tx) => {
       const [rawRecords, rawTags, imageKeys] = await Promise.all([
-        outfitRequest(tx.objectStore(OUTFITS_STORE).getAll()),
-        outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default')),
-        outfitRequest(tx.objectStore(OUTFIT_IMAGES_STORE).getAllKeys())
+        tx.objectStore(OUTFITS_STORE).getAll(),
+        tx.objectStore(OUTFIT_TAGS_STORE).get('default'),
+        tx.objectStore(OUTFIT_IMAGES_STORE).getAllKeys()
       ])
       const records: OutfitRecord[] = []
       const tags = normalizeOutfitTagList(rawTags)
@@ -161,10 +155,10 @@ export async function readOutfitSnapshot(): Promise<OutfitSnapshot> {
     'readonly',
     async (tx) => {
       const [raw, images, tags, ignored] = await Promise.all([
-        outfitRequest(tx.objectStore(OUTFITS_STORE).getAll()),
-        outfitRequest(tx.objectStore(OUTFIT_IMAGES_STORE).getAll()),
-        outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default')),
-        outfitRequest(tx.objectStore(OUTFIT_IGNORED_CODES_STORE).getAllKeys())
+        tx.objectStore(OUTFITS_STORE).getAll(),
+        tx.objectStore(OUTFIT_IMAGES_STORE).getAll(),
+        tx.objectStore(OUTFIT_TAGS_STORE).get('default'),
+        tx.objectStore(OUTFIT_IGNORED_CODES_STORE).getAllKeys()
       ])
       const records = raw
         .map(normalizeOutfitRecord)
@@ -198,7 +192,7 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
       const records = tx.objectStore(OUTFITS_STORE),
         images = tx.objectStore(OUTFIT_IMAGES_STORE)
       const previous = input.outfit
-        ? ((await outfitRequest(records.get(input.outfit.id))) as OutfitRecord | undefined)
+        ? ((await records.get(input.outfit.id)) as OutfitRecord | undefined)
         : undefined
       if (
         input.outfit &&
@@ -209,12 +203,10 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
         throw new Error('outfit_record_changed')
       const id = previous?.id ?? prepared?.id ?? createOutfitId()
       const duplicate = code
-        ? ((await outfitRequest(records.index('code').get(code))) as OutfitRecord | undefined)
+        ? ((await records.index('code').get(code)) as OutfitRecord | undefined)
         : undefined
       if (duplicate && duplicate.id !== id) throw new DuplicateOutfitCodeError()
-      const tags = normalizeOutfitTagList(
-        await outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
-      )
+      const tags = normalizeOutfitTagList(await tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
       const tag = input.tag?.trim()
       if (tag && !tags.includes(tag)) throw new Error('outfit_tag_missing')
       const record = normalizeOutfitRecord({
@@ -234,12 +226,12 @@ export async function saveOutfit(input: SaveOutfitInput): Promise<OutfitItem> {
       if (
         record.image &&
         !prepared &&
-        (!previous?.image || (await outfitRequest(images.getKey(id))) === undefined)
+        (!previous?.image || (await images.getKey(id)) === undefined)
       )
         throw new Error('outfit_image_missing')
-      records.put(record)
-      if (prepared) images.put({ ...prepared, id })
-      if (code) tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(code)
+      await records.put(record)
+      if (prepared) await images.put({ ...prepared, id })
+      if (code) await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).delete(code)
       return { record, size: prepared?.size ?? previous?.imageSize ?? 0 }
     }
   )
@@ -250,14 +242,14 @@ export async function saveOutfitTags(values: string[], expected?: string[]): Pro
   return outfitTransaction([OUTFITS_STORE, OUTFIT_TAGS_STORE], 'readwrite', async (tx) => {
     if (
       expected &&
-      JSON.stringify(await outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))) !==
+      JSON.stringify(await tx.objectStore(OUTFIT_TAGS_STORE).get('default')) !==
         JSON.stringify(expected)
     )
       throw new Error('outfit_tags_changed')
-    const records = (await outfitRequest(tx.objectStore(OUTFITS_STORE).getAll())) as OutfitRecord[]
+    const records = (await tx.objectStore(OUTFITS_STORE).getAll()) as OutfitRecord[]
     if (records.some((record) => record.tags.some((tag) => !tags.includes(tag))))
       throw new Error('outfit_tag_in_use')
-    tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
+    await tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
     return tags
   })
 }
@@ -265,16 +257,16 @@ export async function deleteOutfitTag(removedTag: string) {
   return outfitTransaction([OUTFITS_STORE, OUTFIT_TAGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(OUTFITS_STORE)
     const [records, rawTags] = await Promise.all([
-      outfitRequest(store.getAll()),
-      outfitRequest(tx.objectStore(OUTFIT_TAGS_STORE).get('default'))
+      store.getAll(),
+      tx.objectStore(OUTFIT_TAGS_STORE).get('default')
     ])
     const tags = normalizeOutfitTagList(rawTags).filter((tag) => tag !== removedTag)
     const previousRecords = records.map(normalizeOutfitRecord)
     const updatedRecords = previousRecords
       .filter((record) => record.tags.includes(removedTag))
       .map((record) => ({ ...record, tags: [], updatedAt: new Date().toISOString() }))
-    for (const record of updatedRecords) store.put(record)
-    tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
+    for (const record of updatedRecords) await store.put(record)
+    await tx.objectStore(OUTFIT_TAGS_STORE).put(tags, 'default')
     return { tags, previousRecords, updatedRecords }
   })
 }
@@ -291,7 +283,7 @@ export async function deleteOutfits(
         deleted: OutfitItem[] = [],
         failedNames: string[] = []
       for (const item of outfits) {
-        const current = (await outfitRequest(records.get(item.id))) as OutfitRecord | undefined
+        const current = (await records.get(item.id)) as OutfitRecord | undefined
         if (
           !current ||
           JSON.stringify(normalizeOutfitRecord(current)) !==
@@ -300,10 +292,10 @@ export async function deleteOutfits(
           failedNames.push(item.code || item.name)
           continue
         }
-        records.delete(item.id)
-        tx.objectStore(OUTFIT_IMAGES_STORE).delete(item.id)
+        await records.delete(item.id)
+        await tx.objectStore(OUTFIT_IMAGES_STORE).delete(item.id)
         if (current.code)
-          tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put({
+          await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).put({
             code: current.code,
             deletedAt: new Date().toISOString()
           })

@@ -18,7 +18,6 @@ import {
 import {
   hashOutfitBlob,
   initializeOutfitTags,
-  outfitRequest,
   outfitTransaction,
   prepareOutfitUpload,
   readOutfitCollection,
@@ -138,7 +137,7 @@ async function findLatestDiyImage(
 interface PlayerProgress {
   timestamp: number
 }
-interface GameSourceState {
+export interface GameSourceState {
   id: string
   directory: FileSystemDirectoryHandle
   players: Record<string, PlayerProgress>
@@ -171,12 +170,8 @@ async function importShared(source: SharedOutfitSource): Promise<SharedOutfitImp
       [OUTFITS_STORE, OUTFIT_IGNORED_CODES_STORE],
       'readonly',
       async (tx) => ({
-        duplicate: Boolean(
-          await outfitRequest(tx.objectStore(OUTFITS_STORE).index('code').get(latest.code))
-        ),
-        ignored: Boolean(
-          await outfitRequest(tx.objectStore(OUTFIT_IGNORED_CODES_STORE).get(latest.code))
-        )
+        duplicate: Boolean(await tx.objectStore(OUTFITS_STORE).index('code').get(latest.code)),
+        ignored: Boolean(await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).get(latest.code))
       })
     )
     if (codeState.ignored) return { importedCount: 0, duplicateCount: 0, failedCount: 0 }
@@ -238,15 +233,14 @@ async function importShared(source: SharedOutfitSource): Promise<SharedOutfitImp
       async (tx) => {
         const records = tx.objectStore(OUTFITS_STORE),
           states = tx.objectStore(OUTFIT_GAME_SOURCES_STORE)
-        if (await outfitRequest(tx.objectStore(OUTFIT_IGNORED_CODES_STORE).get(latest.code)))
-          return 'ignored'
-        if (await outfitRequest(records.index('code').get(latest.code))) return 'duplicate'
-        const current = (await outfitRequest(states.get(state.id))) as GameSourceState
+        if (await tx.objectStore(OUTFIT_IGNORED_CODES_STORE).get(latest.code)) return 'ignored'
+        if (await records.index('code').get(latest.code)) return 'duplicate'
+        const current = (await states.get(state.id)) as GameSourceState
         const progress = current.players[latest.playerId]
         if (progress && latestImage.file.lastModified <= progress.timestamp) return 'stale'
-        records.put(record)
-        tx.objectStore(OUTFIT_IMAGES_STORE).put(image)
-        states.put({
+        await records.put(record)
+        await tx.objectStore(OUTFIT_IMAGES_STORE).put(image)
+        await states.put({
           ...current,
           players: {
             ...current.players,

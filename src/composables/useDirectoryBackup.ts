@@ -108,7 +108,7 @@ export function runDirectoryBackup(notifyAutomaticSuccess = true): Promise<void>
         await syncModule(latest, module, statuses[module] as ModuleProgress, () => {
           if (!autoNoticeActive || !initialModules.includes(module)) return
           const progress = statuses[module]
-          const name = { outfits: '搭配码', home: '家园方案', camera: '相机参数收藏' }[module]
+          const name = { outfits: '搭配码', home: '家园方案', camera: '相机参数' }[module]
           const count = progress.total ? ` ${progress.processed ?? 0} / ${progress.total}` : ''
           if (progress.state === 'initializing' || progress.state === 'syncing')
             backupNotice('directory-backup-auto-success', `正在自动备份${name}${count}…`, true)
@@ -118,9 +118,7 @@ export function runDirectoryBackup(notifyAutomaticSuccess = true): Promise<void>
           statuses[module].lastSuccess &&
           statuses[module].lastSuccess !== previousSuccess
         )
-          updatedModules.push(
-            { outfits: '搭配码', home: '家园方案', camera: '相机参数收藏' }[module]
-          )
+          updatedModules.push({ outfits: '搭配码', home: '家园方案', camera: '相机参数' }[module])
       }
       if (notifyAutomaticSuccess && updatedModules.length) {
         backupNotice(

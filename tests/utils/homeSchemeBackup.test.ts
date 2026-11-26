@@ -1,3 +1,4 @@
+import { closeDatabase } from '../../src/utils/file-system/database'
 // @vitest-environment node
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -35,6 +36,7 @@ const input = (code = 'CODE1') => ({
 const archive = (entries: Record<string, Uint8Array>) => new File([zipSync(entries)], 'backup.zip')
 const reset = () =>
   new Promise<void>((resolve, reject) => {
+    closeDatabase()
     const r = indexedDB.deleteDatabase(DB_NAME)
     r.onsuccess = () => resolve()
     r.onerror = () => reject(r.error)

@@ -1,7 +1,4 @@
-import {
-  databaseRequest as homeRequest,
-  runDatabaseTransaction as homeTransaction
-} from '../file-system/transaction'
+import { runDatabaseTransaction as homeTransaction } from '../file-system/transaction'
 import {
   runStoreRequest,
   HOME_SCHEMES_STORE,
@@ -39,10 +36,7 @@ export interface HomeSchemeSnapshot {
   tags: string[]
 }
 
-export {
-  databaseRequest as homeRequest,
-  runDatabaseTransaction as homeTransaction
-} from '../file-system/transaction'
+export { runDatabaseTransaction as homeTransaction } from '../file-system/transaction'
 
 export async function prepareHomeSchemeImage(
   blob: Blob,
@@ -72,9 +66,9 @@ export async function readHomeSchemeSnapshot(): Promise<HomeSchemeSnapshot> {
     'readonly',
     async (tx) => {
       const [rawRecords, rawImages, rawTags] = await Promise.all([
-        homeRequest(tx.objectStore(HOME_SCHEMES_STORE).getAll()),
-        homeRequest(tx.objectStore(HOME_IMAGES_STORE).getAll()),
-        homeRequest(tx.objectStore(HOME_TAGS_STORE).get('default'))
+        tx.objectStore(HOME_SCHEMES_STORE).getAll(),
+        tx.objectStore(HOME_IMAGES_STORE).getAll(),
+        tx.objectStore(HOME_TAGS_STORE).get('default')
       ])
       const records = rawRecords
         .map(normalizeHomeSchemeRecord)
@@ -119,8 +113,8 @@ export async function readHomeSchemeLibrary(): Promise<{
 }> {
   return homeTransaction([HOME_SCHEMES_STORE, HOME_TAGS_STORE], 'readonly', async (tx) => {
     const [rawRecords, rawTags] = await Promise.all([
-      homeRequest(tx.objectStore(HOME_SCHEMES_STORE).getAll()),
-      homeRequest(tx.objectStore(HOME_TAGS_STORE).get('default'))
+      tx.objectStore(HOME_SCHEMES_STORE).getAll(),
+      tx.objectStore(HOME_TAGS_STORE).get('default')
     ])
     const records = rawRecords
       .map(normalizeHomeSchemeRecord)
@@ -152,10 +146,10 @@ export async function saveHomeScheme(input: SaveHomeSchemeInput): Promise<HomeSc
       const records = tx.objectStore(HOME_SCHEMES_STORE),
         images = tx.objectStore(HOME_IMAGES_STORE)
       const tags = normalizeHomeSchemeTags(
-        (await homeRequest(tx.objectStore(HOME_TAGS_STORE).get('default'))) ?? []
+        (await tx.objectStore(HOME_TAGS_STORE).get('default')) ?? []
       )
       const previous = input.item
-        ? ((await homeRequest(records.get(input.item.id))) as HomeSchemeRecord | undefined)
+        ? ((await records.get(input.item.id)) as HomeSchemeRecord | undefined)
         : undefined
       if (input.item && !previous) throw new Error('home_scheme_record_missing')
       if (
@@ -166,7 +160,7 @@ export async function saveHomeScheme(input: SaveHomeSchemeInput): Promise<HomeSc
         throw new Error('home_scheme_record_changed')
       }
       let id = previous?.id ?? input.id ?? prepared?.id ?? createHomeSchemeId()
-      if (!previous && (await homeRequest(records.get(id)))) id = createHomeSchemeId()
+      if (!previous && (await records.get(id))) id = createHomeSchemeId()
       const record = normalizeHomeSchemeRecord({
         version: 1,
         id,
@@ -190,19 +184,19 @@ export async function saveHomeScheme(input: SaveHomeSchemeInput): Promise<HomeSc
           ? new Date(Math.max(Date.now(), Date.parse(previous.updatedAt) + 1)).toISOString()
           : (input.updatedAt ?? new Date().toISOString())
       })
-      const duplicate = (await homeRequest(records.index('code').get(record.code))) as
+      const duplicate = (await records.index('code').get(record.code)) as
         HomeSchemeRecord | undefined
       if (duplicate && duplicate.id !== id) throw new Error('home_scheme_code_duplicate')
       // 名称、备注、方案码和标签变更只写记录；图片仅在更换/移除时发生 IO。
       if (
         record.image &&
         !prepared &&
-        (!previous?.image || (await homeRequest(images.getKey(id))) === undefined)
+        (!previous?.image || (await images.getKey(id)) === undefined)
       )
         throw new Error('home_scheme_image_missing')
-      if (prepared) images.put({ ...prepared, id })
-      else if (previous?.image && !record.image) images.delete(id)
-      records.put(record)
+      if (prepared) await images.put({ ...prepared, id })
+      else if (previous?.image && !record.image) await images.delete(id)
+      await records.put(record)
       return { record }
     }
   )
@@ -219,8 +213,8 @@ export async function deleteHomeSchemes(
   await homeTransaction([HOME_SCHEMES_STORE, HOME_IMAGES_STORE], 'readwrite', async (tx) => {
     if (confirmed) markConfirmedDeletion(tx, 'home')
     for (const id of ids) {
-      tx.objectStore(HOME_SCHEMES_STORE).delete(id)
-      tx.objectStore(HOME_IMAGES_STORE).delete(id)
+      await tx.objectStore(HOME_SCHEMES_STORE).delete(id)
+      await tx.objectStore(HOME_IMAGES_STORE).delete(id)
     }
   })
 }
@@ -236,9 +230,9 @@ export function deleteHomeScheme(
 export async function addHomeSchemeTag(value: string): Promise<string[]> {
   return homeTransaction([HOME_TAGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(HOME_TAGS_STORE)
-    const actual = normalizeHomeSchemeTags((await homeRequest(store.get('default'))) ?? [])
+    const actual = normalizeHomeSchemeTags((await store.get('default')) ?? [])
     const tags = normalizeHomeSchemeTags([value, ...actual])
-    store.put(tags, 'default')
+    await store.put(tags, 'default')
     return tags
   })
 }
@@ -249,8 +243,8 @@ export async function deleteHomeSchemeTag(
   return homeTransaction([HOME_SCHEMES_STORE, HOME_TAGS_STORE], 'readwrite', async (tx) => {
     const store = tx.objectStore(HOME_SCHEMES_STORE)
     const [records, rawTags] = await Promise.all([
-      homeRequest(store.getAll()),
-      homeRequest(tx.objectStore(HOME_TAGS_STORE).get('default'))
+      store.getAll(),
+      tx.objectStore(HOME_TAGS_STORE).get('default')
     ])
     const tags = normalizeHomeSchemeTags(rawTags ?? []).filter((tag) => tag !== removedTag)
     const updatedRecords: HomeSchemeRecord[] = []
@@ -262,10 +256,10 @@ export async function deleteHomeSchemeTag(
         tags: [],
         updatedAt: new Date(Math.max(Date.now(), Date.parse(record.updatedAt) + 1)).toISOString()
       }
-      store.put(updated)
+      await store.put(updated)
       updatedRecords.push(updated)
     }
-    tx.objectStore(HOME_TAGS_STORE).put(tags, 'default')
+    await tx.objectStore(HOME_TAGS_STORE).put(tags, 'default')
     return { tags, updatedCount: updatedRecords.length, updatedRecords }
   })
 }
@@ -276,7 +270,7 @@ export async function reorderHomeSchemeTags(
 ): Promise<string[]> {
   return homeTransaction([HOME_TAGS_STORE], 'readwrite', async (tx) => {
     const actual = normalizeHomeSchemeTags(
-      (await homeRequest(tx.objectStore(HOME_TAGS_STORE).get('default'))) ?? []
+      (await tx.objectStore(HOME_TAGS_STORE).get('default')) ?? []
     )
     if (
       JSON.stringify(actual) !== JSON.stringify(current) ||
@@ -285,7 +279,7 @@ export async function reorderHomeSchemeTags(
       reordered.some((tag) => !actual.includes(tag))
     )
       throw new Error('home_scheme_tag_order_invalid')
-    tx.objectStore(HOME_TAGS_STORE).put(reordered, 'default')
+    await tx.objectStore(HOME_TAGS_STORE).put(reordered, 'default')
     return reordered
   })
 }

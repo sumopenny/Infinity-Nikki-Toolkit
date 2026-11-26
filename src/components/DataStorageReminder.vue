@@ -63,8 +63,8 @@ watch(
                 }}</strong
                 >{{
                   t(
-                    '，支持搭配码、家园方案和相机收藏。',
-                    ' for outfits, home schemes, and camera favorites.'
+                    '，支持搭配码、家园方案和相机参数。',
+                    ' for outfits, home schemes, and camera parameters.'
                   )
                 }}
               </p>
