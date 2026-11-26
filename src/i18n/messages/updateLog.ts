@@ -7,35 +7,77 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.20 更新',
+  currentDate: '2026.11.26 更新',
   currentItems: [
     {
-      title: '「搭配总结」新增可视化概览。',
-      text: '可查看每月收藏趋势、标签分布和搭配码解析进度。点击标签可查看对应搭配，服装和妆容排行新增单品的出现数占比。'
+      title: '全新电脑端主页上线。',
+      text: '新增沉浸式主页，搭配角色昵称问候与轻盈的入场动效，打开网站更有归属感。'
     },
     {
-      title: '调整更多菜单样式。',
-      text: '手机端「更多」改为侧边栏展开，菜单内容结构优化，按数据备份、应用维护和关于暖立方分组，使用帮助和更新记录置于底部。'
+      title: '主页壁纸自由更换。',
+      text: '支持选择预设壁纸，也可上传、拖入或粘贴自己的图片，自由调整背景模糊度和文字明暗。新增水波互动效果，默认开启，可按喜好关闭。'
     },
     {
-      title: '新增「返回顶部」按钮。',
-      text: '页面向下滚动后，点击右下角箭头即可回到顶部。'
+      title: '游戏相册打开更方便。',
+      text: '授权游戏目录 X6Game 后，自动找到大喵高画质相册，支持切换不同账号的相册。单独存放的照片仍可通过「打开独立相册」浏览。优化授权恢复与超时处理，目录失效时提示重新选择。'
     },
     {
-      title: '重新整理「使用帮助」。',
-      text: '新版使用帮助按任务提供指引，方便直观查看手势、快捷键和安装方法。'
+      title: '新增角色资料与头像装扮。',
+      text: '电脑端授权游戏相册后，在右上角「相册菜单」查看角色资料；手机端打开「更多」，在顶部输入 UID 即可查询。支持查看昵称、头像、等级、角色创建时间，并通过「切换头像框」为本站头像应用喜欢的动态头像框。'
     },
     {
-      title: '更新提示可以永久关闭。',
-      text: '可选择仅关闭当前版本的提示，或关闭后续所有版本的自动弹窗。仍可从「更多」手动打开更新记录。'
+      title: '数据备份升级为独立页面。',
+      text: '电脑端左侧新增「数据备份」，集中管理搭配码、家园方案和相机参数的自动备份。主页会在未开启备份或备份异常时提醒。'
     },
     {
-      title: '优化使用体验。',
-      text: '优化「最近删除」的缩略图加载、拍照动作解析、数据导入和备份恢复。相机参数分包导出中途失败时，已生成的文件仍可从通知下载。'
+      title: '大图预览工具栏支持拖动。',
+      text: '电脑端可拖动大图预览工具栏，松手后自动贴顶或贴底，并进入半隐藏状态，鼠标移上即可展开，减少对照片的遮挡。'
+    },
+    {
+      title: '优化手机导航与界面细节。',
+      text: '手机底部导航新增选中图标放大效果，优化按压与回弹反馈。统一多处弹窗、按钮和菜单样式。'
+    },
+    {
+      title: '更新游戏 3.0 相关内容。',
+      text: '「抽卡吉时」已更新至游戏 3.0 版本。游戏 3.0 的服装、妆容图鉴及其他相关资源将逐步补充更新。'
+    },
+    {
+      title: '工具集启用新地址。',
+      text: '新地址：nikkicube.cc.cd。旧站用户请先导出全部数据，再到新站导入，不同网址的本地数据不会自动互通。'
     }
   ],
   historyTitle: '历史版本记录',
   history: [
+    {
+      version: 'v2.9',
+      date: '2026.11.20',
+      items: [
+        {
+          title: '「搭配总结」新增可视化概览。',
+          text: '可查看每月收藏趋势、标签分布和搭配码解析进度。点击标签可查看对应搭配，服装和妆容排行新增单品的出现数占比。'
+        },
+        {
+          title: '调整更多菜单样式。',
+          text: '手机端「更多」改为侧边栏展开，菜单内容结构优化，按数据备份、应用维护和关于暖立方分组，使用帮助和更新记录置于底部。'
+        },
+        {
+          title: '新增「返回顶部」按钮。',
+          text: '页面向下滚动后，点击右下角箭头即可回到顶部。'
+        },
+        {
+          title: '重新整理「使用帮助」。',
+          text: '新版使用帮助按任务提供指引，方便直观查看手势、快捷键和安装方法。'
+        },
+        {
+          title: '更新提示可以永久关闭。',
+          text: '可选择仅关闭当前版本的提示，或关闭后续所有版本的自动弹窗。仍可从「更多」手动打开更新记录。'
+        },
+        {
+          title: '优化使用体验。',
+          text: '优化「最近删除」的缩略图加载、拍照动作解析、数据导入和备份恢复。相机参数分包导出中途失败时，已生成的文件仍可从通知下载。'
+        }
+      ]
+    },
     {
       version: 'v2.8',
       date: '2026.11.18',
@@ -899,35 +941,77 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.20',
+  currentDate: 'Updated 2026.11.26',
   currentItems: [
     {
-      title: 'Outfit summary has a new visual overview.',
-      text: 'See monthly save history, tag distribution, and outfit-code parsing progress. Select a tag to view its outfits. Clothing and makeup rankings now show the share of parsed outfits that use each item.'
+      title: 'A new desktop home page.',
+      text: "An immersive home page welcomes you by your character's nickname, with gentle entrance animations to make the site feel more personal."
     },
     {
-      title: 'Updated the More menu layout.',
-      text: 'On mobile, More now opens as a side panel. The menu groups actions under Data backup, App maintenance, and About NikkiCube, with Help and Release history at the bottom.'
+      title: 'Choose your own home wallpaper.',
+      text: 'Choose a preset or upload, drag in, or paste your own image. Adjust background blur and text lightness. The new interactive water ripple effect is enabled by default and can be turned off.'
     },
     {
-      title: 'Added a Back to top button.',
-      text: 'After scrolling down, select the arrow in the lower-right corner to return to the top.'
+      title: 'Open game albums more easily.',
+      text: "Authorize the game's X6Game folder to automatically find your high-quality Momo album and switch between account albums. Use Open standalone album for photos stored elsewhere. Improved permission recovery and timeout handling prompt you to select the folder again when access expires."
     },
     {
-      title: 'Reorganized Help.',
-      text: 'The new Help groups instructions by task so you can quickly find gestures, keyboard shortcuts, and installation steps.'
+      title: 'Character profiles and avatar customization.',
+      text: 'On desktop, authorize your game album and open the album menu at the top right to view your character. On mobile, open More and enter your UID at the top. View your nickname, avatar, level, and character creation time, then use Change avatar frame to apply an animated frame to your avatar on this site.'
     },
     {
-      title: 'Update pop-ups can be turned off permanently.',
-      text: 'Dismiss the pop-up for this version or turn it off for all future versions. You can still open Release history from More.'
+      title: 'A dedicated Data backup page.',
+      text: 'Data backup in the desktop sidebar now brings together automatic backups for outfits, home schemes, and camera parameters. The home page alerts you when backups are not enabled or need attention.'
     },
     {
-      title: 'Improved everyday use.',
-      text: 'Improved thumbnail loading in Recently Deleted, capture action parsing, data imports, and backup restoration. If an export of camera parameters fails partway through, you can still download completed files from the notification.'
+      title: 'Drag the image preview toolbar.',
+      text: 'On desktop, drag the image preview toolbar and release it to dock at the top or bottom. It partially hides to keep photos clear and expands when you hover over it.'
+    },
+    {
+      title: 'Refined mobile navigation and interface details.',
+      text: 'Selected mobile navigation icons now enlarge, with improved press and bounce feedback. Dialogs, buttons, and menus have a more consistent appearance.'
+    },
+    {
+      title: 'Game version 3.0 content updates.',
+      text: 'Lucky Pull Times has been updated for game version 3.0. Clothing and makeup catalogs and other resources for game version 3.0 will be added gradually.'
+    },
+    {
+      title: 'The toolkit has a new address.',
+      text: 'New address: nikkicube.cc.cd. Export all data from the old site before importing it into the new site; local data is not automatically shared between addresses.'
     }
   ],
   historyTitle: 'Previous releases',
   history: [
+    {
+      version: 'v2.9',
+      date: '2026.11.20',
+      items: [
+        {
+          title: 'Outfit summary has a new visual overview.',
+          text: 'See monthly save history, tag distribution, and outfit-code parsing progress. Select a tag to view its outfits. Clothing and makeup rankings now show the share of parsed outfits that use each item.'
+        },
+        {
+          title: 'Updated the More menu layout.',
+          text: 'On mobile, More now opens as a side panel. The menu groups actions under Data backup, App maintenance, and About NikkiCube, with Help and Release history at the bottom.'
+        },
+        {
+          title: 'Added a Back to top button.',
+          text: 'After scrolling down, select the arrow in the lower-right corner to return to the top.'
+        },
+        {
+          title: 'Reorganized Help.',
+          text: 'The new Help groups instructions by task so you can quickly find gestures, keyboard shortcuts, and installation steps.'
+        },
+        {
+          title: 'Update pop-ups can be turned off permanently.',
+          text: 'Dismiss the pop-up for this version or turn it off for all future versions. You can still open Release history from More.'
+        },
+        {
+          title: 'Improved everyday use.',
+          text: 'Improved thumbnail loading in Recently Deleted, capture action parsing, data imports, and backup restoration. If an export of camera parameters fails partway through, you can still download completed files from the notification.'
+        }
+      ]
+    },
     {
       version: 'v2.8',
       date: '2026.11.18',
