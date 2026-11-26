@@ -63,6 +63,7 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
       const existing = currentByName.get(photo.trashName)
       if (!existing) return photo
       existing.note = photo.note
+      existing.wasFavorite = photo.wasFavorite
       existing.noteKey = photo.noteKey
       existing.lastModified = photo.lastModified
       existing.size = photo.size
@@ -82,7 +83,6 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
     const movedIds = new Set(result.succeeded.map((photo) => photo.id))
     photos.value = photos.value.filter((photo) => !movedIds.has(photo.id))
     selectedIds.value = new Set([...selectedIds.value].filter((id) => !movedIds.has(id)))
-    favoriteIds.value = new Set([...favoriteIds.value].filter((id) => !movedIds.has(id)))
     mergeRecentlyDeleted(
       [...recentlyDeleted.value, ...result.movedPhotos].sort((a, b) => b.deletedAt - a.deletedAt)
     )
@@ -187,12 +187,6 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
       photos.value = [...photos.value, ...result.restoredPhotos].sort(
         (a, b) => b.timestamp - a.timestamp
       )
-      const restoredFavorites = new Set(favoriteIds.value)
-      result.succeeded.forEach((source, index) => {
-        const restored = result.restoredPhotos[index]
-        if (source.wasFavorite && restored) restoredFavorites.add(restored.id)
-      })
-      if (restoredFavorites.size !== favoriteIds.value.size) favoriteIds.value = restoredFavorites
       if (currentPreview.value && restoredTrashIds.has(currentPreview.value.id)) {
         currentPreview.value = keepPreviewOpen
           ? (recentlyDeleted.value[Math.min(previewIndex, recentlyDeleted.value.length - 1)] ??

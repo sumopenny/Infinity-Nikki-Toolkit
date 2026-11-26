@@ -75,6 +75,7 @@ describe('compatible album snapshots', () => {
   it('exports original bytes and notes in a downloadable ZIP without directory access', async () => {
     const photos = (await readCompatibleAlbum([file('a/photo.jpg', 'original photo bytes')])).photos
     photos[0].note = '备注'
+    photos[0].favorite = true
     const parts: File[] = []
     const progress = vi.fn()
     const originalFile = globalThis.File
@@ -92,7 +93,7 @@ describe('compatible album snapshots', () => {
       expect(strFromU8(entries['photo.jpg'])).toBe('original photo bytes')
       expect(JSON.parse(strFromU8(entries['album-metadata.json']))).toEqual({
         version: 1,
-        photos: { 'photo.jpg': { note: '备注' } }
+        photos: { 'photo.jpg': { note: '备注', favorite: true } }
       })
       expect(progress).toHaveBeenLastCalledWith(1)
     } finally {

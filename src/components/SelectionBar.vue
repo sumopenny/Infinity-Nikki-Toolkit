@@ -56,13 +56,20 @@ defineEmits<{
         <button
           v-if="mode === 'album' && !allSelectedFavorited"
           type="button"
-          :disabled="isBusy"
-          @click="$emit('favorite')"
+          :disabled="isBusy || readOnly"
+          :title="readOnly ? readOnlyHint : undefined"
+          @click="!readOnly && $emit('favorite')"
         >
           <Heart :size="16" aria-hidden="true" />
           <span>{{ messages.favorite }}</span>
         </button>
-        <button v-else type="button" :disabled="isBusy" @click="$emit('unfavorite')">
+        <button
+          v-else
+          type="button"
+          :disabled="isBusy || readOnly"
+          :title="readOnly ? readOnlyHint : undefined"
+          @click="!readOnly && $emit('unfavorite')"
+        >
           <HeartOff :size="16" aria-hidden="true" />
           <span>{{ messages.unfavorite }}</span>
         </button>

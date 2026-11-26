@@ -180,6 +180,96 @@ beforeEach(() => {
 })
 
 describe('App lifecycle coordination', () => {
+  it.each([true, false, undefined])(
+    'uses JSON favorite %s despite old browser storage and retains state on failure',
+    async (favorite) => {
+      const directory = { name: 'Album' } as FileSystemDirectoryHandle
+      const photo = {
+        id: 'old-photo',
+        favorite,
+        name: 'a.jpg',
+        directoryHandle: directory,
+        fileHandle: {} as FileSystemFileHandle,
+        url: null,
+        fileSizeText: '1 KB',
+        dateKey: '2026-11-26',
+        year: '2026',
+        monthDay: '11月26日',
+        displayDate: '2026年11月26日',
+        timeText: '12:00',
+        timestamp: 1
+      }
+      localStorage.setItem('infinity-nikki-favorite-photo-ids', JSON.stringify([photo.id]))
+      localStorage.setItem('infinity-nikki-favorite-photo-ids:item:' + photo.id, '1')
+      getSavedAlbumDirectoryHandleMock.mockResolvedValue(directory)
+      readAlbumDirectoryMock.mockResolvedValue({
+        directoryHandle: directory,
+        directoryName: directory.name,
+        photos: [photo]
+      })
+      const snapshot = await albumNotesApi.inspectAlbumNotes(async () => undefined)
+      const inspect = vi.spyOn(albumNotesApi, 'inspectAlbumNotes').mockResolvedValue(snapshot)
+      const save = vi.spyOn(albumNotesApi, 'savePhotoFavorites')
+      const wrapper = mount(App, {
+        attachTo: document.body,
+        global: { stubs: { PhotoGrid: true } }
+      })
+      try {
+        await flushPromises()
+        expect(save).not.toHaveBeenCalled()
+        const grid = wrapper.getComponent({ name: 'PhotoGrid' })
+        expect(grid.props('favoriteIds').has(photo.id)).toBe(Boolean(favorite))
+        save.mockRejectedValue(new Error('write denied'))
+        grid.vm.$emit('toggleFavorite', photo.id)
+        await flushPromises()
+        expect(grid.props('favoriteIds').has(photo.id)).toBe(Boolean(favorite))
+        expect(document.body.textContent).toContain('收藏未保存')
+        save.mockResolvedValue({
+          version: 1,
+          photos: { 'a.jpg': { note: '', favorite: !favorite } }
+        })
+        grid.vm.$emit('toggleFavorite', photo.id)
+        await flushPromises()
+        expect(grid.props('favoriteIds').has(photo.id)).toBe(!favorite)
+      } finally {
+        wrapper.unmount()
+        save.mockRestore()
+        inspect.mockRestore()
+      }
+    }
+  )
+
+  it('reads JSON favorites in read-only mode without changing them or writing the folder', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const save = vi.spyOn(albumNotesApi, 'savePhotoFavorites')
+    const wrapper = mount(App, { attachTo: document.body, global: { stubs: { PhotoGrid: true } } })
+    try {
+      await flushPromises()
+      const image = new File(['image'], '2026_11_26_12_00_00.png', { lastModified: 1 })
+      const metadata = new File([], 'album-metadata.json')
+      Object.defineProperty(metadata, 'text', {
+        value: async () =>
+          JSON.stringify({ version: 1, photos: { [image.name]: { note: '备注', favorite: true } } })
+      })
+      for (const file of [image, metadata])
+        Object.defineProperty(file, 'webkitRelativePath', { value: `Album/${file.name}` })
+      const input = wrapper.get<HTMLInputElement>('[data-testid="compatible-album-input"]')
+      Object.defineProperty(input.element, 'files', { value: [image, metadata] })
+      await input.trigger('change')
+      await flushPromises()
+      const grid = wrapper.getComponent({ name: 'PhotoGrid' })
+      const id = [...grid.props('favoriteIds')][0]
+      expect(id).toBeTruthy()
+      grid.vm.$emit('toggleFavorite', id)
+      await flushPromises()
+      expect(grid.props('favoriteIds').has(id)).toBe(true)
+      expect(save).not.toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+      save.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     localStorage.clear()
     // Existing lifecycle cases exercise the album workspace explicitly.
@@ -789,7 +879,16 @@ describe('App lifecycle coordination', () => {
       Object.defineProperty(file, 'webkitRelativePath', { value: '相册/' + file.name })
       return file
     })
-    Object.defineProperty(input.element, 'files', { value: files })
+    const metadata = new File([], 'album-metadata.json')
+    Object.defineProperty(metadata, 'webkitRelativePath', { value: '相册/' + metadata.name })
+    Object.defineProperty(metadata, 'text', {
+      value: async () =>
+        JSON.stringify({
+          version: 1,
+          photos: { [files[1].name]: { note: '', favorite: true } }
+        })
+    })
+    Object.defineProperty(input.element, 'files', { value: [...files, metadata] })
     await input.trigger('change')
     await flushPromises()
     const favorites = wrapper.get('.photo-favorites-button')
@@ -801,7 +900,6 @@ describe('App lifecycle coordination', () => {
       (grid.props('dateGroups') as { photos: { id: string }[] }[]).flatMap((group) => group.photos)
     expect(visiblePhotos()).toHaveLength(2)
     const saved = visiblePhotos()[0]!
-    grid.vm.$emit('toggleFavorite', saved.id)
     await favorites.trigger('click')
     expect(favorites.attributes('aria-pressed')).toBe('true')
     expect(visiblePhotos().map((photo) => photo.id)).toEqual([saved.id])
@@ -872,7 +970,7 @@ describe('App lifecycle coordination', () => {
       })
       await input.trigger('change')
       await flushPromises()
-      expect(wrapper.find('.album-note-warning').text()).toContain('相册备注未能读取')
+      expect(wrapper.find('.album-note-warning').text()).toContain('相册备注和收藏未能读取')
       expect(wrapper.getComponent({ name: 'PhotoGrid' }).props('dateGroups')).toEqual(
         originalGroups
       )

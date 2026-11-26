@@ -52,7 +52,6 @@ import {
   setDiagnosticModule
 } from './utils/errorReporting/errorReporter'
 import { DirectoryAccessError } from './utils/file-system/directoryErrors'
-import { usePhotoFavorites } from './composables/usePhotoFavorites'
 import { useAppPreferences } from './composables/useAppPreferences'
 import { readLocalStorage, writeLocalStorage, removeLocalStorage } from './utils/localStorage'
 import { useGameCleanup } from './composables/useGameCleanup'
@@ -229,7 +228,8 @@ import {
 import {
   PhotoMetadataError,
   readAlbumMetadata,
-  savePhotoNote
+  savePhotoNote,
+  savePhotoFavorites
 } from './utils/file-system/photoMetadata'
 import { readPhotoBlob, releasePhotoUrl, releasePhotoUrls } from './utils/file-system/photoUrl'
 import { preparePhotoTransfer, runPhotoTransfer } from './utils/file-system/photoTransfer'
@@ -341,7 +341,9 @@ watch(
 const selectedIds = ref<Set<string>>(new Set())
 const selectedOutfitIds = ref<Set<string>>(new Set())
 const trashSelectedIds = ref<Set<string>>(new Set())
-const favoriteIds = usePhotoFavorites(() => !suppressLocalPersistence)
+const favoriteIds = computed(
+  () => new Set(photos.value.filter((photo) => photo.favorite).map((photo) => photo.id))
+)
 const searchQuery = ref('')
 const noteDialogPhoto = ref<PhotoItem | null>(null)
 const noteDialogBaseline = ref('')
@@ -907,9 +909,6 @@ const {
   togglePhoto,
   toggleTrashPhoto,
   toggleAllTrash,
-  toggleFavorite,
-  favoriteSelectedPhotos,
-  unfavoriteSelectedPhotos,
   clearAlbumSelection,
   clearOutfitSelection,
   clearTrashSelection,
@@ -922,8 +921,7 @@ const {
   favoriteIds,
   selectedIds,
   selectedOutfitIds,
-  trashSelectedIds,
-  activeView
+  trashSelectedIds
 })
 const {
   mergeRecentlyDeleted,
@@ -1104,6 +1102,37 @@ async function replaceAlbum(
   publishStatus(nextStatus)
 }
 
+async function setAlbumFavorites(targets: PhotoItem[], favorite: boolean) {
+  const directory = albumDirectoryHandle.value
+  if (!directory || !targets.length || isCompatibleAlbum.value || notesBlocked.value || isAnyFileOperationBusy.value) return
+  await operations.run('photo-favorites', async () => {
+    try {
+      const metadata = await savePhotoFavorites(
+        directory,
+        targets.map((photo) => ({ name: photo.name, favorite, expected: photo.favorite }))
+      )
+      for (const photo of targets) photo.favorite = metadata.photos[photo.name]?.favorite
+    } catch (error) {
+      showStatus({
+        message:
+          language.value === 'zh'
+            ? '收藏未保存，原状态已保留。请检查目录权限或相册 JSON；文件有变化时请刷新相册后重试。'
+            : 'Favorites were not saved; the previous state is retained. Check folder permissions or album JSON, and refresh the album if the file changed.',
+        tone: 'error'
+      })
+      captureDiagnosticError(error, { module: 'album', action: 'photo-favorites' })
+    } finally {
+      if (directory === albumDirectoryHandle.value)
+        albumNotes.value = await inspectAlbumNotes(directory)
+    }
+  })
+}
+function toggleFavorite(id: string) {
+  return setAlbumFavorites(
+    photos.value.filter((photo) => photo.id === id),
+    !favoriteIds.value.has(id)
+  )
+}
 const { refreshAlbum, scheduleFocusRefresh, invalidatePendingRefreshes, suppressNextFocusRefresh } =
   useDirectoryRefresh({
     directory: () => albumDirectoryHandle.value,
@@ -1236,7 +1265,6 @@ async function loadCompatibleAlbum(event: Event) {
     isNoteDialogVisible.value = false
     noteDialogPhoto.value = null
     writeLocalStorage(ALBUM_ACCESS_MODE_KEY, 'compatible')
-    showStatus({ message: compatibleMessages.value.hint, tone: 'success' })
   } catch (error) {
     publishStatus(createErrorStatus(error, { type: 'readFailed' }))
   } finally {
@@ -3159,8 +3187,8 @@ function importAllDataFromMenu() {
             ? toggleAllOutfits()
             : toggleAll()
       "
-      @favorite="favoriteSelectedPhotos"
-      @unfavorite="unfavoriteSelectedPhotos"
+      @favorite="setAlbumFavorites(scopedSelectedPhotos, true)"
+      @unfavorite="setAlbumFavorites(scopedSelectedPhotos, false)"
       @delete-related="deleteMatchingLowQualityPhotos"
       @delete="
         activeView === 'trash'

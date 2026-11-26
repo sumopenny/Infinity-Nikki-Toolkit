@@ -123,7 +123,13 @@ describe('photo transfer', () => {
     })
     expect(result.cancelled).toBe(true)
     expect(result.succeeded).toBeGreaterThanOrEqual(1)
-    expect(target.files.size).toBe(result.succeeded)
+    expect([...target.files.keys()].filter((name) => name.endsWith('.jpg'))).toHaveLength(
+      result.succeeded
+    )
+    const metadata = JSON.parse(
+      await (await target.files.get('album-metadata.json')!.getFile()).text()
+    )
+    expect(Object.keys(metadata.photos)).toHaveLength(result.succeeded)
   })
 })
 

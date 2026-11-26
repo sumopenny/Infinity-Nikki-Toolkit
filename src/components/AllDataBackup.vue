@@ -151,7 +151,7 @@ function resultSummary(results: ModuleImportResult[]) {
           : '') +
         (result.error ? t('；模块未完整完成：', '; module incomplete: ') + result.error : '')
     )
-    .join('；')
+    .join('\n')
 }
 async function importData(event: Event) {
   const input = event.target as HTMLInputElement,
@@ -186,9 +186,9 @@ async function importData(event: Event) {
           resolveChoices = resolve
         })
       },
-      (module) => {
+      () => {
+        if (!started) emit('status', t('正在导入…', 'Importing…'), 'info', true)
         started = true
-        emit('status', t('正在导入', 'Importing ') + moduleName(module) + '…', 'info', true)
       },
       (value) => {
         if (disposed) return Promise.resolve(null)

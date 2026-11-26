@@ -538,10 +538,12 @@ onUnmounted(() => {
               v-if="mode === 'album'"
               type="button"
               :class="{ active: isFavorite }"
-              :title="isFavorite ? messages.removeFavorite : messages.favorite"
+              :title="
+                readOnly ? readOnlyHint : isFavorite ? messages.removeFavorite : messages.favorite
+              "
               :aria-label="isFavorite ? messages.removeFavorite : messages.favorite"
-              :disabled="photoActionsDisabled"
-              @click="!photoActionsDisabled && emit('toggleFavorite')"
+              :disabled="photoActionsDisabled || readOnly"
+              @click="!readOnly && !photoActionsDisabled && emit('toggleFavorite')"
             >
               <Heart :size="18" :fill="isFavorite ? 'currentColor' : 'none'" />
             </button>

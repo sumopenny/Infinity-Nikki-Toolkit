@@ -20,15 +20,15 @@ const summary = computed(() => {
       : 'Photos opened. A pending file remains from a previous save.'
   if (main.state === 'partial')
     return zh.value
-      ? `照片已打开。有 ${main.badEntries} 条备注无效，其余备注已显示。`
-      : `Photos opened. ${main.badEntries} invalid note entries were skipped.`
+      ? `照片已打开。有 ${main.badEntries} 条相册数据无效，其余有效数据已显示。`
+      : `Photos opened. ${main.badEntries} invalid metadata entries were skipped.`
   if (main.state === 'unsupported')
     return zh.value
-      ? '照片已打开。当前版本无法读取这个版本的相册备注。'
-      : 'Photos opened. This version of the album notes is unsupported.'
+      ? '照片已打开。当前版本无法读取这个版本的相册备注和收藏。'
+      : 'Photos opened. This version of the album metadata is unsupported.'
   return zh.value
-    ? '照片已打开，但相册备注未能读取。'
-    : 'Photos opened, but album notes could not be loaded.'
+    ? '照片已打开，但相册备注和收藏未能读取。'
+    : 'Photos opened, but album metadata could not be loaded.'
 })
 </script>
 
@@ -36,14 +36,16 @@ const summary = computed(() => {
   <aside class="album-note-warning" role="status">
     <strong>{{ summary }}</strong>
     <span>{{
-      zh ? '处理备注文件前，备注和回收站写入已暂停。' : 'Note edits and trash changes are paused.'
+      zh
+        ? '处理相册 JSON 前，备注、收藏和回收站写入已暂停。'
+        : 'Note, favorite and trash changes are paused.'
     }}</span>
     <span v-if="snapshot.previewName"
-      >{{ zh ? '当前展示副本中的备注：' : 'Previewing notes from '
+      >{{ zh ? '当前展示副本中的备注和收藏：' : 'Previewing metadata from '
       }}{{ snapshot.previewName }}</span
     >
     <div v-for="file in candidates" :key="file.name">
-      {{ zh ? '发现可恢复的备注' : 'Recoverable notes' }} · {{ file.name }} ·
+      {{ zh ? '发现可恢复的相册数据' : 'Recoverable metadata' }} · {{ file.name }} ·
       {{ Object.keys(file.metadata.photos).length }} {{ zh ? '条' : 'entries' }} ·
       {{ new Date(file.modified).toLocaleString(zh ? 'zh-CN' : 'en') }}
       <button
@@ -68,8 +70,8 @@ const summary = computed(() => {
     }}</small>
     <small v-else-if="!candidates.length && snapshot.main.state !== 'valid'">{{
       zh
-        ? '请备份原备注文件，修复后重新打开相册。'
-        : 'Back up the original notes file, repair it and reopen the album.'
+        ? '请备份原相册 JSON，修复后重新打开相册。'
+        : 'Back up the original metadata file, repair it and reopen the album.'
     }}</small>
   </aside>
 </template>

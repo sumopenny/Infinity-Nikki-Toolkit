@@ -26,7 +26,7 @@ vi.mock('../../src/utils/file-system/photoUrl', () => ({ releasePhotoUrl: vi.fn(
 beforeEach(() => vi.resetAllMocks())
 
 function photo(id: string): PhotoItem {
-  return { id, name: `${id}.jpg`, timestamp: 1, url: null } as PhotoItem
+  return { id, favorite: true, name: `${id}.jpg`, timestamp: 1, url: null } as PhotoItem
 }
 function trash(id: string): RecentlyDeletedPhoto {
   return {
@@ -41,7 +41,9 @@ function setup() {
   const recentlyDeleted = ref<RecentlyDeletedPhoto[]>([])
   const selectedIds = ref(new Set(['a', 'b']))
   const trashSelectedIds = ref(new Set<string>())
-  const favoriteIds = ref(new Set(['a', 'b', 'other-album']))
+  const favoriteIds = computed(
+    () => new Set(photos.value.filter((photo) => photo.favorite).map((photo) => photo.id))
+  )
   const currentPreview = ref<PhotoDisplayItem | null>(photos.value[0])
   const activeOperation = ref<ActiveOperation | null>(null)
   const statusState = ref<StatusState>({ type: 'initial' })
@@ -89,7 +91,7 @@ it('updates only successfully moved photos, preserves failed selections and adva
   await s.actions.movePhotosToTrash(s.photos.value, true)
   expect(s.photos.value.map((p) => p.id)).toEqual(['b'])
   expect([...s.selectedIds.value]).toEqual(['b'])
-  expect([...s.favoriteIds.value]).toEqual(['b', 'other-album'])
+  expect([...s.favoriteIds.value]).toEqual(['b'])
   expect(s.currentPreview.value?.id).toBe('b')
   expect(s.recentlyDeleted.value.map((p) => p.id)).toEqual(['ta'])
   expect(s.activeOperation.value).toBeNull()
@@ -141,19 +143,13 @@ it('publishes one favorite update for a mixed restore batch and preserves unrela
     restoredPhotos: [
       photo('restored-first'),
       photo('restored-second'),
-      photo('restored-unstarred')
+      { ...photo('restored-unstarred'), favorite: false }
     ],
     failedNames: [failed.name]
   })
   try {
     await s.actions.restoreTrashPhotos(s.recentlyDeleted.value)
-    expect([...s.favoriteIds.value]).toEqual([
-      'a',
-      'b',
-      'other-album',
-      'restored-first',
-      'restored-second'
-    ])
+    expect([...s.favoriteIds.value]).toEqual(['a', 'b', 'restored-first', 'restored-second'])
     expect(changed).toHaveBeenCalledOnce()
     expect(s.recentlyDeleted.value.map((item) => item.id)).toEqual(['failed'])
   } finally {

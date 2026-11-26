@@ -1429,7 +1429,7 @@
   }
   .photo-note-edit,
   .photo-params-parse,
-  .favorite-heart {
+  .photo-card .favorite-heart {
     opacity: 1;
   }
   .photo-params-parse {

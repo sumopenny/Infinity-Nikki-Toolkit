@@ -1,4 +1,4 @@
-// 相片元数据：负责 album-metadata.json 的读取、校验和备注保存。
+// 相片元数据：负责 album-metadata.json 的读取、校验及备注和收藏保存。
 import { reportError } from '../errorReporting/errorReporter'
 
 export const PHOTO_NOTE_LIMIT = 15
@@ -15,7 +15,7 @@ export class PhotoMetadataError extends Error {
 
 export interface AlbumMetadata {
   version: 1
-  photos: Record<string, { note: string }>
+  photos: Record<string, { note: string; favorite?: boolean }>
 }
 
 export function normalizePhotoNote(value: unknown): string {
@@ -85,7 +85,11 @@ function decodeNotes(text: string) {
   }
   if (!object(data.photos)) return result
   for (const [key, value] of Object.entries(data.photos)) {
-    if (object(value) && typeof value.note === 'string')
+    if (
+      object(value) &&
+      typeof value.note === 'string' &&
+      (value.favorite === undefined || typeof value.favorite === 'boolean')
+    )
       result.metadata.photos[key] = { ...value, note: value.note }
     else result.badEntries++
   }
@@ -167,8 +171,8 @@ export async function readAlbumMetadata(
     version: 1,
     photos: Object.fromEntries(
       Object.entries(metadata.photos)
-        .map(([key, value]) => [key, { note: normalizePhotoNote(value.note) }] as const)
-        .filter(([, value]) => value.note)
+        .map(([key, value]) => [key, { ...value, note: normalizePhotoNote(value.note) }] as const)
+        .filter(([, value]) => value.note || value.favorite !== undefined)
     )
   }
 }
@@ -307,19 +311,26 @@ export async function transferPhotoNote(
   from: string | string[],
   to: string | null,
   fallback: string,
-  removeSource: () => Promise<void>
+  removeSource: () => Promise<void>,
+  fallbackFavorite?: boolean
 ): Promise<string> {
   const transfer = async () => {
     const baseline = await writableSnapshot(directory)
     const original = baseline.metadata
     const keys = Array.isArray(from) ? from : [from]
     const note = normalizePhotoNote(original.photos[keys[0]]?.note ?? fallback)
+    const favorite = original.photos[keys[0]]?.favorite ?? fallbackFavorite
     const next: AlbumMetadata = { version: 1, photos: { ...original.photos } }
     for (const key of keys) delete next.photos[key]
     if (to) {
       delete next.photos[to]
       // 空备注也保留回收键，区分新回收记录与旧版按原名保存的备注。
-      if (note || to.startsWith('trash/')) next.photos[to] = { note }
+      if (note || favorite !== undefined || to.startsWith('trash/'))
+        next.photos[to] = {
+          ...original.photos[keys[0]],
+          note,
+          ...(favorite === undefined ? {} : { favorite })
+        }
     }
     const changed = JSON.stringify(next) !== JSON.stringify(original)
     if (changed && !navigator.locks?.request) throw new PhotoMetadataError('lockUnavailable')
@@ -349,7 +360,7 @@ export async function transferPhotoNote(
 /** 回收站须保留空备注键，以识别已迁移的新记录。 */
 export async function readTrashNotes(
   directory: FileSystemDirectoryHandle
-): Promise<Record<string, { note: string }>> {
+): Promise<AlbumMetadata['photos']> {
   return (await inspectAlbumNotes(directory)).metadata.photos
 }
 
@@ -377,9 +388,39 @@ export async function savePhotoNote(
     }
     const normalized = normalizePhotoNote(note)
     // 保留其他照片的原始备注，只修改本次目标，避免顺手清洗造成数据损失。
-    metadata.photos = { ...metadata.photos, [photoName]: { note: normalized } }
-    if (!normalized) delete metadata.photos[photoName]
+    metadata.photos = {
+      ...metadata.photos,
+      [photoName]: { ...metadata.photos[photoName], note: normalized }
+    }
+    if (!normalized && metadata.photos[photoName].favorite === undefined)
+      delete metadata.photos[photoName]
     await writeMetadata(directory, metadata, snapshot.main.text)
     return normalized
+  })
+}
+
+/** 批量收藏共用备注的锁、冲突检查及可恢复写入。 */
+export async function savePhotoFavorites(
+  directory: FileSystemDirectoryHandle,
+  changes: { name: string; favorite: boolean; expected?: boolean; note?: string }[]
+): Promise<AlbumMetadata> {
+  if (!navigator.locks?.request) throw new PhotoMetadataError('lockUnavailable')
+  return navigator.locks.request(METADATA_WRITE_LOCK, async () => {
+    const snapshot = await writableSnapshot(directory)
+    const metadata = snapshot.metadata
+    let changed = false
+    for (const change of changes) {
+      const current = metadata.photos[change.name]
+      if (current?.favorite !== change.expected) throw new PhotoMetadataError('changed')
+      if (current?.favorite === change.favorite && change.note === undefined) continue
+      metadata.photos[change.name] = {
+        ...current,
+        favorite: change.favorite,
+        note: change.note === undefined ? (current?.note ?? '') : normalizePhotoNote(change.note)
+      }
+      changed = true
+    }
+    if (changed) await writeMetadata(directory, metadata, snapshot.main.text)
+    return metadata
   })
 }

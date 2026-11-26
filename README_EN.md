@@ -177,11 +177,12 @@ The top-right album menu shows the current character’s nickname, avatar, level
 
 If normal authorization cannot open your game album, choose **Compatibility open (read-only)** from the current album menu or empty album page, then select the folder directly containing the photos. Files are read locally for this session, without uploading photos or changing the source folder.
 
-- Browse, filter, preview, favorite, parse parameters, and view existing notes. Enter a UID manually to parse parameters without X6Game authorization.
-- Only root images are shown; subfolders and `trash` images are excluded. Export downloads ZIP files containing photos and notes, split into parts of at most 128 MiB; individual photos are limited to 64 MiB.
-- Importing into the source folder, editing notes, deleting, restoring, and Special Cleanup are unavailable. Switch to normal directory authorization for these actions.
+- Browse, filter, preview, parse parameters, and view existing favorites and notes. Enter a UID manually to parse parameters without X6Game authorization.
+- Only root images are shown; subfolders and `trash` images are excluded. Export downloads ZIP files containing photos, notes, and favorites, split into parts of at most 128 MiB; individual photos are limited to 64 MiB.
+- Importing into the source folder, editing favorites or notes, deleting, restoring, and Special Cleanup are unavailable. Switch to normal directory authorization for these actions.
 - Use **Select folder again** for new photos. Reloading the page or reopening the site also requires reselection. Canceling, selecting an empty folder, or a read failure preserves the current album. The saved normal directory authorization is retained.
-- Favorites use relative paths, sizes, and modification times; identical metadata in same-named folder copies cannot be distinguished. Compatibility and normal mode photo favorites are separate. Original album photos are not persisted in browser storage.
+- Favorites and notes are read from the same `album-metadata.json` in both normal and read-only modes. Read-only mode cannot save changes. Original album photos are not persisted in browser storage.
+- Normal mode saves favorites and notes together in that JSON, so another browser can read them by opening the same album. This new site does not read or migrate old browser favorites. Failed writes retain the previous UI state; follow the top notice to handle damaged JSON or recovery files.
 
 #### Photo controls
 

@@ -18,7 +18,11 @@ export async function exportCompatiblePhotos(
   for (const photo of photos) {
     throwIfSignalAborted(signal)
     items.push({
-      record: { name: photo.name, note: photo.note ?? '' },
+      record: {
+        name: photo.name,
+        note: photo.note ?? '',
+        ...(photo.favorite === undefined ? {} : { favorite: photo.favorite })
+      },
       files: [{ name: photo.name, blob: await readPhotoFile(photo) }]
     })
   }
@@ -26,7 +30,7 @@ export async function exportCompatiblePhotos(
     items,
     (records) => ({
       version: 1,
-      photos: Object.fromEntries(records.map((record) => [record.name, { note: record.note }]))
+      photos: Object.fromEntries(records.map(({ name, ...metadata }) => [name, metadata]))
     }),
     'album-metadata.json',
     HOME_BACKUP_LIMITS

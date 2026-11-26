@@ -1053,7 +1053,7 @@
   opacity: 1;
 }
 
-.favorite-heart {
+.photo-card .favorite-heart {
   position: absolute;
   z-index: 5;
   top: 8px;
@@ -1062,7 +1062,7 @@
 }
 
 .photo-card:hover .favorite-heart,
-.favorite-heart.active {
+.photo-card .favorite-heart.active {
   opacity: 1;
 }
 

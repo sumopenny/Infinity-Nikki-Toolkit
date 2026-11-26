@@ -27,7 +27,7 @@ export async function readCompatibleAlbum(files: File[]): Promise<CompatibleAlbu
     photos.push({
       source: 'file',
       file,
-      // 浏览器不提供绝对路径：按相对路径、大小、修改时间区分快照；完全相同的副本共用收藏。
+      // 浏览器不提供绝对路径：按相对路径、大小、修改时间区分快照。
       id: `compat:${JSON.stringify([file.webkitRelativePath, file.size, file.lastModified])}`,
       name: file.name,
       url: null,
@@ -35,6 +35,7 @@ export async function readCompatibleAlbum(files: File[]): Promise<CompatibleAlbu
       lastModified: file.lastModified,
       fileSizeText: formatFileSize(file.size),
       note: normalizePhotoNote(metadata.photos[file.name]?.note ?? ''),
+      favorite: metadata.photos[file.name]?.favorite,
       ...parsed
     })
   }

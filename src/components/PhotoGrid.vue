@@ -215,8 +215,15 @@ function handleFavoriteClick(photoId: string, event: MouseEvent) {
               :aria-label="
                 favoriteIds.has(photo.id) ? messages.removeFavorite : messages.addFavorite
               "
-              :title="favoriteIds.has(photo.id) ? messages.removeFavorite : messages.addFavorite"
-              @click.stop="handleFavoriteClick(photo.id, $event)"
+              :disabled="readOnly"
+              :title="
+                readOnly
+                  ? readOnlyHint
+                  : favoriteIds.has(photo.id)
+                    ? messages.removeFavorite
+                    : messages.addFavorite
+              "
+              @click.stop="!readOnly && handleFavoriteClick(photo.id, $event)"
             >
               <Heart
                 :size="17"

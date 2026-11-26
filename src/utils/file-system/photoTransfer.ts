@@ -6,6 +6,7 @@ import { reportError as captureDiagnosticError } from '../errorReporting/errorRe
 import type { PhotoItem } from '../photoGrouping'
 import { runWithConcurrency } from '../concurrency'
 import { withPhotoWriteLock } from './photoWriteLock'
+import { savePhotoFavorites } from './photoMetadata'
 
 export const PHOTO_IMPORT_CONCURRENCY = 3
 export const PHOTO_EXPORT_CONCURRENCY = 8
@@ -224,6 +225,9 @@ async function runPhotoExport(
     async ({ photo, name }) => {
       try {
         await copyPhoto(directory, name, photo)
+        await savePhotoFavorites(directory, [
+          { name, favorite: photo.favorite ?? false, note: photo.note ?? '' }
+        ])
         state.succeeded += 1
         state.succeededPhotos.push(photo)
       } catch (error) {
