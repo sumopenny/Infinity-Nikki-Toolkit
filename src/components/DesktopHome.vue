@@ -436,6 +436,7 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
 @media (hover: hover) and (pointer: fine) {
   .home-overview button:hover:not(:disabled) .home-overview-icon {
     transform: translateY(-2px) scale(1.04);
+    background: var(--overview-icon-bg);
     background: color-mix(in srgb, var(--overview-icon-bg) 88%, var(--overview-icon));
   }
 }

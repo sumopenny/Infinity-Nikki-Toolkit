@@ -1,3 +1,4 @@
+import { withCatalogResources } from '../helpers/catalogFetch'
 import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -17,16 +18,8 @@ import { parseDataPreview } from '../../src/utils/unifiedDataImport'
 import * as unifiedDataImport from '../../src/utils/unifiedDataImport'
 import { updateWardrobe } from '../../src/utils/wardrobe/wardrobeStorage'
 
-const nativeFetch = globalThis.fetch
-// Node fetch rejects AbortSignals from jsdom. Use the embedded catalog fixtures directly.
-const fetchFixture: typeof fetch = (input, init) =>
-  typeof input === 'string' && input.startsWith('data:application/json;')
-    ? nativeFetch(input)
-    : nativeFetch(input, init)
-
 let wrapper: VueWrapper
 beforeEach(async () => {
-  vi.stubGlobal('fetch', fetchFixture)
   localStorage.clear()
   await clearAllBrowserData()
   vi.stubGlobal('matchMedia', () => ({
@@ -222,7 +215,9 @@ it.each([
       return snapshot
     })
     const fetchMock = vi
-      .fn(fetchFixture)
+      .fn<typeof fetch>(async () => {
+        throw new Error('Unexpected service request')
+      })
       .mockResolvedValueOnce(
         Response.json(
           { code: 0, data: { role: { uid: 123456, zone_id: zone } } },
@@ -240,7 +235,7 @@ it.each([
           { headers: { 'cache-control': 'no-store' } }
         )
       )
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withCatalogResources(fetchMock))
     await selectRegion(String(region))
     await pasteCredentials()
     submit().click()

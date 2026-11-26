@@ -1,14 +1,15 @@
+import { withCatalogResources } from '../helpers/catalogFetch'
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { loadOutfitText } from '../../src/utils/outfit/outfitText'
 import zhDescriptions from '../../src/data/outfits/locales/zh/outfitDescriptions.json'
 import enDescriptions from '../../src/data/outfits/locales/en/outfitDescriptions.json'
 afterEach(() => vi.unstubAllGlobals())
 describe('local outfit text', () => {
-  it('uses GitHub names and extracted bilingual descriptions without any fetch', async () => {
+  it('uses GitHub names and extracted bilingual descriptions without upstream network requests', async () => {
     const fetcher = vi.fn(() => {
       throw new Error('Unexpected network')
     })
-    vi.stubGlobal('fetch', fetcher)
+    vi.stubGlobal('fetch', withCatalogResources(fetcher))
     expect(await loadOutfitText('10001', 'zh')).toMatchObject({
       id: 10001,
       name: '绽响黎明前',

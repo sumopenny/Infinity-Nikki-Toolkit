@@ -1,3 +1,4 @@
+import { withCatalogResources } from '../helpers/catalogFetch'
 import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import 'fake-indexeddb/auto'
 import { mount, flushPromises, DOMWrapper, type VueWrapper } from '@vue/test-utils'
@@ -65,7 +66,7 @@ beforeEach(async () => {
   }))
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => new Response(JSON.stringify({ description: '' })))
+    withCatalogResources(vi.fn(async () => Response.json({ description: '' })))
   )
   if (!document.getElementById('wardrobe-mobile-category-target')) {
     const target = document.createElement('div')
@@ -112,11 +113,11 @@ describe('personal wardrobe interactions', () => {
     )!
     expect(switchButton).not.toBeNull()
     expect(switchButton.disabled).toBe(true)
-    expect(target.querySelector('.wardrobe-mobile-summary strong')?.textContent).toBe('—')
+    expect(wrapper.get('.wardrobe-mobile-summary strong').text()).toBe('—')
     finish(saved)
     await vi.waitFor(() => expect(switchButton.disabled).toBe(false))
     expect(target.querySelector('.wardrobe-mobile-category-switch')).toBe(switchButton)
-    expect(target.querySelector('.wardrobe-mobile-summary strong')?.textContent).not.toBe('—')
+    expect(wrapper.get('.wardrobe-mobile-summary strong').text()).not.toBe('—')
   })
   it('keeps the English name and expansion controls separate and opens details from the name', async () => {
     await wrapper.setProps({ searchQuery: '10347', language: 'en' })

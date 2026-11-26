@@ -23,4 +23,4 @@
 
 单元测试使用 `fake-indexeddb`。删除测试数据库前先调用 `closeDatabase`，避免共享连接阻塞清理。`idbConnection.test.ts` 覆盖连接复用、异常终止、升级阻塞、高版本保护及日志失败回滚。
 
-运行 `npm run build`、`npm run test:without-d1`；D1 相关测试必须使用隔离本地数据库。Node 26 与当前 Vitest/jsdom 组合若出现全局 `localStorage` 不可用，可仅对测试进程设置 `NODE_OPTIONS=--no-experimental-webstorage`，或使用项目支持的 Node LTS。
+运行 `npm run build`、`npm run test:without-d1`；D1 相关测试必须使用隔离本地数据库。jsdom 测试通过 `tests/setupBrowser.ts` 统一使用浏览器存储及兼容其 AbortSignal 的 undici 请求实现，无需设置 `NODE_OPTIONS`；图鉴资源与外部接口模拟通过 `tests/helpers/catalogFetch.ts` 分离。

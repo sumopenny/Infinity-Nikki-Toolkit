@@ -1,3 +1,4 @@
+import { withCatalogResources } from '../helpers/catalogFetch'
 import { closeDatabase } from '../../src/utils/file-system/database'
 import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import * as diagnosticReporter from '../../src/utils/errorReporting/errorReporter'
@@ -153,18 +154,19 @@ function latestNotice(wrapper: ReturnType<typeof mount>) {
 function mockPearpal(snapshot: unknown, uid = '123456') {
   const compressed = encodeSnappyLiteral(JSON.stringify(snapshot))
   const fetchMock = vi.fn<typeof fetch>(async (input) => {
-    const action = new URL(String(input), 'https://local.test').searchParams.get('action')
-    if (action === 'verify') {
+    const path = new URL(String(input), 'https://local.test').pathname
+    if (path === '/v1/strategy/user/info/get') {
       return Response.json(
         { code: 0, data: { role: { uid, zone_id: 1 } } },
         { headers: { 'cache-control': 'no-store' } }
       )
     }
+    if (path !== '/v1/strategy/user/note/book/info') throw new Error(`Unexpected request: ${path}`)
     return new Response(compressed.buffer as ArrayBuffer, {
       headers: { 'cache-control': 'no-store', 'content-type': 'application/octet-stream' }
     })
   })
-  vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('fetch', withCatalogResources(fetchMock))
   return fetchMock
 }
 

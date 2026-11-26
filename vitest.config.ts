@@ -17,6 +17,7 @@ export default defineConfig({
     }
   ],
   test: {
+    setupFiles: ['./tests/setupBrowser.ts'],
     environment: 'node',
     environmentMatchGlobs: [
       ['tests/components/**', 'jsdom'],

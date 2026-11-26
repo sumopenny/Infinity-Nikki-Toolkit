@@ -89,7 +89,7 @@ describe('Lightbox preview navigation', () => {
     loadPhotoMock.mockReset()
   })
 
-  it('loads File photos and blocks destructive clicks and Delete while allowing favorites and parsing', async () => {
+  it('loads File photos and blocks all writes and Delete while allowing parsing', async () => {
     const photo = {
       ...createPhoto('photo.jpg'),
       source: 'file' as const,
@@ -122,7 +122,10 @@ describe('Lightbox preview navigation', () => {
       await wrapper.get(`[aria-label="${messages.zh.lightbox.parsePhoto}"]`).trigger('click')
       expect(wrapper.emitted('parsePhoto')).toHaveLength(1)
       await wrapper.get(`[aria-label="${messages.zh.lightbox.favorite}"]`).trigger('click')
-      expect(wrapper.emitted('toggleFavorite')).toHaveLength(1)
+      expect(
+        wrapper.get(`[aria-label="${messages.zh.lightbox.favorite}"]`).attributes('disabled')
+      ).toBeDefined()
+      expect(wrapper.emitted('toggleFavorite')).toBeUndefined()
       expect(
         wrapper.get(`[aria-label="${messages.zh.lightbox.editNote}"]`).attributes('disabled')
       ).toBeDefined()
