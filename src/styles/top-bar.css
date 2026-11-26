@@ -445,7 +445,7 @@
 .view-toggle-row {
   display: flex;
   gap: 6px;
-  padding: 2px 3px 0;
+  padding: 4px 3px 0;
 }
 
 .view-toggle-pill {
@@ -545,6 +545,17 @@
   padding: 15px 9px 4px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.surface-style-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.surface-style-hint {
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .author-social-links {

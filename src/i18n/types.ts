@@ -46,6 +46,7 @@ export interface FullLocaleMessages {
     clearDataBackup: string
     clearDataConfirm: string
     clearDataStatus: string
+    clearDataFailed: string
     languageUpdated: string
     themeUpdated: Record<ThemeMode, string>
     movingPhotosToTrash: string
@@ -81,7 +82,6 @@ export interface FullLocaleMessages {
     rememberedDirectory: (name: string) => string
     successStatus: (count: number, prefix: StatusPrefix) => string
     successSuffix: (suffix: StatusSuffix) => string
-    relatedCleanupCancelledStatus: string
     confirmRelatedCleanup: (
       count: number,
       missingDirectories: string[],
@@ -161,7 +161,10 @@ export interface FullLocaleMessages {
     closeDonate: string
     feedback: string
     feedbackTitle: string
-    feedbackOpenExternal: string
+    feedbackGuideTitle: string
+    feedbackTips: string[]
+    feedbackContactTitle: string
+    feedbackContactHint: string
     feedbackClose: string
     updateLog: string
     helpAbout: string

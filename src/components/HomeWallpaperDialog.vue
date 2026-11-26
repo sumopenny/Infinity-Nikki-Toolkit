@@ -48,128 +48,143 @@ function paste(event: ClipboardEvent) {
 </script>
 
 <template>
-  <Transition name="wallpaper-drawer">
-    <section
-      v-if="visible"
-      id="home-wallpaper-drawer"
-      class="home-wallpaper-drawer"
-      :aria-label="t('主页壁纸', 'Home wallpaper')"
-      @paste="paste"
-    >
-      <header class="wallpaper-header">
-        <h2>{{ t('主页壁纸', 'Home wallpaper') }}</h2>
-        <button type="button" class="wallpaper-reset" :disabled="uploading" @click="reset">{{
-          t('恢复默认', 'Restore default')
-        }}</button>
-        <button
-          type="button"
-          class="home-wallpaper-close"
-          :aria-label="t('收起', 'Collapse')"
-          @click="emit('close')"
-          ><ChevronDown :size="20"
-        /></button>
-      </header>
-      <div class="wallpaper-content">
-        <div
-          class="wallpaper-list"
-          :aria-label="t('壁纸列表', 'Wallpapers')"
-          @dragover.prevent
-          @drop.prevent="accept($event.dataTransfer?.files[0])"
-        >
+  <Teleport to="body">
+    <Transition name="wallpaper-drawer">
+      <section
+        v-if="visible"
+        id="home-wallpaper-drawer"
+        class="home-wallpaper-drawer"
+        :aria-label="t('主页壁纸', 'Home wallpaper')"
+        @paste="paste"
+      >
+        <header class="wallpaper-header">
+          <h2>{{ t('主页壁纸', 'Home wallpaper') }}</h2>
+          <button type="button" class="wallpaper-reset" :disabled="uploading" @click="reset">{{
+            t('恢复默认', 'Restore default')
+          }}</button>
           <button
-            v-for="item in homeWallpapers"
-            :key="item.id"
             type="button"
-            class="wallpaper-option"
-            :class="{ active: selected === item.id }"
-            :aria-pressed="selected === item.id"
-            :aria-label="language === 'zh' ? item.label : item.en"
-            :title="language === 'zh' ? item.label : item.en"
-            :disabled="uploading"
-            @click="select(item.id)"
+            class="home-wallpaper-close"
+            :aria-label="t('收起', 'Collapse')"
+            @click="emit('close')"
+            ><ChevronDown :size="20"
+          /></button>
+        </header>
+        <div class="wallpaper-content">
+          <div
+            class="wallpaper-list"
+            :aria-label="t('壁纸列表', 'Wallpapers')"
+            @dragover.prevent
+            @drop.prevent="accept($event.dataTransfer?.files[0])"
           >
-            <img v-image-skeleton :src="wallpaperUrl(item, true)" alt="" loading="lazy" />
-            <Check v-if="selected === item.id" class="wallpaper-check" :size="18" />
-            <span v-if="pending === item.id" class="wallpaper-loading">{{
-              t('加载中…', 'Loading…')
-            }}</span>
-          </button>
-          <p v-if="!homeWallpapers.length" class="wallpaper-muted">{{
-            t('精选壁纸暂未添加', 'Featured wallpapers coming later')
-          }}</p>
-          <button
-            v-if="customUrl"
-            type="button"
-            class="wallpaper-option"
-            :class="{ active: selected === 'custom' }"
-            :aria-pressed="selected === 'custom'"
-            :aria-label="t('自定义壁纸', 'Custom wallpaper')"
-            :disabled="uploading"
-            @click="select('custom')"
-          >
-            <img :src="customUrl" alt="" />
-            <Check v-if="selected === 'custom'" class="wallpaper-check" :size="18" />
-          </button>
-          <button
-            class="wallpaper-upload"
-            type="button"
-            :disabled="uploading"
-            :title="t('点击、拖拽或 Ctrl + V 粘贴图片', 'Choose, drop or paste an image')"
-            @click="input?.click()"
-          >
-            <ImagePlus :size="23" />
-            <span>{{
-              uploading
-                ? t('处理中…', 'Processing…')
-                : customUrl
-                  ? t('更换图片', 'Replace image')
-                  : t('自定义', 'Custom')
-            }}</span>
-          </button>
-          <input
-            ref="input"
-            type="file"
-            hidden
-            accept=".jpg,.jpeg,.png,.webp,.avif"
-            @change="chosen"
-          />
+            <button
+              v-for="item in homeWallpapers"
+              :key="item.id"
+              type="button"
+              class="wallpaper-option"
+              :class="{ active: selected === item.id }"
+              :aria-pressed="selected === item.id"
+              :aria-label="language === 'zh' ? item.label : item.en"
+              :title="language === 'zh' ? item.label : item.en"
+              :disabled="uploading"
+              @click="select(item.id)"
+            >
+              <img v-image-skeleton :src="wallpaperUrl(item, true)" alt="" loading="lazy" />
+              <Check v-if="selected === item.id" class="wallpaper-check" :size="18" />
+              <span v-if="pending === item.id" class="wallpaper-loading">{{
+                t('加载中…', 'Loading…')
+              }}</span>
+            </button>
+            <p v-if="!homeWallpapers.length" class="wallpaper-muted">{{
+              t('精选壁纸暂未添加', 'Featured wallpapers coming later')
+            }}</p>
+            <button
+              v-if="customUrl"
+              type="button"
+              class="wallpaper-option"
+              :class="{ active: selected === 'custom' }"
+              :aria-pressed="selected === 'custom'"
+              :aria-label="t('自定义壁纸', 'Custom wallpaper')"
+              :disabled="uploading"
+              @click="select('custom')"
+            >
+              <img :src="customUrl" alt="" />
+              <Check v-if="selected === 'custom'" class="wallpaper-check" :size="18" />
+            </button>
+            <button
+              class="wallpaper-upload"
+              type="button"
+              :disabled="uploading"
+              :title="t('点击、拖拽或 Ctrl + V 粘贴图片', 'Choose, drop or paste an image')"
+              @click="input?.click()"
+            >
+              <ImagePlus :size="23" />
+              <span>{{
+                uploading
+                  ? t('处理中…', 'Processing…')
+                  : customUrl
+                    ? t('更换图片', 'Replace image')
+                    : t('自定义', 'Custom')
+              }}</span>
+            </button>
+            <input
+              ref="input"
+              type="file"
+              hidden
+              accept=".jpg,.jpeg,.png,.webp,.avif"
+              @change="chosen"
+            />
+          </div>
+          <div class="wallpaper-controls">
+            <label class="wallpaper-lightness">
+              <span
+                >{{ t('文字明暗', 'Text lightness') }} <strong>{{ lightness }}%</strong></span
+              >
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                :value="lightness"
+                @input="setLightness(Number(($event.target as HTMLInputElement).value))"
+                @change="persist"
+              />
+              <span class="wallpaper-lightness-labels"
+                ><small>{{ t('深色', 'Dark') }}</small
+                ><small>{{ t('浅色', 'Light') }}</small></span
+              >
+            </label>
+            <label class="wallpaper-lightness">
+              <span
+                >{{ t('背景模糊度', 'Background blur') }} <strong>{{ blur }}px</strong></span
+              >
+              <input
+                type="range"
+                min="0"
+                max="20"
+                step="1"
+                :value="blur"
+                @input="setBlur(Number(($event.target as HTMLInputElement).value))"
+                @change="persist"
+              />
+              <span class="wallpaper-lightness-labels"
+                ><small>{{ t('清晰', 'Clear') }}</small
+                ><small>{{ t('模糊', 'Blurred') }}</small></span
+              >
+            </label>
+          </div>
         </div>
-        <div class="wallpaper-controls">
-        <label class="wallpaper-lightness">
-          <span
-            >{{ t('文字明暗', 'Text lightness') }} <strong>{{ lightness }}%</strong></span
-          >
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            :value="lightness"
-            @input="setLightness(Number(($event.target as HTMLInputElement).value))"
-            @change="persist"
-          />
-          <span class="wallpaper-lightness-labels"
-            ><small>{{ t('深色', 'Dark') }}</small
-            ><small>{{ t('浅色', 'Light') }}</small></span
-          >
-        </label>
-        <label class="wallpaper-lightness">
-          <span>{{ t('背景模糊度', 'Background blur') }} <strong>{{ blur }}px</strong></span>
-          <input type="range" min="0" max="20" step="1" :value="blur" @input="setBlur(Number(($event.target as HTMLInputElement).value))" @change="persist" />
-          <span class="wallpaper-lightness-labels"><small>{{ t('清晰', 'Clear') }}</small><small>{{ t('模糊', 'Blurred') }}</small></span>
-        </label>
-        </div>
-      </div>
-    </section>
-  </Transition>
+      </section>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
 .home-wallpaper-drawer {
-  position: absolute;
-  z-index: 2;
+  position: fixed;
+  z-index: 90;
   inset: auto 0 0;
-  max-height: 100%;
+  max-height: 100dvh;
   overflow: auto;
   padding: 16px clamp(18px, 3vw, 44px) 22px;
   border-top: 1px solid var(--line);
@@ -215,7 +230,7 @@ function paste(event: ClipboardEvent) {
 }
 .wallpaper-content {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(150px, 1fr);
+  grid-template-columns: minmax(0, 1fr) clamp(150px, 22.5vw, 310px);
   gap: 20px;
   align-items: center;
 }

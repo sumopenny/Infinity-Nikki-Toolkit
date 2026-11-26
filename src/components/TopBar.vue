@@ -13,6 +13,8 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } fr
 import {
   ArrowDown,
   CircleUserRound,
+  CircleCheck,
+  ArrowUpRight,
   BookHeart,
   Download,
   Upload,
@@ -98,6 +100,7 @@ const emit = defineEmits<{
   clearDirectory: []
   openCleanup: []
   openAvatarSimulator: []
+  editAvatarFrame: []
   openFortuneTime: []
   openParseTools: []
   clearCache: []
@@ -116,8 +119,11 @@ const emit = defineEmits<{
   updateSearch: [value: string]
 }>()
 
-// 问题反馈问卷地址：发布问卷星/腾讯问卷后，把链接替换到这里即可
-const FEEDBACK_URL = 'https://v.wjx.cn/vm/tUM7gga.aspx'
+const developerProfiles = {
+  douyin: 'https://v.douyin.com/20n3l83uJ40/',
+  xiaohongshu: 'https://xhslink.com/m/3IEU0XhZ6e',
+  bilibili: 'https://space.bilibili.com/3747574722858304'
+}
 
 const compact = useCompactLayout()
 const isArchiveView = computed(() =>
@@ -160,7 +166,6 @@ const showFeedback = ref(false)
 useBodyScrollLock(
   computed(() => showDonate.value || showFeedback.value || menuMotion.present.value)
 )
-const feedbackLoadFailed = ref(false)
 const headerRef = ref<HTMLElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const scrollableMenuContent = ref<HTMLElement | null>(null)
@@ -357,14 +362,9 @@ function selectLanguage(language: Language) {
   if (language !== props.language) emit('toggleLanguage')
 }
 
-/** 打开问题反馈弹窗并加载问卷。 */
+/** 打开问题反馈弹窗。 */
 function openFeedback() {
-  feedbackLoadFailed.value = false
   showFeedback.value = true
-}
-
-function handleFeedbackError() {
-  feedbackLoadFailed.value = true
 }
 
 /** 处理页面外点击和 Esc，关闭当前菜单或打赏/反馈弹窗。参数：event 为鼠标或键盘事件。 */
@@ -534,7 +534,7 @@ function openDonate() {
       <span class="header-star-hint" :title="messages.starHint">{{ messages.starHint }}</span>
       <a
         class="official-site-link"
-        href="https://nikki3.pages.dev/"
+        href="https://hello.nikkicube.cc.cd"
         target="_blank"
         rel="noopener noreferrer"
         :title="messages.officialSiteHint"
@@ -621,6 +621,7 @@ function openDonate() {
                 :uid="gameAlbumUid"
                 :profile="gameAlbumProfile"
                 :language="language"
+                @open-avatar-simulator="runMenuAction(() => emit('editAvatarFrame'))"
               />
               <div role="menu" :aria-label="messages.albumMenuAria">
                 <button
@@ -796,9 +797,14 @@ function openDonate() {
                     </button>
                   </div>
                 </div>
-                <div class="menu-section-label">{{
-                  language === 'zh' ? '风格' : 'Material style'
-                }}</div>
+                <div class="menu-section-label surface-style-heading">
+                  <span>{{ language === 'zh' ? '风格' : 'Material style' }}</span>
+                  <span class="surface-style-hint">{{
+                    language === 'zh'
+                      ? '不同浏览器的样式效果可能有所不同。'
+                      : 'Appearance may vary by browser.'
+                  }}</span>
+                </div>
                 <div
                   class="thumbnail-size-options surface-style-options"
                   role="group"
@@ -1148,7 +1154,7 @@ function openDonate() {
                   <h3 id="more-about-heading">{{ messages.aboutToolkit }}</h3>
                   <a
                     v-if="compact"
-                    href="https://nikki3.pages.dev/"
+                    href="https://hello.nikkicube.cc.cd"
                     target="_blank"
                     rel="noopener noreferrer"
                     @click="closeMenus"
@@ -1167,7 +1173,7 @@ function openDonate() {
                   <div class="author-social-links">
                     <a
                       class="author-social-link xiaohongshu-link"
-                      href="https://xhslink.com/m/3IEU0XhZ6e"
+                      :href="developerProfiles.xiaohongshu"
                       target="_blank"
                       rel="noopener noreferrer"
                       :title="messages.xiaohongshuAuthor"
@@ -1179,7 +1185,7 @@ function openDonate() {
                     </a>
                     <a
                       class="author-social-link douyin-link"
-                      href="https://v.douyin.com/20n3l83uJ40/"
+                      :href="developerProfiles.douyin"
                       target="_blank"
                       rel="noopener noreferrer"
                       :title="messages.douyinAuthor"
@@ -1191,7 +1197,7 @@ function openDonate() {
                     </a>
                     <a
                       class="author-social-link bilibili-link"
-                      href="https://space.bilibili.com/3747574722858304"
+                      :href="developerProfiles.bilibili"
                       target="_blank"
                       rel="noopener noreferrer"
                       :title="messages.bilibiliAuthor"
@@ -1326,23 +1332,51 @@ function openDonate() {
             </button>
           </header>
           <div class="feedback-dialog-body">
-            <iframe
-              class="feedback-iframe"
-              :src="FEEDBACK_URL"
-              :title="messages.feedbackTitle"
-              referrerpolicy="strict-origin-when-cross-origin"
-              @error="handleFeedbackError"
-            ></iframe>
-            <p v-if="feedbackLoadFailed" class="feedback-load-failed">{{
-              messages.feedbackOpenExternal
-            }}</p>
-            <a
-              class="feedback-external-link"
-              :href="FEEDBACK_URL"
-              target="_blank"
-              rel="noreferrer"
-              >{{ messages.feedbackOpenExternal }}</a
-            >
+            <section class="feedback-guide" aria-labelledby="feedback-guide-title">
+              <h3 id="feedback-guide-title">{{ messages.feedbackGuideTitle }}</h3>
+              <ul>
+                <li v-for="tip in messages.feedbackTips" :key="tip">
+                  <CircleCheck :size="18" aria-hidden="true" />
+                  <span>{{ tip }}</span>
+                </li>
+              </ul>
+            </section>
+            <section class="feedback-contact" aria-labelledby="feedback-contact-title">
+              <h3 id="feedback-contact-title">{{ messages.feedbackContactTitle }}</h3>
+              <div class="feedback-social-links">
+                <a
+                  :href="developerProfiles.douyin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :aria-label="messages.douyinAuthor"
+                >
+                  <Music2 :size="20" aria-hidden="true" />
+                  <span>{{ messages.douyin }}</span>
+                  <ArrowUpRight :size="16" aria-hidden="true" />
+                </a>
+                <a
+                  :href="developerProfiles.xiaohongshu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :aria-label="messages.xiaohongshuAuthor"
+                >
+                  <BookHeart :size="20" aria-hidden="true" />
+                  <span>{{ messages.xiaohongshu }}</span>
+                  <ArrowUpRight :size="16" aria-hidden="true" />
+                </a>
+                <a
+                  :href="developerProfiles.bilibili"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :aria-label="messages.bilibiliAuthor"
+                >
+                  <TvMinimal :size="20" aria-hidden="true" />
+                  <span>{{ messages.bilibili }}</span>
+                  <ArrowUpRight :size="16" aria-hidden="true" />
+                </a>
+              </div>
+              <p class="feedback-contact-hint">{{ messages.feedbackContactHint }}</p>
+            </section>
           </div>
         </section>
       </div>

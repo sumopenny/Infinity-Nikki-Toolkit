@@ -44,6 +44,7 @@ import { requestBlobDownload } from './utils/backup/downloadFallback'
 import { compatibleAlbumMessages, ALBUM_ACCESS_MODE_KEY } from './i18n/messages/compatibleAlbum'
 import { gameAlbumMessages } from './i18n/messages/gameAlbum'
 import { useGameAlbumProfiles } from './composables/useGameAlbumProfiles'
+import { useProfileAvatar, type ProfileAvatar } from './composables/useProfileAvatar'
 
 import {
   reportError as captureDiagnosticError,
@@ -100,7 +101,8 @@ const directoryBackupStatus = computed(() => {
   return { state: result.state, label: backupButtonStatusMessages[language.value][result.reason] }
 })
 import { invalidateCacheWrites } from './utils/cacheLifecycle'
-import { clearAllBrowserData, subscribeDatabaseVersionMismatch } from './utils/file-system/database'
+import { subscribeDatabaseVersionMismatch } from './utils/file-system/database'
+import { clearSiteData } from './utils/clearSiteData'
 
 import {
   computed,
@@ -146,6 +148,23 @@ import OutfitGuideDialog from './components/OutfitGuideDialog.vue'
 import OutfitParseDialog from './components/OutfitParseDialog.vue'
 import ParseToolsDialog from './components/ParseToolsDialog.vue'
 const isAvatarSimulatorVisible = ref(false)
+const profileAvatarEditor = shallowRef<{
+  url: string | null
+  saved?: ProfileAvatar | null
+  save: (avatar: ProfileAvatar) => void
+} | null>(null)
+const profileAvatars = useProfileAvatar()
+function openProfileAvatarEditor() {
+  const uid = gameAlbum.value?.uid
+  if (!uid) return
+  profileAvatars.load(uid)
+  profileAvatarEditor.value = {
+    url: gameAlbumProfile.value?.avatarUrl ?? null,
+    saved: profileAvatars.avatars.get(uid),
+    save: (avatar) => profileAvatars.save(uid, avatar)
+  }
+  isAvatarSimulatorVisible.value = true
+}
 const AvatarSimulatorDialog = lazyFeature(
   () => import('./components/AvatarSimulatorDialog.vue'),
   () => language.value,
@@ -440,15 +459,14 @@ const gameAlbumProfile = computed(() =>
 const gameAccountOptions = computed(() =>
   (gameAlbum.value?.accountUids ?? []).map((uid) => ({
     value: uid,
-    label: gameAlbumText.value.account(uid, gameAlbumProfiles.get(uid)?.nickname)
+    label: gameAccountLabel(uid)
   }))
 )
-watch(
-  () => gameAlbum.value?.accountUids,
-  (uids) => {
-    uids?.forEach(loadGameAlbumProfile)
-  }
-)
+function gameAccountLabel(uid: string) {
+  return /^\d+$/.test(uid)
+    ? gameAlbumText.value.account(uid, gameAlbumProfiles.get(uid)?.nickname)
+    : uid
+}
 const {
   state: photoTransfer,
   begin: beginPhotoTransfer,
@@ -957,6 +975,10 @@ const {
   openConfirmDialog
 })
 
+watch([() => gameAlbum.value?.accountUids, cleanupAccounts], (accountLists) => {
+  accountLists.forEach((uids) => uids?.forEach(loadGameAlbumProfile))
+})
+
 function openCleanupDialog() {
   if (isCompatibleAlbum.value) {
     showStatus({ message: compatibleMessages.value.writeDisabled, tone: 'info' })
@@ -1416,9 +1438,7 @@ async function clearData() {
       photoActionParsing.reset()
       photoParams.close()
       await invalidateCacheWrites()
-      await pauseBackupsForBrowserReset(() => clearAllBrowserData(), resetBaseline)
-      localStorage.clear()
-      sessionStorage.clear()
+      await pauseBackupsForBrowserReset(clearSiteData, resetBaseline)
       publishStatus({
         type: 'custom',
         message: locale.value.app.clearDataStatus,
@@ -1426,8 +1446,8 @@ async function clearData() {
       })
       // 整页重新初始化，避免收藏、筛选、目录句柄和解析器继续使用旧的内存状态。
       location.reload()
-    } catch (error) {
-      publishStatus(createErrorStatus(error, { type: 'readFailed' }))
+    } catch {
+      publishStatus({ type: 'custom', message: locale.value.app.clearDataFailed, tone: 'error' })
     } finally {
       suppressLocalPersistence = false
     }
@@ -2358,7 +2378,8 @@ function importAllDataFromMenu() {
       :read-only-hint="compatibleMessages.writeDisabled"
       @clear-directory="clearDirectory"
       @open-cleanup="openCleanupDialog"
-      @open-avatar-simulator="isAvatarSimulatorVisible = true"
+      @open-avatar-simulator="profileAvatarEditor = null; isAvatarSimulatorVisible = true"
+      @edit-avatar-frame="openProfileAvatarEditor"
       @open-fortune-time="isFortuneTimeVisible = true"
       @open-parse-tools="openParseTools"
       @clear-cache="clearCache"
@@ -3280,6 +3301,7 @@ function importAllDataFromMenu() {
       v-if="isAvatarSimulatorVisible"
       :photos="photos"
       :language="language"
+      :profile-editor="profileAvatarEditor"
       @close="isAvatarSimulatorVisible = false"
     />
     <FortuneTimeDialog
@@ -3375,6 +3397,7 @@ function importAllDataFromMenu() {
     <CleanupAccountPicker
       :visible="showCleanupAccountDialog"
       :accounts="cleanupAccounts"
+      :account-label="gameAccountLabel"
       :remembered-choice="cleanupRememberedChoice"
       :messages="locale.cleanup"
       @confirm="resolveCleanupAccounts"

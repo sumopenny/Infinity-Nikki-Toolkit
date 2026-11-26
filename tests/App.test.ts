@@ -1165,6 +1165,15 @@ describe('App lifecycle coordination', () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const reload = vi.fn()
     vi.stubGlobal('location', { reload })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 204,
+          headers: { 'Clear-Site-Data': '"cache", "cookies", "storage"' }
+        })
+      )
+    )
     sessionStorage.setItem('reset-session', 'saved')
     const favoriteKey = 'infinity-nikki-favorite-photo-ids'
     localStorage.setItem(favoriteKey, JSON.stringify(['original-album/photo.jpg']))
@@ -1238,6 +1247,15 @@ describe('App lifecycle coordination', () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const reload = vi.fn()
     vi.stubGlobal('location', { reload })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 204,
+          headers: { 'Clear-Site-Data': '"cache", "cookies", "storage"' }
+        })
+      )
+    )
     localStorage.setItem('reset-cancel', 'saved')
     await runStoreRequest('album-handles', 'readwrite', (store) =>
       store.put('saved', 'reset-cancel')
@@ -1253,6 +1271,7 @@ describe('App lifecycle coordination', () => {
       wrapper.getComponent({ name: 'ConfirmDialog' }).vm.$emit('cancel')
       await flushPromises()
       expect(localStorage.getItem('reset-cancel')).toBe('saved')
+      expect(fetch).not.toHaveBeenCalledWith('/api/clear-site-data', expect.anything())
       expect(
         await runStoreRequest('album-handles', 'readonly', (store) => store.get('reset-cancel'))
       ).toBe('saved')
@@ -1268,6 +1287,15 @@ describe('App lifecycle coordination', () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const reload = vi.fn()
     vi.stubGlobal('location', { reload })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 204,
+          headers: { 'Clear-Site-Data': '"cache", "cookies", "storage"' }
+        })
+      )
+    )
     const wrapper = mount(App, {
       attachTo: document.body,
       global: { stubs: { CameraFavorites: true } }
@@ -1281,9 +1309,16 @@ describe('App lifecycle coordination', () => {
       wrapper.getComponent({ name: 'TopBar' }).vm.$emit('clearData')
       await nextTick()
       wrapper.getComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
-      await vi.waitFor(() => expect(document.body.textContent).toContain('Storage unavailable'))
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain(messages.zh.app.clearDataFailed)
+      )
       expect(document.body.textContent).not.toContain(messages.zh.app.clearDataStatus)
       expect(reload).not.toHaveBeenCalled()
+      clear.mockRestore()
+      wrapper.getComponent({ name: 'TopBar' }).vm.$emit('clearData')
+      await nextTick()
+      wrapper.getComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+      await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce())
     } finally {
       clear?.mockRestore()
       wrapper.unmount()

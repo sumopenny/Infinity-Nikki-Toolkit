@@ -12,7 +12,7 @@
 /* 主页全屏壁纸下的导航使用更轻的磨砂，其他模块保持原材质。 */
 @media (min-width: 900px) {
   :root[data-surface-style='frosted'] .is-homepage-shell :is(.app-header, .home-sidebar-material) {
-    --frost-surface-bg: rgb(255 255 255 / 60%);
+    --frost-surface-bg: rgb(255 255 255 / 75%);
     --frost-surface-filter: blur(8px) saturate(160%);
   }
   :root[data-theme='dark'][data-surface-style='frosted']

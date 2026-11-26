@@ -1623,10 +1623,6 @@
     color var(--motion-base) ease;
 }
 
-.confirm-dialog-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
 .confirm-dialog-button.ghost {
   border: 1px solid var(--dialog-ghost-border, var(--line-soft));
   background: var(--dialog-ghost-bg, var(--surface-soft));
@@ -2842,59 +2838,117 @@
   font-weight: 600;
 }
 
-/* 问题反馈弹窗：内嵌问卷 iframe，高度贴合单题问卷避免尾部大段空白；问卷变长时 iframe 内部自行滚动 */
+/* 问题反馈：内容自适应高度，沿用全站主题与弹窗样式。 */
 .feedback-dialog-panel {
-  display: flex;
-  flex-direction: column;
-  width: min(760px, 100%);
-  height: min(640px, calc(100vh - 40px));
-  overflow: hidden;
+  width: min(560px, 100%);
 }
 
 .feedback-dialog-body {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-  padding: 0 26px 20px;
+  gap: 24px;
+  padding: 24px;
 }
 
-/* iframe 不加边框：问卷页面与弹窗同为白色，去掉边框后与弹窗融为一体，避免“双层框”观感（跨域无法改问卷内部样式） */
-.feedback-iframe {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  border: 0;
-  border-radius: 24px;
-  background: var(--surface-strong);
+.feedback-guide {
+  padding: 20px;
+  border: 1px solid var(--accent-border-subtle);
+  border-radius: 20px;
+  background: var(--surface-accent-subtle);
 }
 
-.feedback-external-link {
-  align-self: center;
+.feedback-dialog-body h3 {
   color: var(--heading);
-  font-size: 13px;
-  opacity: 0.75;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.6;
 }
 
-.feedback-external-link:hover {
-  opacity: 1;
+.feedback-guide ul {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.feedback-load-failed {
-  margin: 0;
-  color: var(--notice-warning);
-  font-size: 12px;
+.feedback-guide li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
-/* 窄屏时反馈弹窗占满可视区，保证问卷可滚动填写 */
+.feedback-guide svg,
+.feedback-social-links svg {
+  flex-shrink: 0;
+  color: var(--pink-deep);
+}
+
+.feedback-social-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.feedback-social-links a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent-border-subtle);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--heading);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.feedback-social-links a:hover {
+  border-color: var(--interactive-hover-border);
+  background: var(--soft-accent);
+}
+
+.feedback-social-links a:focus-visible {
+  outline: 2px solid var(--pink-deep);
+  outline-offset: 3px;
+}
+
+.feedback-contact .feedback-contact-hint {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
 @media (max-width: 640px) {
-  .feedback-dialog-panel {
-    height: calc(100vh - 24px);
+  .feedback-dialog-body {
+    gap: 20px;
+    padding: 20px 16px;
   }
 
-  .feedback-dialog-body {
-    padding: 0 14px 14px;
+  .feedback-guide {
+    padding: 16px;
+  }
+
+  .feedback-social-links {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedback-social-links a {
+    transition: none;
   }
 }
 

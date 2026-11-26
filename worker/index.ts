@@ -7,6 +7,7 @@ import { onRequestGet as home } from '../functions/api/home-build/[key]'
 import { onRequestGet as image } from '../functions/api/share-image'
 import { onRequestPost as pearpal } from '../functions/api/resonance/pearpal'
 import { onRequest as errors } from '../functions/api/errors'
+import { onRequest as clearSiteData } from '../functions/api/clear-site-data'
 import type { CloudEnv } from '../functions/_lib/cloudShared'
 import type { ErrorEnv } from '../functions/_lib/errorReporting'
 import { pruneDiagnostics } from '../scripts/error-retention.mjs'
@@ -46,6 +47,8 @@ async function api(request: Request, env: Env, execution: ExecutionContext): Pro
     const select = (methods: string[], handler: () => Promise<Response> | Response) =>
       methods.includes(method) ? handler() : failure(405, 'method_not_allowed', methods.join(', '))
     switch (pathname) {
+      case '/api/clear-site-data':
+        return clearSiteData(context)
       case '/api/like':
         return select(['GET', 'POST'], () =>
           method === 'GET' ? likeGet(context) : likePost(context)

@@ -8,6 +8,7 @@ import { useBodyScrollLock } from '../utils/bodyScrollLock'
 const props = defineProps<{
   visible: boolean
   accounts: string[]
+  accountLabel: (account: string) => string
   rememberedChoice: string | null
   messages: LocaleMessages['cleanup']
 }>()
@@ -144,7 +145,11 @@ watch(cleanAllAccounts, (checked) => {
                   :aria-expanded="menuOpen"
                   @click="toggleMenu()"
                 >
-                  <span>{{ selectedAccount || messages.accountSelectPlaceholder }}</span>
+                  <span>{{
+                    selectedAccount
+                      ? accountLabel(selectedAccount)
+                      : messages.accountSelectPlaceholder
+                  }}</span>
                   <ChevronDown :size="14" aria-hidden="true" />
                 </button>
                 <DesktopMenuTransition>
@@ -163,7 +168,7 @@ watch(cleanAllAccounts, (checked) => {
                       :class="{ active: selectedAccount === account }"
                       @click="selectAccount(account)"
                     >
-                      <span>{{ account }}</span>
+                      <span>{{ accountLabel(account) }}</span>
                     </button>
                   </div>
                 </DesktopMenuTransition>

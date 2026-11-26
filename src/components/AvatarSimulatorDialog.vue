@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch, watchEffect } from 'vue'
 import {
   Download,
+  Check,
   ImagePlus,
   Images,
   LoaderCircle,
@@ -31,8 +32,17 @@ import en from '../data/profile/locales/en/headFrames.json'
 import LazyPhotoImage from './LazyPhotoImage.vue'
 import { headFrames } from '../utils/animatedHeadFrames'
 import { useAnimatedHeadFrame } from '../composables/useAnimatedHeadFrame'
+import type { ProfileAvatar } from '../composables/useProfileAvatar'
 
-const props = defineProps<{ photos: PhotoDisplayItem[]; language: Language }>()
+const props = defineProps<{
+  photos: PhotoDisplayItem[]
+  language: Language
+  profileEditor?: {
+    url: string | null
+    saved?: ProfileAvatar | null
+    save: (avatar: ProfileAvatar) => void
+  } | null
+}>()
 const emit = defineEmits<{ close: [] }>()
 const t = (cn: string, english: string) => (props.language === 'zh' ? cn : english)
 const panel = ref<HTMLElement | null>(null)
@@ -51,7 +61,8 @@ const catalog = computed(() =>
     url: IMAGEKIT_IMAGES + 'headframes/' + encodeImagePath(frame.image) + '?tr=f-webp'
   }))
 )
-const selected = ref('1070020004')
+const saved = props.profileEditor?.saved
+const selected = ref(saved && headFrames[saved.frameId] ? saved.frameId : '1070020004')
 const current = computed(() => catalog.value.find((entry) => entry.id === selected.value)!)
 const frame = shallowRef<HTMLImageElement | null>(null)
 const photo = shallowRef<HTMLImageElement | null>(null)
@@ -131,21 +142,28 @@ watch(
   { immediate: true, flush: 'sync' }
 )
 
-async function choosePhoto(source: Blob | PhotoDisplayItem) {
+async function choosePhoto(source: Blob | PhotoDisplayItem | string) {
   const request = ++photoRequest
   photo.value = null
   photoFailed.value = saveFailed.value = false
   let url: string | undefined
   try {
-    const blob = source instanceof Blob ? source : await readPhotoBlob(source)
-    if (request !== photoRequest) return
-    url = URL.createObjectURL(blob)
     const img = new Image()
-    img.src = url
+    if (typeof source === 'string') {
+      img.crossOrigin = 'anonymous'
+      img.referrerPolicy = 'no-referrer'
+      img.src = source
+    } else {
+      const blob = source instanceof Blob ? source : await readPhotoBlob(source)
+      if (request !== photoRequest) return
+      url = URL.createObjectURL(blob)
+      img.src = url
+    }
     await img.decode()
     if (request !== photoRequest) return
-    zoom.value = 1
-    x.value = y.value = 0
+    zoom.value = props.profileEditor?.saved?.zoom ?? 1
+    x.value = props.profileEditor?.saved?.x ?? 0
+    y.value = props.profileEditor?.saved?.y ?? 0
     photo.value = img
   } catch {
     if (request === photoRequest) photoFailed.value = true
@@ -153,6 +171,11 @@ async function choosePhoto(source: Blob | PhotoDisplayItem) {
     if (url) URL.revokeObjectURL(url)
   }
 }
+function loadProfilePhoto() {
+  if (props.profileEditor?.url) void choosePhoto(props.profileEditor.url)
+  else photoFailed.value = true
+}
+if (props.profileEditor) loadProfilePhoto()
 function upload(e: Event) {
   const el = e.target as HTMLInputElement
   const file = el.files?.[0]
@@ -211,6 +234,21 @@ async function save() {
   saveFailed.value = false
   try {
     repaint()
+    if (props.profileEditor) {
+      // 仅保存卡片所需的小图，避免存储完整尺寸导出图片。
+      const preview = document.createElement('canvas')
+      preview.width = preview.height = 256
+      preview.getContext('2d')!.drawImage(canvas.value, 0, 0, 256, 256)
+      props.profileEditor.save({
+        image: preview.toDataURL('image/png'),
+        frameId: selected.value,
+        zoom: zoom.value,
+        x: x.value,
+        y: y.value
+      })
+      close()
+      return
+    }
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.value!.toBlob(resolve, 'image/png')
     )
@@ -242,7 +280,11 @@ onBeforeUnmount(() => {
       >
         <section ref="panel" class="dialog-panel avatar-panel" tabindex="-1">
           <header
-            ><h2 id="avatar-title">{{ t('头像模拟器', 'Avatar simulator') }}</h2
+            ><h2 id="avatar-title">{{
+              profileEditor
+                ? t('切换头像框', 'Change avatar frame')
+                : t('头像模拟器', 'Avatar simulator')
+            }}</h2
             ><button :aria-label="t('关闭', 'Close')" @click="close"><X :size="19" /></button
           ></header>
           <div class="avatar-body">
@@ -275,6 +317,7 @@ onBeforeUnmount(() => {
               <div class="editor-controls">
                 <div class="actions">
                   <button
+                    v-if="!profileEditor"
                     class="confirm-dialog-button ghost dialog-action-control album-toggle"
                     :disabled="!photos.length"
                     :title="!photos.length ? t('请先打开相册', 'Open an album first') : undefined"
@@ -287,6 +330,7 @@ onBeforeUnmount(() => {
                     }}</button
                   >
                   <button
+                    v-if="!profileEditor"
                     class="confirm-dialog-button ghost dialog-action-control upload-photo"
                     @click="input?.click()"
                     ><ImagePlus :size="16" />{{ t('上传', 'Upload') }}</button
@@ -317,7 +361,14 @@ onBeforeUnmount(() => {
                     <Play v-else-if="paused" :size="16" aria-hidden="true" />
                     <Pause v-else :size="16" aria-hidden="true" />
                   </button>
-                  <input ref="input" type="file" hidden accept="image/*" @change="upload" />
+                  <input
+                    v-if="!profileEditor"
+                    ref="input"
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    @change="upload"
+                  />
                 </div>
                 <button
                   class="primary-button save-avatar"
@@ -330,8 +381,13 @@ onBeforeUnmount(() => {
                     :size="16"
                     aria-hidden="true"
                   />
+                  <Check v-else-if="profileEditor" :size="16" aria-hidden="true" />
                   <Download v-else :size="16" aria-hidden="true" />{{
-                    saving ? t('正在保存…', 'Saving…') : t('保存', 'Save')
+                    saving
+                      ? t('正在保存…', 'Saving…')
+                      : profileEditor
+                        ? t('保存并应用', 'Save and apply')
+                        : t('保存', 'Save')
                   }}</button
                 >
                 <div class="crop-controls">
@@ -364,12 +420,18 @@ onBeforeUnmount(() => {
                   }}
                   <button @click="retry++">{{ t('重试', 'Retry') }}</button>
                 </p>
-                <p role="status" v-if="photoFailed">{{
-                  t(
-                    '照片读取失败，请重新选择。',
-                    'Could not read this photo. Choose another image.'
-                  )
-                }}</p>
+                <p role="status" v-if="photoFailed"
+                  >{{
+                    profileEditor
+                      ? t('当前头像读取失败。', 'Could not load the current avatar.')
+                      : t(
+                          '照片读取失败，请重新选择。',
+                          'Could not read this photo. Choose another image.'
+                        )
+                  }}<button v-if="profileEditor" @click="loadProfilePhoto">{{
+                    t('重试', 'Retry')
+                  }}</button></p
+                >
                 <p role="status" v-if="frameFailed && !animatedCanvas"
                   >{{ t('头像框加载失败。', 'Could not load this frame.') }}
                   <button @click="retry++">{{ t('重试', 'Retry') }}</button></p

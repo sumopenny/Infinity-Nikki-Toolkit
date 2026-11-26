@@ -140,14 +140,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
   }
   async function cleanLowQualityPhotos(x6GameHandle: FileSystemDirectoryHandle) {
     const accountIds = await resolveCleanupAccountIds(x6GameHandle)
-    if (!accountIds) {
-      publishStatus({
-        type: 'custom',
-        message: locale.value.app.relatedCleanupCancelledStatus,
-        tone: 'info'
-      })
-      return
-    }
+    if (!accountIds) return
     const plan = await prepareSpecialCleanup(x6GameHandle, 'lowQuality', accountIds, {
       skipDirectoryHandle: albumDirectoryHandle.value ?? undefined
     })
@@ -180,14 +173,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
       confirmLabel: locale.value.app.dialogConfirm,
       cancelLabel: locale.value.app.dialogCancel
     })
-    if (!confirmed) {
-      publishStatus({
-        type: 'custom',
-        message: locale.value.app.relatedCleanupCancelledStatus,
-        tone: 'info'
-      })
-      return
-    }
+    if (!confirmed) return
     const result = await executeSpecialCleanup(plan)
     publishStatus({
       type: 'custom',
@@ -222,14 +208,7 @@ export function useGameCleanup(options: GameCleanupOptions) {
       confirmLabel: locale.value.app.dialogConfirm,
       cancelLabel: locale.value.app.dialogCancel
     })
-    if (!confirmed) {
-      publishStatus({
-        type: 'custom',
-        message: locale.value.app.relatedCleanupCancelledStatus,
-        tone: 'info'
-      })
-      return
-    }
+    if (!confirmed) return
     const result = await executeSpecialCleanup(plan)
     publishStatus({
       type: 'custom',

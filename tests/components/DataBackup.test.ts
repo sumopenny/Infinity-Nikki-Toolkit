@@ -2,6 +2,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import DataBackup from '../../src/components/DataBackup.vue'
+import ConfirmDialog from '../../src/components/ConfirmDialog.vue'
 import { directoryBackup } from '../../src/composables/useDirectoryBackup'
 import * as backupService from '../../src/composables/useDirectoryBackup'
 import * as backupDiff from '../../src/utils/directory-backup/diff'
@@ -32,12 +33,18 @@ const render = () =>
     }
   })
 it('shows three real module states and prevents running a backup without a folder', () => {
+  vi.spyOn(directoryBackup.supported, 'value', 'get').mockReturnValue(true)
   const wrapper = render()
   expect(wrapper.findAll('[role="switch"]')).toHaveLength(3)
   expect(
     wrapper
       .findAll('[role="switch"]')
       .every((button) => button.attributes('aria-checked') === 'false')
+  ).toBe(true)
+  expect(
+    wrapper
+      .findAll('[role="switch"]')
+      .every((button) => button.attributes('disabled') !== undefined)
   ).toBe(true)
   const run = wrapper.findAll('button').find((button) => button.text() === '刷新备份')!
   expect(run.attributes('disabled')).toBeDefined()
@@ -95,6 +102,9 @@ function enableSwitchInteraction(enabled: boolean) {
 }
 it('enables an unchanged backup without a confirmation dialog or success notice', async () => {
   enableSwitchInteraction(false)
+  directoryBackup.config.value!.handle = { name: '备份目录' } as FileSystemDirectoryHandle
+  vi.spyOn(backupEngine, 'permission').mockResolvedValue(true)
+  vi.spyOn(backupEngine, 'inspectRoot').mockResolvedValue(null)
   vi.spyOn(backupDiff, 'estimateBackupDiff').mockResolvedValue({
     added: 0,
     updated: 0,
@@ -130,6 +140,7 @@ it('enables an unchanged backup without a confirmation dialog or success notice'
 })
 it('stops a module without a success notice', async () => {
   enableSwitchInteraction(true)
+  directoryBackup.config.value!.handle = { name: '备份目录' } as FileSystemDirectoryHandle
   const stop = vi
     .spyOn(backupEngine, 'setModuleEnabled')
     .mockResolvedValue(directoryBackup.config.value!)
@@ -170,6 +181,82 @@ function previewFixture() {
     }))
   }
 }
+
+it('keeps switches disabled for a restore source until a backup folder is bound', async () => {
+  enableSwitchInteraction(false)
+  const handle = { name: '恢复来源' } as FileSystemDirectoryHandle
+  vi.spyOn(backupEngine, 'pickDirectory').mockResolvedValue(handle)
+  vi.spyOn(backupRestore, 'previewRestore').mockResolvedValue(previewFixture())
+  const estimate = vi.spyOn(backupDiff, 'estimateBackupDiff')
+  const wrapper = render()
+  const switches = wrapper.findAll('[role="switch"]')
+  expect(switches.every((button) => button.attributes('disabled') !== undefined)).toBe(true)
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === '从目录恢复')!
+    .trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.backup-preview-folder').text()).toBe(handle.name)
+  for (const button of switches) {
+    expect(button.attributes('disabled')).toBeDefined()
+    await button.trigger('click')
+  }
+  expect(estimate).not.toHaveBeenCalled()
+  directoryBackup.config.value = { ...directoryBackup.config.value!, handle }
+  await flushPromises()
+  expect(switches.every((button) => button.attributes('disabled') === undefined)).toBe(true)
+  wrapper.unmount()
+})
+
+it.each(['success', 'cancel', 'bind failure', 'refresh failure'] as const)(
+  'handles choosing an empty folder after a restore preview: %s',
+  async (outcome) => {
+    enableSwitchInteraction(false)
+    const source = { name: '恢复来源' } as FileSystemDirectoryHandle
+    const target = { name: '新空目录' } as FileSystemDirectoryHandle
+    const picker = vi.spyOn(backupEngine, 'pickDirectory').mockResolvedValueOnce(source)
+    vi.spyOn(backupRestore, 'previewRestore').mockResolvedValue(previewFixture())
+    vi.spyOn(backupEngine, 'inspectRoot').mockResolvedValue(null)
+    const bind = vi
+      .spyOn(backupEngine, 'bindDirectory')
+      .mockResolvedValue(directoryBackup.config.value!)
+    const schedule = vi.spyOn(backupService, 'scheduleDirectoryBackup').mockImplementation(() => {})
+    const wrapper = render()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '从目录恢复')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.backup-preview-folder').text()).toBe(source.name)
+
+    if (outcome === 'cancel')
+      picker.mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'))
+    else picker.mockResolvedValueOnce(target)
+    if (outcome === 'bind failure') bind.mockRejectedValueOnce(new Error('绑定失败'))
+    if (outcome === 'refresh failure')
+      vi.mocked(backupService.refreshDirectoryBackup).mockRejectedValueOnce(new Error('刷新失败'))
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '选择目录')!
+      .trigger('click')
+    wrapper.getComponent(ConfirmDialog).vm.$emit('confirm')
+    await flushPromises()
+
+    const bound = outcome === 'success' || outcome === 'refresh failure'
+    expect(wrapper.get('.tree-collapse').attributes('aria-hidden')).toBe(String(bound))
+    if (!bound) expect(wrapper.get('.backup-preview-folder').text()).toBe(source.name)
+    expect(bind).toHaveBeenCalledTimes(outcome === 'cancel' ? 0 : 1)
+    expect(schedule).toHaveBeenCalledTimes(outcome === 'success' ? 1 : 0)
+    expect(
+      wrapper
+        .findAll('button')
+        .find((button) => button.text() === '选择目录')!
+        .attributes('disabled')
+    ).toBeUndefined()
+    wrapper.unmount()
+  }
+)
 
 it('expands the current directory preview below the directory bar without opening a dialog', async () => {
   enableSwitchInteraction(false)

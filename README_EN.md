@@ -445,7 +445,7 @@ Select the game's `X6Game` folder and avoid drive roots and system folders. If t
 - Local photo viewing and photo-parameter parsing happen in your browser; photos and photo-parameter results are not uploaded.
 - Outfit-code parsing sends the share code to parsing services, without sending local photos or notebook credentials.
 - Cloud sync supports resonance records and the personal wardrobe; select both in one dialog to upload or download them together. Other collections remain in the current browser; back them up before changing devices or clearing site data.
-- Clear cache removes parsing caches without deleting saved schemes, tags, or settings. **Clear data permanently removes this browser's saved records, images, favorites, settings, and folder authorizations. Export a backup first.** It does not delete uploaded cloud saves or files on your computer. Clearing data through browser settings may also remove login information.
+- Clear cache removes parsing caches without deleting saved schemes, tags, or settings. **Clear data permanently removes this browser's saved records, images, favorites, settings, and folder authorizations, and signs you out of the cloud. Export a backup first.** It asks the browser to clear this site's caches, cookies, and storage, then reloads; the exact scope depends on browser support. It does not delete your cloud account, uploaded cloud saves, or files on your computer. A network connection is required. If clearing does not complete, retry or clear this site's data through browser settings.
 - Browser security policies may require you to authorize folders again.
 - Album deletion and Special Cleanup operate on real files on your computer. Permanent deletion and cleanup cannot be undone.
 

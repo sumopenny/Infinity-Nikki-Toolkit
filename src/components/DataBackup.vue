@@ -274,6 +274,7 @@ async function selectDirectory() {
       return
     }
     await bindDirectory(handle)
+    previewOpen.value = false
     await refreshDirectoryBackup()
     announce(
       t(
@@ -356,7 +357,7 @@ async function confirmDiff(module: BackupModule, diff: BackupDiff): Promise<bool
 }
 async function toggleModule(module: BackupModule) {
   const current = config.value
-  if (!current || busy.value || running.value) return
+  if (!current?.handle || busy.value || running.value) return
   busy.value = true
   beginNotice(t(`正在核对${titleFor(module)}备份状态…`, `Checking ${titleFor(module)} backup…`))
   try {
@@ -928,7 +929,7 @@ const modules = computed(() => MODULES.map((id) => ({ id, name: titleFor(id), ic
             role="switch"
             :aria-checked="config?.enabled[item.id] ?? false"
             :aria-label="text(`自动备份${item.name}`, `Automatically back up ${item.name}`)"
-            :disabled="busy || running || !supported || initialStatusLoading"
+            :disabled="busy || running || !config?.handle || !supported || initialStatusLoading"
             @click="toggleModule(item.id)"
             ><span /></button
         ></header>
