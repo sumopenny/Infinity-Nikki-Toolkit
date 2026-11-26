@@ -311,7 +311,7 @@ it.each([false, true])(
     const legacyClone = networkHttp ? useLegacyJsonClone() : null
     expect(await hasAllBackupData()).toBe(false)
     await seed()
-    await runStoreRequest('album-handles', 'readwrite', (store) =>
+    await runStoreRequest('local-state', 'readwrite', (store) =>
       store.put({ secret: 'authorization' }, 'current')
     )
     expect(await hasAllBackupData()).toBe(true)
@@ -344,7 +344,7 @@ it.each([false, true])(
       await webp('cover.webp').text()
     )
     expect((await loadResonanceRecords()).length).toBe(1)
-    expect(await runStoreRequest('album-handles', 'readonly', (store) => store.count())).toBe(0)
+    expect(await runStoreRequest('local-state', 'readonly', (store) => store.count())).toBe(0)
     if (networkHttp)
       expect((await prepareAllDataBackup(await exported())).camera.records).toHaveLength(1)
     if (legacyClone) {

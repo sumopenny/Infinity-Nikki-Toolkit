@@ -53,7 +53,7 @@ it('upgrades version 7 without losing existing camera, home or resonance data', 
   await new Promise<void>((resolve, reject) => {
     const r = indexedDB.open(DB_NAME, 7)
     r.onupgradeneeded = () => {
-      for (const name of ['camera-favorites', 'home-schemes']) {
+      for (const name of ['camera-params', 'home-schemes']) {
         const store = r.result.createObjectStore(name, { keyPath: 'id' })
         store.put({ id: name, code: name })
       }
@@ -68,7 +68,7 @@ it('upgrades version 7 without losing existing camera, home or resonance data', 
   const db = await openDb()
   expect(db.version).toBe(DB_VERSION)
   db.close()
-  for (const name of ['camera-favorites', 'home-schemes'])
+  for (const name of ['camera-params', 'home-schemes'])
     expect(await runStoreRequest(name, 'readonly', (store) => store.get(name))).toMatchObject({
       id: name
     })

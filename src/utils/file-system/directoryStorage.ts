@@ -1,7 +1,7 @@
 // 目录句柄存储：使用 IndexedDB 保存和读取相册及 X6Game 目录授权句柄。
 import { runStoreRequest } from './database'
 import { databaseRequest, runDatabaseTransaction } from './transaction'
-const STORE_NAME = 'album-handles'
+const STORE_NAME = 'local-state'
 const SAVED_DIRECTORY_KEY = 'current-album-directory'
 const SAVED_X6GAME_DIRECTORY_KEY = 'current-x6game-directory'
 const SAVED_GAME_ALBUM_UID_KEY = 'current-game-album-uid'

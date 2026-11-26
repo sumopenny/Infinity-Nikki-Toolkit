@@ -28,7 +28,7 @@ const summaryValues = (wrapper: ReturnType<typeof mount>) =>
     value: group.get('strong').text()
   }))
 
-const dbName = 'infinity-nikki-album-manager'
+import { DB_NAME } from '../../src/utils/file-system/database'
 const HAIR = '1020100347'
 const wrappers: Array<ReturnType<typeof mount>> = []
 const originalScrollTo = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo')
@@ -80,7 +80,7 @@ afterEach(async () => {
   if (originalScrollTo) Object.defineProperty(HTMLElement.prototype, 'scrollTo', originalScrollTo)
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo
   await new Promise<void>((resolve) => {
-    const request = indexedDB.deleteDatabase(dbName)
+    const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = request.onerror = request.onblocked = () => resolve()
   })
 })

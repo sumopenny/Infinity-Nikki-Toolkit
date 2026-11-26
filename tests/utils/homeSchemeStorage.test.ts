@@ -69,36 +69,6 @@ it('upgrades version 6 without replacing existing stores or records', async () =
   })
 })
 
-it('removes obsolete version 10 stores and preserves user records', async () => {
-  const retiredStores = [
-    'directory-backup-dirty',
-    'directory-backup-settings',
-    'directory-backup-restore'
-  ]
-  await new Promise<void>((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 10)
-    request.onupgradeneeded = () => {
-      for (const store of retiredStores) request.result.createObjectStore(store).put('old', 'test')
-      request.result.createObjectStore(HOME_SCHEMES_STORE, { keyPath: 'id' }).put({
-        id: 'saved',
-        code: 'KEEP'
-      })
-    }
-    request.onsuccess = () => {
-      request.result.close()
-      resolve()
-    }
-    request.onerror = () => reject(request.error)
-  })
-  const db = await openDb()
-  const remainingStores = [...db.objectStoreNames]
-  db.close()
-  expect(remainingStores.filter((store) => retiredStores.includes(store))).toEqual([])
-  expect(
-    await runStoreRequest(HOME_SCHEMES_STORE, 'readonly', (store) => store.get('saved'))
-  ).toEqual({ id: 'saved', code: 'KEEP' })
-})
-
 it('enforces global unique codes across concurrent writers', async () => {
   await addHomeSchemeTag('庭院')
   const results = await Promise.allSettled([saveHomeScheme(input()), saveHomeScheme(input())])

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { clearAllBrowserData, DB_VERSION } from '../../src/utils/file-system/database'
+import { clearAllBrowserData, DB_NAME, DB_VERSION } from '../../src/utils/file-system/database'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   clearSavedAlbumDirectoryHandle,
@@ -70,18 +70,18 @@ describe('directoryStorage', () => {
   it('ignores legacy outfit parse results after the parser cache version changes', async () => {
     const code = 'legacy1A2B3C#'
     await new Promise<void>((resolve) => {
-      const request = indexedDB.deleteDatabase('infinity-nikki-album-manager')
+      const request = indexedDB.deleteDatabase(DB_NAME)
       request.onsuccess = request.onerror = request.onblocked = () => resolve()
     })
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('infinity-nikki-album-manager', 3)
-      request.onupgradeneeded = () => request.result.createObjectStore('album-handles')
+      const request = indexedDB.open(DB_NAME, 3)
+      request.onupgradeneeded = () => request.result.createObjectStore('local-state')
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('album-handles', 'readwrite')
-      tx.objectStore('album-handles').put({ code, dyeItems: [] }, `outfit-code-parse:${code}`)
+      const tx = db.transaction('local-state', 'readwrite')
+      tx.objectStore('local-state').put({ code, dyeItems: [] }, `outfit-code-parse:${code}`)
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })
@@ -91,13 +91,13 @@ describe('directoryStorage', () => {
     await clearSavedOutfitParseResults()
 
     const checkDb = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('infinity-nikki-album-manager', DB_VERSION)
+      const request = indexedDB.open(DB_NAME, DB_VERSION)
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
     const remainingKeys = await new Promise<IDBValidKey[]>((resolve, reject) => {
-      const tx = checkDb.transaction('album-handles', 'readonly')
-      const request = tx.objectStore('album-handles').getAllKeys()
+      const tx = checkDb.transaction('local-state', 'readonly')
+      const request = tx.objectStore('local-state').getAllKeys()
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })

@@ -27,7 +27,7 @@ export const gameAlbumMessages = {
     changeAvatarFrame: '切换头像框',
     profileLevel: (level: number) => `${level}级`,
     profileCreatedAt: '角色创建时间',
-    profileUpdatedAt: '上次登录时间',
+    profileUpdatedAt: '更新时间',
     profileUnknown: '暂无数据',
     pickerAborted: '未打开 X6Game。如选择器无法访问此目录，可以用只读兼容模式打开相册。',
     restoreFailed: '未恢复上次授权。可以重试或重新选择目录。',
@@ -70,7 +70,7 @@ export const gameAlbumMessages = {
     changeAvatarFrame: 'Change frame',
     profileLevel: (level: number) => `Level ${level}`,
     profileCreatedAt: 'Character created',
-    profileUpdatedAt: 'Last login',
+    profileUpdatedAt: 'Updated at',
     profileUnknown: 'Unavailable',
     pickerAborted:
       'X6Game was not opened. If the picker cannot access this folder, try read-only compatibility mode.',

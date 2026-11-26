@@ -62,14 +62,14 @@ describe('camera favorites', () => {
     const old = await new Promise<IDBDatabase>((resolve) => {
       const request = indexedDB.open(DB_NAME, 4)
       request.onupgradeneeded = () => {
-        request.result.createObjectStore('album-handles')
+        request.result.createObjectStore('local-state')
         request.result.createObjectStore('resonance-records')
       }
       request.onsuccess = () => resolve(request.result)
     })
     await new Promise<void>((resolve) => {
-      const tx = old.transaction(['album-handles', 'resonance-records'], 'readwrite')
-      tx.objectStore('album-handles').put({ name: 'album' }, 'current-album-directory')
+      const tx = old.transaction(['local-state', 'resonance-records'], 'readwrite')
+      tx.objectStore('local-state').put({ name: 'album' }, 'current-album-directory')
       tx.objectStore('resonance-records').put([{ id: 'old-record' }], 'current-profile')
       tx.oncomplete = () => resolve()
     })
@@ -404,11 +404,11 @@ it('reads and edits directly stored favorites without losing covers or tag order
     ...record('existing', 'EXISTING'),
     cover: await coverMetadata(cover, 'existing.webp')
   }
-  await runStoreRequest('camera-favorites', 'readwrite', (store) => store.put(original))
-  await runStoreRequest('camera-favorite-covers', 'readwrite', (store) =>
+  await runStoreRequest('camera-params', 'readwrite', (store) => store.put(original))
+  await runStoreRequest('camera-param-covers', 'readwrite', (store) =>
     store.put(cover, original.id)
   )
-  await runStoreRequest('camera-favorite-tags', 'readwrite', (store) =>
+  await runStoreRequest('camera-param-tags', 'readwrite', (store) =>
     store.put(['人像', '空标签'], 'order')
   )
   const loaded = await readCameraFavorites()
@@ -462,7 +462,7 @@ it('reads metadata alone for the list and retrieves one cover on demand', async 
   expect(list.records).toHaveLength(1)
   expect(list.covers.size).toBe(0)
   expect(reads.mock.contexts.map((store) => (store as IDBObjectStore).name)).toEqual([
-    'camera-favorites'
+    'camera-params'
   ])
   expect((await readCameraFavoriteCover('one')).size).toBe(blob.size)
   expect((await readCameraFavorites()).covers.get('one')?.size).toBe(blob.size)

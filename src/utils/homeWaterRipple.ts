@@ -8,7 +8,7 @@ export class HomeWaterField {
   constructor(
     readonly width: number,
     readonly height: number,
-    readonly damping = 0.98
+    readonly damping = 0.95
   ) {
     this.current = new Float32Array(width * height)
     this.previous = new Float32Array(width * height)
@@ -149,7 +149,7 @@ export function createHomeWaterRenderer(canvas: HTMLCanvasElement, image: HTMLIm
       uniform vec2 cover;
       uniform vec2 size;
       void main() {
-        vec2 slope = (texture2D(normals, uv).rg * 255. - 128.) / 24. * 0.8;
+        vec2 slope = (texture2D(normals, uv).rg * 255. - 128.) / 24. * 2.5;
         vec2 displaced = clamp(uv + slope * 6. / size, vec2(0.), vec2(1.));
         vec3 color = texture2D(wallpaper, (displaced - .5) * cover + .5).rgb;
         float light = clamp((slope.x * .6 - slope.y) * 5., -22., 22.) / 255.;

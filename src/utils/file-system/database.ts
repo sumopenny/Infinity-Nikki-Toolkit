@@ -1,6 +1,6 @@
 import type { BackupModule, ChangeKind } from '../directory-backup/changeJournal'
 // 所有本地数据共用升级入口，避免先打开不同模块时漏建存储。
-export const DB_NAME = 'infinity-nikki-album-manager'
+export const DB_NAME = 'nikki'
 export const DB_VERSION = 12
 /** Higher-version databases must never be reset or silently downgraded. */
 const versionMismatchListeners = new Set<() => void>()
@@ -24,17 +24,17 @@ function notifyVersionMismatch(): void {
 export const OUTFITS_STORE = 'outfits'
 export const OUTFIT_IMAGES_STORE = 'outfit-images'
 export const OUTFIT_TAGS_STORE = 'outfit-tags'
-export const OUTFIT_IGNORED_CODES_STORE = 'outfit-ignored-sharecodes'
+export const OUTFIT_IGNORED_CODES_STORE = 'outfit-ignored-codes'
 export const OUTFIT_GAME_SOURCES_STORE = 'outfit-game-sources'
 export const HOME_SCHEMES_STORE = 'home-schemes'
 export const HOME_IMAGES_STORE = 'home-scheme-images'
 export const HOME_TAGS_STORE = 'home-scheme-tags'
-export const CAMERA_FAVORITES_STORE = 'camera-favorites'
-export const CAMERA_TAGS_STORE = 'camera-favorite-tags'
-export const CAMERA_COVERS_STORE = 'camera-favorite-covers'
-export const BACKUP_DIRTY_STORE = 'directory-backup-v2-dirty'
-export const BACKUP_SETTINGS_STORE = 'directory-backup-v2-settings'
-export const BACKUP_RESTORE_STORE = 'directory-backup-v2-restore'
+export const CAMERA_PARAMS_STORE = 'camera-params'
+export const CAMERA_TAGS_STORE = 'camera-param-tags'
+export const CAMERA_COVERS_STORE = 'camera-param-covers'
+export const BACKUP_DIRTY_STORE = 'directory-backup-changes'
+export const BACKUP_SETTINGS_STORE = 'directory-backup-state'
+export const BACKUP_RESTORE_STORE = 'directory-backup-staging'
 
 /** 业务表与备份变更类型的对应关系，与数据库表名保持一致。 */
 export const BACKUP_MONITORED_STORES: Record<string, [BackupModule, ChangeKind]> = {
@@ -45,7 +45,7 @@ export const BACKUP_MONITORED_STORES: Record<string, [BackupModule, ChangeKind]>
   [HOME_SCHEMES_STORE]: ['home', 'record'],
   [HOME_IMAGES_STORE]: ['home', 'image'],
   [HOME_TAGS_STORE]: ['home', 'tags'],
-  [CAMERA_FAVORITES_STORE]: ['camera', 'record'],
+  [CAMERA_PARAMS_STORE]: ['camera', 'record'],
   [CAMERA_COVERS_STORE]: ['camera', 'image'],
   [CAMERA_TAGS_STORE]: ['camera', 'tags']
 }
@@ -76,7 +76,7 @@ export function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(OUTFIT_IGNORED_CODES_STORE))
         db.createObjectStore(OUTFIT_IGNORED_CODES_STORE, { keyPath: 'code' })
       for (const name of [
-        'album-handles',
+        'local-state',
         'resonance-records',
         'wardrobe',
         CAMERA_COVERS_STORE,
@@ -84,22 +84,15 @@ export function openDb(): Promise<IDBDatabase> {
       ]) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name)
       }
-      for (const name of [
-        'directory-backup-dirty',
-        'directory-backup-settings',
-        'directory-backup-restore'
-      ]) {
-        if (db.objectStoreNames.contains(name)) db.deleteObjectStore(name)
-      }
       if (!db.objectStoreNames.contains(BACKUP_DIRTY_STORE))
         db.createObjectStore(BACKUP_DIRTY_STORE, { keyPath: 'key' })
       if (!db.objectStoreNames.contains(BACKUP_SETTINGS_STORE))
         db.createObjectStore(BACKUP_SETTINGS_STORE, { keyPath: 'key' })
       if (!db.objectStoreNames.contains(BACKUP_RESTORE_STORE))
         db.createObjectStore(BACKUP_RESTORE_STORE, { keyPath: ['module', 'kind', 'id'] })
-      const favorites = db.objectStoreNames.contains(CAMERA_FAVORITES_STORE)
-        ? request.transaction!.objectStore(CAMERA_FAVORITES_STORE)
-        : db.createObjectStore(CAMERA_FAVORITES_STORE, { keyPath: 'id' })
+      const favorites = db.objectStoreNames.contains(CAMERA_PARAMS_STORE)
+        ? request.transaction!.objectStore(CAMERA_PARAMS_STORE)
+        : db.createObjectStore(CAMERA_PARAMS_STORE, { keyPath: 'id' })
       if (!favorites.indexNames.contains('code'))
         favorites.createIndex('code', 'code', { unique: true })
       const schemes = db.objectStoreNames.contains(HOME_SCHEMES_STORE)

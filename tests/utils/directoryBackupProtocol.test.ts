@@ -5,7 +5,7 @@ import {
   BACKUP_RESTORE_STORE,
   OUTFITS_STORE,
   OUTFIT_IMAGES_STORE,
-  CAMERA_FAVORITES_STORE,
+  CAMERA_PARAMS_STORE,
   runStoreRequest,
   clearAllBrowserData
 } from '../../src/utils/file-system/database'
@@ -409,7 +409,7 @@ describe('完整性与恢复保护', () => {
       await expect(putOutfit('LOCKED')).rejects.toThrow('正在从目录恢复')
       await saveCameraFavorite(camera('CAM01'), null)
     })
-    expect(await runStoreRequest(CAMERA_FAVORITES_STORE, 'readonly', (s) => s.count())).toBe(1)
+    expect(await runStoreRequest(CAMERA_PARAMS_STORE, 'readonly', (s) => s.count())).toBe(1)
   })
   it('恢复后旧队列不覆盖源目录，选中模块暂停且其他开关不变', async () => {
     const { config, directory, disk } = await setup(new MemoryDirectory(), ['outfits', 'camera'])

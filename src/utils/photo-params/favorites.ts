@@ -1,6 +1,6 @@
 import {
   runStoreRequest,
-  CAMERA_FAVORITES_STORE as RECORDS,
+  CAMERA_PARAMS_STORE as RECORDS,
   CAMERA_COVERS_STORE as COVERS,
   CAMERA_TAGS_STORE as TAGS
 } from '../file-system/database'

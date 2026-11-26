@@ -26,14 +26,14 @@ afterEach(async () => {
 })
 it('rejects a write whose request succeeds but whose transaction aborts', async () => {
   await expect(
-    runStoreRequest('album-handles', 'readwrite', (store) => {
+    runStoreRequest('local-state', 'readwrite', (store) => {
       const request = store.put('new', 'value')
       request.addEventListener('success', () => store.transaction.abort())
       return request
     })
   ).rejects.toThrow()
   expect(
-    await runStoreRequest('album-handles', 'readonly', (store) => store.get('value'))
+    await runStoreRequest('local-state', 'readonly', (store) => store.get('value'))
   ).toBeUndefined()
 })
 it('propagates failed or malformed resonance reads instead of returning an empty profile', async () => {
@@ -68,17 +68,17 @@ it('cache clearing preserves UID, directory authorization, favorites and resonan
     ['current-album-directory', { name: 'album' }]
   ] as const
   for (const [key, value] of entries)
-    await runStoreRequest('album-handles', 'readwrite', (store) => store.put(value, key))
+    await runStoreRequest('local-state', 'readwrite', (store) => store.put(value, key))
   await saveResonanceRecords([])
-  await runStoreRequest('camera-favorites', 'readwrite', (store) => store.put({ id: 'saved' }))
+  await runStoreRequest('camera-params', 'readwrite', (store) => store.put({ id: 'saved' }))
   const transactions = vi.spyOn(IDBDatabase.prototype, 'transaction')
   await clearSavedParseCaches()
   expect(transactions).toHaveBeenCalledTimes(1)
   transactions.mockRestore()
-  expect(await runStoreRequest('album-handles', 'readonly', (store) => store.getAllKeys())).toEqual(
-    ['current-album-directory', 'current-camera-param-uids']
-  )
-  expect(await runStoreRequest('camera-favorites', 'readonly', (store) => store.count())).toBe(1)
+  expect(
+    await runStoreRequest('local-state', 'readonly', (store) => store.getAllKeys())
+  ).toEqual(['current-album-directory', 'current-camera-param-uids'])
+  expect(await runStoreRequest('camera-params', 'readonly', (store) => store.count())).toBe(1)
   expect(await runStoreRequest('resonance-records', 'readonly', (store) => store.count())).toBe(1)
 })
 
@@ -101,7 +101,7 @@ it('loads one album cache in a single transaction with encoded names', async () 
 })
 
 it('rolls back all cleared stores if one store cannot be cleared', async () => {
-  await runStoreRequest('album-handles', 'readwrite', (store) => store.put('saved', 'one'))
+  await runStoreRequest('local-state', 'readwrite', (store) => store.put('saved', 'one'))
   await runStoreRequest('resonance-records', 'readwrite', (store) => store.put('saved', 'one'))
   const original = IDBObjectStore.prototype.clear
   const failure = vi.spyOn(IDBObjectStore.prototype, 'clear').mockImplementation(function (
@@ -115,7 +115,7 @@ it('rolls back all cleared stores if one store cannot be cleared', async () => {
   } finally {
     failure.mockRestore()
   }
-  expect(await runStoreRequest('album-handles', 'readonly', (store) => store.get('one'))).toBe(
+  expect(await runStoreRequest('local-state', 'readonly', (store) => store.get('one'))).toBe(
     'saved'
   )
   expect(await runStoreRequest('resonance-records', 'readonly', (store) => store.get('one'))).toBe(

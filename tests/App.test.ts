@@ -1118,7 +1118,9 @@ describe('App lifecycle coordination', () => {
       reminder.vm.$emit('close', true)
       await flushPromises()
       expect(reminder.props('visible')).toBe(false)
-    } finally { wrapper.unmount() }
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it.each([false, true])(
@@ -1311,10 +1313,10 @@ describe('App lifecycle coordination', () => {
     localStorage.setItem('infinity-nikki-language', 'zh')
     const preserved = [
       ['resonance-records', 'current-profile', [{ id: 'kept-record' }]],
-      ['camera-favorite-tags', 'order', ['保留分类']],
-      ['camera-favorite-covers', 'kept', new NodeBlob(['kept-cover'])],
+      ['camera-param-tags', 'order', ['保留分类']],
+      ['camera-param-covers', 'kept', new NodeBlob(['kept-cover'])],
       [
-        'camera-favorites',
+        'camera-params',
         undefined,
         {
           id: 'kept',
@@ -1340,7 +1342,7 @@ describe('App lifecycle coordination', () => {
       await runStoreRequest(storeName, 'readwrite', (store) =>
         key === undefined ? store.put(value) : store.put(value, key)
       )
-    await runStoreRequest('album-handles', 'readwrite', (store) =>
+    await runStoreRequest('local-state', 'readwrite', (store) =>
       store.put('cache', 'home-scheme-parse:one')
     )
     const wrapper = mount(App, {
@@ -1361,7 +1363,9 @@ describe('App lifecycle coordination', () => {
       expect(localStorage.length).toBe(0)
       expect(sessionStorage.length).toBe(0)
       expect(reload).toHaveBeenCalledOnce()
-      expect(await runStoreRequest('album-handles', 'readonly', (store) => store.count())).toBe(0)
+      expect(await runStoreRequest('local-state', 'readonly', (store) => store.count())).toBe(
+        0
+      )
       for (const [storeName, key] of preserved)
         expect(
           await runStoreRequest(storeName, 'readonly', (store) => store.get(key ?? 'kept'))
@@ -1388,7 +1392,7 @@ describe('App lifecycle coordination', () => {
       )
     )
     localStorage.setItem('reset-cancel', 'saved')
-    await runStoreRequest('album-handles', 'readwrite', (store) =>
+    await runStoreRequest('local-state', 'readwrite', (store) =>
       store.put('saved', 'reset-cancel')
     )
     const wrapper = mount(App, {
@@ -1404,12 +1408,14 @@ describe('App lifecycle coordination', () => {
       expect(localStorage.getItem('reset-cancel')).toBe('saved')
       expect(fetch).not.toHaveBeenCalledWith('/api/clear-site-data', expect.anything())
       expect(
-        await runStoreRequest('album-handles', 'readonly', (store) => store.get('reset-cancel'))
+        await runStoreRequest('local-state', 'readonly', (store) => store.get('reset-cancel'))
       ).toBe('saved')
       expect(reload).not.toHaveBeenCalled()
     } finally {
       wrapper.unmount()
-      await runStoreRequest('album-handles', 'readwrite', (store) => store.delete('reset-cancel'))
+      await runStoreRequest('local-state', 'readwrite', (store) =>
+        store.delete('reset-cancel')
+      )
       vi.unstubAllGlobals()
     }
   })

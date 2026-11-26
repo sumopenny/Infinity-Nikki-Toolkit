@@ -1,6 +1,6 @@
 import {
   CAMERA_COVERS_STORE,
-  CAMERA_FAVORITES_STORE,
+  CAMERA_PARAMS_STORE,
   CAMERA_TAGS_STORE,
   HOME_IMAGES_STORE,
   HOME_SCHEMES_STORE,
@@ -63,7 +63,7 @@ export const ADAPTERS: Record<BackupModule, BackupAdapter> = {
     imageValue: 'blobRecord'
   },
   camera: {
-    records: CAMERA_FAVORITES_STORE,
+    records: CAMERA_PARAMS_STORE,
     images: CAMERA_COVERS_STORE,
     tags: CAMERA_TAGS_STORE,
     tagKey: 'order',

@@ -1,6 +1,6 @@
 import { runStoreRequest } from './file-system/database'
 
-const store = 'album-handles'
+const store = 'local-state'
 const key = 'home-wallpaper-custom'
 
 // 独立外观设置，不参与业务备份或解析缓存清理；完整站点重置会清除。

@@ -8,7 +8,7 @@ import {
   OUTFITS_STORE,
   OUTFIT_IMAGES_STORE,
   HOME_SCHEMES_STORE,
-  CAMERA_FAVORITES_STORE,
+  CAMERA_PARAMS_STORE,
   runStoreRequest
 } from '../../src/utils/file-system/database'
 import { runDatabaseTransaction } from '../../src/utils/file-system/transaction'
@@ -283,7 +283,7 @@ describe('原始目录增量备份（模拟 File System Access API）', () => {
       }
     }
     await putTestRecord(HOME_SCHEMES_STORE, home)
-    await putTestRecord(CAMERA_FAVORITES_STORE, camera)
+    await putTestRecord(CAMERA_PARAMS_STORE, camera)
     await saveConfig(config)
     expect((await run(config, 'home')).count).toBe(1)
     const root = config.handle!

@@ -112,6 +112,9 @@ watch(
   width: min(600px, 100%);
   padding: 0;
 }
+.data-storage-reminder-panel:focus {
+  outline: none;
+}
 .data-storage-reminder-panel h2 {
   font-size: 20px;
 }

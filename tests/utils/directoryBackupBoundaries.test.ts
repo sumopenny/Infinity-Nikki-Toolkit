@@ -5,7 +5,7 @@ import {
   DB_VERSION,
   BACKUP_DIRTY_STORE,
   OUTFITS_STORE,
-  CAMERA_FAVORITES_STORE,
+  CAMERA_PARAMS_STORE,
   openDb,
   runStoreRequest
 } from '../../src/utils/file-system/database'
@@ -199,7 +199,7 @@ describe('原有入口、升级和跨目录边界', () => {
     expect((await loadConfig()).enabled.outfits).toBe(false)
     expect((await loadConfig()).enabled.camera).toBe(true)
     expect(
-      await runStoreRequest(CAMERA_FAVORITES_STORE, 'readonly', (s) => s.get('CAM-PART'))
+      await runStoreRequest(CAMERA_PARAMS_STORE, 'readonly', (s) => s.get('CAM-PART'))
     ).toMatchObject({ name: '保留本地' })
   })
 })

@@ -7,7 +7,7 @@ import {
   OUTFIT_IMAGES_STORE,
   HOME_SCHEMES_STORE,
   HOME_IMAGES_STORE,
-  CAMERA_FAVORITES_STORE,
+  CAMERA_PARAMS_STORE,
   CAMERA_COVERS_STORE
 } from '../../src/utils/file-system/database'
 import { sha256Hex } from '../../src/utils/sha256'
@@ -80,7 +80,7 @@ it('detects an external edit while preparing the rotation', async () => {
 it.each([
   ['outfit', OUTFITS_STORE, OUTFIT_IMAGES_STORE],
   ['home', HOME_SCHEMES_STORE, HOME_IMAGES_STORE],
-  ['camera', CAMERA_FAVORITES_STORE, CAMERA_COVERS_STORE]
+  ['camera', CAMERA_PARAMS_STORE, CAMERA_COVERS_STORE]
 ] as const)(
   'atomically saves %s source and metadata; rejects stale repeat saves',
   async (kind, records, images) => {

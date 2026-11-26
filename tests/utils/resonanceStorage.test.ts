@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { DB_VERSION, runStoreRequest } from '../../src/utils/file-system/database'
+import { DB_NAME, DB_VERSION, runStoreRequest } from '../../src/utils/file-system/database'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   loadResonanceRecords,
@@ -8,12 +8,10 @@ import {
 } from '../../src/utils/resonance/resonanceStorage'
 import type { ResonanceRecord } from '../../src/utils/resonance/resonanceTypes'
 
-const dbName = 'infinity-nikki-album-manager'
-
 afterEach(async () => {
   vi.restoreAllMocks()
   await new Promise<void>((resolve) => {
-    const request = indexedDB.deleteDatabase(dbName)
+    const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = request.onerror = request.onblocked = () => resolve()
   })
 })
@@ -61,8 +59,8 @@ describe('resonanceStorage', () => {
   })
   it('adds the resonance store to the shared database without replacing the album handle store', async () => {
     const albumDb = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open(dbName, 3)
-      request.onupgradeneeded = () => request.result.createObjectStore('album-handles')
+      const request = indexedDB.open(DB_NAME, 3)
+      request.onupgradeneeded = () => request.result.createObjectStore('local-state')
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
@@ -72,7 +70,7 @@ describe('resonanceStorage', () => {
     await expect(loadResonanceRecords()).resolves.toEqual([record])
 
     const upgradedDb = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open(dbName, DB_VERSION)
+      const request = indexedDB.open(DB_NAME, DB_VERSION)
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
@@ -80,10 +78,10 @@ describe('resonanceStorage', () => {
     upgradedDb.close()
     expect(names).toEqual(
       expect.arrayContaining([
-        'album-handles',
-        'camera-favorite-covers',
-        'camera-favorite-tags',
-        'camera-favorites',
+        'local-state',
+        'camera-param-covers',
+        'camera-param-tags',
+        'camera-params',
         'resonance-records'
       ])
     )

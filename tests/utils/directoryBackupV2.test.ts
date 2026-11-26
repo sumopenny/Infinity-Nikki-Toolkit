@@ -94,16 +94,12 @@ it('rejects an oversized single index before writing formal records', async () =
   ).rejects.toThrow('超过格式允许的大小')
   expect(disk.files.has('搭配码/记录/REC01.json')).toBe(false)
 })
-it('upgrades version 11 without touching business records or reviving retired bindings', async () => {
+it('creates backup stores during upgrade and preserves business records', async () => {
   await new Promise<void>((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 11)
     request.onupgradeneeded = () => {
       const db = request.result
       db.createObjectStore(OUTFITS_STORE, { keyPath: 'id' }).put(outfit('UPGRADE'))
-      db.createObjectStore('directory-backup-settings', { keyPath: 'key' }).put({
-        key: 'config',
-        stale: true
-      })
     }
     request.onsuccess = () => {
       request.result.close()
@@ -114,7 +110,6 @@ it('upgrades version 11 without touching business records or reviving retired bi
   const db = await openDb()
   expect(db.version).toBe(DB_VERSION)
   expect(db.objectStoreNames.contains(BACKUP_SETTINGS_STORE)).toBe(true)
-  expect(db.objectStoreNames.contains('directory-backup-settings')).toBe(false)
   db.close()
   expect(
     await runStoreRequest(OUTFITS_STORE, 'readonly', (store) => store.get('UPGRADE'))
