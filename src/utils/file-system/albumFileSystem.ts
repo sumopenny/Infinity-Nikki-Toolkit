@@ -133,6 +133,7 @@ export async function refreshAlbumPhotos(
       ) {
         // 原图未变时复用地址，但备注独立保存在元数据文件中，必须采用最新扫描值。
         existing.note = photo.note
+        existing.favorite = photo.favorite
         return existing
       }
       if (existing) {
@@ -223,6 +224,7 @@ async function createPhotoItem(
     fileHandle,
     directoryHandle,
     note: normalizePhotoNote(metadata.photos[name]?.note),
+    favorite: metadata.photos[name]?.favorite,
     ...parsed
   }
 }

@@ -49,7 +49,7 @@ function isMissingDirectoryError(error: unknown): boolean {
  */
 export async function listRecentlyDeleted(
   albumDirectoryHandle: FileSystemDirectoryHandle,
-  albumNotes?: Record<string, { note: string }>
+  albumNotes?: Record<string, { note: string; favorite?: boolean }>
 ): Promise<RecentlyDeletedPhoto[]> {
   let trashDirectoryHandle: FileSystemDirectoryHandle
   try {
@@ -106,7 +106,7 @@ export async function listRecentlyDeleted(
         originalName: metadata.originalName,
         trashName,
         deletedAt: metadata.deletedAt,
-        wasFavorite: metadata.wasFavorite,
+        wasFavorite: notes[noteKey]?.favorite ?? metadata.wasFavorite,
         size,
         url: null,
         fileSizeText: size === null ? '--' : formatFileSize(size),
@@ -189,7 +189,8 @@ export async function movePhotosToRecentlyDeleted(
             () => {
               stage = 'remove-source'
               return photo.directoryHandle.removeEntry(photo.name)
-            }
+            },
+            wasFavorite
           )
         } catch (error) {
           if (!(error && typeof error === 'object' && 'preserveTarget' in error))
@@ -321,8 +322,13 @@ async function restorePhotos(
                 (restoreName === photo.originalName
                   ? photo.originalName
                   : `trash/${photo.trashName}`))
-          note = await transferPhotoNote(albumDirectoryHandle, noteKey, restoreName, note, () =>
-            photo.directoryHandle.removeEntry(photo.trashName)
+          note = await transferPhotoNote(
+            albumDirectoryHandle,
+            noteKey,
+            restoreName,
+            note,
+            () => photo.directoryHandle.removeEntry(photo.trashName),
+            photo.wasFavorite
           )
         } catch (error) {
           if (!(error && typeof error === 'object' && 'preserveTarget' in error))
@@ -354,6 +360,7 @@ async function restorePhotos(
           lastModified: sourceFile.lastModified,
           fileHandle: targetHandle,
           directoryHandle: albumDirectoryHandle,
+          favorite: photo.wasFavorite,
           note
         }
         releasePhotoUrl(photo)

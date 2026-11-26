@@ -138,6 +138,115 @@ beforeEach(() => {
 })
 
 describe('App lifecycle coordination', () => {
+  it.each([false, true])('preserves legacy favorites when migration fails: %s', async (fail) => {
+    const directory = { name: 'Album' } as FileSystemDirectoryHandle
+    const photo = {
+      id: 'old-photo',
+      name: 'a.jpg',
+      directoryHandle: directory,
+      fileHandle: {} as FileSystemFileHandle,
+      url: null,
+      fileSizeText: '1 KB',
+      dateKey: '2026-11-26',
+      year: '2026',
+      monthDay: '11月26日',
+      displayDate: '2026年11月26日',
+      timeText: '12:00',
+      timestamp: 1
+    }
+    localStorage.setItem('infinity-nikki-favorite-photo-ids', JSON.stringify([photo.id]))
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(directory)
+    readAlbumDirectoryMock.mockResolvedValue({
+      directoryHandle: directory,
+      directoryName: directory.name,
+      photos: [photo]
+    })
+    const snapshot = await albumNotesApi.inspectAlbumNotes(async () => undefined)
+    const inspect = vi.spyOn(albumNotesApi, 'inspectAlbumNotes').mockResolvedValue(snapshot)
+    const save = vi.spyOn(albumNotesApi, 'savePhotoFavorites')
+    const migration = deferred<void>()
+    save.mockImplementation(async () => {
+      await migration.promise
+      if (fail) throw new Error('denied')
+      return { version: 1, photos: { 'a.jpg': { note: '', favorite: true } } }
+    })
+    const wrapper = mount(App, { attachTo: document.body, global: { stubs: { PhotoGrid: true } } })
+    try {
+      await flushPromises()
+      await vi.waitFor(() => expect(save).toHaveBeenCalled())
+      const migrationNotices = () =>
+        wrapper.getComponent({ name: 'OperationNotice' }).props('notices')
+          .filter((notice: { source?: string }) => notice.source === 'album-favorites-migration')
+      expect(migrationNotices()).toEqual([
+        expect.objectContaining({ loading: true, message: expect.stringContaining('正在将 1 张照片') })
+      ])
+      migration.resolve()
+      await flushPromises()
+      expect(migrationNotices()).toEqual([
+        expect.objectContaining({ loading: false, tone: fail ? 'warning' : 'success' })
+      ])
+      expect(migrationNotices()[0].message).toContain(fail ? '旧收藏仍保留' : '收藏迁移完成')
+      expect(save).toHaveBeenCalledWith(directory, [{ name: 'a.jpg', favorite: true }], true)
+      const grid = wrapper.getComponent({ name: 'PhotoGrid' })
+      expect(grid.props('favoriteIds').has(photo.id)).toBe(true)
+      expect(localStorage.getItem('infinity-nikki-favorite-photo-ids')).toContain(photo.id)
+      save.mockRejectedValue(new Error('write denied'))
+      grid.vm.$emit('toggleFavorite', photo.id)
+      await flushPromises()
+      expect(grid.props('favoriteIds').has(photo.id)).toBe(true)
+      expect(document.body.textContent).toContain('收藏未保存')
+      save.mockResolvedValue({ version: 1, photos: { 'a.jpg': { note: '', favorite: false } } })
+      grid.vm.$emit('toggleFavorite', photo.id)
+      await flushPromises()
+      expect(grid.props('favoriteIds').has(photo.id)).toBe(false)
+    } finally {
+      wrapper.unmount()
+      save.mockRestore()
+      inspect.mockRestore()
+    }
+  })
+
+  it('reads JSON favorites in read-only mode and keeps local cancellation without writing the folder', async () => {
+    getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
+    const save = vi.spyOn(albumNotesApi, 'savePhotoFavorites')
+    const wrapper = mount(App, { attachTo: document.body, global: { stubs: { PhotoGrid: true } } })
+    try {
+      await flushPromises()
+      const image = new File(['image'], '2026_11_26_12_00_00.png', { lastModified: 1 })
+      const metadata = new File([], 'album-metadata.json')
+      Object.defineProperty(metadata, 'text', {
+        value: async () =>
+          JSON.stringify({ version: 1, photos: { [image.name]: { note: '备注', favorite: true } } })
+      })
+      for (const file of [image, metadata])
+        Object.defineProperty(file, 'webkitRelativePath', { value: `Album/${file.name}` })
+      const input = wrapper.get<HTMLInputElement>('[data-testid="compatible-album-input"]')
+      Object.defineProperty(input.element, 'files', { value: [image, metadata] })
+      await input.trigger('change')
+      await flushPromises()
+      const grid = wrapper.getComponent({ name: 'PhotoGrid' })
+      const id = [...grid.props('favoriteIds')][0]
+      expect(id).toBeTruthy()
+      grid.vm.$emit('toggleFavorite', id)
+      await flushPromises()
+      expect(grid.props('favoriteIds').has(id)).toBe(false)
+      expect(document.body.textContent).toContain('仅保存在当前浏览器')
+      await input.trigger('change')
+      await flushPromises()
+      expect(grid.props('favoriteIds').has(id)).toBe(false)
+      expect(save).not.toHaveBeenCalled()
+      const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota') })
+      try {
+        grid.vm.$emit('toggleFavorite', id)
+        await flushPromises()
+        expect(grid.props('favoriteIds').has(id)).toBe(false)
+        expect(document.body.textContent).toContain('浏览器未能保存全部收藏')
+      } finally { write.mockRestore() }
+    } finally {
+      wrapper.unmount()
+      save.mockRestore()
+    }
+  })
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()

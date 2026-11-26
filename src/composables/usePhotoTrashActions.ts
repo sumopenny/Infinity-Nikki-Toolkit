@@ -63,6 +63,7 @@ export function usePhotoTrashActions(options: PhotoTrashActionsOptions) {
       const existing = currentByName.get(photo.trashName)
       if (!existing) return photo
       existing.note = photo.note
+      existing.wasFavorite = photo.wasFavorite
       existing.noteKey = photo.noteKey
       existing.lastModified = photo.lastModified
       existing.size = photo.size

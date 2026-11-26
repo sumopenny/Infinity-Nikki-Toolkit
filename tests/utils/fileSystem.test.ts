@@ -1,7 +1,7 @@
 import { preparePhotoTransfer, runPhotoTransfer } from '../../src/utils/file-system/photoTransfer'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { messages } from '../../src/i18n'
-import { readAlbumMetadata, savePhotoNote } from '../../src/utils/file-system/photoMetadata'
+import { readAlbumMetadata, savePhotoNote, savePhotoFavorites } from '../../src/utils/file-system/photoMetadata'
 import type { PhotoItem } from '../../src/utils/photoGrouping'
 import {
   pickAlbumDirectory,
@@ -908,17 +908,21 @@ it('persists trash notes across reload and restores them under a conflict-free n
   const photo = createPhoto(directory, '2026-10-14_12-00-00.jpg')
   const handle = directory as unknown as FileSystemDirectoryHandle
   await savePhotoNote(handle, photo.name, 'original')
+  await savePhotoFavorites(handle, [{ name: photo.name, favorite: true }])
   const moved = await movePhotosToRecentlyDeleted([photo], new Set())
   expect(moved.movedPhotos[0].note).toBe('original')
   expect((await readAlbumMetadata(handle)).photos[photo.name]).toBeUndefined()
   const reloaded = await listRecentlyDeleted(handle)
   expect(reloaded[0].note).toBe('original')
+  expect(reloaded[0].wasFavorite).toBe(true)
   createPhoto(directory, photo.name)
   await savePhotoNote(handle, photo.name, 'replacement')
   const restored = await restoreRecentlyDeletedPhotos(reloaded, handle)
   expect(restored.restoredPhotos[0].name).toContain('_restored_1')
   const notes = (await readAlbumMetadata(handle)).photos
   expect(notes[restored.restoredPhotos[0].name].note).toBe('original')
+  expect(notes[restored.restoredPhotos[0].name].favorite).toBe(true)
+  expect((await readAlbumDirectory(handle, { messages: messages.zh.fileSystem })).photos.find((item) => item.name === restored.restoredPhotos[0].name)?.favorite).toBe(true)
   expect(notes[photo.name].note).toBe('replacement')
   expect(notes[reloaded[0].noteKey!]).toBeUndefined()
 })

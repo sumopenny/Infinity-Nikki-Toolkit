@@ -47,7 +47,11 @@ import {
   setDiagnosticModule
 } from './utils/errorReporting/errorReporter'
 import { DirectoryAccessError } from './utils/file-system/directoryErrors'
-import { usePhotoFavorites } from './composables/usePhotoFavorites'
+import {
+  usePhotoFavorites,
+  localPhotoFavorite,
+  writeLocalPhotoFavorite
+} from './composables/usePhotoFavorites'
 import { useAppPreferences } from './composables/useAppPreferences'
 import { readLocalStorage, writeLocalStorage, removeLocalStorage } from './utils/localStorage'
 import { useGameCleanup } from './composables/useGameCleanup'
@@ -181,7 +185,8 @@ import {
 import {
   PhotoMetadataError,
   readAlbumMetadata,
-  savePhotoNote
+  savePhotoNote,
+  savePhotoFavorites
 } from './utils/file-system/photoMetadata'
 import { readPhotoBlob, releasePhotoUrl, releasePhotoUrls } from './utils/file-system/photoUrl'
 import { preparePhotoTransfer, runPhotoTransfer } from './utils/file-system/photoTransfer'
@@ -302,7 +307,23 @@ watch(
 const selectedIds = ref<Set<string>>(new Set())
 const selectedOutfitIds = ref<Set<string>>(new Set())
 const trashSelectedIds = ref<Set<string>>(new Set())
-const favoriteIds = usePhotoFavorites(() => !suppressLocalPersistence)
+const localFavoriteIds = usePhotoFavorites(() => !suppressLocalPersistence)
+const favoriteIds = computed({
+  get() {
+    const ids = new Set(localFavoriteIds.value)
+    for (const photo of photos.value) {
+      const favorite =
+        (photo.source === 'file' ? localPhotoFavorite(photo.id) : undefined) ??
+        photo.favorite ??
+        localFavoriteIds.value.has(photo.id)
+      favorite ? ids.add(photo.id) : ids.delete(photo.id)
+    }
+    return ids
+  },
+  set(ids: Set<string>) {
+    localFavoriteIds.value = ids
+  }
+})
 const searchQuery = ref('')
 const noteDialogPhoto = ref<PhotoItem | null>(null)
 const noteDialogBaseline = ref('')
@@ -878,9 +899,6 @@ const {
   togglePhoto,
   toggleTrashPhoto,
   toggleAllTrash,
-  toggleFavorite,
-  favoriteSelectedPhotos,
-  unfavoriteSelectedPhotos,
   clearAlbumSelection,
   clearOutfitSelection,
   clearTrashSelection,
@@ -893,8 +911,7 @@ const {
   favoriteIds,
   selectedIds,
   selectedOutfitIds,
-  trashSelectedIds,
-  activeView
+  trashSelectedIds
 })
 const {
   mergeRecentlyDeleted,
@@ -1133,9 +1150,123 @@ async function replaceAlbum(
       showOutfitRefreshResult(outfitResult, false)
     const migrationStatus = await migrateHomeSchemes(result.directoryHandle)
     if (migrationStatus) publishStatus(migrationStatus)
+    await migrateAlbumFavorites()
   } finally {
     if (restoring && activeOperation.value === 'updating-outfits') activeOperation.value = 'loading'
   }
+}
+
+async function migrateAlbumFavorites() {
+  const directory = albumDirectoryHandle.value
+  const targets = photos.value.filter(
+    (photo) => photo.favorite === undefined && localFavoriteIds.value.has(photo.id)
+  )
+  if (!directory || !targets.length) return
+  const source = 'album-favorites-migration'
+  showStatus({
+    source,
+    message:
+      language.value === 'zh'
+        ? `正在将 ${targets.length} 张照片的旧收藏保存到相册…`
+        : `Saving existing favorites for ${targets.length} photos to the album…`,
+    loading: true,
+    tone: 'info'
+  })
+  try {
+    const metadata = await savePhotoFavorites(
+      directory,
+      targets.map((photo) => ({ name: photo.name, favorite: true })),
+      true
+    )
+    for (const photo of targets) photo.favorite = metadata.photos[photo.name]?.favorite
+    showStatus({
+      source,
+      message:
+        language.value === 'zh'
+          ? '收藏迁移完成，已保存到相册。换浏览器打开此相册也能读取收藏。'
+          : 'Favorites migration completed and saved to the album. Other browsers can now read them from this folder.',
+      tone: 'success'
+    })
+  } catch {
+    showStatus({
+      source,
+      message:
+        language.value === 'zh'
+          ? '旧收藏仍保留在此浏览器，尚未写入相册。请检查目录权限或相册 JSON，重新打开相册可重试。'
+          : 'Existing favorites remain in this browser but were not saved to the album. Check folder permissions or album JSON and reopen to retry.',
+      tone: 'warning'
+    })
+  } finally {
+    if (directory === albumDirectoryHandle.value)
+      albumNotes.value = await inspectAlbumNotes(directory)
+  }
+}
+
+async function setAlbumFavorites(targets: PhotoItem[], favorite: boolean) {
+  if (!targets.length || isAnyFileOperationBusy.value) return
+  if (isCompatibleAlbum.value) {
+    const next = new Set(localFavoriteIds.value)
+    try {
+      for (const photo of targets) {
+        if (!suppressLocalPersistence) writeLocalPhotoFavorite(photo.id, favorite)
+        favorite ? next.add(photo.id) : next.delete(photo.id)
+      }
+    } catch {
+      localFavoriteIds.value = next
+      showStatus({
+        message:
+          language.value === 'zh'
+            ? '浏览器未能保存全部收藏，请检查存储空间或隐私设置。相册 JSON 未修改。'
+            : 'The browser could not save all favorites. Check storage or privacy settings. The album JSON was not changed.',
+        tone: 'error'
+      })
+      return
+    }
+    localFavoriteIds.value = next
+    showStatus({
+      message:
+        language.value === 'zh'
+          ? '只读模式：收藏仅保存在当前浏览器，未写入相册 JSON。'
+          : 'Read-only: favorites are saved only in this browser, not to the album JSON.',
+      tone: 'info'
+    })
+    return
+  }
+  const directory = albumDirectoryHandle.value
+  if (!directory) return
+  await operations.run('photo-favorites', async () => {
+    try {
+      const metadata = await savePhotoFavorites(
+        directory,
+        targets.map((photo) => ({ name: photo.name, favorite, expected: photo.favorite }))
+      )
+      for (const photo of targets) photo.favorite = metadata.photos[photo.name]?.favorite
+    } catch (error) {
+      showStatus({
+        message:
+          language.value === 'zh'
+            ? '收藏未保存，原状态已保留。请检查目录权限或相册 JSON；文件有变化时请刷新相册后重试。'
+            : 'Favorites were not saved; the previous state is retained. Check folder permissions or album JSON, and refresh the album if the file changed.',
+        tone: 'error'
+      })
+      captureDiagnosticError(error, { module: 'album', action: 'photo-favorites' })
+    } finally {
+      if (directory === albumDirectoryHandle.value)
+        albumNotes.value = await inspectAlbumNotes(directory)
+    }
+  })
+}
+function toggleFavorite(id: string) {
+  return setAlbumFavorites(
+    photos.value.filter((photo) => photo.id === id),
+    !favoriteIds.value.has(id)
+  )
+}
+function favoriteSelectedPhotos() {
+  return setAlbumFavorites(scopedSelectedPhotos.value, true)
+}
+function unfavoriteSelectedPhotos() {
+  return setAlbumFavorites(scopedSelectedPhotos.value, false)
 }
 
 const { refreshAlbum, scheduleFocusRefresh, invalidatePendingRefreshes, suppressNextFocusRefresh } =
@@ -2221,7 +2352,10 @@ async function pickPhotoExportDirectory(): Promise<FileSystemDirectoryHandle | n
 }
 
 async function exportAlbumPhotos(targets: PhotoItem[], allPhotos = false) {
-  const source = allPhotos ? photos.value : targets
+  const source = (allPhotos ? photos.value : targets).map((photo) => ({
+    ...photo,
+    favorite: favoriteIds.value.has(photo.id)
+  }))
   if (!source.length || isAnyFileOperationBusy.value) return
   if (isCompatibleAlbum.value) return downloadCompatiblePhotos(source)
   let directory: FileSystemDirectoryHandle
@@ -2396,8 +2530,7 @@ watch(activeView, (view) => {
 watch(
   [isStartupNoticeVisible, isAnyFileOperationBusy, () => confirmDialog.value.visible],
   () => {
-    if (promptX6GameOnInitialOutfitScan && !initialOutfitScanStarted)
-      void ensureInitialOutfitScan()
+    if (promptX6GameOnInitialOutfitScan && !initialOutfitScanStarted) void ensureInitialOutfitScan()
   },
   { flush: 'post' }
 )

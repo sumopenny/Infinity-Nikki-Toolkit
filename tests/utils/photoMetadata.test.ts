@@ -4,7 +4,9 @@ import {
   recoverAlbumNotes,
   normalizePhotoNote,
   readAlbumMetadata,
-  savePhotoNote
+  savePhotoNote,
+  savePhotoFavorites,
+  transferPhotoNote
 } from '../../src/utils/file-system/photoMetadata'
 
 import { reportError } from '../../src/utils/errorReporting/errorReporter'
@@ -52,6 +54,60 @@ class Dir {
 const asDir = (d: Dir) => d as unknown as FileSystemDirectoryHandle
 
 describe('photoMetadata', () => {
+  it('migrates missing favorites once, preserves explicit cancellation and shares the note entry', async () => {
+    const d = new Dir()
+    await savePhotoNote(asDir(d), 'a.jpg', '原备注')
+    await savePhotoFavorites(asDir(d), [{ name: 'a.jpg', favorite: true }], true)
+    await savePhotoNote(asDir(d), 'a.jpg', '')
+    expect((await readAlbumMetadata(asDir(d))).photos['a.jpg']).toEqual({
+      note: '',
+      favorite: true
+    })
+    await savePhotoFavorites(asDir(d), [{ name: 'a.jpg', favorite: false, expected: true }])
+    const before = d.files.get('album-metadata.json')!.contents
+    await savePhotoFavorites(asDir(d), [{ name: 'a.jpg', favorite: true }], true)
+    expect(d.files.get('album-metadata.json')!.contents).toBe(before)
+    expect((await readAlbumMetadata(asDir(d))).photos['a.jpg'].favorite).toBe(false)
+  })
+
+  it('preserves favorites through trash, renamed restoration and rollback', async () => {
+    const d = new Dir()
+    await savePhotoFavorites(asDir(d), [{ name: 'a.jpg', favorite: true, note: '备注' }])
+    await transferPhotoNote(asDir(d), 'a.jpg', 'trash/a.jpg', '', async () => {})
+    await expect(
+      transferPhotoNote(asDir(d), 'trash/a.jpg', 'renamed.jpg', '', async () => {
+        throw new Error('remove failed')
+      })
+    ).rejects.toThrow('remove failed')
+    expect((await readAlbumMetadata(asDir(d))).photos['trash/a.jpg'].favorite).toBe(true)
+    await transferPhotoNote(asDir(d), 'trash/a.jpg', 'renamed.jpg', '', async () => {})
+    expect((await readAlbumMetadata(asDir(d))).photos).toEqual({
+      'renamed.jpg': { note: '备注', favorite: true }
+    })
+  })
+
+  it('rejects stale favorites and write failures without changing the existing JSON', async () => {
+    const d = new Dir()
+    await savePhotoFavorites(asDir(d), [{ name: 'a.jpg', favorite: true }])
+    const before = d.files.get('album-metadata.json')!.contents
+    await expect(
+      savePhotoFavorites(asDir(d), [{ name: 'a.jpg', favorite: false, expected: false }])
+    ).rejects.toMatchObject({ code: 'changed' })
+    const pending = new FileHandle('album-metadata.pending.json')
+    vi.spyOn(pending, 'createWritable').mockRejectedValue(
+      new DOMException('denied', 'NotAllowedError')
+    )
+    const get = d.getFileHandle.bind(d)
+    vi.spyOn(d, 'getFileHandle').mockImplementation(async (name, options) =>
+      name === pending.name && options?.create
+        ? (pending as unknown as FileSystemFileHandle)
+        : get(name, options)
+    )
+    await expect(
+      savePhotoFavorites(asDir(d), [{ name: 'a.jpg', favorite: false, expected: true }])
+    ).rejects.toMatchObject({ name: 'NotAllowedError' })
+    expect(d.files.get('album-metadata.json')!.contents).toBe(before)
+  })
   it('normalizes notes and truncates to fifteen characters', () => {
     expect(normalizePhotoNote(`  ${'a'.repeat(20)}  `)).toBe('a'.repeat(15))
     expect(normalizePhotoNote(3)).toBe('')
@@ -202,8 +258,17 @@ it('backs up the empty original and restores the incident swap, including its em
   expect(reportError).not.toHaveBeenCalled()
   const state = await inspectAlbumNotes(asDir(d), 'compatible')
   expect(reportError).toHaveBeenCalledWith(expect.any(Error), {
-    module: 'album', action: 'read-notes', stage: 'compatible', code: 'ALBUM_NOTES_BLOCKED',
-    severity: 'warning', context: { mainState: 'empty', invalidEntryCount: 0, pendingState: 'missing', swapState: 'valid' }
+    module: 'album',
+    action: 'read-notes',
+    stage: 'compatible',
+    code: 'ALBUM_NOTES_BLOCKED',
+    severity: 'warning',
+    context: {
+      mainState: 'empty',
+      invalidEntryCount: 0,
+      pendingState: 'missing',
+      swapState: 'valid'
+    }
   })
   expect(state).toMatchObject({ blocked: true, previewName: SWAP, metadata: JSON.parse(trashText) })
   await expect(savePhotoNote(asDir(d), 'x', 'edit')).rejects.toMatchObject({ code: 'invalid' })
@@ -249,9 +314,15 @@ it('stops before replacing an original if backup fails or the selected candidate
     return get(name, options)
   })
   await expect(recoverAlbumNotes(asDir(d), state, SWAP)).rejects.toThrow('backup denied')
-  expect(reportError).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({
-    module: 'album', action: 'recover-notes', stage: 'backup', code: 'ALBUM_NOTE_FILE_FAILED'
-  }))
+  expect(reportError).toHaveBeenCalledWith(
+    expect.any(Error),
+    expect.objectContaining({
+      module: 'album',
+      action: 'recover-notes',
+      stage: 'backup',
+      code: 'ALBUM_NOTE_FILE_FAILED'
+    })
+  )
   spy.mockRestore()
   swap.contents = '{"photos":{}}'
   await expect(recoverAlbumNotes(asDir(d), state, SWAP)).rejects.toMatchObject({ code: 'changed' })

@@ -35,6 +35,7 @@ export async function readCompatibleAlbum(files: File[]): Promise<CompatibleAlbu
       lastModified: file.lastModified,
       fileSizeText: formatFileSize(file.size),
       note: normalizePhotoNote(metadata.photos[file.name]?.note ?? ''),
+      favorite: metadata.photos[file.name]?.favorite,
       ...parsed
     })
   }

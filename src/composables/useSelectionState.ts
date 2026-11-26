@@ -1,5 +1,4 @@
 // 选择状态管理：处理照片、搭配和回收站项目的选择、全选及收藏联动。
-import type { AlbumView } from '../components/AlbumViewSwitcher.vue'
 import { computed, watch, type Ref } from 'vue'
 import type { PhotoItem, RecentlyDeletedPhoto } from '../utils/photoGrouping'
 import type { OutfitItem } from '../utils/outfit/outfitTypes'
@@ -25,7 +24,6 @@ export function useSelectionState(options: {
   selectedIds: Ref<Set<string>>
   selectedOutfitIds: Ref<Set<string>>
   trashSelectedIds: Ref<Set<string>>
-  activeView: Ref<AlbumView>
 }) {
   const {
     visiblePhotos,
@@ -35,8 +33,7 @@ export function useSelectionState(options: {
     selectedIds,
     selectedOutfitIds,
     trashSelectedIds,
-    recentlyDeleted,
-    activeView
+    recentlyDeleted
   } = options
   // 筛选或刷新后剔除不可操作项目，避免列表无勾选却仍留在选择模式。
   for (const [items, selection] of [
@@ -110,29 +107,6 @@ export function useSelectionState(options: {
       : new Set(recentlyDeleted.value.map((photo) => photo.id))
   }
 
-  const toggleFavorite = (id: string) => {
-    const next = toggleId(favoriteIds.value, id)
-    favoriteIds.value = next
-    if (activeView.value === 'favorites' && !next.has(id)) {
-      selectedIds.value = new Set([...selectedIds.value].filter((selectedId) => selectedId !== id))
-    }
-  }
-
-  const favoriteSelectedPhotos = () => {
-    favoriteIds.value = new Set([
-      ...favoriteIds.value,
-      ...scopedSelectedPhotos.value.map((photo) => photo.id)
-    ])
-  }
-
-  const unfavoriteSelectedPhotos = () => {
-    const ids = new Set(scopedSelectedPhotos.value.map((photo) => photo.id))
-    favoriteIds.value = new Set([...favoriteIds.value].filter((id) => !ids.has(id)))
-    if (activeView.value === 'favorites') {
-      selectedIds.value = new Set([...selectedIds.value].filter((id) => !ids.has(id)))
-    }
-  }
-
   const clearAlbumSelection = () => {
     selectedIds.value = new Set()
   }
@@ -172,9 +146,6 @@ export function useSelectionState(options: {
     togglePhoto,
     toggleTrashPhoto,
     toggleAllTrash,
-    toggleFavorite,
-    favoriteSelectedPhotos,
-    unfavoriteSelectedPhotos,
     clearAlbumSelection,
     clearOutfitSelection,
     clearTrashSelection,

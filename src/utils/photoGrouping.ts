@@ -62,6 +62,7 @@ export interface PhotoDisplayItem extends ParsedPhotoDate {
   lastModified?: number
   loadImageBlob?: () => Promise<Blob>
   note?: string
+  favorite?: boolean
 }
 
 export interface DirectoryPhotoItem extends PhotoDisplayItem {
