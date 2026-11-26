@@ -1,6 +1,26 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PhotoItem } from '../../src/utils/photoGrouping'
 import { preparePhotoTransfer, runPhotoTransfer } from '../../src/utils/file-system/photoTransfer'
+
+beforeEach(() => {
+  const tails = new Map<string, Promise<unknown>>()
+  vi.stubGlobal('navigator', {
+    locks: {
+      request: vi.fn((name: string, action: () => Promise<unknown>) => {
+        const next = (tails.get(name) ?? Promise.resolve()).then(action)
+        tails.set(
+          name,
+          next.catch(() => undefined)
+        )
+        return next
+      })
+    }
+  })
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 class TestFileHandle implements FileSystemFileHandle {
   readonly kind = 'file' as const
@@ -211,4 +231,70 @@ it('keeps a cancelled queued import from writing and permits the following batch
   expect(await cancelledRun).toMatchObject({ cancelled: true, succeeded: 0, completed: 0 })
   expect((await runPhotoTransfer(directory, last)).succeeded).toBe(1)
   expect([...directory.files.keys()]).toEqual(['first.png', 'last.png'])
+})
+
+it('commits successful photo metadata in bounded batches and preserves partial copy failures', async () => {
+  const source = new TestDirectory('source'),
+    target = new TestDirectory('target')
+  const photos = Array.from({ length: 70 }, (_, index) => ({
+    ...photo(source, `${index}.jpg`, index, index === 4),
+    favorite: true,
+    note: `note ${index}`
+  }))
+  const prepared = await preparePhotoTransfer(target, { kind: 'export', photos })
+  const get = target.getFileHandle.bind(target)
+  let mainWrites = 0
+  target.getFileHandle = async (name, options) => {
+    if (name === 'album-metadata.json' && options?.create) mainWrites++
+    return get(name, options)
+  }
+  const result = await runPhotoTransfer(target, prepared)
+  expect(result.succeeded).toBe(69)
+  expect(result.failedNames).toEqual(['4.jpg'])
+  expect(mainWrites).toBe(3)
+  const metadata = JSON.parse(
+    await (await target.files.get('album-metadata.json')!.getFile()).text()
+  )
+  expect(Object.keys(metadata.photos)).toHaveLength(69)
+  expect(metadata.photos['69.jpg']).toMatchObject({ favorite: true, note: 'note 69' })
+})
+
+it('never exposes photos as safe to move when their metadata commit fails', async () => {
+  const source = new TestDirectory('source'),
+    target = new TestDirectory('target')
+  const prepared = await preparePhotoTransfer(target, {
+    kind: 'export',
+    photos: [photo(source, 'one.jpg', 1), photo(source, 'two.jpg', 2)]
+  })
+  const get = target.getFileHandle.bind(target)
+  target.getFileHandle = async (name, options) => {
+    if (name.includes('metadata') && options?.create) throw new Error('metadata write denied')
+    return get(name, options)
+  }
+  const result = await runPhotoTransfer(target, prepared)
+  expect(result).toMatchObject({ succeeded: 0, completed: 2, succeededPhotos: [] })
+  expect(result.failedNames.sort()).toEqual(['one.jpg', 'two.jpg'])
+  expect(source.files.size).toBe(2)
+  expect(target.files.has('one.jpg')).toBe(true)
+})
+
+it('stops scheduling copies on cancellation but commits the copy already in flight', async () => {
+  const source = new TestDirectory('source'),
+    target = new TestDirectory('target')
+  const controller = new AbortController()
+  const photos = [photo(source, 'one.jpg', 1), photo(source, 'two.jpg', 2)]
+  const firstHandle = source.files.get('one.jpg')!
+  const get = firstHandle.getFile.bind(firstHandle)
+  firstHandle.getFile = async () => {
+    controller.abort()
+    return get()
+  }
+  const result = await runPhotoTransfer(
+    target,
+    await preparePhotoTransfer(target, { kind: 'export', photos }),
+    { concurrency: 1, signal: controller.signal }
+  )
+  expect(result).toMatchObject({ cancelled: true, succeeded: 1, completed: 1 })
+  expect(result.succeededPhotos).toEqual([photos[0]])
+  expect(target.files.has('two.jpg')).toBe(false)
 })

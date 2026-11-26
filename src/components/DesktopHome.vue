@@ -414,6 +414,7 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   padding: 16px 20px;
   border: 1.5px solid rgba(255, 255, 255, 0.9);
   border-radius: 24px;
+  background: var(--backup-tint);
   background: color-mix(in srgb, var(--backup-tint) 86%, transparent);
   box-shadow: 0 6px 20px rgba(104, 49, 79, 0.14);
   backdrop-filter: blur(12px);
@@ -431,12 +432,14 @@ const numberFormat = computed(() => new Intl.NumberFormat(props.language === 'zh
   flex: 0 0 44px;
   height: 44px;
   border-radius: 50%;
+  background: rgba(203, 100, 134, 0.1);
   background: color-mix(in srgb, var(--backup-accent) 10%, transparent);
   color: var(--backup-accent);
 }
 .home-backup-copy {
   min-width: 0;
   padding-left: 14px;
+  border-left: 1px solid rgba(203, 100, 134, 0.24);
   border-left: 1px solid color-mix(in srgb, var(--backup-accent) 24%, transparent);
 }
 .home-backup-copy strong {

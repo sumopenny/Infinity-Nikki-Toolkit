@@ -1,4 +1,4 @@
-import * as loader from '@assemblyscript/loader'
+import { createWasmLoader } from '../wasmLoader'
 import wasmUrl from '../../assets/home-build-parser.wasm?url'
 
 interface HomeBuildWasmExports extends WebAssembly.Exports {
@@ -34,24 +34,7 @@ export interface HomeBuildWireData {
   version: string | null
 }
 
-let exportsPromise: Promise<HomeBuildWasmExports> | null = null
-
-async function getExports(): Promise<HomeBuildWasmExports> {
-  if (!exportsPromise) {
-    exportsPromise = fetch(wasmUrl)
-      .then((response) => {
-        if (!response.ok) throw new Error(`WASM HTTP ${response.status}`)
-        return response.arrayBuffer()
-      })
-      .then((bytes) => loader.instantiate(bytes, {}))
-      .then((module) => module.exports as unknown as HomeBuildWasmExports)
-      .catch((error: unknown) => {
-        exportsPromise = null
-        throw error
-      })
-  }
-  return exportsPromise
-}
+const getExports = createWasmLoader<HomeBuildWasmExports>(wasmUrl)
 
 function parseResult<T>(text: string): HomeBuildWasmResult<T> {
   return JSON.parse(text) as HomeBuildWasmResult<T>

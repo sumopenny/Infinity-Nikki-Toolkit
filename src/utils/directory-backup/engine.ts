@@ -47,15 +47,15 @@ import {
   MODULE_LABELS,
   type RootManifest,
   type Entry,
-  type IndexKind,
   type DiskOperation,
   jsonBytes,
   parseJson,
   digest,
-  recordKey,
+  checkedId,
   recordPath,
-  ignoredPath,
-  indexPath,
+  INDEX_PATH,
+  readIndexMetadata,
+  type IndexEntry,
   readBytes,
   directoryAt,
   readJson,
@@ -298,15 +298,15 @@ async function guardUnexpectedEmpty(
   const confirmed = await confirmedDeletionKeys(module)
   let authorized = confirmed.reset
   if (!authorized && confirmed.ids.length >= manifest.count) {
-    // 不能只按删除数量推断意图：逐个索引桶核对被删 ID，避免不相关的已确认删除掩盖异常丢失。
-    const hashes = new Set(await Promise.all(confirmed.ids.map(recordKey)))
+    // 不能只按删除数量推断意图：逐个核对索引中的被删 ID，避免不相关的已确认删除掩盖异常丢失。
+    const confirmedIds = new Set(confirmed.ids.map(checkedId))
     let covered = 0
     authorized = true
-    for (const [bucket, sha] of Object.entries(manifest.indexes.record)) {
-      const entries = await readIndex(dir, 'record', bucket, sha)
-      for (const hash of Object.keys(entries)) {
+    for (const sha of Object.values(manifest.indexes.record)) {
+      const entries = await readIndex(dir, sha)
+      for (const id of Object.keys(entries)) {
         covered++
-        if (!hashes.has(hash)) authorized = false
+        if (!confirmedIds.has(id)) authorized = false
       }
     }
     authorized = authorized && covered === manifest.count
@@ -412,7 +412,7 @@ const taskFor = (changes: DirtyChange[]): Task => ({
   images: new Set(changes.filter((x) => x.key[1] === 'image').map((x) => x.key[2])),
   ignored: changes.filter((x) => x.key[1] === 'ignored').map((x) => x.key[2])
 })
-/** 正常批次不读整库、不遍历业务目录、不碰未改变图片；只更新受影响的桶。 */
+/** 正常批次不读整库、不遍历业务目录、不碰未改变图片；只更新改变的记录和模块索引。 */
 async function applyChanges(
   config: BackupConfig,
   dir: FileSystemDirectoryHandle,
@@ -421,20 +421,19 @@ async function applyChanges(
 ) {
   const manifest = await trackedManifest(config, dir, module)
   const next = cloneJsonData(manifest)
-  const indexes = new Map<string, Record<string, string>>()
-  if (!manifest.indexes.record.all) indexes.set('record/all', {})
-  const index = async (kind: IndexKind, bucket: string) => {
-    const token = `${kind}/${bucket}`
-    if (!indexes.has(token))
-      indexes.set(token, await readIndex(dir, kind, bucket, manifest.indexes[kind][bucket]))
-    return indexes.get(token)!
-  }
+  const metadata: Record<string, IndexEntry> = Object.assign(
+    Object.create(null),
+    await readIndexMetadata(dir, manifest.indexes.record.all)
+  )
+  const names = new Map(Object.keys(metadata).map((id) => [id.toLocaleLowerCase('en-US'), id]))
   const previous = new Map<string, Entry | null>()
   for (const id of task.ids) {
-    const hash = await recordKey(id)
-    const list = await index('record', 'all')
-    const bytes = await readBytes(dir, recordPath(hash), MAX_JSON_BYTES)
-    if (Boolean(bytes) !== Boolean(list[hash]) || (bytes && (await digest(bytes)) !== list[hash]))
+    checkedId(id)
+    const bytes = await readBytes(dir, recordPath(id), MAX_JSON_BYTES)
+    if (
+      Boolean(bytes) !== Boolean(metadata[id]) ||
+      (bytes && (await digest(bytes)) !== metadata[id]?.sha256)
+    )
       throw new Error(`备份记录丢失或已被外部修改：${id}`)
     const entry = bytes ? parseJson<Entry>(bytes) : null
     if (entry && (entry.id !== id || entry.module !== module || entry.version !== 2))
@@ -460,22 +459,16 @@ async function applyChanges(
   const operations: DiskOperation[] = []
   const consumed = new Set(snapshot.records.map((item) => item.id))
   for (const { id, record, image: rawImage } of snapshot.records) {
-    const hash = await recordKey(id),
-      bucket = 'all',
-      path = recordPath(hash)
-    const list = await index('record', bucket)
-    if (
-      Object.keys(list).some(
-        (key) => key !== id && key.toLocaleLowerCase('en-US') === id.toLocaleLowerCase('en-US')
-      )
-    )
-      throw new Error(`记录 ID 存在大小写冲突：${id}`)
+    const path = recordPath(id)
+    const name = id.toLocaleLowerCase('en-US')
+    if (names.has(name) && names.get(name) !== id) throw new Error(`记录 ID 存在大小写冲突：${id}`)
     const prior = previous.get(id)
     if (!record) {
       if (prior) {
         operations.push({ path })
         if (prior.image) operations.push({ path: prior.image.path })
-        delete list[hash]
+        delete metadata[id]
+        names.delete(name)
         next.count--
         next.imageBytes -= prior.image?.size ?? 0
       }
@@ -504,11 +497,12 @@ async function applyChanges(
     const entry: Entry = { version: 2, module, id, revision, value: record, image }
     const data = jsonBytes(entry),
       sha = await digest(data.buffer as ArrayBuffer)
-    if (list[hash] !== sha) {
+    if (metadata[id]?.sha256 !== sha) {
       operations.push({ path, data })
       if (!prior) next.count++
       next.imageBytes += (image?.size ?? 0) - (prior?.image?.size ?? 0)
-      list[hash] = sha
+      metadata[id] = { path, size: data.byteLength, sha256: sha, image }
+      names.set(name, id)
     }
     if (prior?.image && prior.image.path !== image?.path)
       operations.push({ path: prior.image.path })
@@ -535,33 +529,11 @@ async function applyChanges(
     operations.push({ path: '标签.json', data: tags })
     next.tagDigest = tagDigest
   }
-  for (const [token, content] of indexes) {
-    const [kind, bucket] = token.split('/') as [IndexKind, string]
-    const oldBytes = await readBytes(dir, indexPath(kind, bucket), MAX_JSON_BYTES)
-    const previousMetadata = oldBytes ? parseJson<Record<string, unknown>>(oldBytes) : {}
-    const metadata: Record<string, unknown> = {}
-    for (const [id, sha256] of Object.entries(content)) {
-      const path = recordPath(id)
-      const changed = operations.find((op) => op.path === path && op.data)
-      if (changed?.data instanceof Uint8Array) {
-        const entry = parseJson<Entry>(
-          changed.data.buffer.slice(
-            changed.data.byteOffset,
-            changed.data.byteOffset + changed.data.byteLength
-          ) as ArrayBuffer
-        )
-        metadata[id] = { path, size: changed.data.byteLength, sha256, image: entry.image }
-      } else {
-        if (!previousMetadata[id]) throw new Error(`索引元数据缺失：${id}`)
-        metadata[id] = previousMetadata[id]
-      }
-    }
-    const data = jsonBytes(metadata),
-      sha = await digest(data.buffer as ArrayBuffer)
-    if (sha === (manifest.indexes[kind][bucket] ?? null)) continue
-    operations.push({ path: indexPath(kind, bucket), ...(sha ? { data } : {}) })
-    if (sha) next.indexes[kind][bucket] = sha
-    else delete next.indexes[kind][bucket]
+  const indexData = jsonBytes(metadata),
+    indexDigest = await digest(indexData.buffer as ArrayBuffer)
+  if (indexDigest !== manifest.indexes.record.all) {
+    operations.push({ path: INDEX_PATH, data: indexData })
+    next.indexes.record.all = indexDigest
   }
   if (next.count < 0 || next.imageBytes < 0) throw new Error('备份计数异常')
   const changes = snapshot.changes
@@ -626,29 +598,23 @@ async function reconcile(
     report(scan)
   }
   if (scan.phase === 'cleanup') {
-    // 明确的首次/重新开启核对允许全量扫描；按桶与小批处理，不装入整库图片。
-    for (const kind of (scan.cleanStart ? [] : ['record']) as IndexKind[]) {
-      if (kind === 'ignored' && module !== 'outfits') continue
+    // 明确的首次/重新开启核对允许全量扫描；按小批处理，不装入整库图片。
+    if (!scan.cleanStart) {
       const manifest = await trackedManifest(config, dir, module)
-      for (const bucket of Object.keys(manifest.indexes[kind])) {
-        const hashes = Object.keys(
-          await readIndex(dir, kind, bucket, manifest.indexes[kind][bucket])
-        )
-        for (let offset = 0; offset < hashes.length; offset += BATCH_RECORDS) {
+      for (const bucket of Object.keys(manifest.indexes.record)) {
+        const savedIds = Object.keys(await readIndex(dir, manifest.indexes.record[bucket]))
+        for (let offset = 0; offset < savedIds.length; offset += BATCH_RECORDS) {
           await ensureActive(config, module)
           const ids: string[] = []
-          for (const hash of hashes.slice(offset, offset + BATCH_RECORDS)) {
-            const value = await readJson<Entry | { code: string }>(
-              dir,
-              kind === 'record' ? recordPath(hash) : ignoredPath(hash)
-            )
+          for (const id of savedIds.slice(offset, offset + BATCH_RECORDS)) {
+            const value = await readJson<Entry>(dir, recordPath(id))
             if (!value) throw new Error('清理核对发现记录缺失')
-            ids.push(kind === 'record' ? (value as Entry).id : (value as { code: string }).code)
+            ids.push(value.id)
           }
           await applyChanges(config, dir, module, {
-            ids: kind === 'record' ? ids : [],
+            ids,
             images: new Set(),
-            ignored: kind === 'ignored' ? ids : []
+            ignored: []
           })
         }
       }

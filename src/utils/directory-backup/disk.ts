@@ -89,11 +89,8 @@ export function checkedId(id: string): string {
     throw new Error(`记录 ID 不能用作文件名：${id}`)
   return id
 }
-export const recordKey = async (id: string): Promise<string> => checkedId(id)
 export const recordPath = (id: string) => `记录/${checkedId(id)}.json`
-export const ignoredPath = (id: string) => `忽略项/${checkedId(id)}.json`
-export const indexPath = (kind: IndexKind, _bucket: string) =>
-  kind === 'record' ? '_系统/校验索引.json' : '_系统/忽略索引.json'
+export const INDEX_PATH = '_系统/校验索引.json'
 export function defaultManifest(module: BackupModule): ModuleManifest {
   return {
     format: FORMAT,
@@ -255,27 +252,25 @@ export async function readModuleManifest(
   const value = await readJson<ModuleManifest>(dir, '_系统/备份信息.json')
   return validateManifest(value, module)
 }
-export async function readIndex(
+export interface IndexEntry {
+  path: string
+  size: number
+  sha256: string
+  image: Entry['image']
+}
+export async function readIndexMetadata(
   dir: FileSystemDirectoryHandle,
-  kind: IndexKind,
-  bucket: string,
   expected?: string
-): Promise<Record<string, string>> {
-  if (bucket !== 'all') throw new Error('非法索引分桶')
-  const bytes = await readBytes(dir, indexPath(kind, bucket), MAX_JSON_BYTES)
+): Promise<Record<string, IndexEntry>> {
+  const bytes = await readBytes(dir, INDEX_PATH, MAX_JSON_BYTES)
   if (!bytes) {
-    if (expected) throw new Error(`索引文件缺失：${kind}/${bucket}`)
+    if (expected) throw new Error('索引文件缺失')
     return {}
   }
-  if (!expected || (await digest(bytes)) !== expected)
-    throw new Error(`索引已被外部修改：${kind}/${bucket}`)
-  const value =
-    parseJson<
-      Record<string, { path: string; size: number; sha256: string; image: Entry['image'] }>
-    >(bytes)
+  if (!expected || (await digest(bytes)) !== expected) throw new Error('索引已被外部修改')
+  const value = parseJson<Record<string, IndexEntry>>(bytes)
   if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error('索引内容无效')
-  const result: Record<string, string> = {},
-    names = new Set<string>()
+  const names = new Set<string>()
   for (const [id, item] of Object.entries(value)) {
     checkedId(id)
     const name = id.toLocaleLowerCase('en-US')
@@ -289,9 +284,12 @@ export async function readIndex(
     )
       throw new Error(`索引内容或 ID 无效：${id}`)
     names.add(name)
-    result[id] = item.sha256
   }
-  return result
+  return value
+}
+export async function readIndex(dir: FileSystemDirectoryHandle, expected?: string) {
+  const metadata = await readIndexMetadata(dir, expected)
+  return Object.fromEntries(Object.entries(metadata).map(([id, item]) => [id, item.sha256]))
 }
 function validateOperationPath(path: string) {
   validatePath(path)

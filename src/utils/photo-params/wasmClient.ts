@@ -1,4 +1,4 @@
-import * as loader from '@assemblyscript/loader'
+import { createWasmLoader } from '../wasmLoader'
 import wasmUrl from '../../assets/photo-params.wasm?url'
 
 interface PhotoParamsExports extends WebAssembly.Exports {
@@ -16,25 +16,7 @@ export interface WasmResult<T> {
   value?: T
 }
 
-let exportsPromise: Promise<PhotoParamsExports> | null = null
-
-/** 延迟加载照片参数 WASM，并在当前页面生命周期内复用实例。 */
-async function getExports(): Promise<PhotoParamsExports> {
-  if (!exportsPromise) {
-    exportsPromise = fetch(wasmUrl)
-      .then((response) => {
-        if (!response.ok) throw new Error(`WASM HTTP ${response.status}`)
-        return response.arrayBuffer()
-      })
-      .then((bytes) => loader.instantiate(bytes, {}))
-      .then((module) => module.exports as unknown as PhotoParamsExports)
-      .catch((error: unknown) => {
-        exportsPromise = null
-        throw error
-      })
-  }
-  return exportsPromise
-}
+const getExports = createWasmLoader<PhotoParamsExports>(wasmUrl)
 
 function parseResult<T>(text: string): WasmResult<T> {
   return JSON.parse(text) as WasmResult<T>

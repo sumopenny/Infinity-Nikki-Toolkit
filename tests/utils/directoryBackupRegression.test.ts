@@ -14,7 +14,7 @@ import {
   MAX_JSON_BYTES,
   defaultManifest,
   recordPath,
-  recordKey
+  checkedId
 } from '../../src/utils/directory-backup/disk'
 import { createUuid } from '../../src/utils/uuid'
 import { setup, resetDatabase, putOutfit, sync, asHandle } from '../helpers/directoryBackupFs'
@@ -26,7 +26,7 @@ describe('目录恢复回归', () => {
     await expect(
       stageAndApplyVerified(asHandle(directory), 'outfits', [
         {
-          path: recordPath(await recordKey('TOO-LARGE')),
+          path: recordPath(checkedId('TOO-LARGE')),
           data: new Uint8Array(MAX_JSON_BYTES + 1)
         },
         { path: '_系统/备份信息.json', data: jsonBytes(defaultManifest('outfits')) }

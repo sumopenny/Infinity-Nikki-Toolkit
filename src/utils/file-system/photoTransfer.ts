@@ -10,6 +10,7 @@ import { savePhotoFavorites } from './photoMetadata'
 
 export const PHOTO_IMPORT_CONCURRENCY = 3
 export const PHOTO_EXPORT_CONCURRENCY = 8
+export const PHOTO_EXPORT_METADATA_BATCH = 32
 
 export interface PhotoTransferProgress {
   completed: number
@@ -220,30 +221,58 @@ async function runPhotoExport(
     succeededPhotos: []
   }
   report(options, state)
-  await runWithConcurrency(
-    prepared.jobs,
-    async ({ photo, name }) => {
-      try {
-        await copyPhoto(directory, name, photo)
-        await savePhotoFavorites(directory, [
-          { name, favorite: photo.favorite ?? false, note: photo.note ?? '' }
-        ])
+  for (let offset = 0; offset < prepared.jobs.length; offset += PHOTO_EXPORT_METADATA_BATCH) {
+    if (options.signal?.aborted) break
+    const copied: PreparedPhotoExport['jobs'] = []
+    await runWithConcurrency(
+      prepared.jobs.slice(offset, offset + PHOTO_EXPORT_METADATA_BATCH),
+      async (job) => {
+        try {
+          await copyPhoto(directory, job.name, job.photo)
+          copied.push(job)
+        } catch (error) {
+          captureDiagnosticError(error, {
+            module: 'album',
+            action: 'export-photo',
+            stage: 'file-write'
+          })
+          state.failedNames.push(job.photo.name)
+          state.completed += 1
+          report(options, state)
+        }
+      },
+      { concurrency: options.concurrency ?? PHOTO_EXPORT_CONCURRENCY, signal: options.signal }
+    )
+    if (!copied.length) continue
+    // Even after cancellation, commit metadata for already copied files. Moving callers may
+    // delete sources only for succeededPhotos, after the whole metadata batch is durable.
+    let committed = false
+    try {
+      await savePhotoFavorites(
+        directory,
+        copied.map(({ name, photo }) => ({
+          name,
+          favorite: photo.favorite ?? false,
+          note: photo.note ?? ''
+        }))
+      )
+      committed = true
+    } catch (error) {
+      captureDiagnosticError(error, {
+        module: 'album',
+        action: 'export-photo',
+        stage: 'metadata-write'
+      })
+    }
+    for (const { photo } of copied) {
+      if (committed) {
         state.succeeded += 1
         state.succeededPhotos.push(photo)
-      } catch (error) {
-        captureDiagnosticError(error, {
-          module: 'album',
-          action: 'export-photo',
-          stage: 'file-write'
-        })
-        state.failedNames.push(photo.name)
-      } finally {
-        state.completed += 1
-        report(options, state)
-      }
-    },
-    { concurrency: options.concurrency ?? PHOTO_EXPORT_CONCURRENCY, signal: options.signal }
-  )
+      } else state.failedNames.push(photo.name)
+      state.completed += 1
+      report(options, state)
+    }
+  }
   state.cancelled = Boolean(options.signal?.aborted)
   return state
 }

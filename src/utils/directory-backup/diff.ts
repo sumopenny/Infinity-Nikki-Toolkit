@@ -31,7 +31,7 @@ import type { ChangeKind, DirtyChange } from './changeJournal'
 import {
   discoverStages,
   directoryAt,
-  recordKey,
+  checkedId,
   recordPath,
   readBytes,
   readIndex,
@@ -130,14 +130,8 @@ export async function estimateBackupDiff(
   result.fingerprint = await digest(bytes)
   result.backupCount = manifest.count
   result.added = 0
-  const hashes = new Map<string, string>()
-  for (const bucket of Object.keys(manifest.indexes.record)) {
-    for (const [hash, sha] of Object.entries(
-      await readIndex(dir, 'record', bucket, manifest.indexes.record[bucket])
-    ))
-      hashes.set(hash, sha)
-  }
-  if (hashes.size !== manifest.count) throw new Error('备份索引与记录数不符，请先完整性检查')
+  const remaining = new Map(Object.entries(await readIndex(dir, manifest.indexes.record.all)))
+  if (remaining.size !== manifest.count) throw new Error('备份索引与记录数不符，请先完整性检查')
   const a = ADAPTERS[module]
   const changes = result.changes
   let compared = 0
@@ -148,15 +142,14 @@ export async function estimateBackupDiff(
     compared += rows.length
     for (const { record, imageSha } of rows) {
       const id = record.id
-      const hash = await recordKey(id),
-        expected = hashes.get(hash)
+      const expected = remaining.get(checkedId(id))
       if (!expected) {
         result.added++
         changes.push({ kind: 'record', id })
         continue
       }
-      hashes.delete(hash)
-      const bytes = await readBytes(dir, recordPath(hash), MAX_JSON_BYTES)
+      remaining.delete(id)
+      const bytes = await readBytes(dir, recordPath(id), MAX_JSON_BYTES)
       if (!bytes || (await digest(bytes)) !== expected)
         throw new Error('备份记录丢失或摘要不符，请先完整性检查')
       const entry = parseJson<Entry>(bytes)
@@ -170,8 +163,8 @@ export async function estimateBackupDiff(
     }
     after = rows.at(-1)!.record.id
   }
-  result.removed = hashes.size
-  for (const id of hashes.keys()) changes.push({ kind: 'record', id, deleted: true })
+  result.removed = remaining.size
+  for (const id of remaining.keys()) changes.push({ kind: 'record', id, deleted: true })
   const tagsBytes = await readBytes(dir, '标签.json', MAX_JSON_BYTES)
   if (manifest.tagDigest && (!tagsBytes || (await digest(tagsBytes)) !== manifest.tagDigest))
     throw new Error('标签文件被修改或丢失，请先完整性检查')

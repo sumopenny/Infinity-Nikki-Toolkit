@@ -38,15 +38,13 @@ import {
   type RootManifest,
   HASH,
   digest,
-  recordKey,
+  checkedId,
   jsonBytes,
   parseJson,
   readBytes,
   readIndex,
   readModuleManifest,
-  indexPath,
   recordPath,
-  ignoredPath,
   discoverStages,
   validateStage,
   applyStage,
@@ -69,6 +67,7 @@ export interface ModulePreview {
   imageBytes: number
   staged: number
   canResume: boolean
+  reason?: 'neverBackedUp' | 'incomplete'
   missing?: boolean
 }
 export interface RestorePreview {
@@ -124,6 +123,45 @@ async function* filesBelow(dir: FileSystemDirectoryHandle, prefix: string): Asyn
   }
   yield* scan(base, prefix + '/', 0)
 }
+class ModuleNotReadyError extends Error {
+  constructor(readonly reason: 'neverBackedUp' | 'incomplete') {
+    super(
+      reason === 'neverBackedUp' ? '此模块尚未备份' : '首次备份尚未完整完成，不能按完整模块恢复'
+    )
+  }
+}
+
+/** Only an untouched placeholder can be omitted from a safe-copy verification. */
+async function isUnusedModule(dir: FileSystemDirectoryHandle, manifest: ModuleManifest) {
+  if (
+    manifest.initialized ||
+    manifest.lastSuccess ||
+    manifest.count ||
+    manifest.imageBytes ||
+    manifest.sourceRevision ||
+    manifest.lastBatch ||
+    manifest.tagDigest ||
+    manifest.ignoredDigest ||
+    Object.keys(manifest.indexes.record).length
+  )
+    return false
+  async function emptyExceptManifest(
+    current: FileSystemDirectoryHandle,
+    prefix = ''
+  ): Promise<boolean> {
+    if (prefix.split('/').length > 7) return false
+    for await (const [name, entry] of current.entries()) {
+      const path = prefix + name
+      if (entry.kind === 'directory') {
+        if (!(await emptyExceptManifest(entry as FileSystemDirectoryHandle, path + '/')))
+          return false
+      } else if (path !== '_系统/备份信息.json') return false
+    }
+    return true
+  }
+  return emptyExceptManifest(dir)
+}
+
 export interface Verification {
   manifest: ModuleManifest
   fingerprint: string
@@ -153,110 +191,93 @@ export async function verifyModule(
   const manifest = await readModuleManifest(dir, module)
   const fingerprint = await digest(manifestBytes)
   if (!manifest.initialized || !manifest.lastSuccess)
-    throw new Error('首次备份尚未完整完成，不能按完整模块恢复')
+    throw new ModuleNotReadyError(
+      (await isUnusedModule(dir, manifest)) ? 'neverBackedUp' : 'incomplete'
+    )
   const tagsBytes = await readBytes(dir, '标签.json', MAX_JSON_BYTES)
   if (!tagsBytes || (await digest(tagsBytes)) !== manifest.tagDigest)
     throw new Error('标签文件丢失或摘要不符')
   const tags = normalTags(module, parseJson(tagsBytes))
   await collect?.('tags', 'list', tags)
   const expected = new Set<string>(),
-    expectedImages = new Set<string>(),
-    expectedIndexes = new Set<string>()
+    expectedImages = new Set<string>()
   const codes = new Set<string>()
   let count = 0,
     images = 0
-  for (const kind of ['record', 'ignored'] as const) {
-    for (const [bucket, checksum] of Object.entries(manifest.indexes[kind])) {
-      const index = await readIndex(dir, kind, bucket, checksum)
-      expectedIndexes.add(indexPath(kind, bucket))
-      for (const [hash, sha] of Object.entries(index)) {
-        const path = kind === 'record' ? recordPath(hash) : ignoredPath(hash)
-        expected.add(path)
-        const bytes = await readBytes(dir, path, MAX_JSON_BYTES)
-        if (!bytes || (await digest(bytes)) !== sha) throw new Error(`文件缺失或摘要不符：${path}`)
-        if (kind === 'ignored') {
-          const entry = parseJson<{ code: string; deletedAt?: string }>(bytes)
-          if (
-            !entry ||
-            typeof entry.code !== 'string' ||
-            !entry.code ||
-            entry.code.length > 30 ||
-            /\s/.test(entry.code) ||
-            (entry.deletedAt !== undefined && !Number.isFinite(Date.parse(entry.deletedAt))) ||
-            (await recordKey(entry.code)) !== hash
-          )
-            throw new Error('忽略搭配码无效或索引不匹配')
-          await collect?.('ignored', entry.code, entry)
-          continue
-        }
-        const entry = parseJson<Entry>(bytes)
-        if (
-          !entry ||
-          entry.version !== 2 ||
-          entry.module !== module ||
-          typeof entry.id !== 'string' ||
-          !HASH.test(entry.revision) ||
-          (await recordKey(entry.id)) !== hash ||
-          (await digest(
-            jsonBytes({ value: entry.value, image: entry.image }).buffer as ArrayBuffer
-          )) !== entry.revision
-        )
-          throw new Error('记录 ID、版本、修订或路径不匹配')
-        const record = ADAPTERS[module].validate(entry.value)
-        if (record.id !== entry.id) throw new Error('记录主键不匹配')
-        assertTags(record, tags)
-        if (record.code) {
-          if (codes.has(record.code)) throw new Error('重复的业务码')
-          codes.add(record.code)
-        }
-        if (presentImage(module, record) !== Boolean(entry.image))
-          throw new Error('业务记录与图片引用不一致')
-        let imageValue: Blob | StoredImage | undefined
-        if (entry.image) {
-          const image = entry.image
-          const suffix = image.path.split('.').pop()!
-          if (
-            !['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(suffix) ||
-            image.path !== `图片/${entry.id}.${suffix}` ||
-            !HASH.test(image.sha256) ||
-            !Number.isSafeInteger(image.size) ||
-            image.size <= 0 ||
-            typeof image.type !== 'string'
-          )
-            throw new Error('图片路径、类型或大小不合法')
-          if (expectedImages.has(image.path)) throw new Error('意外的跨记录图片引用')
-          expectedImages.add(image.path)
-          const file = await readBytes(dir, image.path)
-          if (!file || file.byteLength !== image.size || (await digest(file)) !== image.sha256)
-            throw new Error(`图片缺失或摘要不符：${image.path}`)
-          const blob = new Blob([file], { type: image.type })
-          const inspected = await inspectStoredImage(blob, typeof createImageBitmap === 'function')
-          if (
-            !matchesStoredImageExtension(image.path, inspected.extension) ||
-            inspected.blob.type !== image.type ||
-            (module !== 'camera' &&
-              !matchesStoredImageExtension(record.image!, inspected.extension)) ||
-            (record.imageSize !== undefined && record.imageSize !== file.byteLength) ||
-            (module === 'camera' &&
-              (record.cover?.sha256 !== image.sha256 || record.cover.size !== file.byteLength))
-          )
-            throw new Error('图片真实类型或业务图片信息不匹配')
-          imageValue =
-            module === 'camera'
-              ? blob
-              : {
-                  id: entry.id,
-                  blob,
-                  size: blob.size,
-                  sha256: image.sha256,
-                  extension: inspected.extension
-                }
-          images += blob.size
-        }
-        await collect?.('record', entry.id, record)
-        if (imageValue) await collect?.('image', entry.id, imageValue)
-        count++
+  for (const checksum of Object.values(manifest.indexes.record)) {
+    const index = await readIndex(dir, checksum)
+    for (const [hash, sha] of Object.entries(index)) {
+      const path = recordPath(hash)
+      expected.add(path)
+      const bytes = await readBytes(dir, path, MAX_JSON_BYTES)
+      if (!bytes || (await digest(bytes)) !== sha) throw new Error(`文件缺失或摘要不符：${path}`)
+      const entry = parseJson<Entry>(bytes)
+      if (
+        !entry ||
+        entry.version !== 2 ||
+        entry.module !== module ||
+        typeof entry.id !== 'string' ||
+        !HASH.test(entry.revision) ||
+        checkedId(entry.id) !== hash ||
+        (await digest(
+          jsonBytes({ value: entry.value, image: entry.image }).buffer as ArrayBuffer
+        )) !== entry.revision
+      )
+        throw new Error('记录 ID、版本、修订或路径不匹配')
+      const record = ADAPTERS[module].validate(entry.value)
+      if (record.id !== entry.id) throw new Error('记录主键不匹配')
+      assertTags(record, tags)
+      if (record.code) {
+        if (codes.has(record.code)) throw new Error('重复的业务码')
+        codes.add(record.code)
       }
+      if (presentImage(module, record) !== Boolean(entry.image))
+        throw new Error('业务记录与图片引用不一致')
+      let imageValue: Blob | StoredImage | undefined
+      if (entry.image) {
+        const image = entry.image
+        const suffix = image.path.split('.').pop()!
+        if (
+          !['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(suffix) ||
+          image.path !== `图片/${entry.id}.${suffix}` ||
+          !HASH.test(image.sha256) ||
+          !Number.isSafeInteger(image.size) ||
+          image.size <= 0 ||
+          typeof image.type !== 'string'
+        )
+          throw new Error('图片路径、类型或大小不合法')
+        if (expectedImages.has(image.path)) throw new Error('意外的跨记录图片引用')
+        expectedImages.add(image.path)
+        const file = await readBytes(dir, image.path)
+        if (!file || file.byteLength !== image.size || (await digest(file)) !== image.sha256)
+          throw new Error(`图片缺失或摘要不符：${image.path}`)
+        const blob = new Blob([file], { type: image.type })
+        const inspected = await inspectStoredImage(blob, typeof createImageBitmap === 'function')
+        if (
+          !matchesStoredImageExtension(image.path, inspected.extension) ||
+          inspected.blob.type !== image.type ||
+          (module !== 'camera' &&
+            !matchesStoredImageExtension(record.image!, inspected.extension)) ||
+          (record.imageSize !== undefined && record.imageSize !== file.byteLength) ||
+          (module === 'camera' &&
+            (record.cover?.sha256 !== image.sha256 || record.cover.size !== file.byteLength))
+        )
+          throw new Error('图片真实类型或业务图片信息不匹配')
+        imageValue =
+          module === 'camera'
+            ? blob
+            : {
+                id: entry.id,
+                blob,
+                size: blob.size,
+                sha256: image.sha256,
+                extension: inspected.extension
+              }
+        images += blob.size
+      }
+      await collect?.('record', entry.id, record)
+      if (imageValue) await collect?.('image', entry.id, imageValue)
+      count++
     }
   }
   if (module === 'outfits') {
@@ -328,6 +349,7 @@ export async function previewRestore(handle: FileSystemDirectoryHandle): Promise
       }
     } catch (error) {
       item.canResume = false
+      if (error instanceof ModuleNotReadyError) item.reason = error.reason
       item.missing = (error as DOMException).name === 'NotFoundError'
       item.message =
         (error as DOMException).name === 'NotFoundError'

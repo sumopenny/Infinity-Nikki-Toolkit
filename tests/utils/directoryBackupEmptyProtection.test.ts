@@ -22,7 +22,7 @@ import {
   setup,
   sync
 } from '../helpers/directoryBackupFs'
-import { recordKey, readJson, recordPath, type Entry } from '../../src/utils/directory-backup/disk'
+import { checkedId, readJson, recordPath, type Entry } from '../../src/utils/directory-backup/disk'
 
 beforeEach(resetDatabase)
 
@@ -55,7 +55,7 @@ describe('异常归零保护', () => {
     expect(state.error).toContain('数据异常归零')
     expect(disk.events.filter((event) => ['write', 'delete'].includes(event.kind))).toEqual([])
     const dir = await moduleDir(directory)
-    expect(await readJson<Entry>(dir, recordPath(await recordKey('SAFE_REFRESH')))).toMatchObject({
+    expect(await readJson<Entry>(dir, recordPath(checkedId('SAFE_REFRESH')))).toMatchObject({
       id: 'SAFE_REFRESH'
     })
   })
@@ -102,7 +102,7 @@ describe('异常归零保护', () => {
     expect(retry.state).toBe('protected')
     expect(disk.events.filter((e) => ['read', 'write', 'delete'].includes(e.kind))).toEqual([])
     const dir = await moduleDir(directory)
-    expect(await readJson<Entry>(dir, recordPath(await recordKey('SAFE01')))).toMatchObject({
+    expect(await readJson<Entry>(dir, recordPath(checkedId('SAFE01')))).toMatchObject({
       id: 'SAFE01'
     })
   })
@@ -121,7 +121,7 @@ describe('异常归零保护', () => {
     expect((await sync(config)).state).toBe('protected')
     expect(disk.events.filter((e) => e.kind === 'write' || e.kind === 'delete')).toEqual([])
     expect(
-      await readJson<Entry>(await moduleDir(directory), recordPath(await recordKey('UNTRUSTED')))
+      await readJson<Entry>(await moduleDir(directory), recordPath(checkedId('UNTRUSTED')))
     ).toMatchObject({ id: 'UNTRUSTED' })
   })
 
@@ -137,7 +137,7 @@ describe('异常归零保护', () => {
     expect(status.state).toBe('protected')
     expect(disk.events.filter((e) => e.kind === 'write' || e.kind === 'delete')).toEqual([])
     expect(
-      await readJson<Entry>(await moduleDir(directory), recordPath(await recordKey('LOST01')))
+      await readJson<Entry>(await moduleDir(directory), recordPath(checkedId('LOST01')))
     ).toMatchObject({ id: 'LOST01' })
   })
 

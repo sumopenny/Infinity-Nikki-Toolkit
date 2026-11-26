@@ -434,7 +434,9 @@ async function pauseOrResume() {
       await refreshDirectoryBackup()
       if (config.value?.handle) {
         const preview = await previewRestore(config.value.handle)
-        const invalid = preview.modules.filter((item) => !item.ready && !item.missing)
+        const invalid = preview.modules.filter(
+          (item) => !item.ready && !item.missing && item.reason !== 'neverBackedUp'
+        )
         if (invalid.length)
           throw new Error(
             t(
@@ -577,7 +579,8 @@ async function useExisting() {
           item &&
           !item.ready &&
           !item.missing &&
-          item.message !== '首次备份尚未完整完成，不能按完整模块恢复'
+          item.reason !== 'neverBackedUp' &&
+          item.reason !== 'incomplete'
         )
           throw new Error(titleFor(module) + '：' + item.message)
         const diff = await estimateBackupDiff(prospective, module)

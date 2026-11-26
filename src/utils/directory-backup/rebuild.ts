@@ -268,7 +268,9 @@ export async function rebuildBackupDirectory(
       })
       task.old.forEach(owned)
       if (task.phase === 'ready') {
-        await assertBrowserBaseline(task.baseline)
+        // Resume the verified disk snapshot even when the browser changed while interrupted.
+        // Guard this attempt's baseline; publishBinding preserves newer dirty revisions.
+        await assertBrowserBaseline(baseline)
         const newDir = await base.getDirectoryHandle('新副本')
         await verifyModule(root, module, undefined, newDir)
         const oldPaths = await files(await base.getDirectoryHandle('旧副本'))

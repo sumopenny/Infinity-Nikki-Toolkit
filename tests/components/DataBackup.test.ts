@@ -320,3 +320,38 @@ it('shows restoration selection inline and keeps the destructive confirmation in
   wrapper.unmount()
   await flushPromises()
 })
+
+it.each(['neverBackedUp', 'incomplete', 'corrupted'] as const)(
+  'safe copy skips only untouched modules (%s)',
+  async (reason) => {
+    enableSwitchInteraction(true)
+    directoryBackup.config.value!.handle = { name: 'backup' } as FileSystemDirectoryHandle
+    vi.spyOn(backupEngine, 'pauseForSafeCopy').mockResolvedValue()
+    const preview: backupRestore.RestorePreview = previewFixture()
+    Object.assign(preview.modules[1], {
+      ready: false,
+      message: '模块状态',
+      reason: reason === 'corrupted' ? undefined : reason
+    })
+    vi.spyOn(backupRestore, 'previewRestore').mockResolvedValue(preview)
+    const dispatch = vi.spyOn(window, 'dispatchEvent')
+    const wrapper = render()
+    await wrapper.get('.backup-management-toggle').trigger('click')
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '准备安全复制')!
+      .trigger('click')
+    await flushPromises()
+    const messages = dispatch.mock.calls
+      .filter(([event]) => event.type === 'nuan-backup-notice')
+      .map(([event]) => String((event as CustomEvent).detail.message))
+    expect(messages.some((message) => message.includes('可以复制文件夹'))).toBe(
+      reason === 'neverBackedUp'
+    )
+    expect(messages.some((message) => message.includes('未通过完整校验'))).toBe(
+      reason !== 'neverBackedUp'
+    )
+    wrapper.unmount()
+  }
+)

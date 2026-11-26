@@ -34,7 +34,7 @@ import {
   readJson,
   readBytes,
   recordPath,
-  recordKey,
+  checkedId,
   discoverStages,
   type Entry
 } from '../../src/utils/directory-backup/disk'
@@ -149,11 +149,9 @@ describe('事务与增量读写边界', () => {
       disk.events.filter((x) => x.kind === 'written' && x.path.includes('/记录/'))
     ).toHaveLength(1)
     const dir = await moduleDir(directory)
-    expect((await readJson<Entry>(dir, recordPath(await recordKey('IMG01'))))?.value).toMatchObject(
-      {
-        note: 'renamed'
-      }
-    )
+    expect((await readJson<Entry>(dir, recordPath(checkedId('IMG01'))))?.value).toMatchObject({
+      note: 'renamed'
+    })
   })
   it('换图与删除仅影响本条；两条使用相同图片时互不删除', async () => {
     const { config, directory, disk } = await setup()
@@ -161,15 +159,15 @@ describe('事务与增量读写边界', () => {
     await putOutfit('IMG02', '', png())
     await sync(config)
     const dir = await moduleDir(directory)
-    const old = await readJson<Entry>(dir, recordPath(await recordKey('IMG01')))
-    const other = await readJson<Entry>(dir, recordPath(await recordKey('IMG02')))
+    const old = await readJson<Entry>(dir, recordPath(checkedId('IMG01')))
+    const other = await readJson<Entry>(dir, recordPath(checkedId('IMG02')))
     const changed = new Blob([await png().arrayBuffer(), new Uint8Array([0])], {
       type: 'image/png'
     })
     await putOutfit('IMG01', '', changed)
     expect((await sync(config)).state).toBe('synced')
     expect(await readBytes(dir, old!.image!.path)).not.toBeNull()
-    expect((await readJson<Entry>(dir, recordPath(await recordKey('IMG01'))))?.image?.path).toBe(
+    expect((await readJson<Entry>(dir, recordPath(checkedId('IMG01'))))?.image?.path).toBe(
       old!.image!.path
     )
     expect(await readBytes(dir, other!.image!.path)).not.toBeNull()
@@ -223,9 +221,9 @@ describe('磁盘故障、中断续写与并发版本', () => {
       expect((await sync(config)).state).toBe('error')
       expect((await sync(config)).state).toBe('synced')
       const dir = await moduleDir(directory)
-      expect(
-        (await readJson<Entry>(dir, recordPath(await recordKey('REC01'))))?.value
-      ).toMatchObject({ note: 'updated' })
+      expect((await readJson<Entry>(dir, recordPath(checkedId('REC01'))))?.value).toMatchObject({
+        note: 'updated'
+      })
       expect(await discoverStages(dir)).toEqual([])
       expect(await dirtyChanges('outfits')).toEqual([])
       expect((await previewRestore(asHandle(directory))).modules[0].ready).toBe(true)
@@ -264,8 +262,7 @@ describe('磁盘故障、中断续写与并发版本', () => {
     }
     expect((await sync(config)).state).toBe('synced')
     expect(
-      (await readJson<Entry>(await moduleDir(directory), recordPath(await recordKey('REC01'))))
-        ?.value
+      (await readJson<Entry>(await moduleDir(directory), recordPath(checkedId('REC01'))))?.value
     ).toMatchObject({ note: 'second' })
     expect(await dirtyChanges('outfits')).toEqual([])
   })
@@ -277,8 +274,7 @@ describe('磁盘故障、中断续写与并发版本', () => {
     await putOutfit('REC01', 'reborn')
     expect((await sync(config)).count).toBe(1)
     expect(
-      (await readJson<Entry>(await moduleDir(directory), recordPath(await recordKey('REC01'))))
-        ?.value
+      (await readJson<Entry>(await moduleDir(directory), recordPath(checkedId('REC01'))))?.value
     ).toMatchObject({ note: 'reborn' })
   })
   it('首次扫描中断有持久进度；扫描期间删除不被复活', async () => {
@@ -300,9 +296,7 @@ describe('磁盘故障、中断续写与并发版本', () => {
     expect(failed.lastSuccess).toBeNull()
     expect((await scanProgress(config, 'outfits'))?.processed).toBeGreaterThan(0)
     expect((await sync(config)).count).toBe(59)
-    expect(
-      await readBytes(await moduleDir(directory), recordPath(await recordKey('REC050')))
-    ).toBeNull()
+    expect(await readBytes(await moduleDir(directory), recordPath(checkedId('REC050')))).toBeNull()
   })
   it('越界批次即使重算摘要也被只读预览阻止，不对来源目录写入', async () => {
     const { config, directory, disk } = await setup()

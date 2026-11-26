@@ -1,4 +1,4 @@
-import * as loader from '@assemblyscript/loader'
+import { createWasmLoader } from '../wasmLoader'
 import wasmUrl from '../../assets/lookbook-parser.wasm?url'
 import { measureLookbook } from './lookbookDiagnostics'
 
@@ -12,24 +12,7 @@ interface LookbookWasmExports extends WebAssembly.Exports {
 
 export type LookbookWasmResult<T> = { ok: true; value: T } | { ok: false; errorCode: string }
 
-let exportsPromise: Promise<LookbookWasmExports> | null = null
-
-async function getExports(): Promise<LookbookWasmExports> {
-  if (!exportsPromise) {
-    exportsPromise = measureLookbook('wasm_download', async () => {
-      const response = await fetch(wasmUrl)
-      if (!response.ok) throw new Error(`WASM HTTP ${response.status}`)
-      return response.arrayBuffer()
-    })
-      .then((bytes) => measureLookbook('wasm_initialize', () => loader.instantiate(bytes, {})))
-      .then((module) => module.exports as unknown as LookbookWasmExports)
-      .catch((error: unknown) => {
-        exportsPromise = null
-        throw error
-      })
-  }
-  return exportsPromise
-}
+const getExports = createWasmLoader<LookbookWasmExports>(wasmUrl, measureLookbook)
 
 /** 在浏览器 WASM 中归一化 API JSON 或原生解码器输出。 */
 export async function decodeLookbookPayload<T>(

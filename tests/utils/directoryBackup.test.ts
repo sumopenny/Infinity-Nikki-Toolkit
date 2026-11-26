@@ -27,7 +27,7 @@ import {
   readJson,
   type Entry,
   recordPath,
-  recordKey,
+  checkedId,
   readBytes
 } from '../../src/utils/directory-backup/disk'
 import { sha256Hex } from '../../src/utils/sha256'
@@ -180,7 +180,7 @@ describe('原始目录增量备份（模拟 File System Access API）', () => {
       const first = await run(config, 'outfits')
       expect(first.count).toBe(1)
       const root = await getRecordFiles(config.handle as unknown as MockDirectory, 'outfits')
-      const hash = await recordKey(saved.id)
+      const hash = checkedId(saved.id)
       expect((await readJson<Entry>(asHandle(root), recordPath(hash)))?.id).toBe(saved.id)
       const edited = await saveOutfit({
         outfit: saved,
@@ -242,7 +242,7 @@ describe('原始目录增量备份（模拟 File System Access API）', () => {
     spy.mockRestore()
     expect(imagesRead).toBe(false)
     const root = await getRecordFiles(config.handle as unknown as MockDirectory, 'outfits')
-    expect((await readJson<Entry>(asHandle(root), recordPath(await recordKey(id2))))?.id).toBe(id2)
+    expect((await readJson<Entry>(asHandle(root), recordPath(checkedId(id2))))?.id).toBe(id2)
   })
   it('家园和相机分别保留业务字段，未启用的模块不写盘', async () => {
     const config = await setup()
@@ -296,7 +296,7 @@ describe('原始目录增量备份（模拟 File System Access API）', () => {
     await saveConfig(config)
     expect((await run(config, 'camera')).count).toBe(1)
     const cameraDir = await root.getDirectoryHandle(MODULE_NAMES.camera)
-    const envelope = await readJson<Entry>(cameraDir, recordPath(await recordKey('camera-1')))
+    const envelope = await readJson<Entry>(cameraDir, recordPath(checkedId('camera-1')))
     expect(envelope?.value).toMatchObject({ name: 'Camera', code: 'PARAM' })
   })
   it('已确认备份可以跨目录按模块恢复，未选模块不被改动', async () => {
