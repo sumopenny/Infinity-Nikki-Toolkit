@@ -100,6 +100,7 @@ import {
   Upload
 } from 'lucide-vue-next'
 import DataStorageReminder from './components/DataStorageReminder.vue'
+import SiteMigrationNotice from './components/SiteMigrationNotice.vue'
 import UpdateLogDialog from './components/UpdateLogDialogContent.vue'
 import EdgeDirectoryRepairDialog from './components/EdgeDirectoryRepairDialog.vue'
 import HelpAboutDialog from './components/HelpAboutDialogContent.vue'
@@ -277,6 +278,8 @@ const isUpdateLogVisible = ref(false)
 const isEdgeDirectoryRepairVisible = ref(false)
 const directoryRepairDismissedKey = 'infinity-nikki-directory-repair-dismissed'
 const pendingStartupNotices = ref(false)
+const isMigrationNoticeVisible = ref(true)
+const migrationStartupPending = ref(true)
 const isDataReminderVisible = ref(false)
 const dataReminderOpenedFromMenu = ref(false)
 const isDataReminderDismissed = ref(readLocalStorage(DATA_REMINDER_DISMISSED_KEY) === 'true')
@@ -2012,8 +2015,19 @@ function finishDirectoryRepair() {
   showStartupNotices()
 }
 
+function finishMigrationNotice() {
+  if (appDisposed || isMigrationNoticeVisible.value || !migrationStartupPending.value) return
+  migrationStartupPending.value = false
+  if (!compactLayout.value && readLocalStorage(directoryRepairDismissedKey) !== 'true') {
+    pendingStartupNotices.value = true
+    openDirectoryRepair()
+  } else {
+    showStartupNotices()
+  }
+}
+
 function showStartupNotices() {
-  if (appDisposed) return
+  if (appDisposed || isMigrationNoticeVisible.value) return
   if (!updateLogDismissal.value) {
     isUpdateLogVisible.value = true
   } else {
@@ -2024,6 +2038,7 @@ function showStartupNotices() {
 // Wait for the update dialog's exit animation before handing over focus.
 function showPendingDataReminder() {
   if (
+    isMigrationNoticeVisible.value ||
     !pendingDataReminder.value ||
     appDisposed ||
     isUpdateLogVisible.value ||
@@ -2496,6 +2511,8 @@ let initialOutfitScanStarted = false
 let promptX6GameOnInitialOutfitScan = false
 const isStartupNoticeVisible = computed(
   () =>
+    isMigrationNoticeVisible.value ||
+    migrationStartupPending.value ||
     pendingStartupNotices.value ||
     pendingDataReminder.value ||
     isEdgeDirectoryRepairVisible.value ||
@@ -2567,12 +2584,7 @@ onMounted(() => {
   // 重型游戏目录扫描推迟到首次进入搭配码，避免打开其他模块时争用 I/O。
   void ensureInitialOutfitScan()
   pendingDataReminder.value = !isDataReminderDismissed.value
-  if (!compactLayout.value && readLocalStorage(directoryRepairDismissedKey) !== 'true') {
-    pendingStartupNotices.value = true
-    openDirectoryRepair()
-  } else {
-    showStartupNotices()
-  }
+  // Migration notice hands off to the existing startup notices after its exit animation.
   nextTick(() => {
     updateSidebarStickyOffset()
     const topBarElement = document.querySelector<HTMLElement>('.app-header')
@@ -2678,6 +2690,7 @@ function importAllDataFromMenu() {
       @open-directory-repair="openDirectoryRepair"
       @open-help-about="openHelpAbout"
       @open-data-reminder="openDataReminder"
+      @open-migration-notice="isMigrationNoticeVisible = true"
       @update-search="searchQuery = $event"
     />
 
@@ -3614,6 +3627,13 @@ function importAllDataFromMenu() {
       @close="closeUpdateLog"
       @after-close="showPendingDataReminder"
       @open-help="openHelpFromUpdateLog"
+    />
+
+    <SiteMigrationNotice
+      :visible="isMigrationNoticeVisible"
+      :language="language"
+      @close="isMigrationNoticeVisible = false"
+      @after-close="finishMigrationNotice"
     />
 
     <DataStorageReminder

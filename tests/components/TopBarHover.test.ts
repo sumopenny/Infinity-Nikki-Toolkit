@@ -75,7 +75,7 @@ it.each([false, true, undefined])(
       global: { stubs: { Teleport: true, Transition: true, LikeCounter: true } }
     })
     try {
-      const triggers = wrapper.findAll('.mobile-header-row button')
+      const triggers = wrapper.findAll('.mobile-header-row button:not(.migration-notice-entry)')
       expect(triggers).toHaveLength(4)
       expect(triggers[2].attributes('aria-label')).toBe(messages.zh.topBar.toolsMenuAria)
       await triggers[2].trigger('click')

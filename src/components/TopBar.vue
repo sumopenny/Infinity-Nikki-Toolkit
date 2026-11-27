@@ -108,6 +108,7 @@ const emit = defineEmits<{
   openUpdateLog: []
   openDirectoryRepair: []
   openHelpAbout: []
+  openMigrationNotice: []
   openDataReminder: []
   updateSearch: [value: string]
 }>()
@@ -460,6 +461,10 @@ function openDonate() {
     </div>
 
     <div v-show="compact" class="mobile-header-row">
+      <button type="button" class="migration-notice-entry" @click="emit('openMigrationNotice')">{{
+        language === 'zh' ? '网站迁移通知' : 'Site moved'
+      }}</button>
+
       <button
         v-if="activeView !== 'animations'"
         ref="mobileSearchTrigger"
@@ -540,6 +545,9 @@ function openDonate() {
     ></Teleport>
     <div v-show="!compact" class="header-actions">
       <span class="header-star-hint" :title="messages.starHint">{{ messages.starHint }}</span>
+      <button type="button" class="migration-notice-entry" @click="emit('openMigrationNotice')">{{
+        language === 'zh' ? '网站迁移通知' : 'Site moved'
+      }}</button>
       <a
         class="official-site-link"
         href="https://nikki3.pages.dev/"
@@ -1357,3 +1365,33 @@ function openDonate() {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.app-header .migration-notice-entry {
+  flex-shrink: 0;
+  width: auto;
+  padding: 8px 12px;
+  border: 1px solid #c62828;
+  border-radius: 12px;
+  background: #fff0ef;
+  color: #c62828;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.app-header .migration-notice-entry:hover {
+  background: #ffe0dd;
+}
+.migration-notice-entry:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+:global(:root[data-theme='dark']) .migration-notice-entry {
+  border-color: #ff8a80;
+  background: #452525;
+  color: #ff8a80;
+}
+:global(:root[data-theme='dark']) .migration-notice-entry:hover {
+  background: #583030;
+}
+</style>
