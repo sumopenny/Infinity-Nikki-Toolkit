@@ -89,12 +89,20 @@ it.each([undefined, 44])(
       toJSON() {}
     })
     const wrapper = create()
-    await wrapper.setProps({ anchor: () => anchor, iconOnly: true, desktopBottomOffset: offset })
+    vi.spyOn(wrapper.get('button').element, 'getBoundingClientRect').mockReturnValue({
+      ...anchor.getBoundingClientRect(),
+      top: 414,
+      bottom: 440,
+      height: 26
+    })
+    await wrapper.setProps({ anchor: () => anchor, desktopBottomOffset: offset })
     await wrapper.get('button').trigger('click')
     await flushPromises()
     const popup = document.querySelector<HTMLElement>('.wardrobe-form-popover')!
     expect(popup.style.top).toBe('auto')
-    expect(popup.style.bottom).toBe(`${window.innerHeight - 450 + (offset ?? 4)}px`)
+    expect(popup.style.bottom).toBe(
+      `${window.innerHeight - (offset === undefined ? 408 : 450 - offset)}px`
+    )
     expect(popup.classList.contains('is-upward')).toBe(true)
   }
 )

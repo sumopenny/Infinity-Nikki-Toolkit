@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CatalogQuality from './CatalogQuality.vue'
+import { catalogQualityLabel } from '../utils/catalogQuality'
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { useAfterArchiveMotion } from '../composables/useAfterArchiveMotion'
@@ -143,7 +145,7 @@ const qualityOptions = computed(() => [
     ...new Set(parts.value.flatMap((entry) => (entry.quality === undefined ? [] : [entry.quality])))
   ]
     .sort((a, b) => b - a)
-    .map((value) => ({ value: String(value), label: `${value} ★` }))
+    .map((value) => ({ value: String(value), label: catalogQualityLabel(value, props.language) }))
 ])
 const filtered = computed(() => {
   const query = props.searchQuery.trim().toLocaleLowerCase()
@@ -329,8 +331,8 @@ const filtered = computed(() => {
           <div class="makeup-card-body" data-load-block>
             <h3 :title="entry.name[language]">{{ entry.name[language] }}</h3>
             <small v-if="entry.quality !== undefined" class="makeup-card-rarity"
-              >{{ entry.quality }} ★</small
-            >
+              ><CatalogQuality :quality="entry.quality" :language="language"
+            /></small>
           </div>
         </article>
       </div>

@@ -11,6 +11,8 @@ export interface WardrobeFilterOption {
 export function wardrobeGameVersionFromSource(obtainType: number | null): string | null {
   if (obtainType === null || !Number.isSafeInteger(obtainType) || obtainType < 0) return null
   const digits = String(obtainType)
+  // 3.0 资源沿用上游内部的 500 来源前缀，展示版本不能直接按首位解析。
+  if (digits.slice(0, 3) === '500') return '3.0'
   return digits.length >= 3 ? `${digits[0]}.${Number(digits.slice(1, 3))}` : null
 }
 

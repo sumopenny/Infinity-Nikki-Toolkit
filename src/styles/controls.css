@@ -340,24 +340,7 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
   color: inherit;
 }
 
-/* 电脑端保留卡片名称右侧的展开入口。 */
-.wardrobe-form-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  height: auto;
-  min-height: 0;
-  padding: 0 4px;
-  font-size: 12px;
-  border: 0;
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--pink-deep);
-  white-space: nowrap;
-  pointer-events: auto;
-  cursor: pointer;
-}
+/* 衣橱与共鸣记录共用圆形形态入口。 */
 .wardrobe-mobile-form-toggle {
   display: grid;
   place-items: center;
@@ -376,27 +359,27 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
   cursor: pointer;
 }
 
-:is(.wardrobe-form-toggle, .wardrobe-mobile-form-toggle) svg {
+.wardrobe-mobile-form-toggle svg {
   width: 16px;
   height: 16px;
   transition: transform 220ms var(--ease-spring);
 }
-:is(.wardrobe-form-toggle, .wardrobe-mobile-form-toggle) svg:not(.rotated) {
+.wardrobe-mobile-form-toggle svg:not(.rotated) {
   transition-duration: 140ms;
 }
-:is(.wardrobe-form-toggle, .wardrobe-mobile-form-toggle) .rotated {
+.wardrobe-mobile-form-toggle .rotated {
   transform: rotate(180deg);
 }
-:is(.wardrobe-form-toggle, .wardrobe-mobile-form-toggle):focus-visible {
+.wardrobe-mobile-form-toggle:focus-visible {
   outline: 2px solid var(--pink-deep);
   outline-offset: 2px;
 }
-:is(.wardrobe-form-toggle, .wardrobe-mobile-form-toggle):disabled {
+.wardrobe-mobile-form-toggle:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 @media (prefers-reduced-motion: reduce) {
-  :is(.wardrobe-form-toggle, .wardrobe-mobile-form-toggle) svg {
+  .wardrobe-mobile-form-toggle svg {
     transition: none;
   }
 }
@@ -436,7 +419,9 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
 }
 .view-dropdown .archive-background-option:hover,
 .view-dropdown .archive-background-option.active {
@@ -484,19 +469,18 @@ body .wardrobe-form-nav.is-horizontal button[aria-pressed='true'] strong {
     rgba(0, 0, 0, var(--archive-background-dim)),
     rgba(0, 0, 0, var(--archive-background-dim))
   );
-  --archive-background-image: var(--archive-background-overlay),
-    var(--archive-background-source, url('../../img/云绸.webp'));
+  --archive-background-image:
+    var(--archive-background-overlay), var(--archive-background-source, url('../../img/云绸.webp'));
 }
 :root[data-theme='dark'] {
   --archive-background-dim: 0.18;
-  --archive-pink-card-background: var(--archive-background-overlay),
-    url('../../img/pinkCardBg.png');
-  --archive-purple-card-background: var(--archive-background-overlay),
-    url('../../img/purpleCardBg.png');
-  --archive-silver-card-background: var(--archive-background-overlay),
-    url('../../img/silverCardBg.png');
-  --archive-pose-card-background: var(--archive-background-overlay),
-    url('../../img/星梦.webp');
-  --archive-background-image: var(--archive-background-overlay),
-    var(--archive-background-source, url('../../img/云绸.webp'));
+  --archive-pink-card-background:
+    var(--archive-background-overlay), url('../../img/pinkCardBg.png');
+  --archive-purple-card-background:
+    var(--archive-background-overlay), url('../../img/purpleCardBg.png');
+  --archive-silver-card-background:
+    var(--archive-background-overlay), url('../../img/silverCardBg.png');
+  --archive-pose-card-background: var(--archive-background-overlay), url('../../img/星梦.webp');
+  --archive-background-image:
+    var(--archive-background-overlay), var(--archive-background-source, url('../../img/云绸.webp'));
 }

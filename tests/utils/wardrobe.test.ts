@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { clearAllBrowserData, openDb } from '../../src/utils/file-system/database'
 import { loadWardrobeCatalog } from '../../src/utils/wardrobe/wardrobeCatalog'
+import { groupWardrobeEntries } from '../../src/utils/wardrobe/wardrobeFamilies'
 import { parseWardrobePearpal } from '../../src/utils/wardrobe/wardrobeImport'
 import {
   createWardrobeBackup,
@@ -189,4 +190,21 @@ it('does not write resolved suits when the caller invalidates the load after cat
     })
   ).rejects.toThrow('WARDROBE_LOAD_CANCELLED')
   expect(await readWardrobeSnapshot()).toEqual(before)
+})
+
+it('groups outfit forms split across catalog rows without merging their ownership', async () => {
+  const catalog = await loadWardrobeCatalog()
+  for (const id of ['1052601', '1024501', '1039001', '1010501', '1010701']) {
+    const base = catalog.byId.get(id.slice(0, -2))!
+    const form = catalog.byId.get(id)!
+    expect(form.familyRootId).toBe(base.id)
+    expect(form.variant).toBe(1)
+    expect(groupWardrobeEntries([base, form]).size).toBe(1)
+    const imported = parseWardrobePearpal({ info_from_self: { suit_list: [id] } }, catalog).snapshot
+    expect(Object.keys(imported.entries).sort()).toEqual([...form.parts].sort())
+    expect(base.parts.some((part) => imported.entries[part])).toBe(false)
+  }
+  expect(catalog.byId.get('10526')!.familyRootId).toBe('10526')
+  expect(catalog.byId.get('1052604')!.familyRootId).toBe('10526')
+  expect(catalog.byId.get('10529')!.familyRootId).toBe('10529')
 })

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CatalogQuality from './CatalogQuality.vue'
+import CrownOutfitName from './CrownOutfitName.vue'
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
@@ -834,7 +836,6 @@ async function clearRecords() {
             :key="merged ? wardrobeFamilyKey(entry) : entry.id"
             v-card-reveal="`wardrobe:${merged ? wardrobeFamilyKey(entry) : entry.id}`"
             class="wardrobe-card"
-            :class="{ 'has-forms': merged && hasMultipleForms(entry) }"
           >
             <div class="wardrobe-card-media">
               <button
@@ -844,7 +845,11 @@ async function clearRecords() {
                 :aria-label="name(entry) + ' · ' + variants[entry.variant] + ' · ' + status(entry)"
                 @click="openDetail(entry)"
               >
-                <div class="wardrobe-cover" data-load-block>
+                <div
+                  class="wardrobe-cover"
+                  :class="{ 'is-crown-quality': entry.quality === 8 }"
+                  data-load-block
+                >
                   <CatalogImage
                     fit="contain"
                     :language="language"
@@ -857,7 +862,7 @@ async function clearRecords() {
                 </div>
               </button>
               <WardrobeFormPopover
-                v-if="compact && merged && hasMultipleForms(entry)"
+                v-if="merged && hasMultipleForms(entry)"
                 :entry="entry"
                 :catalog="catalog"
                 :snapshot="snapshot"
@@ -876,18 +881,11 @@ async function clearRecords() {
                   :title="name(entry)"
                   @click.stop="openDetail(entry)"
                 >
-                  <h3>{{ name(entry) }}</h3>
+                  <h3>
+                    <CrownOutfitName v-if="entry.quality === 8">{{ name(entry) }}</CrownOutfitName>
+                    <template v-else>{{ name(entry) }}</template>
+                  </h3>
                 </button>
-                <WardrobeFormPopover
-                  v-if="!compact && merged && hasMultipleForms(entry)"
-                  :entry="entry"
-                  :catalog="catalog"
-                  :snapshot="snapshot"
-                  :language="language"
-                  :disabled="blocked"
-                  :reset-key="formPreviewRevision"
-                  @select="openDetail"
-                />
               </div>
               <div class="wardrobe-card-status" data-load-block>
                 <span :class="complete(entry) ? 'wardrobe-owned' : ''">
@@ -896,7 +894,9 @@ async function clearRecords() {
                     >{{ ownedCount(entry) }}/{{ entry.parts.length }}</small
                   >
                 </span>
-                <small class="wardrobe-card-rarity">{{ entry.quality }} ★</small>
+                <small class="wardrobe-card-rarity"
+                  ><CatalogQuality :quality="entry.quality" :language="language"
+                /></small>
               </div>
               <progress
                 data-load-block
@@ -1006,14 +1006,21 @@ async function clearRecords() {
 .wardrobe-card-media {
   position: relative;
 }
+.wardrobe-card-media > :deep(.wardrobe-mobile-form-toggle) {
+  position: absolute;
+  right: 6px;
+  bottom: 10px;
+}
+@media (max-width: 899px) {
+  .wardrobe-card-media > :deep(.wardrobe-mobile-form-toggle) {
+    top: 6px;
+    bottom: auto;
+  }
+}
 .wardrobe-card-heading {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
-}
-.has-forms .wardrobe-card-heading {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
 }
 .wardrobe-card-name {
   min-width: 0;
@@ -1273,10 +1280,12 @@ async function clearRecords() {
   position: relative;
   /* 套装素材为 448 × 656，按原图比例预留空间，避免 contain 产生侧边留白。 */
   aspect-ratio: 448 / 656;
-}
-.wardrobe-cover {
   background: var(--archive-background-image, url('../../img/云绸.webp')) center / cover no-repeat;
   background-color: var(--frame-bg);
+}
+/* 星冕品质固定使用专属背景，不读取全局背景选择；加载失败仍保留底色。 */
+.wardrobe-cover.is-crown-quality {
+  background: var(--frame-bg) url('../../img/星冕.webp') center / cover no-repeat;
 }
 .is-pieces .wardrobe-cover {
   aspect-ratio: 1;

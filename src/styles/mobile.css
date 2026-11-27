@@ -1859,18 +1859,10 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-  .wardrobe-page .has-forms .wardrobe-card-heading {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .wardrobe-page .wardrobe-variant {
     box-sizing: border-box;
     height: 22px;
     line-height: 14px;
-  }
-  .wardrobe-mobile-form-toggle {
-    position: absolute;
-    top: 6px;
-    right: 6px;
   }
   .resonance-outfit-preview > .wardrobe-mobile-form-toggle {
     top: 4px;

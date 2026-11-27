@@ -41,7 +41,7 @@ const filters = computed(() => [
     ? [{ key: 'category' as const, label: text('部位', 'Category'), options: props.categories }]
     : []),
   ...(props.qualities
-    ? [{ key: 'quality' as const, label: text('星级', 'Rarity'), options: props.qualities }]
+    ? [{ key: 'quality' as const, label: text('品质', 'Quality'), options: props.qualities }]
     : []),
   { key: 'version' as const, label: text('版本', 'Version'), options: props.versions },
   { key: 'source' as const, label: text('获取来源', 'Source'), options: props.sources }

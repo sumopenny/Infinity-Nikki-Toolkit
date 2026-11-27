@@ -567,7 +567,6 @@ defineExpose({ reload })
               /></button>
               <WardrobeFormPopover
                 v-if="formEntry(record.outfitId)"
-                icon-only
                 :entry="formEntry(record.outfitId)!"
                 :catalog="previewCatalog"
                 :snapshot="previewSnapshot"

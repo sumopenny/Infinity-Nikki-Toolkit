@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import crownBackground from '../../img/星冕.webp'
 import { Check, CircleCheck } from 'lucide-vue-next'
 import { useCompactLayout } from '../composables/useCompactLayout'
 import CatalogImage from './CatalogImage.vue'
@@ -69,6 +70,9 @@ function status(entry: WardrobeEntry) {
     >
       <button
         type="button"
+        :style="{
+          '--archive-background-image': form.quality === 8 ? `url(${crownBackground})` : ''
+        }"
         :aria-pressed="entry.id === form.id"
         :aria-current="entry.id === form.id ? 'step' : undefined"
         :aria-label="wardrobeVariantLabels[language][form.variant] + ' · ' + status(form)"

@@ -4,6 +4,7 @@ import {
   matchesWardrobeGameVersion,
   matchesWardrobeSource,
   wardrobeGameVersionOptions,
+  wardrobeGameVersionFromSource,
   wardrobeSourceOptions,
   wardrobeTagOptions
 } from '../../src/utils/wardrobe/wardrobeFilters'
@@ -27,6 +28,16 @@ const entry = (metadata: Partial<WardrobeEntry> = {}): WardrobeEntry => ({
 })
 
 describe('wardrobe filter metadata', () => {
+  it('maps the internal 500 source prefix to release 3.0 across suits and parts', async () => {
+    expect(wardrobeGameVersionFromSource(50012)).toBe('3.0')
+    expect(wardrobeGameVersionFromSource(21001)).toBe('2.10')
+    expect(wardrobeGameVersionFromSource(null)).toBeNull()
+    const catalog = await loadWardrobeCatalog()
+    const entries = catalog.entries.filter((entry) => String(entry.obtainType).startsWith('500'))
+    expect(entries.length).toBeGreaterThan(0)
+    expect(entries.every((entry) => entry.version === '3.0')).toBe(true)
+    expect(catalog.byId.get('10529')!.version).toBe('3.0')
+  })
   it('loads real compact metadata and preserves exact banner members across evolutions', async () => {
     const catalog = await loadWardrobeCatalog()
     const base = catalog.byId.get('10347')!

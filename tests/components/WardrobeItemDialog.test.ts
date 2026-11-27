@@ -1,3 +1,4 @@
+import crownBackground from '../../img/星冕.webp'
 import { getCatalogImageSource } from '../../src/utils/gongeo/catalogImage'
 import { mount, DOMWrapper } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
@@ -9,7 +10,7 @@ it('衣橱详情在加载、失败、重试和切换部件时保留展示框', a
     id: '1020100001',
     kind: 'item',
     name: { zh: '测试发型', en: 'Test hair' },
-    quality: 5,
+    quality: 8,
     variant: 0,
     category: 10,
     familyRootId: null,
@@ -26,7 +27,10 @@ it('衣橱详情在加载、失败、重试和切换部件时保留展示框', a
     global: { stubs: { Teleport: true, Transition: true } }
   })
   try {
-    const frame = wrapper.get('.outfit-detail-image-frame').element
+    const frame = wrapper.get('.outfit-detail-image-frame').element as HTMLElement
+    expect(frame.style.getPropertyValue('--archive-background-image')).toBe(
+      `url(${crownBackground})`
+    )
     expect(wrapper.get('.outfit-detail-image-frame').attributes('aria-busy')).toBe('true')
     await wrapper.get('img').trigger('error')
     expect(wrapper.get('.outfit-detail-image-frame').element).toBe(frame)
@@ -37,10 +41,20 @@ it('衣橱详情在加载、失败、重试和切换部件时保留展示框', a
     expect(wrapper.get('.outfit-detail-image-frame').element).toBe(frame)
     expect(wrapper.find('.outfit-detail-image-placeholder').exists()).toBe(false)
     await wrapper.setProps({
-      item: { ...item, id: '1020100002', image: 'https://example.test/items/icons/1020100002.png' }
+      item: {
+        ...item,
+        quality: 5,
+        id: '1020100002',
+        image: 'https://example.test/items/icons/1020100002.png'
+      }
     })
     expect(wrapper.get('.outfit-detail-image-frame').attributes('aria-busy')).toBe('true')
     expect(wrapper.get('img').attributes('src')).toBe(getCatalogImageSource('item', '1020100002'))
+    expect(
+      (wrapper.get('.outfit-detail-image-frame').element as HTMLElement).style.getPropertyValue(
+        '--archive-background-image'
+      )
+    ).toBe('')
   } finally {
     wrapper.unmount()
   }

@@ -99,6 +99,7 @@ export function loadWardrobeCatalog(): Promise<WardrobeCatalog> {
   ])
     .then(([items, outfits, outfitParts, zhItems, enItems, zhOutfits, enOutfits]) => {
       const entries: WardrobeEntry[] = []
+      const outfitIds = new Set((outfits as OutfitRow[]).flatMap(([value]) => ids(value)))
       const outfitMap = new Map(
         (outfitParts as unknown as [number, number[]][]).map(([id, parts]) => [
           String(id),
@@ -130,7 +131,9 @@ export function loadWardrobeCatalog(): Promise<WardrobeCatalog> {
         for (const row of catalogRows(data, kind)) {
           const family = ids(row.ids)
           for (const id of family) {
-            const root = String(row.root ?? family[0])
+            // 上游可能将焕新单列一行；仅在原套确实存在时按套装编号归组，显式 root 优先。
+            const base = kind === 'outfit' && /^\d{7}$/.test(id) ? id.slice(0, -2) : ''
+            const root = String(row.root ?? (outfitIds.has(base) ? base : family[0]))
             const parts = kind === 'outfit' ? (outfitMap.get(id) ?? []) : [id]
             const variant = kind === 'outfit' ? outfitVariant(id) : itemVariant(id, root)
             const rawLabels = row.labels

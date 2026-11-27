@@ -18,7 +18,6 @@ const props = defineProps<{
   disabled?: boolean
   resetKey?: number
   anchor?: () => HTMLElement | null
-  iconOnly?: boolean
   desktopBottomOffset?: number
 }>()
 const emit = defineEmits<{ select: [entry: WardrobeEntry] }>()
@@ -77,12 +76,16 @@ async function toggle() {
         ?.querySelector('.wardrobe-card-media')
         ?.getBoundingClientRect() ??
       box
+    const panelBottom =
+      props.desktopBottomOffset === undefined
+        ? button.getBoundingClientRect().top - 6
+        : media.bottom - props.desktopBottomOffset
     opensUpward.value = true
     menuStyle.value = {
       ...menuStyle.value,
       top: 'auto',
-      bottom: `${window.innerHeight - media.bottom + (props.desktopBottomOffset ?? 4)}px`,
-      maxHeight: `${Math.max(40, media.bottom - (viewport?.offsetTop ?? 0) - 16)}px`
+      bottom: `${window.innerHeight - panelBottom}px`,
+      maxHeight: `${Math.max(40, panelBottom - (viewport?.offsetTop ?? 0) - 16)}px`
     }
     return
   }
@@ -143,15 +146,14 @@ watch(
   <button
     ref="trigger"
     type="button"
-    :class="compact || iconOnly ? 'wardrobe-mobile-form-toggle' : 'wardrobe-form-toggle'"
+    class="wardrobe-mobile-form-toggle"
     :disabled="disabled"
     :aria-label="open ? t.collapse : t.expand"
     :aria-expanded="open"
     :aria-controls="open ? panelId : undefined"
     @click.stop="toggle"
   >
-    <span v-if="!compact && !iconOnly">{{ open ? t.collapseShort : t.expandShort }}</span>
-    <ChevronDown :size="compact ? 18 : 16" :class="{ rotated: open }" aria-hidden="true" />
+    <ChevronDown :size="16" :class="{ rotated: open }" aria-hidden="true" />
   </button>
   <Teleport to="body">
     <Transition

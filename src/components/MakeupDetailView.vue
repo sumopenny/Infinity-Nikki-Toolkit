@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CatalogQuality from './CatalogQuality.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { CalendarDays, ChevronRight, Layers, Shirt, Star, X } from 'lucide-vue-next'
 import CatalogImage from './CatalogImage.vue'
@@ -237,14 +238,11 @@ useModalFocus(open, panel, close)
               <div ref="copyElement" class="makeup-detail-copy">
                 <dl class="wardrobe-suit-facts makeup-detail-facts">
                   <div>
-                    <dt><Star :size="17" aria-hidden="true" />{{ text('星级', 'Rarity') }}</dt>
+                    <dt><Star :size="17" aria-hidden="true" />{{ text('品质', 'Quality') }}</dt>
                     <dd
-                      ><span class="wardrobe-rarity-tag">{{
-                        detail.quality === undefined
-                          ? text('未知', 'Unknown')
-                          : detail.quality + ' ★'
-                      }}</span></dd
-                    >
+                      ><span class="wardrobe-rarity-tag"
+                        ><CatalogQuality :quality="detail.quality" :language="language" /></span
+                    ></dd>
                   </div>
                   <div>
                     <dt

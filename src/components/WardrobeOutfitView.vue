@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CrownOutfitName from './CrownOutfitName.vue'
+import CatalogQuality from './CatalogQuality.vue'
 import {
   animationForOutfit,
   openAnimationKey,
@@ -342,10 +344,11 @@ useModalFocus(dialogOpen, panel, closeDialog)
                 </section>
                 <dl class="wardrobe-suit-facts">
                   <div>
-                    <dt><Star :size="17" aria-hidden="true" />{{ text('星级', 'Rarity') }}</dt>
+                    <dt><Star :size="17" aria-hidden="true" />{{ text('品质', 'Quality') }}</dt>
                     <dd
-                      ><span class="wardrobe-rarity-tag">{{ detail.quality }} ★</span></dd
-                    >
+                      ><span class="wardrobe-rarity-tag"
+                        ><CatalogQuality :quality="detail.quality" :language="language" /></span
+                    ></dd>
                   </div>
                   <div v-if="detailStyle">
                     <dt><Flower2 :size="17" aria-hidden="true" />{{ text('风格', 'Style') }}</dt>
@@ -416,7 +419,12 @@ useModalFocus(dialogOpen, panel, closeDialog)
                     <span
                       class="wardrobe-part-name"
                       :title="part.entry ? name(part.entry) : part.id"
-                      >{{ part.entry ? name(part.entry) : part.id }}</span
+                      ><CrownOutfitName v-if="part.entry?.quality === 8">{{
+                        name(part.entry)
+                      }}</CrownOutfitName
+                      ><template v-else>{{
+                        part.entry ? name(part.entry) : part.id
+                      }}</template></span
                     >
                     <small class="wardrobe-part-state">
                       <CircleHelp

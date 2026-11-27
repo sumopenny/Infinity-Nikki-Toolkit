@@ -75,8 +75,6 @@ interface WardrobeEvolutionMessages {
   enabledHint: string
   disabledHint: string
   expand: string
-  expandShort: string
-  collapseShort: string
   collapse: string
   forms: string
 }
@@ -85,8 +83,6 @@ export const wardrobeEvolutionMessages: Record<Language, WardrobeEvolutionMessag
   zh: {
     label: '显示进化形态',
     expand: '展开形态',
-    expandShort: '展开',
-    collapseShort: '收起',
     collapse: '收起形态',
     forms: '进化形态',
     enabledHint: '开启：界面显示套装所有形态',
@@ -95,8 +91,6 @@ export const wardrobeEvolutionMessages: Record<Language, WardrobeEvolutionMessag
   en: {
     label: 'Show evolution forms',
     expand: 'Expand forms',
-    expandShort: 'Expand',
-    collapseShort: 'Collapse',
     collapse: 'Collapse forms',
     forms: 'Evolution forms',
     enabledHint: 'When on: show all outfit forms',

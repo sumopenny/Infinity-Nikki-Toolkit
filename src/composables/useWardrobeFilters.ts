@@ -1,4 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
+import { catalogQualityLabel } from '../utils/catalogQuality'
 import type { Language } from '../i18n/types'
 import {
   wardrobeStyleLabels,
@@ -86,8 +87,14 @@ export function useWardrobeFilters(tab: Ref<WardrobeKind>, language: Ref<Languag
       },
       {
         key: 'rarity',
-        label: text('星级', 'Rarity'),
-        options: [all, ...[5, 4, 3, 2, 1].map((n) => ({ value: String(n), label: n + ' ★' }))]
+        label: text('品质', 'Quality'),
+        options: [
+          all,
+          ...[8, 5, 4, 3, 2, 1].map((n) => ({
+            value: String(n),
+            label: catalogQualityLabel(n, language.value)
+          }))
+        ]
       },
       {
         key: 'variant',

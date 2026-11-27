@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { archiveMotionDeadlineKey } from '../../src/composables/useAfterArchiveMotion'
 import PersonalWardrobe from '../../src/components/PersonalWardrobe.vue'
+import crownBackground from '../../img/星冕.webp'
 vi.mock('../../src/components/ArchiveCloudActions.vue', () => ({
   default: { template: '<span />' }
 }))
@@ -123,10 +124,16 @@ describe('personal wardrobe interactions', () => {
     await wrapper.setProps({ searchQuery: '10347', language: 'en' })
     await wrapper.get('input[role="switch"]').setValue(false)
     const heading = wrapper.get('.wardrobe-card-heading')
-    expect(heading.get('.wardrobe-form-toggle').attributes('aria-label')).toBe('Expand forms')
-    expect(heading.get('.wardrobe-form-toggle').text()).toBe('Expand')
-    await heading.get('.wardrobe-form-toggle').trigger('click')
-    expect(heading.get('.wardrobe-form-toggle').attributes('aria-label')).toBe('Collapse forms')
+    expect(wrapper.get('.wardrobe-mobile-form-toggle').attributes('aria-label')).toBe(
+      'Expand forms'
+    )
+    expect(wrapper.get('.wardrobe-mobile-form-toggle').text()).toBe('')
+    expect(heading.find('button[aria-expanded]').exists()).toBe(false)
+    expect(wrapper.findAll('.wardrobe-card-media > .wardrobe-mobile-form-toggle')).toHaveLength(1)
+    await wrapper.get('.wardrobe-mobile-form-toggle').trigger('click')
+    expect(wrapper.get('.wardrobe-mobile-form-toggle').attributes('aria-label')).toBe(
+      'Collapse forms'
+    )
     expect(document.querySelector('.wardrobe-dialog')).toBeNull()
     await heading.get('.wardrobe-card-name').trigger('click')
     await flushPromises()
@@ -153,7 +160,7 @@ describe('personal wardrobe interactions', () => {
     vi.spyOn(wrapper.get('.wardrobe-card').element, 'getBoundingClientRect').mockImplementation(
       () => box
     )
-    const trigger = wrapper.get('.wardrobe-form-toggle')
+    const trigger = wrapper.get('.wardrobe-mobile-form-toggle')
     for (const [left, expected] of [
       [500, 400],
       [0, 12],
@@ -177,7 +184,7 @@ describe('personal wardrobe interactions', () => {
     expect(wrapper.findAll('.wardrobe-card')).toHaveLength(1)
     expect(wrapper.get('.wardrobe-summary').text()).toBe(summary)
     expect(!!document.querySelector('.wardrobe-form-popover')).toBe(false)
-    await wrapper.get('.wardrobe-form-toggle').trigger('click')
+    await wrapper.get('.wardrobe-mobile-form-toggle').trigger('click')
     const thumbs = new DOMWrapper(
       document.querySelector<HTMLElement>('.wardrobe-form-popover')!
     ).findAll('button')
@@ -223,12 +230,12 @@ describe('personal wardrobe interactions', () => {
     await choose('variant', '焕新')
     expect(wrapper.findAll('.wardrobe-card')).toHaveLength(1)
     expect(wrapper.get('.wardrobe-variant').text()).toBe('焕新')
-    expect(wrapper.find('.wardrobe-form-toggle').exists()).toBe(true)
-    expect(wrapper.get('.wardrobe-form-toggle').attributes('aria-expanded')).toBe('false')
-    await wrapper.get('.wardrobe-form-toggle').trigger('click')
-    expect(wrapper.get('.wardrobe-form-toggle').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('.wardrobe-mobile-form-toggle').exists()).toBe(true)
+    expect(wrapper.get('.wardrobe-mobile-form-toggle').attributes('aria-expanded')).toBe('false')
+    await wrapper.get('.wardrobe-mobile-form-toggle').trigger('click')
+    expect(wrapper.get('.wardrobe-mobile-form-toggle').attributes('aria-expanded')).toBe('true')
     await choose('variant', '全部')
-    expect(wrapper.get('.wardrobe-form-toggle').attributes('aria-expanded')).toBe('false')
+    expect(wrapper.get('.wardrobe-mobile-form-toggle').attributes('aria-expanded')).toBe('false')
     await wrapper.get('.wardrobe-card-open').trigger('click')
     expect(document.querySelectorAll('.wardrobe-form-nav button').length).toBeGreaterThan(1)
     await wrapper.get('input[role="switch"]').setValue(true)
@@ -251,7 +258,7 @@ describe('personal wardrobe interactions', () => {
     await wrapper.get('input[role="switch"]').setValue(false)
     expect(localStorage.getItem('nikki-wardrobe-show-evolutions')).toBe('false')
     expect(wrapper.findAll('.wardrobe-card')).toHaveLength(1)
-    expect(wrapper.find('.wardrobe-form-toggle').exists()).toBe(false)
+    expect(wrapper.findAll('.wardrobe-mobile-form-toggle')).toHaveLength(1)
     await wrapper.get('.wardrobe-mobile-form-toggle').trigger('click')
     await flushPromises()
     const popup = new DOMWrapper(document.querySelector<HTMLElement>('.wardrobe-form-popover')!)
@@ -847,7 +854,7 @@ describe('scheme A outfit detail', () => {
       expect(dialog.find('.wardrobe-detail-count').exists()).toBe(false)
       expect(dialog.get('.wardrobe-suit-progress').text()).toContain(`${owned}/10`)
       expect(dialog.get('.wardrobe-style-tag').text()).toBe('甜美')
-      expect(dialog.get('.wardrobe-suit-facts dt').text()).toBe('星级')
+      expect(dialog.get('.wardrobe-suit-facts dt').text()).toBe('品质')
       expect(dialog.get('.wardrobe-suit-facts dd').text()).toBe('5 ★')
       expect(dialog.get('.wardrobe-suit-preview img').attributes('src')).toBe(
         getCatalogImageSource('outfit', 1029402)
@@ -1103,3 +1110,47 @@ it.each([false, true])(
     expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
   }
 )
+
+it('filters crown quality and shows only its crown in outfit cards and details', async () => {
+  await choose('ownership', '全部')
+  await choose('rarity', '星冕')
+  await wrapper.setProps({ searchQuery: '10529' })
+  expect(wrapper.findAll('.wardrobe-card')).toHaveLength(5)
+  expect(wrapper.findAll('.wardrobe-cover.is-crown-quality')).toHaveLength(5)
+  expect(wrapper.findAll('.crown-outfit-name')).toHaveLength(5)
+  expect(wrapper.findAll('.wardrobe-card-rarity .is-crown')).toHaveLength(5)
+  expect(wrapper.findAll('.wardrobe-card-rarity').every((node) => node.text() === '')).toBe(true)
+  const dialog = await openSuit('10529')
+  expect(dialog.get('.wardrobe-rarity-tag [role="img"]').attributes('aria-label')).toBe('星冕')
+  expect(dialog.get('.wardrobe-rarity-tag').text()).toBe('')
+  expect(dialog.findAll('.wardrobe-part-image')).toHaveLength(12)
+  expect(dialog.find('.wardrobe-part-image.is-crown-quality').exists()).toBe(false)
+  expect(dialog.findAll('.wardrobe-form-nav button')).toHaveLength(5)
+  expect(
+    dialog
+      .findAll('.wardrobe-form-nav button')
+      .every(
+        (node) =>
+          (node.element as HTMLElement).style.getPropertyValue('--archive-background-image') ===
+          `url(${crownBackground})`
+      )
+  ).toBe(true)
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  await choose('rarity', '全部')
+  await wrapper.setProps({ searchQuery: '致久候的你' })
+  expect(wrapper.findAll('.wardrobe-card').length).toBeGreaterThan(0)
+  expect(wrapper.find('.wardrobe-cover.is-crown-quality').exists()).toBe(false)
+  expect(wrapper.find('.crown-outfit-name').exists()).toBe(false)
+  button('部件').click()
+  await flushPromises()
+  await choose('rarity', '星冕')
+  await wrapper.setProps({ searchQuery: '' })
+  expect(wrapper.findAll('.wardrobe-card').length).toBeGreaterThan(0)
+  expect(wrapper.findAll('.wardrobe-cover.is-crown-quality')).toHaveLength(
+    wrapper.findAll('.wardrobe-card').length
+  )
+  expect(wrapper.findAll('.crown-outfit-name')).toHaveLength(
+    wrapper.findAll('.wardrobe-card').length
+  )
+})

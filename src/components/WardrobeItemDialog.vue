@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CrownOutfitName from './CrownOutfitName.vue'
+import crownBackground from '../../img/星冕.webp'
 import CatalogImage from './CatalogImage.vue'
 import { getCatalogImageSource } from '../utils/gongeo/catalogImage'
 import WardrobeFormNav from './WardrobeFormNav.vue'
@@ -93,6 +95,10 @@ useModalFocus(visible, panel, close)
               <section class="outfit-detail-summary">
                 <div
                   class="outfit-detail-image-frame"
+                  :style="{
+                    '--archive-background-image':
+                      item.quality === 8 ? `url(${crownBackground})` : ''
+                  }"
                   :class="{ 'is-image-loading': imageState === 'loading' }"
                   :aria-busy="imageState === 'loading'"
                 >
@@ -138,7 +144,12 @@ useModalFocus(visible, panel, close)
                   >
                   <div
                     ><dt>{{ text('当前部件', 'Current item') }}</dt
-                    ><dd>{{ item.name[language] }}</dd></div
+                    ><dd
+                      ><CrownOutfitName v-if="item.quality === 8">{{
+                        item.name[language]
+                      }}</CrownOutfitName
+                      ><template v-else>{{ item.name[language] }}</template></dd
+                    ></div
                   >
                 </dl>
               </section>
