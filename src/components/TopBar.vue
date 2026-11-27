@@ -540,7 +540,7 @@ function openDonate() {
       <span class="header-star-hint" :title="messages.starHint">{{ messages.starHint }}</span>
       <a
         class="official-site-link"
-        href="https://hello.nikkicube.cc.cd"
+        href="https://nikki3.pages.dev"
         target="_blank"
         rel="noopener noreferrer"
         :title="messages.officialSiteHint"
@@ -1170,7 +1170,7 @@ function openDonate() {
                   <h3 id="more-about-heading">{{ messages.aboutToolkit }}</h3>
                   <a
                     v-if="compact"
-                    href="https://hello.nikkicube.cc.cd"
+                    href="https://nikki3.pages.dev"
                     target="_blank"
                     rel="noopener noreferrer"
                     @click="closeMenus"

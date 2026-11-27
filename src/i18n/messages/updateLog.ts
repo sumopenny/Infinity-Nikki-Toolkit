@@ -7,7 +7,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   helpAbout: '使用帮助',
   currentTitle: '当前版本',
   currentVersion,
-  currentDate: '2026.11.26 更新',
+  currentDate: '2026.11.27 更新',
   currentItems: [
     {
       title: '全新电脑端主页上线。',
@@ -941,7 +941,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   helpAbout: 'Help',
   currentTitle: 'Current version',
   currentVersion,
-  currentDate: 'Updated 2026.11.26',
+  currentDate: 'Updated 2026.11.27',
   currentItems: [
     {
       title: 'A new desktop home page.',
