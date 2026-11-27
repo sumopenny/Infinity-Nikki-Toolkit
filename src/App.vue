@@ -2930,9 +2930,7 @@ function importAllDataFromMenu() {
                 <DialogChoiceMenu
                   :model-value="gameAlbum.uid"
                   :label="gameAlbumText.switchAccount"
-                  :trigger-label="
-                    gameAlbumProfile?.nickname || gameAlbumText.account(gameAlbum.uid)
-                  "
+                  :trigger-label="`${gameAlbumProfile?.nickname || gameAlbumText.account(gameAlbum.uid)} · ${gameAlbumText.switchAccount}`"
                   :options="gameAccountOptions"
                   :disabled="isAnyFileOperationBusy"
                   @update:model-value="switchGameAccount"
