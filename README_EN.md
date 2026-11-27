@@ -356,10 +356,10 @@ Install [Node.js LTS version 22 or newer](https://nodejs.org/) with the default 
 
 1. Download and extract the project from [GitHub Releases](https://github.com/sumopenny/Infinity-Nikki-Toolkit/releases) or [Gitee Releases](https://gitee.com/sumopenny/Infinity-Nikki-Toolkit/releases), or clone the source repository.
 2. Double-click `网站启动器.exe` in the project root.
-3. On first run, dependencies are installed automatically. The browser opens `http://localhost:5173` only after resource updates finish and the dev server successfully starts listening. It does not open during updates or after a startup failure or port conflict; check the dev server window for errors.
+3. On first run, dependencies are installed automatically. The browser opens `http://localhost:5173` only after the dev server successfully starts listening. It does not open after a startup failure or port conflict; check the dev server window for errors.
 4. Keep the window open while using it.
 
-If the launcher is unavailable, run `start\Start-Remote-D1-Website.bat`, or use the commands below. Resource updates require network access; failed updates keep the existing local resources.
+If the launcher is unavailable, run `start\Start-Remote-D1-Website.bat`, or use the commands below. Startup and Cloudflare builds use existing project resources without fetching remote JSON. To update resources, double-click `start\Update-Resources.bat` and check the result in its window; retry if it fails. Commit the updated files and deploy to use them online.
 
 The local site connects to the online service for Likes, shared cloud accounts, and resonance/wardrobe cloud sync. These actions affect real online data. The default service is `https://nikkicube.pages.dev`; no local D1 setup or startup is required. Override it with `REMOTE_API_ORIGIN` if needed. Browser-local storage is unchanged, and automated tests still use isolated databases.
 
@@ -371,10 +371,11 @@ Run these commands in the project root:
 
 ```bash
 npm install                # Install dependencies
+npm run resources:update   # Manually update resource JSON
 npm run dev                # Start locally using nikkicube.pages.dev by default
 npm test                   # Run automated tests
 npm run build              # Type-check and build
-npm run build:cloudflare   # Update resources and build for Cloudflare
+npm run build:cloudflare   # Build for Cloudflare using existing project resources
 npm run preview            # Preview the build
 ```
 

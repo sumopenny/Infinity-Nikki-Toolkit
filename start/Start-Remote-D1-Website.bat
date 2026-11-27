@@ -68,7 +68,6 @@ echo.
 start "Remote D1 Dev Server" cmd /k "cd /d ""%PROJECT_DIR%"" && npm run dev -- --port 5173 --strictPort --open http://localhost:5173"
 
 echo The dev server will open your browser only after startup succeeds.
-echo Resource updates may take a while. Check the dev server window for progress.
 
 echo.
 echo Once the dev server reports ready, you can also visit:

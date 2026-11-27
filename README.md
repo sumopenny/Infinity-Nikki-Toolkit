@@ -356,10 +356,10 @@ ZIP 备份导出使用当前格式：搭配码 v4、家园方案 v2、全部数�
 
 1. 从 [GitHub Releases](https://github.com/sumopenny/Infinity-Nikki-Toolkit/releases) 或 [Gitee Releases](https://gitee.com/sumopenny/Infinity-Nikki-Toolkit/releases) 下载并解压项目，或从仓库克隆源码。
 2. 双击根目录的 `网站启动器.exe`。
-3. 首次运行会自动安装依赖；资源更新结束且开发服务器成功开始监听后，才自动打开 `http://localhost:5173`。更新过程中不会提前打开网页；若启动失败或端口被占用，不会打开浏览器，请查看开发服务器窗口中的错误提示。
+3. 首次运行会自动安装依赖；开发服务器成功开始监听后，才自动打开 `http://localhost:5173`。若启动失败或端口被占用，不会打开浏览器，请查看开发服务器窗口中的错误提示。
 4. 使用期间不要关闭窗口。
 
-启动器不可用时，可运行 `start\Start-Remote-D1-Website.bat`，或使用下方命令手动启动。启动时需要联网更新资源，更新失败时沿用已有本地资源。
+启动器不可用时，可运行 `start\Start-Remote-D1-Website.bat`，或使用下方命令手动启动。启动和 Cloudflare 构建均使用项目现有资源，不自动拉取远程 JSON。需要更新时，双击 `start\Update-Resources.bat`，完成后查看窗口结果；更新失败可重试。线上使用新资源前，请将更新后的文件提交并部署。
 
 本地运行的点赞、共鸣账号及云同步连接线上服务，相关操作会影响真实线上数据。默认服务地址为 `https://nikkicube.pages.dev`，无需配置或启动本地 D1。可用 `REMOTE_API_ORIGIN` 覆盖服务地址。浏览器本地存档保持原有方式，自动化测试仍使用隔离数据库。
 
@@ -371,10 +371,11 @@ ZIP 备份导出使用当前格式：搭配码 v4、家园方案 v2、全部数�
 
 ```bash
 npm install                # 安装依赖
+npm run resources:update   # 手动更新资源 JSON
 npm run dev                # 默认连接 nikkicube.pages.dev 并启动本地网站
 npm test                   # 运行自动化测试
 npm run build              # 类型检查并构建
-npm run build:cloudflare   # 更新资源并构建 Cloudflare 版本
+npm run build:cloudflare   # 使用项目现有资源构建 Cloudflare 版本
 npm run preview            # 预览构建结果
 ```
 

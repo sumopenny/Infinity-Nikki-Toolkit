@@ -4,7 +4,7 @@
 
 ## Cloudflare 控制台
 
-连接本仓库，生产分支选 `main`，根目录留空，框架选 Vue 或无，构建命令 `npm run build:cloudflare`，输出目录 `dist`。Pages 不填写 `wrangler deploy` 部署命令。Node 版本读取仓库 `.node-version`，无需重复设置。
+连接本仓库，生产分支选 `main`，根目录留空，框架选 Vue 或无，构建命令 `npm run build:cloudflare`，输出目录 `dist`。构建只使用仓库现有资源 JSON，不拉取远程资源；需要更新时先运行 `start\Update-Resources.bat`，提交更新后的文件再部署。Pages 不填写 `wrangler deploy` 部署命令。Node 版本读取仓库 `.node-version`，无需重复设置。
 
 `VITE_ERROR_REPORTING_ENABLED=true` 已写入 `wrangler.toml` 的 `[vars]`，由 Pages 在构建时读取，不需要在控制台重复配置普通变量。Pages 提供 `CF_PAGES_BRANCH` 和 `CF_PAGES_COMMIT_SHA`；运行时生产标记也由仓库统一维护。控制台只需配置下面的 Secret。前端资源保持同源 `/assets/`。
 

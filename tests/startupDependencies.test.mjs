@@ -298,3 +298,59 @@ test('a strict-port startup failure never opens the browser', async (t) => {
   await assert.rejects(server.listen(), /already in use/)
   assert.equal(opened, 0)
 })
+
+test('development and Cloudflare builds use existing resource JSON', () => {
+  const { scripts } = JSON.parse(readFileSync(join(repoDir, 'package.json'), 'utf8'))
+  assert.equal(scripts.predev, undefined)
+  assert.equal(scripts['build:cloudflare'], 'npm run build')
+  assert.equal(scripts.build, 'vue-tsc --noEmit && vite build')
+  assert.equal(scripts['resources:update'], 'npm run resources:update:gongeo')
+})
+
+for (const scenario of ['success', 'update-failure', 'dependency-failure']) {
+  test(`manual resource BAT reports ${scenario}`, { skip: process.platform !== 'win32' }, (t) => {
+    const dir = fixture(t)
+    mkdirSync(join(dir, 'start'))
+    mkdirSync(join(dir, 'scripts'))
+    const name = 'Update-Resources.bat'
+    const batch = readFileSync(join(repoDir, 'start', name))
+    assert.ok(
+      batch.every((byte) => byte < 128),
+      'BAT must contain only ASCII'
+    )
+    writeFileSync(join(dir, 'start', name), batch)
+    writeFileSync(
+      join(dir, 'start', 'ensure-dependencies.mjs'),
+      `process.exit(${scenario === 'dependency-failure' ? 1 : 0})`
+    )
+    writeFileSync(
+      join(dir, 'scripts', 'update-gongeo-catalog.mjs'),
+      `
+      import { writeFileSync } from 'node:fs'
+      writeFileSync('update-args.json', JSON.stringify(process.argv.slice(2)))
+      process.exit(${scenario === 'update-failure' ? 1 : 0})
+    `
+    )
+    const result = spawnSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', name], {
+      cwd: join(dir, 'start'),
+      env: process.env,
+      input: '\r\n',
+      encoding: 'utf8',
+      timeout: 10000
+    })
+    assert.equal(result.status, scenario === 'success' ? 0 : 1, result.stdout + result.stderr)
+    if (scenario === 'dependency-failure') {
+      assert.match(result.stdout, /Resource update stopped/)
+      assert.equal(existsSync(join(dir, 'update-args.json')), false)
+    } else {
+      assert.deepEqual(JSON.parse(readFileSync(join(dir, 'update-args.json'), 'utf8')), [
+        '--strict'
+      ])
+      assert.match(
+        result.stdout,
+        scenario === 'success' ? /Resource update completed/ : /Resource update failed/
+      )
+    }
+    if (scenario !== 'success') assert.doesNotMatch(result.stdout, /Resource update completed/)
+  })
+}
