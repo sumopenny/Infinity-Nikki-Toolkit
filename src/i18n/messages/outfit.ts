@@ -232,7 +232,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
       title: '自动更新游戏搭配码',
       items: [
         '自动更新需要授权游戏的 X6Game 文件夹，可在右上角相册菜单中授权，无需先选择相册。',
-        '在游戏内点击分享按钮，需要在搭配截图右下角点击框选按钮，框选完成后生成搭配码，再返回网页，网站会自动更新该条搭配码数据。'
+        '在游戏内点击分享按钮，需要在搭配截图右下角点击框选按钮，框选完成后生成搭配码，再返回网页，网站会自动更新该条搭配码数据。每次只能读取一个搭配码；每生成一个后，请回到网站读取，再生成下一个。'
       ]
     },
     guideSections: [
@@ -375,7 +375,7 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
       title: 'Auto update in-game codes',
       items: [
         'Authorize the game’s X6Game folder from the top-right album menu. Selecting an album is not required.',
-        'In the game, tap Share, then tap the selection button at the lower-right of the outfit screenshot. After the selection generates an outfit code, return to the web page and the app will automatically update that outfit code data.'
+        'In the game, tap Share, then tap the selection button at the lower-right of the outfit screenshot. After the selection generates an outfit code, return to the web page and the app will automatically update that outfit code data. Only one code can be read at a time; return to read each code before generating the next one.'
       ]
     },
     guideSections: [

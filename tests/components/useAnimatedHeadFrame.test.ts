@@ -5,7 +5,8 @@ import { useAnimatedHeadFrame } from '../../src/composables/useAnimatedHeadFrame
 import {
   headFrames,
   type AnimatedHeadFrame,
-  headFramePlayerAssets
+  headFramePlayerAssets,
+  headFrameViewport
 } from '../../src/utils/animatedHeadFrames'
 
 const animations = Object.values(headFrames)
@@ -45,11 +46,11 @@ afterEach(() => {
 })
 
 it('maps every texture page to WebP while keeping skeleton and atlas URLs unchanged', () => {
-  expect(Object.keys(headFrames)).toHaveLength(76)
+  expect(Object.keys(headFrames)).toHaveLength(86)
   expect(Object.values(headFrames).every((frame) => frame.image.endsWith('.png'))).toBe(true)
   expect(headFrames['1070020004'].animation).toBeUndefined()
   const frames = animations
-  expect(new Set(frames.map((f) => f.json)).size).toBe(50)
+  expect(new Set(frames.map((f) => f.json)).size).toBe(58)
   const frame = frames.find((f) => f.textures.length === 3)!
   const assets = headFramePlayerAssets(frame)
   expect(assets.jsonUrl).not.toContain('?')
@@ -173,4 +174,22 @@ it('handles load failure and timeout, then retries without retaining failed play
   } finally {
     scope.stop()
   }
+})
+
+it('preserves old negative-Y artboards and places new positive-Y artboards correctly', () => {
+  expect(headFrameViewport(headFrames['1070020001'].animation!).y).toBe(-1237.5)
+  for (const id of ['1070020078', '1070020079', '1070020080', '1070020082']) {
+    expect(headFrameViewport(headFrames[id].animation!)).toMatchObject({
+      x: -128,
+      y: -128,
+      width: 1280,
+      height: 1280
+    })
+  }
+  for (const id of ['1070020083', '1070020084', '1070020085', '1070020086']) {
+    expect(headFrameViewport(headFrames[id].animation!).y).toBe(-1152)
+  }
+  expect(headFrames['1070020082'].animation!.textures).toHaveLength(9)
+  expect(headFrames['1070020081'].animation).toBeUndefined()
+  expect(headFrames['1070020087'].animation).toBeUndefined()
 })

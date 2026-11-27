@@ -286,7 +286,7 @@ The page supports manual runs, integrity checks, pausing writes for safe copying
 
 From More, choose Export all data to download a ZIP containing outfit plans, home schemes, camera parameters, resonance records, and the wardrobe, including saved scheme images and covers. Transfer the ZIP to another device, then choose Import all data there. **Game album originals are not included; back them up separately.**
 
-ZIP backups use the current formats: outfit codes v4, home schemes v2, and full-data backups v2. Older ZIP versions are no longer supported.
+ZIP exports use the current formats: outfit codes v4, home schemes v2, and full-data backups v2. Valid older ZIP backups can still be imported: outfit codes v1–v4, home schemes v1–v2, and full-data backups v1–v2. When moving to a new URL, export all data under More on the old site, then import the unchanged ZIP at [the new NikkiCube site](https://nikkicube.pages.dev/). Keep the old site data until migration is confirmed.
 
 Different import entries handle existing records differently:
 

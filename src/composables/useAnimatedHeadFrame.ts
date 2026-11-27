@@ -1,7 +1,10 @@
-import { avatarPadding, avatarSize } from '../utils/avatarSimulator'
 import { shallowRef, ref, watch, type WatchSource } from 'vue'
 import type { SpinePlayer } from '@esotericsoftware/spine-player'
-import { headFramePlayerAssets, type AnimatedHeadFrame } from '../utils/animatedHeadFrames'
+import {
+  headFramePlayerAssets,
+  headFrameViewport,
+  type AnimatedHeadFrame
+} from '../utils/animatedHeadFrames'
 
 /** 只为选中的头像框创建播放器；将透明动画帧合成到现有头像画布，保存仍为当前帧 PNG。 */
 export function useAnimatedHeadFrame(
@@ -82,17 +85,7 @@ export function useAnimatedHeadFrame(
           showControls: false,
           showLoading: false,
           // 固定扩展原画板四边，保留动画外围装饰，避免视口随动画抖动。
-          viewport: {
-            x: (-frame.artboardSize * avatarPadding) / avatarSize,
-            y: -frame.artboardSize * (1 + avatarPadding / avatarSize),
-            width: frame.artboardSize * (1 + (2 * avatarPadding) / avatarSize),
-            height: frame.artboardSize * (1 + (2 * avatarPadding) / avatarSize),
-            padLeft: 0,
-            padRight: 0,
-            padTop: 0,
-            padBottom: 0,
-            transitionTime: 0
-          },
+          viewport: headFrameViewport(frame),
           success: (p) => {
             if (stale || failed.value) return
             p.setAnimation(frame.defaultAnimation, true)

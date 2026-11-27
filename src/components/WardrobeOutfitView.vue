@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { animationForOutfit, openAnimationKey } from '../utils/evolutionAnimations'
+import {
+  animationForOutfit,
+  openAnimationKey,
+  loadEvolutionAnimations
+} from '../utils/evolutionAnimations'
 import CatalogImage from './CatalogImage.vue'
 import WardrobeFormNav from './WardrobeFormNav.vue'
 import { catalogResources } from '../utils/gongeo/catalogResources'
@@ -7,7 +11,7 @@ import { loadMakeupCatalog, type MakeupCatalogData } from '../utils/loadMakeupCa
 import type { MakeupEntry } from '../utils/makeupCatalog'
 import { wardrobeSourceLabel } from '../utils/wardrobe/wardrobeFilters'
 import { wardrobeFamilyKey } from '../utils/wardrobe/wardrobeFamilies'
-import { computed, inject, ref, shallowRef, toRef, watch } from 'vue'
+import { computed, inject, onMounted, ref, shallowRef, toRef, watch } from 'vue'
 import {
   CalendarDays,
   ChevronRight,
@@ -43,11 +47,14 @@ const props = defineProps<{
   layer?: number
 }>()
 const openAnimation = inject(openAnimationKey, undefined)
+onMounted(() => {
+  if (openAnimation) void loadEvolutionAnimations()
+})
 const animation = computed(() => animationForOutfit(props.detail))
 function watchAnimation() {
   if (!animation.value || !openAnimation) return
   emit('closeAll')
-  openAnimation(animation.value.page)
+  openAnimation(animation.value.cid)
 }
 const hasForms = computed(
   () =>

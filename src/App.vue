@@ -3,16 +3,16 @@ const DataBackup = lazyFeature(
   () => import('./components/DataBackup.vue'),
   () => language.value
 )
-import { animations, openAnimationKey } from './utils/evolutionAnimations'
+import { openAnimationKey } from './utils/evolutionAnimations'
 const EvolutionAnimations = lazyFeature(
   () => import('./components/EvolutionAnimations.vue'),
   () => language.value
 )
-const selectedAnimationPage = ref(animations[0].page)
+const selectedAnimationCid = ref('')
 const loadAnimationOnEntry = ref(false)
-provide(openAnimationKey, (page: number) => {
+provide(openAnimationKey, (cid: string) => {
   if (navigationBusy.value) return
-  selectedAnimationPage.value = page
+  selectedAnimationCid.value = cid
   loadAnimationOnEntry.value = true
   changeAlbumView('animations')
 })
@@ -3122,7 +3122,7 @@ function importAllDataFromMenu() {
         />
         <EvolutionAnimations
           v-else-if="activeView === 'animations'"
-          v-model:selected-page="selectedAnimationPage"
+          v-model:selected-cid="selectedAnimationCid"
           :load-on-entry="loadAnimationOnEntry"
           :language="language"
         />

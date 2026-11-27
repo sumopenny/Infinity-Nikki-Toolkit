@@ -6,24 +6,26 @@ import {
   animations,
   animationPlayerUrl,
   animationWatchUrl,
+  loadEvolutionAnimations,
+  animationSyncStatus,
   type EvolutionAnimation
 } from '../utils/evolutionAnimations'
 
-const props = defineProps<{ selectedPage: number; loadOnEntry: boolean; language: Language }>()
-const emit = defineEmits<{ 'update:selectedPage': [page: number] }>()
+const props = defineProps<{ selectedCid: string; loadOnEntry: boolean; language: Language }>()
+const emit = defineEmits<{ 'update:selectedCid': [cid: string] }>()
 const loaded = ref(props.loadOnEntry)
 const player = ref<HTMLElement | null>(null)
 const failedImages = ref(new Set<string>())
 const selected = computed(
-  () => animations.find((item) => item.page === props.selectedPage) ?? animations[0]
+  () => animations.find((item) => item.cid === props.selectedCid) ?? animations[0]
 )
-const groups = [...new Set(animations.map((item) => item.version))].map((version) => ({
-  version,
-  items: animations.filter((item) => item.version === version)
-}))
+const groups = computed(() =>
+  [...new Set(animations.map((item) => item.version))].map((version) => ({
+    version,
+    items: animations.filter((item) => item.version === version)
+  }))
+)
 const text = (zh: string, en: string) => (props.language === 'zh' ? zh : en)
-const name = (item: EvolutionAnimation) =>
-  props.language === 'zh' ? item.name : item.nameEn || item.name
 const duration = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 async function scrollToPlayer() {
@@ -31,11 +33,12 @@ async function scrollToPlayer() {
   player.value?.scrollIntoView?.({ block: 'start', behavior: 'auto' })
 }
 function select(item: EvolutionAnimation) {
-  emit('update:selectedPage', item.page)
+  emit('update:selectedCid', item.cid)
   loaded.value = true
   void scrollToPlayer()
 }
 onMounted(() => {
+  void loadEvolutionAnimations()
   // 详情入口可能异步加载页面，等播放器挂载后再定位。
   if (props.loadOnEntry) void scrollToPlayer()
 })
@@ -43,13 +46,34 @@ onMounted(() => {
 
 <template>
   <section class="evolution-animations">
-    <div ref="player" class="animation-player">
+    <p v-if="animationSyncStatus === 'error'" class="animation-sync" role="status">
+      {{
+        text(
+          animations.length
+            ? '暂时无法更新列表，正在显示上次读取的内容。'
+            : '暂时无法读取 B 站动画列表。',
+          animations.length
+            ? 'Could not refresh the list. Showing the last loaded content.'
+            : 'Could not load animations from Bilibili.'
+        )
+      }}
+      <button type="button" @click="loadEvolutionAnimations(true)">{{
+        text('重试', 'Retry')
+      }}</button>
+    </p>
+    <p v-if="!animations.length && animationSyncStatus !== 'error'" role="status">{{
+      text('正在读取 B 站动画列表…', 'Loading animations from Bilibili…')
+    }}</p>
+    <div v-if="selected" ref="player" class="animation-player">
       <div class="animation-screen">
         <iframe
-          v-if="loaded"
+          v-if="loaded && selected.cid === selectedCid"
           :src="animationPlayerUrl(selected)"
-          :title="name(selected)"
-          allow="fullscreen https://player.bilibili.com https://www.bilibili.com; picture-in-picture"
+          :title="selected.name"
+          allow="
+            fullscreen https://player.bilibili.com https://www.bilibili.com;
+            picture-in-picture;
+          "
           allowfullscreen
         />
         <button
@@ -57,10 +81,10 @@ onMounted(() => {
           type="button"
           class="animation-cover"
           @click="select(selected)"
-          :aria-label="text('播放', 'Play') + ' ' + name(selected)"
+          :aria-label="text('播放', 'Play') + ' ' + selected.name"
         >
           <img
-            v-if="!failedImages.has(selected.thumbnail)"
+            v-if="selected.thumbnail && !failedImages.has(selected.thumbnail)"
             :src="selected.thumbnail"
             alt=""
             referrerpolicy="no-referrer"
@@ -71,7 +95,7 @@ onMounted(() => {
       </div>
       <div class="animation-caption">
         <div class="animation-title"
-          ><h2>{{ name(selected) }}</h2
+          ><h2>{{ selected.name }}</h2
           ><span>{{ selected.version }} · {{ duration(selected.duration) }}</span></div
         >
         <a :href="animationWatchUrl(selected)" target="_blank" rel="noopener noreferrer">
@@ -86,12 +110,12 @@ onMounted(() => {
           v-for="item in group.items"
           :key="item.cid"
           class="animation-card"
-          :class="{ selected: selected.page === item.page }"
+          :class="{ selected: selected?.cid === item.cid }"
         >
-          <button type="button" :aria-pressed="selected.page === item.page" @click="select(item)">
+          <button type="button" :aria-pressed="selected?.cid === item.cid" @click="select(item)">
             <span class="animation-thumbnail">
               <img
-                v-if="!failedImages.has(item.thumbnail)"
+                v-if="item.thumbnail && !failedImages.has(item.thumbnail)"
                 :src="item.thumbnail"
                 alt=""
                 loading="lazy"
@@ -101,13 +125,13 @@ onMounted(() => {
               <Play v-else :size="24" aria-hidden="true" />
               <span class="animation-duration">{{ duration(item.duration) }}</span>
             </span>
-            <span class="animation-name">{{ name(item) }}</span>
+            <span class="animation-name">{{ item.name }}</span>
           </button>
           <a
             :href="animationWatchUrl(item)"
             target="_blank"
             rel="noopener noreferrer"
-            :aria-label="text('在 B 站观看', 'Watch on Bilibili') + ' ' + name(item)"
+            :aria-label="text('在 B 站观看', 'Watch on Bilibili') + ' ' + item.name"
           >
             {{ text('在 B 站观看', 'Watch on Bilibili') }}<ExternalLink :size="12" />
           </a>
@@ -141,6 +165,7 @@ onMounted(() => {
   border: 0;
   display: block;
 }
+
 .animation-cover {
   position: relative;
   padding: 0;

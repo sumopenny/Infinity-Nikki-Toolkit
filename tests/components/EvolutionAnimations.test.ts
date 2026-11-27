@@ -1,95 +1,103 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import EvolutionAnimations from '../../src/components/EvolutionAnimations.vue'
 import {
   animations,
-  animationForOutfit,
-  animationWatchUrl
+  animationSyncStatus,
+  loadEvolutionAnimations
 } from '../../src/utils/evolutionAnimations'
-import outfits from '../../src/data/gongeo/outfits.json'
-import type { WardrobeEntry } from '../../src/utils/wardrobe/wardrobeCatalog'
-
-describe('evolution animations', () => {
-  it.each([true, false])(
-    'scrolls to the player only for a detail entry, loadOnEntry=%s',
-    async (loadOnEntry) => {
-      const wrapper = mount(EvolutionAnimations, {
-        props: { selectedPage: 22, loadOnEntry, language: 'zh' }
-      })
-      const player = wrapper.get('.animation-player').element as HTMLElement
-      const scroll = vi.fn()
-      player.scrollIntoView = scroll
-      await flushPromises()
-      if (loadOnEntry) {
-        expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: 'auto' })
-      } else {
-        expect(scroll).not.toHaveBeenCalled()
-      }
-      wrapper.unmount()
-    }
+const rows = [
+  {
+    version: '3.0',
+    name: '测试套装',
+    source: '限定共鸣',
+    page: 2,
+    cid: '202',
+    duration: 40,
+    thumbnail: 'https://i0.hdslb.com/test.jpg'
+  },
+  {
+    version: '2.11',
+    name: '旧套装',
+    source: '限定共鸣',
+    page: 1,
+    cid: '101',
+    duration: 30,
+    thumbnail: ''
+  }
+]
+beforeEach(() => {
+  animations.splice(0)
+  animationSyncStatus.value = 'idle'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => Response.json(rows))
   )
-
-  it('ships 43 unique pages linked to real outfit families in numeric version order', () => {
-    expect(animations).toHaveLength(43)
-    expect(new Set(animations.map((item) => item.page)).size).toBe(43)
-    expect(new Set(animations.map((item) => item.cid)).size).toBe(43)
-    const roots = outfits.map((row) => String((row[0] as number[])[0]))
-    for (const item of animations) {
-      expect(roots).toContain(item.outfitId)
-      expect(animationWatchUrl(item)).toContain(`?p=${item.page}`)
-      expect(
-        animationForOutfit({
-          id: item.outfitId + '04',
-          familyRootId: item.outfitId
-        } as WardrobeEntry)
-      ).toEqual(item)
-    }
-    expect(animations[0].version).toBe('2.11')
-    expect(animations.at(-1)?.version).toBe('1.0')
-    expect(
-      animationForOutfit({ id: 'unknown', familyRootId: null } as WardrobeEntry)
-    ).toBeUndefined()
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+  animations.splice(0)
+})
+it('starts empty and renders Bilibili results without autoplay', async () => {
+  const wrapper = mount(EvolutionAnimations, {
+    props: { selectedCid: '', loadOnEntry: false, language: 'zh' }
   })
-  it('loads one player on demand, preserves it on repeated clicks, and returns to a cover after remount', async () => {
-    const props = { selectedPage: 43, loadOnEntry: false, language: 'zh' as const }
-    const wrapper = mount(EvolutionAnimations, { props })
-    expect(wrapper.findAll('.animation-card')).toHaveLength(43)
-    expect(wrapper.find('iframe').exists()).toBe(false)
-    await wrapper.find('.animation-card > a').trigger('click')
-    expect(wrapper.find('iframe').exists()).toBe(false)
-    await wrapper.find('.animation-cover').trigger('click')
-    const player = wrapper.get('iframe').element
-    await wrapper.find('.animation-card button').trigger('click')
-    expect(wrapper.get('iframe').element).toBe(player)
-    await wrapper.setProps({ selectedPage: 1 })
-    expect(wrapper.findAll('iframe')).toHaveLength(1)
-    expect(wrapper.get('iframe').attributes('src')).toContain('p=1&autoplay=0')
-    wrapper.unmount()
-    const returned = mount(EvolutionAnimations, { props: { ...props, selectedPage: 1 } })
-    expect(returned.find('iframe').exists()).toBe(false)
-    expect(returned.get('h2').text()).toBe(animations.find((item) => item.page === 1)?.name)
-    returned.unmount()
+  expect(wrapper.find('.animation-player').exists()).toBe(false)
+  expect(wrapper.text()).toContain('正在读取')
+  await loadEvolutionAnimations(true)
+  await flushPromises()
+  expect(wrapper.findAll('.animation-card')).toHaveLength(2)
+  expect(wrapper.get('h2').text()).toBe('测试套装')
+  expect(wrapper.find('iframe').exists()).toBe(false)
+  await wrapper.get('.animation-cover').trigger('click')
+  expect(wrapper.emitted('update:selectedCid')?.at(-1)).toEqual(['202'])
+  await wrapper.setProps({ selectedCid: '202' })
+  expect(wrapper.get('iframe').attributes('src')).toContain('cid=202&p=2')
+  wrapper.unmount()
+})
+it('shows an empty error and recovers through Retry', async () => {
+  vi.mocked(fetch).mockRejectedValue(new Error('offline'))
+  const wrapper = mount(EvolutionAnimations, {
+    props: { selectedCid: '', loadOnEntry: false, language: 'zh' }
   })
-  it('loads from a detail entry and keeps controls when thumbnails fail', async () => {
-    const wrapper = mount(EvolutionAnimations, {
-      props: { selectedPage: 22, loadOnEntry: true, language: 'en' }
-    })
-    const iframe = wrapper.get('iframe')
-    expect(iframe.attributes('src')).toContain('p=22&autoplay=0')
-    // Mobile playback navigates to www.bilibili.com; allow overrides allowfullscreen.
-    const fullscreenOrigins = (iframe.attributes('allow') ?? '')
-      .split(';')
-      .find((directive) => directive.trim().startsWith('fullscreen'))
-      ?.trim()
-      .split(/\s+/)
-      .slice(1)
-    expect(fullscreenOrigins).toContain(new URL(iframe.element.src).origin)
-    expect(fullscreenOrigins).toContain('https://www.bilibili.com')
-    expect(iframe.attributes()).toHaveProperty('allowfullscreen')
-    await wrapper.get('.animation-card img').trigger('error')
-    expect(wrapper.findAll('.animation-card')).toHaveLength(43)
-    expect(wrapper.get('.animation-card button').text()).toContain(animations[0].nameEn)
-    expect(wrapper.find('.animation-card a').exists()).toBe(true)
-    wrapper.unmount()
+  await loadEvolutionAnimations(true)
+  await flushPromises()
+  expect(wrapper.text()).toContain('暂时无法读取')
+  expect(wrapper.find('iframe').exists()).toBe(false)
+  expect(wrapper.findAll('.animation-card')).toHaveLength(0)
+  vi.mocked(fetch).mockResolvedValue(Response.json(rows))
+  await wrapper.get('.animation-sync button').trigger('click')
+  await flushPromises()
+  expect(wrapper.findAll('.animation-card')).toHaveLength(2)
+  wrapper.unmount()
+})
+it('keeps CID selection across reordering and avoids autoplay when that CID disappears', async () => {
+  animations.push(...rows)
+  const wrapper = mount(EvolutionAnimations, {
+    props: { selectedCid: '202', loadOnEntry: true, language: 'en' }
   })
+  await loadEvolutionAnimations(true)
+  await flushPromises()
+  expect(wrapper.get('iframe').attributes('src')).toContain('p=2&autoplay=0')
+  vi.mocked(fetch).mockResolvedValue(Response.json([{ ...rows[0], page: 5 }]))
+  await loadEvolutionAnimations(true)
+  await flushPromises()
+  expect(wrapper.get('iframe').attributes('src')).toContain('p=5&autoplay=0')
+  vi.mocked(fetch).mockResolvedValue(Response.json([rows[1]]))
+  await loadEvolutionAnimations(true)
+  await flushPromises()
+  expect(wrapper.find('iframe').exists()).toBe(false)
+  expect(wrapper.get('h2').text()).toBe('旧套装')
+  wrapper.unmount()
+})
+it('keeps full-screen permissions and recovers visually when a cover fails', async () => {
+  animations.push(...rows)
+  const wrapper = mount(EvolutionAnimations, {
+    props: { selectedCid: '202', loadOnEntry: true, language: 'zh' }
+  })
+  expect(wrapper.get('iframe').attributes('allow')).toContain('https://www.bilibili.com')
+  await wrapper.get('.animation-card img').trigger('error')
+  expect(wrapper.find('.animation-card a').exists()).toBe(true)
+  wrapper.unmount()
+  await flushPromises()
 })

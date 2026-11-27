@@ -135,15 +135,24 @@ it('opens the matching makeup, preserves the outfit, and follows variant changes
 
 it('opens the animation for base and evolved outfits and closes the detail host', async () => {
   const open = vi.fn()
-  const item = animations[0]
+  const item = {
+    name: '测试套装',
+    version: '3.0',
+    source: '限定共鸣',
+    page: 1,
+    cid: '123456',
+    duration: 40,
+    thumbnail: ''
+  }
+  animations.push(item)
   const detail: WardrobeEntry = {
-    id: item.outfitId,
+    id: '10438',
     kind: 'outfit',
-    name: { zh: item.name, en: item.nameEn },
+    name: { zh: item.name, en: item.name },
     quality: 5,
     variant: 0,
     category: 0,
-    familyRootId: item.outfitId,
+    familyRootId: '10438',
     style: null,
     labels: [],
     obtainType: null,
@@ -159,17 +168,20 @@ it('opens the animation for base and evolved outfits and closes the detail host'
       stubs: { Teleport: true, Transition: true }
     }
   })
-  for (const id of [item.outfitId, item.outfitId + '04']) {
+  for (const id of ['10438', '1043804']) {
     await wrapper.setProps({ detail: { ...detail, id } })
     const button = wrapper
       .findAll('button')
       .find((button) => button.text().includes('观看满进动画'))!
     expect(button).toBeDefined()
     await button.trigger('click')
-    expect(open).toHaveBeenLastCalledWith(item.page)
+    expect(open).toHaveBeenLastCalledWith(item.cid)
   }
+  animations.splice(0)
   expect(wrapper.emitted('close')).toHaveLength(2)
-  await wrapper.setProps({ detail: { ...detail, id: 'unknown', familyRootId: null } })
+  await wrapper.setProps({
+    detail: { ...detail, id: 'unknown', familyRootId: null, name: { zh: '其他套装', en: 'Other' } }
+  })
   expect(wrapper.text()).not.toContain('观看满进动画')
   wrapper.unmount()
 })
