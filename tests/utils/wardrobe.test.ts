@@ -15,6 +15,19 @@ import {
 
 beforeEach(() => clearAllBrowserData())
 describe('wardrobe catalog and notebook import', () => {
+  it('loads 3.0 clothes with their evolution and imports the exact new suit members', async () => {
+    const catalog = await loadWardrobeCatalog()
+    const evolved = catalog.byId.get('1036501')!
+    const hair = catalog.byId.get('2022100365')!
+    expect(evolved.name.zh).toBe('栖蝶不知春·风雪变')
+    expect(hair.variant).toBe(1)
+    expect(catalog.byId.get('2023100365')!.variant).toBe(2)
+    expect(catalog.byId.get('2024100365')!.variant).toBe(3)
+    expect(catalog.byId.get('2025100365')!.variant).toBe(4)
+    expect(evolved.parts).toContain(hair.id)
+    const preview = parseWardrobePearpal({ info_from_self: { suit_list: ['1036501'] } }, catalog)
+    expect(Object.keys(preview.snapshot.entries).sort()).toEqual([...evolved.parts].sort())
+  })
   it('keeps variants separate and imports exact suit pieces without requiring gacha', async () => {
     const catalog = await loadWardrobeCatalog()
     const base = catalog.byId.get('10347')!,

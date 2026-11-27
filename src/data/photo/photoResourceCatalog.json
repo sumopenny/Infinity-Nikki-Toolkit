@@ -1,7 +1,13 @@
 {
   "schemaVersion": 3,
   "source": {
-    "pose": "imagekit-2026-11-09-atlas-v1"
+    "pose": "imagekit-pose-b9d5626e6cc344ae",
+    "clientResourceUpdate": {
+      "gameBuild": "3017",
+      "date": "2026-11-27",
+      "method": "TbItemV2 references joined to bilingual TbItem ItemName keys; existing aliases preserved",
+      "remoteFilesVerified": false
+    }
   },
   "templates": {
     "light": {
@@ -222,6 +228,33 @@
         "zh": "溟曦",
         "en": "Abyssal Dawn",
         "image": "T_Icon_VibeLight_009.png"
+      },
+      {
+        "key": "1090030022",
+        "aliases": [
+          "1090030022"
+        ],
+        "zh": "白雾",
+        "en": "Mist",
+        "image": "T_Icon_light_WhiteMist.png"
+      },
+      {
+        "key": "1090030023",
+        "aliases": [
+          "1090030023"
+        ],
+        "zh": "寒潭",
+        "en": "Cold Depths",
+        "image": "T_Icon_light_Hantan.png"
+      },
+      {
+        "key": "1090030024",
+        "aliases": [
+          "1090030024"
+        ],
+        "zh": "幻潮",
+        "en": "Illusory Tide",
+        "image": "T_Icon_light_FantasyTide.png"
       }
     ],
     "filter": [
@@ -437,6 +470,42 @@
         "zh": "溯影",
         "en": "Echo Blur",
         "image": "T_Icon_Vibe_013.png"
+      },
+      {
+        "key": "1090020023",
+        "aliases": [
+          "1090020023"
+        ],
+        "zh": "流金",
+        "en": "Gilded Glow",
+        "image": "T_Icon_FlowingGold.png"
+      },
+      {
+        "key": "1090020024",
+        "aliases": [
+          "1090020024"
+        ],
+        "zh": "失序",
+        "en": "Disorder",
+        "image": "T_Icon_Disorder.png"
+      },
+      {
+        "key": "1090020025",
+        "aliases": [
+          "1090020025"
+        ],
+        "zh": "月笼纱",
+        "en": "Moonlit Veil",
+        "image": "T_Icon_Mooncageyarn.png"
+      },
+      {
+        "key": "1090020018",
+        "aliases": [
+          "1090020018"
+        ],
+        "zh": "浮光掠影",
+        "en": "Fleeting Glimpse",
+        "image": "T_Icon_Vibe_009.png"
       }
     ],
     "pose": [
@@ -6442,6 +6511,726 @@
         "zh": "欢欣雀跃",
         "en": "Bouncing with Joy",
         "image": "momo-poses/T_Icon_Trends_damiao_12.png"
+      },
+      {
+        "key": "1090010171",
+        "aliases": [
+          "1090010171"
+        ],
+        "zh": "暮蝶初醒",
+        "en": "Awakening Wings",
+        "image": "poses/T_Icon_DuskButterfly.png"
+      },
+      {
+        "key": "1090010172",
+        "aliases": [
+          "1090010172"
+        ],
+        "zh": "花落足尖",
+        "en": "Petals on Tiptoe",
+        "image": "poses/T_Icon_Flowersfall.png"
+      },
+      {
+        "key": "1090010173",
+        "aliases": [
+          "1090010173"
+        ],
+        "zh": "空庭邀舞",
+        "en": "Courtyard Dance",
+        "image": "poses/T_Icon_InvitingDance.png"
+      },
+      {
+        "key": "1090010174",
+        "aliases": [
+          "1090010174"
+        ],
+        "zh": "心动不止一面",
+        "en": "Sweetheart Selfie",
+        "image": "poses/T_Icon_heartbeat.png"
+      },
+      {
+        "key": "1090010175",
+        "aliases": [
+          "1090010175"
+        ],
+        "zh": "夜色正好",
+        "en": "Perfect Night",
+        "image": "poses/T_Icon_night.png"
+      },
+      {
+        "key": "1090010176",
+        "aliases": [
+          "1090010176"
+        ],
+        "zh": "不落的焰火",
+        "en": "Everlasting Fireworks",
+        "image": "poses/T_Icon_flame.png"
+      },
+      {
+        "key": "1090010177",
+        "aliases": [
+          "1090010177"
+        ],
+        "zh": "青春正当时",
+        "en": "Youth in Bloom",
+        "image": "poses/T_Icon_Youth.png"
+      },
+      {
+        "key": "1090010178",
+        "aliases": [
+          "1090010178"
+        ],
+        "zh": "微风驻足",
+        "en": "Lingering Breeze",
+        "image": "poses/T_Icon_StandWithCar_01.png"
+      },
+      {
+        "key": "1090010179",
+        "aliases": [
+          "1090010179"
+        ],
+        "zh": "飞吻送达",
+        "en": "Kiss Delivery",
+        "image": "poses/T_Icon_StandWithCar_02.png"
+      },
+      {
+        "key": "1090010180",
+        "aliases": [
+          "1090010180"
+        ],
+        "zh": "流云舒袖",
+        "en": "Sleeves of Cloud",
+        "image": "poses/T_Icon_Static_98.png"
+      },
+      {
+        "key": "1090010181",
+        "aliases": [
+          "1090010181"
+        ],
+        "zh": "金幕下的梦",
+        "en": "Gold-Veiled Dreams",
+        "image": "poses/T_Icon_dream.png"
+      },
+      {
+        "key": "1090010182",
+        "aliases": [
+          "1090010182"
+        ],
+        "zh": "祈春引",
+        "en": "Spring Prayer",
+        "image": "poses/T_Icon_Prayingforspring.png"
+      },
+      {
+        "key": "1090010183",
+        "aliases": [
+          "1090010183"
+        ],
+        "zh": "绽放律动",
+        "en": "Rhythm in Bloom",
+        "image": "poses/T_Icon_BloomUp.png"
+      },
+      {
+        "key": "1090010184",
+        "aliases": [
+          "1090010184"
+        ],
+        "zh": "执杖浮空",
+        "en": "Aloft with a Staff",
+        "image": "poses/T_Icon_Photo_CombatFree_01.png"
+      },
+      {
+        "key": "1090011124",
+        "aliases": [
+          "1090011124"
+        ],
+        "zh": "潇洒偶像",
+        "en": "Idol Swagger",
+        "image": "poses/T_Icon_SitOnCar001.png"
+      },
+      {
+        "key": "1090011125",
+        "aliases": [
+          "1090011125"
+        ],
+        "zh": "托腮听风",
+        "en": "Chin in Hand",
+        "image": "poses/T_Icon_SitOnCar002.png"
+      },
+      {
+        "key": "1090011126",
+        "aliases": [
+          "1090011126"
+        ],
+        "zh": "嗨，好巧呀",
+        "en": "Oh, Hi!",
+        "image": "poses/T_Icon_SitOnCar003.png"
+      },
+      {
+        "key": "1090011127",
+        "aliases": [
+          "1090011127"
+        ],
+        "zh": "接住微风",
+        "en": "Catch the Breeze",
+        "image": "poses/T_Icon_SitOnCar004.png"
+      },
+      {
+        "key": "1090011128",
+        "aliases": [
+          "1090011128"
+        ],
+        "zh": "沉浸书中",
+        "en": "Lost in a Book",
+        "image": "poses/T_Icon_SitOnSofaBed_01.png"
+      },
+      {
+        "key": "1090011129",
+        "aliases": [
+          "1090011129"
+        ],
+        "zh": "静享时光",
+        "en": "Moments of Leisure",
+        "image": "poses/T_Icon_SitOnSofaBed_02.png"
+      },
+      {
+        "key": "1090011130",
+        "aliases": [
+          "1090011130"
+        ],
+        "zh": "唇边悠曲",
+        "en": "A Gentle Tune",
+        "image": "poses/T_Icon_Harmonica_01.png"
+      },
+      {
+        "key": "1090012191",
+        "aliases": [
+          "1090012191"
+        ],
+        "zh": "拾起一伞晴",
+        "en": "Sunshine to Hold",
+        "image": "poses/T_Icon_S0526_Trends_01.png"
+      },
+      {
+        "key": "1090012192",
+        "aliases": [
+          "1090012192"
+        ],
+        "zh": "窗中见我",
+        "en": "Window Portrait",
+        "image": "poses/T_Icon_S0526_Static_01.png"
+      },
+      {
+        "key": "1090012193",
+        "aliases": [
+          "1090012193"
+        ],
+        "zh": "浮伞悠悠",
+        "en": "Umbrella Adrift",
+        "image": "poses/T_Icon_S0526_Suit_01.png"
+      },
+      {
+        "key": "1090012194",
+        "aliases": [
+          "1090012194"
+        ],
+        "zh": "无人处的绽放",
+        "en": "Unseen Bloom",
+        "image": "poses/T_Icon_S0526_Idle_01.png"
+      },
+      {
+        "key": "1090012195",
+        "aliases": [
+          "1090012195"
+        ],
+        "zh": "窗启万色归",
+        "en": "A Window to Color",
+        "image": "poses/T_Icon_S0526_Dance_01.png"
+      },
+      {
+        "key": "1090012196",
+        "aliases": [
+          "1090012196"
+        ],
+        "zh": "窗启万色归·幻舞",
+        "en": "A Window to Color: Illusory Dance",
+        "image": "poses/T_Icon_S0526_Dance_02.png"
+      },
+      {
+        "key": "1090012197",
+        "aliases": [
+          "1090012197"
+        ],
+        "zh": "轻花照影",
+        "en": "Blossom Reflections",
+        "image": "poses/T_Icon_S0365_Trends_01.png"
+      },
+      {
+        "key": "1090012198",
+        "aliases": [
+          "1090012198"
+        ],
+        "zh": "花间一梦轻",
+        "en": "Blossom Reverie",
+        "image": "poses/T_Icon_S0365_Static_01.png"
+      },
+      {
+        "key": "1090012199",
+        "aliases": [
+          "1090012199"
+        ],
+        "zh": "袖拂春岚",
+        "en": "Spring Flourish",
+        "image": "poses/T_Icon_S0365_Suit_01.png"
+      },
+      {
+        "key": "1090012200",
+        "aliases": [
+          "1090012200"
+        ],
+        "zh": "虚步芳尘",
+        "en": "Petal-Soft Steps",
+        "image": "poses/T_Icon_S0365_Idle_01.png"
+      },
+      {
+        "key": "1090012201",
+        "aliases": [
+          "1090012201"
+        ],
+        "zh": "邂逅灵响",
+        "en": "Echoes Entwined",
+        "image": "poses/T_Icon_S0543_Trends_01.png"
+      },
+      {
+        "key": "1090012202",
+        "aliases": [
+          "1090012202"
+        ],
+        "zh": "朝夕为伴",
+        "en": "Ever Together",
+        "image": "poses/T_Icon_S0543_Static_01.png"
+      },
+      {
+        "key": "1090012203",
+        "aliases": [
+          "1090012203"
+        ],
+        "zh": "逐光逝影",
+        "en": "In Light's Wake",
+        "image": "poses/T_Icon_S0543_Suit_01.png"
+      },
+      {
+        "key": "1090012204",
+        "aliases": [
+          "1090012204"
+        ],
+        "zh": "念念有声",
+        "en": "Echoes of Thought",
+        "image": "poses/T_Icon_S0543_Idle_01.png"
+      },
+      {
+        "key": "1090012205",
+        "aliases": [
+          "1090012205"
+        ],
+        "zh": "此心不移",
+        "en": "Unwavering Heart",
+        "image": "poses/T_Icon_S0291_Trends_01.png"
+      },
+      {
+        "key": "1090012206",
+        "aliases": [
+          "1090012206"
+        ],
+        "zh": "叩问无声",
+        "en": "Unspoken Questions",
+        "image": "poses/T_Icon_S0291_Static_01.png"
+      },
+      {
+        "key": "1090012207",
+        "aliases": [
+          "1090012207"
+        ],
+        "zh": "曦光在握",
+        "en": "Dawn in Hand",
+        "image": "poses/T_Icon_S0291_Suit_01.png"
+      },
+      {
+        "key": "1090012208",
+        "aliases": [
+          "1090012208"
+        ],
+        "zh": "野望昭昭",
+        "en": "Bright Ambitions",
+        "image": "poses/T_Icon_S0291_Idle_01.png"
+      },
+      {
+        "key": "1090012209",
+        "aliases": [
+          "1090012209"
+        ],
+        "zh": "执笔入戏",
+        "en": "Page to Stage",
+        "image": "poses/T_Icon_S0433_Trends_01.png"
+      },
+      {
+        "key": "1090012210",
+        "aliases": [
+          "1090012210"
+        ],
+        "zh": "笔尖梦语",
+        "en": "Dreams in Ink",
+        "image": "poses/T_Icon_S0433_Static_01.png"
+      },
+      {
+        "key": "1090012211",
+        "aliases": [
+          "1090012211"
+        ],
+        "zh": "指间逸思",
+        "en": "Fingertip Fancies",
+        "image": "poses/T_Icon_S0433_Suit_01.png"
+      },
+      {
+        "key": "1090012212",
+        "aliases": [
+          "1090012212"
+        ],
+        "zh": "灵思折返",
+        "en": "The Muse Returns",
+        "image": "poses/T_Icon_S0433_Idle_01.png"
+      },
+      {
+        "key": "1090012213",
+        "aliases": [
+          "1090012213"
+        ],
+        "zh": "与影相拥",
+        "en": "Shadow's Embrace",
+        "image": "poses/T_Icon_S0529_Trends_01.png"
+      },
+      {
+        "key": "1090012214",
+        "aliases": [
+          "1090012214"
+        ],
+        "zh": "向繁星处",
+        "en": "Starward Bound",
+        "image": "poses/T_Icon_S0529_Static_01.png"
+      },
+      {
+        "key": "1090012215",
+        "aliases": [
+          "1090012215"
+        ],
+        "zh": "蝶引星夜",
+        "en": "Starlit Wings",
+        "image": "poses/T_Icon_S0529_Suit_01.png"
+      },
+      {
+        "key": "1090012216",
+        "aliases": [
+          "1090012216"
+        ],
+        "zh": "与影回旋",
+        "en": "Shadow Whirl",
+        "image": "poses/T_Icon_S0529_Idle_01.png"
+      },
+      {
+        "key": "1090012217",
+        "aliases": [
+          "1090012217"
+        ],
+        "zh": "绵蜜心事",
+        "en": "Sweet Secrets",
+        "image": "poses/T_Icon_S0527_Suit_01.png"
+      },
+      {
+        "key": "1090012218",
+        "aliases": [
+          "1090012218"
+        ],
+        "zh": "执誓寻音",
+        "en": "Songseeker's Vow",
+        "image": "poses/T_Icon_S0262_Suit_01.png"
+      },
+      {
+        "key": "1090050023",
+        "aliases": [
+          "1090050023"
+        ],
+        "zh": "喵步圆舞曲",
+        "en": "Pawstep Waltz",
+        "image": "momo-poses/T_Icon_RoundDance.png"
+      },
+      {
+        "key": "1090050024",
+        "aliases": [
+          "1090050024"
+        ],
+        "zh": "一幕好戏",
+        "en": "Showtime, Momo!",
+        "image": "momo-poses/T_Icon_Aspectacularscene.png"
+      },
+      {
+        "key": "1090050025",
+        "aliases": [
+          "1090050025"
+        ],
+        "zh": "喵舞花间",
+        "en": "Momo's Blossom Dance",
+        "image": "momo-poses/T_Icon_AmongtheFlowers.png"
+      },
+      {
+        "key": "1090060027",
+        "aliases": [
+          "1090060027"
+        ],
+        "zh": "手到喵来",
+        "en": "Momo's Here",
+        "image": "poses/T_Icon_Booth_01.png"
+      },
+      {
+        "key": "1090060028",
+        "aliases": [
+          "1090060028"
+        ],
+        "zh": "咚喵心魄",
+        "en": "Momo's Beat",
+        "image": "poses/T_Icon_Booth_02.png"
+      },
+      {
+        "key": "1090060029",
+        "aliases": [
+          "1090060029"
+        ],
+        "zh": "哈喽，是我们呀",
+        "en": "Hey, Us!",
+        "image": "poses/T_Icon_Booth_03.png"
+      },
+      {
+        "key": "1090060030",
+        "aliases": [
+          "1090060030"
+        ],
+        "zh": "捉喵进行时",
+        "en": "Momo Hunt",
+        "image": "poses/T_Icon_Booth_04.png"
+      },
+      {
+        "key": "1090060031",
+        "aliases": [
+          "1090060031"
+        ],
+        "zh": "诞于微风的扉页",
+        "en": "Breezy Beginnings",
+        "image": "poses/T_Icon_S0433_Scene_01.png"
+      },
+      {
+        "key": "1090060032",
+        "aliases": [
+          "1090060032"
+        ],
+        "zh": "共绘一伞晴",
+        "en": "Sunshine to Share",
+        "image": "poses/T_Icon_S0526_Scene_01.png"
+      },
+      {
+        "key": "1090060033",
+        "aliases": [
+          "1090060033"
+        ],
+        "zh": "影帷栖梦",
+        "en": "Shadow-Veiled Dreams",
+        "image": "poses/T_Icon_S0529_Scene_01.png"
+      },
+      {
+        "key": "1090060034",
+        "aliases": [
+          "1090060034"
+        ],
+        "zh": "花影蝶憩",
+        "en": "Resting Wings",
+        "image": "poses/T_Icon_S0365_Scene_01.png"
+      },
+      {
+        "key": "1090061000",
+        "aliases": [
+          "1090061000"
+        ],
+        "zh": "引颂之谕",
+        "en": "Oracle Invocation",
+        "image": "poses/T_Icon_CombatFree_Scene_01.png"
+      },
+      {
+        "key": "1090061001",
+        "aliases": [
+          "1090061001"
+        ],
+        "zh": "持铳而立",
+        "en": "Musket in Hand",
+        "image": "poses/T_Icon_CombatFree_Scene_02.png"
+      },
+      {
+        "key": "1090061002",
+        "aliases": [
+          "1090061002"
+        ],
+        "zh": "命中前兆",
+        "en": "A Shot Foretold",
+        "image": "poses/T_Icon_CombatFree_Scene_03.png"
+      },
+      {
+        "key": "1090069001",
+        "aliases": [
+          "1090069001"
+        ],
+        "zh": "初次问候",
+        "en": "First Hello",
+        "image": "poses/T_Icon_BoothNikki_01.png"
+      },
+      {
+        "key": "1090069002",
+        "aliases": [
+          "1090069002"
+        ],
+        "zh": "标准微笑",
+        "en": "Perfect Smile",
+        "image": "poses/T_Icon_BoothNikki_02.png"
+      },
+      {
+        "key": "1090069003",
+        "aliases": [
+          "1090069003"
+        ],
+        "zh": "从容以待",
+        "en": "Composed",
+        "image": "poses/T_Icon_BoothNikki_03.png"
+      },
+      {
+        "key": "1090069004",
+        "aliases": [
+          "1090069004"
+        ],
+        "zh": "柔和目光",
+        "en": "Gentle Gaze",
+        "image": "poses/T_Icon_BoothNikki_04.png"
+      },
+      {
+        "key": "1090069005",
+        "aliases": [
+          "1090069005"
+        ],
+        "zh": "得意登场",
+        "en": "Spotlight Swagger",
+        "image": "momo-poses/T_Icon_BoothMomo_01.png"
+      },
+      {
+        "key": "1090069006",
+        "aliases": [
+          "1090069006"
+        ],
+        "zh": "板正站姿",
+        "en": "Proper Stance",
+        "image": "momo-poses/T_Icon_BoothMomo_02.png"
+      },
+      {
+        "key": "1090069007",
+        "aliases": [
+          "1090069007"
+        ],
+        "zh": "美滋滋",
+        "en": "Delighted",
+        "image": "momo-poses/T_Icon_BoothMomo_03.png"
+      },
+      {
+        "key": "1090069008",
+        "aliases": [
+          "1090069008"
+        ],
+        "zh": "帅气认证",
+        "en": "Certified Cool",
+        "image": "momo-poses/T_Icon_BoothMomo_04.png"
+      },
+      {
+        "key": "1340020058",
+        "aliases": [
+          "1340020058"
+        ],
+        "zh": "兔子对对碰",
+        "en": "Bunny Bump",
+        "image": "poses/T_Icon_Performance_107.png"
+      },
+      {
+        "key": "1340020061",
+        "aliases": [
+          "1340020061"
+        ],
+        "zh": "同频炫舞",
+        "en": "Dancing in Sync",
+        "image": "poses/T_Icon_Performance_119.png"
+      },
+      {
+        "key": "1340010060",
+        "aliases": [
+          "1340010060"
+        ],
+        "zh": "心动节拍",
+        "en": "Heartfelt Beats",
+        "image": "poses/T_Icon_Performance_105.png"
+      },
+      {
+        "key": "1340010063",
+        "aliases": [
+          "1340010063"
+        ],
+        "zh": "我吗？",
+        "en": "Me?",
+        "image": "poses/T_Icon_Performance_120.png"
+      },
+      {
+        "key": "1340020062",
+        "aliases": [
+          "1340020062"
+        ],
+        "zh": "浮想联翩",
+        "en": "Flight of Fancy",
+        "image": "poses/T_Icon_Performance_110.png"
+      },
+      {
+        "key": "13400200580",
+        "aliases": [
+          "13400200580"
+        ],
+        "zh": "兔子对对碰_发起",
+        "en": "Bunny Bump_Host",
+        "image": "poses/T_Icon_Performance_107_Host.png"
+      },
+      {
+        "key": "13400200581",
+        "aliases": [
+          "13400200581"
+        ],
+        "zh": "兔子对对碰_接受",
+        "en": "Bunny Bump_Respond",
+        "image": "poses/T_Icon_Performance_107_Respond.png"
+      },
+      {
+        "key": "13400200610",
+        "aliases": [
+          "13400200610"
+        ],
+        "zh": "同频炫舞_发起",
+        "en": "Dancing in Sync_Host",
+        "image": "poses/T_Icon_Performance_119_Host.png"
+      },
+      {
+        "key": "13400200611",
+        "aliases": [
+          "13400200611"
+        ],
+        "zh": "同频炫舞_接受",
+        "en": "Dancing in Sync_Respond",
+        "image": "poses/T_Icon_Performance_119_Respond.png"
       }
     ]
   }

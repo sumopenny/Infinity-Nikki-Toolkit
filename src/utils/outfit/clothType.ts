@@ -70,7 +70,10 @@ const ITEM_ID_CATEGORY_TYPES: Record<number, number> = {
 
 /** 从原生部件 ID 推导 ClothType；无法识别时返回 null。 */
 export function inferClothTypeFromItemId(itemId: number): number | null {
-  if (!Number.isSafeInteger(itemId) || itemId < 1020000000 || itemId >= 1030000000) return null
+  if (!Number.isSafeInteger(itemId)) return null
+  // 3.0 的 202 系列沿用 102 系列的分类位，保留其他物品类型的拒绝条件。
+  const series = Math.floor(itemId / 10000000)
+  if (series !== 102 && series !== 202) return null
   if (itemId === 1020790033) return 96
   const categoryPrefix = Math.floor(itemId / 10000)
   return ITEM_ID_CATEGORY_TYPES[categoryPrefix % 100] ?? null
