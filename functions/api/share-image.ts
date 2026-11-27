@@ -1,3 +1,5 @@
+import { methodNotAllowed } from '../_lib/http'
+
 import catalog from '../../src/data/photo/photoResourceCatalog.json'
 import itemImages from '../../src/data/wardrobe/itemImageMap.json'
 import itemIcons from '../../src/data/wardrobe/itemIconMap.json'
@@ -93,3 +95,5 @@ export async function onRequestGet({ request }: { request: Request }): Promise<R
     return unavailable()
   }
 }
+
+export const onRequest = methodNotAllowed('GET')

@@ -6,7 +6,7 @@ for %%I in ("%~dp0..") do set "PROJECT_DIR=%%~fI"
 cd /d "%PROJECT_DIR%"
 
 set "REMOTE_API_ORIGIN=%~1"
-if not defined REMOTE_API_ORIGIN set "REMOTE_API_ORIGIN=https://nikkicube.cc.cd"
+if not defined REMOTE_API_ORIGIN set "REMOTE_API_ORIGIN=https://nikkicube.pages.dev"
 
 echo.
 echo ============================================================
@@ -65,7 +65,7 @@ echo Website address: http://localhost:5173
 echo Remote API origin: %REMOTE_API_ORIGIN%
 echo.
 
-start "Remote D1 Dev Server" cmd /k "cd /d ""%PROJECT_DIR%"" && npm run dev:remote -- --port 5173 --strictPort --open http://localhost:5173"
+start "Remote D1 Dev Server" cmd /k "cd /d ""%PROJECT_DIR%"" && npm run dev -- --port 5173 --strictPort --open http://localhost:5173"
 
 echo The dev server will open your browser only after startup succeeds.
 echo Resource updates may take a while. Check the dev server window for progress.

@@ -214,7 +214,7 @@ test(
 /** 使用真实 Vite 生命周期验证监听成功才打开，避免用固定延时模拟“就绪”。 */
 test('launcher browser opening waits for Vite initialization and a listening HTTP server', async (t) => {
   const batch = readFileSync(join(repoDir, 'start/Start-Remote-D1-Website.bat'), 'ascii')
-  assert.match(batch, /npm run dev:remote/)
+  assert.match(batch, /npm run dev --/)
   assert.match(batch, /--port 5173 --strictPort --open http:\/\/localhost:5173/)
   assert.doesNotMatch(batch, /timeout \/t 4|start "" http:\/\/localhost:5173/)
   const { createServer } = await import('vite')

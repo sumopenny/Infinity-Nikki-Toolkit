@@ -24,7 +24,7 @@
 
 **官网（介绍与界面展示）：[https://nikki3.pages.dev/](https://nikki3.pages.dev/)**
 
-**实际使用入口（工具集）：[https://nikkicube.cc.cd/](https://nikkicube.cc.cd/)**
+**实际使用入口（工具集）：[https://nikkicube.pages.dev/](https://nikkicube.pages.dev/)**
 
 直接打开即可使用，无需下载。本地功能无需登录，搭配、家园、相机参数和暖暖档案无需先选择相册；只有浏览游戏照片时才需要选择相册，使用共鸣与衣橱云同步时才需要登录。
 
@@ -40,6 +40,8 @@
 | 自动读取游戏搭配码 | 不支持 | 需 X6Game 授权 |
 | 专项清理游戏文件 | 不支持 | 需 X6Game 授权 |
 
+[Pages 部署与数据库配置](docs/pages-deployment.md)
+
 ## 官网展示
 
 <div align="center">
@@ -48,7 +50,7 @@
   <p><sub>左 · 官网浅色首页 ｜ 右 · 官网深色首页：站点介绍、功能一览与工具集入口</sub></p>
 </div>
 
-完整介绍与界面展示请访问 [官网](https://nikki3.pages.dev/)，重点界面见下方各模块。详细教程请进入 [暖立方](https://nikkicube.cc.cd/) 查看「使用帮助」及对应模块的导入指引。
+完整介绍与界面展示请访问 [官网](https://nikki3.pages.dev/)，重点界面见下方各模块。详细教程请进入 [暖立方](https://nikkicube.pages.dev/) 查看「使用帮助」及对应模块的导入指引。
 
 ## 手机端
 
@@ -359,7 +361,7 @@ ZIP 备份统一使用当前格式：搭配码 v4、家园方案 v2、全部数�
 
 启动器不可用时，可运行 `start\Start-Remote-D1-Website.bat`，或使用下方命令手动启动。启动时需要联网更新资源，更新失败时沿用已有本地资源。
 
-本地运行的点赞、共鸣账号及云同步连接线上服务，相关操作会影响真实线上数据。默认服务地址为 `https://nikkicube.cc.cd`。
+本地运行的点赞、共鸣账号及云同步连接线上服务，相关操作会影响真实线上数据。默认服务地址为 `https://nikkicube.pages.dev`，无需配置或启动本地 D1。可用 `REMOTE_API_ORIGIN` 覆盖服务地址。浏览器本地存档保持原有方式，自动化测试仍使用隔离数据库。
 
 ### 开发命令
 
@@ -369,8 +371,7 @@ ZIP 备份统一使用当前格式：搭配码 v4、家园方案 v2、全部数�
 
 ```bash
 npm install                # 安装依赖
-set REMOTE_API_ORIGIN=https://nikkicube.cc.cd
-npm run dev:remote         # 连接线上服务并启动本地网站
+npm run dev                # 默认连接 nikkicube.pages.dev 并启动本地网站
 npm test                   # 运行自动化测试
 npm run build              # 类型检查并构建
 npm run build:cloudflare   # 更新资源并构建 Cloudflare 版本

@@ -1,4 +1,4 @@
-/** Shared by the Worker scheduler and the administrator CLI. Only diagnostic tables. */
+/** Shared by the scheduled GitHub workflow and the administrator CLI. Only diagnostic tables. */
 export function retentionCutoffs(now) {
   if (!Number.isSafeInteger(now) || now < 0) throw new Error('Invalid retention time')
   return { eventCutoff: now - 30 * 86400000, groupCutoff: now - 180 * 86400000 }

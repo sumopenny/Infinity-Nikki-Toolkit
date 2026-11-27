@@ -1,8 +1,7 @@
-import { afterAll, beforeAll, expect, it } from 'vitest'
+import { afterAll, beforeAll, expect, it, vi } from 'vitest'
 import { createServer as createHttpServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { createServer, type ViteDevServer } from 'vite'
-import { resonanceCloudProxy } from '../scripts/resonance-cloud-proxy'
+import { createServer, loadConfigFromFile, type ViteDevServer } from 'vite'
 
 let upstream: Server
 let local: Server
@@ -44,16 +43,12 @@ beforeAll(async () => {
     )
   })
   target = await listen(upstream)
+  vi.stubEnv('REMOTE_API_ORIGIN', target)
   vite = await createServer({
-    configFile: false,
+    configFile: 'vite.config.ts',
+    mode: 'development',
     appType: 'custom',
-    server: {
-      middlewareMode: true,
-      proxy: {
-        '^/api/resonance/cloud(?:\\?|$)': resonanceCloudProxy(target),
-        '^/api/archive/cloud(?:\\?|$)': resonanceCloudProxy(target)
-      }
-    },
+    server: { middlewareMode: true },
     optimizeDeps: { noDiscovery: true, include: [] }
   })
   local = createHttpServer(vite.middlewares)
@@ -61,6 +56,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  vi.unstubAllEnvs()
   await vite?.close()
   for (const server of [local, upstream])
     if (server) {
@@ -139,4 +135,20 @@ it('forwards archive uploads to the same remote service with the existing accoun
     body,
     path: '/api/archive/cloud?action=upload'
   })
+})
+
+it('defaults development and preview to the Pages API without a remote mode flag', async () => {
+  vi.stubEnv('REMOTE_API_ORIGIN', '')
+  try {
+    const loaded = await loadConfigFromFile(
+      { command: 'serve', mode: 'development' },
+      'vite.config.ts'
+    )
+    expect(loaded?.config.server?.proxy?.['/api']).toMatchObject({
+      target: 'https://nikkicube.pages.dev'
+    })
+    expect(loaded?.config.preview?.proxy).toEqual(loaded?.config.server?.proxy)
+  } finally {
+    vi.stubEnv('REMOTE_API_ORIGIN', target)
+  }
 })

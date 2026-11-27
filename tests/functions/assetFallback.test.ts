@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, copyFile, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
-import { build } from 'esbuild'
+import { pagesBundle } from '../fixtures/pagesBundle'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 import { pruneDiagnostics } from '../../scripts/error-retention.mjs'
@@ -11,7 +11,7 @@ import { sampleEvent } from '../utils/errorReporting/fixture'
 let runtime: Miniflare
 let directory: string
 beforeAll(async () => {
-  directory = await mkdtemp(join(tmpdir(), 'nikki-worker-'))
+  directory = await mkdtemp(join(tmpdir(), 'nikki-pages-'))
   await mkdir(join(directory, 'assets'))
   await mkdir(join(directory, 'scripts'))
   await copyFile('public/_headers', join(directory, '_headers'))
@@ -29,32 +29,24 @@ beforeAll(async () => {
   // A real static file under /api must never bypass API dispatch.
   await mkdir(join(directory, 'api'))
   await writeFile(join(directory, 'api/like'), 'must-not-serve')
-  const bundle = await build({
-    entryPoints: ['worker/index.ts'],
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'browser',
-    target: 'es2022'
-  })
   runtime = new Miniflare(
     convertV4MiniflareOptions({
-      name: 'worker-integration-test',
+      name: 'pages-integration-test',
       modules: true,
-      script: bundle.outputFiles[0].text,
+      script: pagesBundle(),
       compatibilityDate: '2026-09-19',
       d1Databases: ['DB', 'RESONANCE_DB', 'ERROR_DB'],
       bindings: {
         ERROR_REPORTING_ENABLED: 'true',
         ERROR_RATE_LIMIT_SALT: 'local-test-only-salt-at-least-32-characters',
-        ERROR_SERVER_BUILD_ID: 'test-worker-version'
+        CF_PAGES_COMMIT_SHA: 'test-commit'
       },
       assets: {
         routerConfig: { has_user_worker: true },
         directory,
         binding: 'ASSETS',
-        run_worker_first: ['/api', '/api/*'],
-        assetConfig: { html_handling: 'none', not_found_handling: 'none' }
+        run_worker_first: true,
+        assetConfig: { html_handling: 'auto-trailing-slash', not_found_handling: 'none' }
       }
     })
   )
@@ -85,10 +77,9 @@ const request = (path: string, init?: Parameters<Miniflare['dispatchFetch']>[1])
 
 it('keeps deployment settings aligned with the tested asset routing', async () => {
   const config = await readFile('wrangler.toml', 'utf8')
-  expect(config).toContain('run_worker_first = ["/api", "/api/*"]')
-  expect(config).toContain('not_found_handling = "none"')
-  expect(config).toContain('html_handling = "none"')
-  expect(config).not.toContain('pages_build_output_dir')
+  expect(config).toContain('pages_build_output_dir = "./dist"')
+  expect(config).not.toMatch(/\[assets\]|\[triggers\]|main =/)
+  expect(await readFile('public/404.html', 'utf8')).toContain('Not found')
 })
 it('serves real assets and pages with correct MIME types and headers', async () => {
   for (const path of ['/', '/previous-page', '/deep/page/']) {
@@ -132,7 +123,7 @@ it('never falls back to HTML for missing resources, API paths, or wrong methods'
       expect(await response.text()).not.toContain('app-shell')
     }
   }
-  for (const path of ['/api', '/api/unknown', '/api/outfit-code/a/b'])
+  for (const path of ['/api', '/api/unknown', '/api/wardrobe/cloud', '/api/outfit-code/a/b'])
     expect((await request(path)).status).toBe(404)
   for (const method of ['PUT', 'OPTIONS', 'HEAD'])
     expect((await request('/api/like', { method })).status).toBe(405)
@@ -145,7 +136,6 @@ it('dispatches all API routes and preserves middleware and input checks', async 
   expect((await request('/api/resonance/pearpal')).status).toBe(405)
   expect((await request('/api/share-image')).status).toBe(400)
   expect((await request('/api/home-build/%2F')).status).toBe(400)
-  expect((await request('/api/outfit-code/%2F')).status).toBe(404)
   expect((await request('/api/outfit-code/%ZZ')).status).toBe(400)
   expect((await request('/api/like')).headers.get('x-request-id')).toBeTruthy()
   for (const path of ['/api/resonance/cloud?action=session', '/api/archive/cloud?action=summary']) {
@@ -243,7 +233,7 @@ it('stores diagnostics and prunes expired events with real D1 SQL and cascading 
   expect((await pruneDiagnostics(query, now)).deletedEvents).toBe(0)
   expect(await (await request('/api/like')).json()).toEqual({ count: 1 })
 })
-it('retains request-level diagnostics across Worker middleware and waitUntil', async () => {
+it('retains request-level diagnostics across Pages middleware and waitUntil', async () => {
   const likes = await runtime.getD1Database('DB')
   await likes.exec('DROP TABLE like_counter')
   const response = await request('/api/like')
@@ -265,31 +255,22 @@ it('retains request-level diagnostics across Worker middleware and waitUntil', a
       .bind(requestId)
       .first<string>('payload_json'))!
   )
-  expect(payload.build.buildId).toBe('test-worker-version')
-  expect(payload.device.runtime).toBe('Cloudflare Workers')
+  expect(payload.build.buildId).toBe('test-commit')
+  expect(payload.device.runtime).toBe('Cloudflare Pages')
   expect(payload.context.requestId).toBe(requestId)
 })
 
-it('executes the actual scheduled export against isolated D1', async () => {
-  // Miniflare's generated types currently misidentify the returned service proxy as Request.
-  const fetcher = (await runtime.getWorker()) as unknown as {
-    scheduled(options: { scheduledTime: number; cron: string }): Promise<{ outcome: string }>
-  }
-  const result = await fetcher.scheduled({
-    scheduledTime: Date.now() + 181 * 86400000,
-    cron: '25 19 * * *'
-  })
-  expect(result.outcome).toBe('ok')
+it('cleans up expired diagnostics without touching account data', async () => {
   const db = await runtime.getD1Database('ERROR_DB')
+  await pruneDiagnostics(async (sql) => [await db.prepare(sql).all()], Date.now() + 181 * 86400000)
   for (const table of [
     'error_events',
     'error_breadcrumbs',
     'error_groups',
     'error_release_stats',
     'error_rate_limits'
-  ]) {
+  ])
     expect(await db.prepare(`SELECT COUNT(*) n FROM ${table}`).first('n')).toBe(0)
-  }
   const resonance = await runtime.getD1Database('RESONANCE_DB')
   expect(await resonance.prepare('SELECT COUNT(*) n FROM cloud_users').first('n')).toBe(1)
 })

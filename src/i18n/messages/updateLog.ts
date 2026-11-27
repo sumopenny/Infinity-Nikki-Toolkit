@@ -43,7 +43,7 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
     },
     {
       title: '工具集启用新地址。',
-      text: '新地址：nikkicube.cc.cd。旧站用户请先导出全部数据，再到新站导入，不同网址的本地数据不会自动互通。'
+      text: '新地址：nikkicube.pages.dev。旧站用户请先导出全部数据，再到新站导入，不同网址的本地数据不会自动互通。'
     }
   ],
   historyTitle: '历史版本记录',
@@ -977,7 +977,7 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
     },
     {
       title: 'The toolkit has a new address.',
-      text: 'New address: nikkicube.cc.cd. Export all data from the old site before importing it into the new site; local data is not automatically shared between addresses.'
+      text: 'New address: nikkicube.pages.dev. Export all data from the old site before importing it into the new site; local data is not automatically shared between addresses.'
     }
   ],
   historyTitle: 'Previous releases',

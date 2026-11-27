@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
-import worker, { type Env } from '../../worker/index'
+import { onRequest } from '../../functions/api/clear-site-data'
 
 it.each([
   ['POST', 'https://example.test', '1', 204],
@@ -12,14 +12,14 @@ it.each([
 ])('guards site reset: %s %s %s', async (method, origin, marker, status) => {
   const prepare = vi.fn()
   const fetch = vi.fn()
-  const response = await worker.fetch(
-    new Request('https://example.test/api/clear-site-data', {
+  const context = {
+    env: { ASSETS: { fetch }, RESONANCE_DB: { prepare } },
+    request: new Request('https://example.test/api/clear-site-data', {
       method,
       headers: { Origin: origin, 'X-Site-Reset': marker }
-    }),
-    { ASSETS: { fetch }, RESONANCE_DB: { prepare } } as unknown as Env,
-    { waitUntil() {} }
-  )
+    })
+  }
+  const response = await onRequest(context)
   expect(response.status).toBe(status)
   expect(response.headers.get('Cache-Control')).toBe('no-store')
   expect(prepare).not.toHaveBeenCalled()

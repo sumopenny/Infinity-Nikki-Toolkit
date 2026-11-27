@@ -1,3 +1,5 @@
+import { methodNotAllowed } from '../../_lib/http'
+
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 const KEY_PATTERN = /^[A-Za-z0-9]{1,29}$/
 
@@ -19,7 +21,12 @@ function jsonError(status: number, code: string): Response {
 
 /** 只代理家园方案固定 CDN 的对象键，限制响应大小以避免代理被用于大流量转发。 */
 export async function onRequestGet(context: HomeBuildContext): Promise<Response> {
-  const key = context.params.key ?? ''
+  let key: string
+  try {
+    key = decodeURIComponent(context.params.key ?? '')
+  } catch {
+    return jsonError(400, 'resource_key_invalid')
+  }
   if (!KEY_PATTERN.test(key)) return jsonError(400, 'resource_key_invalid')
 
   const started = Date.now()
@@ -126,3 +133,5 @@ export async function onRequestGet(context: HomeBuildContext): Promise<Response>
     }
   })
 }
+
+export const onRequest = methodNotAllowed('GET')

@@ -26,6 +26,7 @@ export interface ErrorEnv {
   ERROR_REPORTING_ENABLED?: string
   ERROR_RATE_LIMIT_SALT?: string
   ERROR_MAX_DAILY_EVENTS?: string
+  CF_PAGES_COMMIT_SHA?: string
   ERROR_SERVER_BUILD_ID?: string
   ERROR_SERVER_COMMIT?: string
   ERROR_DEPLOYMENT_ENV?: string
@@ -245,16 +246,16 @@ export async function recordServerError(
       handled: true,
       severity: 'error',
       build: {
-        buildId: env.ERROR_SERVER_BUILD_ID ?? 'server-unknown',
+        buildId: env.ERROR_SERVER_BUILD_ID || env.CF_PAGES_COMMIT_SHA || 'server-unknown',
         appVersion: 'server',
-        gitCommit: env.ERROR_SERVER_COMMIT ?? '',
+        gitCommit: env.ERROR_SERVER_COMMIT || env.CF_PAGES_COMMIT_SHA || '',
         builtAt: '',
         environment: env.ERROR_DEPLOYMENT_ENV ?? 'production',
         dirty: false
       },
       error: serializeError(error),
       pagePath: diagnosticText(details.route, 256),
-      device: { runtime: 'Cloudflare Workers' },
+      device: { runtime: 'Cloudflare Pages' },
       runtime: {},
       network: {},
       storage: {},

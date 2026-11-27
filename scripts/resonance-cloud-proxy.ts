@@ -1,7 +1,7 @@
 import type { ProxyOptions } from 'vite'
 import type { TLSSocket } from 'node:tls'
 
-/** 本地开发经 Workers 读写真实 D1；仅转换本地同源请求，不放宽线上来源校验。 */
+/** 本地开发经 Pages 读写真实 D1；仅转换本地同源请求，不放宽线上来源校验。 */
 export function resonanceCloudProxy(target: string): ProxyOptions {
   return {
     target,

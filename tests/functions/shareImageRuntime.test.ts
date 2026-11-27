@@ -1,13 +1,10 @@
-import { build } from 'esbuild'
+import { pagesBundle } from '../fixtures/pagesBundle'
 import { Miniflare } from 'miniflare'
 import { expect, it } from 'vitest'
 
 it('serves share images in real workerd and rejects upstream redirects', async () => {
-  const bundled = await build({
-    stdin: {
-      contents: `
-        import worker from './worker/index.ts';
-        globalThis.fetch = async (input, init) => {
+  const script =
+    `        globalThis.fetch = async (input, init) => {
           // Construct a real workerd Request so unsupported fetch options cannot be hidden by mocks.
           const request = new Request(input, init);
           if (request.redirect !== 'manual') throw new Error('Invalid redirect mode');
@@ -20,16 +17,7 @@ it('serves share images in real workerd and rejects upstream redirects', async (
           }
           return new Response(new Uint8Array([137, 80, 78, 71]), { headers: { 'content-type': 'image/png' } });
         };
-        export default { fetch(request, env, ctx) { return worker.fetch(request, env, ctx); } };
-      `,
-      resolveDir: process.cwd(),
-      loader: 'ts'
-    },
-    bundle: true,
-    format: 'esm',
-    platform: 'browser',
-    write: false
-  })
+` + pagesBundle()
   const runtime = new Miniflare({
     workers: [
       {
@@ -38,7 +26,7 @@ it('serves share images in real workerd and rejects upstream redirects', async (
           compatibilityDate: '2026-09-19',
           manifest: {
             mainModule: 'index.js',
-            modules: { 'index.js': { type: 'esm', contents: bundled.outputFiles[0].text } }
+            modules: { 'index.js': { type: 'esm', contents: script } }
           }
         }
       }

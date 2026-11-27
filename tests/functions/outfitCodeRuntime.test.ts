@@ -1,34 +1,19 @@
-import { build } from 'esbuild'
+import { pagesBundle } from '../fixtures/pagesBundle'
 import { Miniflare } from 'miniflare'
 import { expect, it } from 'vitest'
 
 /** 使用真实 workerd 的 Request 校验，防止 Node fetch mock 掩盖边缘运行时差异。 */
 it('Cloudflare 运行时允许固定上游请求、缓存命中，并拒绝重定向', async () => {
-  const bundled = await build({
-    stdin: {
-      contents: `
-        import worker from './worker/index.ts';
-        globalThis.fetch = async (input, init) => {
+  const script =
+    `        globalThis.fetch = async (input, init) => {
           const upstream = new Request(input, init);
           if (upstream.redirect !== 'manual') throw new Error('Unexpected redirect mode');
+          if (upstream.url.endsWith('/%2F.json')) return new Response(null, { status: 404 });
           if (upstream.url.endsWith('/488547348102388136.json'))
             return new Response(null, { status: 302, headers: { Location: 'https://other.invalid/' } });
           return new Response('{"clothes":[]}', { headers: { 'Content-Type': 'application/octet-stream' } });
         };
-        export default {
-          fetch(request, env, ctx) {
-            return worker.fetch(request, env, ctx);
-          }
-        };
-      `,
-      resolveDir: process.cwd(),
-      loader: 'ts'
-    },
-    bundle: true,
-    format: 'esm',
-    platform: 'browser',
-    write: false
-  })
+` + pagesBundle()
   const runtime = new Miniflare({
     workers: [
       {
@@ -37,7 +22,7 @@ it('Cloudflare 运行时允许固定上游请求、缓存命中，并拒绝重�
           compatibilityDate: '2026-09-19',
           manifest: {
             mainModule: 'index.js',
-            modules: { 'index.js': { type: 'esm', contents: bundled.outputFiles[0].text } }
+            modules: { 'index.js': { type: 'esm', contents: script } }
           }
         }
       }
@@ -57,6 +42,15 @@ it('Cloudflare 运行时允许固定上游请求、缓存命中，并拒绝重�
         return hit.headers.get('x-outfit-cache')
       })
       .toBe('HIT')
+    const encoded = await runtime.dispatchFetch(
+      'http://localhost/api/outfit-code/%3488547348102388135'
+    )
+    expect(encoded.status).toBe(200)
+    expect(encoded.headers.get('x-outfit-cache')).toBe('HIT')
+    await encoded.text()
+    const missing = await runtime.dispatchFetch('http://localhost/api/outfit-code/%2F')
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toEqual({ error: 'upstream_rejected' })
     const redirected = await runtime.dispatchFetch(
       'http://localhost/api/outfit-code/488547348102388136'
     )

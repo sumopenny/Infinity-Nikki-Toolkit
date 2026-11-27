@@ -1,3 +1,5 @@
+import { methodNotAllowed } from '../../_lib/http'
+
 /** Legacy clients receive an explicit response; credentials are no longer forwarded. */
 export async function onRequestPost(): Promise<Response> {
   return Response.json(
@@ -5,3 +7,5 @@ export async function onRequestPost(): Promise<Response> {
     { status: 410, headers: { 'cache-control': 'no-store' } }
   )
 }
+
+export const onRequest = methodNotAllowed('POST')

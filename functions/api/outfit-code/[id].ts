@@ -1,3 +1,5 @@
+import { methodNotAllowed } from '../../_lib/http'
+
 import { isValidOutfitPayload, readOutfitBody } from '../../_lib/outfitPayload'
 
 interface OutfitCodeFunctionContext {
@@ -107,7 +109,15 @@ async function consumeFlight(flight: Flight, signal: AbortSignal): Promise<Snaps
 
 /** 浏览器保持禁缓存，Cloudflare 独立内部响应缓存一小时；缓存故障降级为回源。 */
 export async function onRequestGet(context: OutfitCodeFunctionContext): Promise<Response> {
-  const id = context.params.id ?? ''
+  let id: string
+  try {
+    id = decodeURIComponent(context.params.id ?? '')
+  } catch {
+    return Response.json(
+      { error: 'invalid_path' },
+      { status: 400, headers: { 'cache-control': 'no-store' } }
+    )
+  }
   const started = Date.now()
   // 版本化内部键不携带用户 Cookie、查询参数或其他请求头。
   const key = new Request(
@@ -189,3 +199,5 @@ export async function onRequestGet(context: OutfitCodeFunctionContext): Promise<
     )
   }
 }
+
+export const onRequest = methodNotAllowed('GET')

@@ -1,18 +1,14 @@
 name = "nikkicube"
-main = "worker/index.ts"
-workers_dev = false
-routes = [{ pattern = "nikkicube.cc.cd", custom_domain = true }]
-preview_urls = false
-upload_source_maps = true
+pages_build_output_dir = "./dist"
 compatibility_date = "2026-09-19"
 
-# Existing production D1 bindings; do not recreate or migrate on deploy.
+# Reuse existing production databases; deployment never runs migrations.
 [[d1_databases]]
 binding = "DB"
 database_name = "wxnn-likes"
 database_id = "1fc2cb15-3458-4035-acdd-2a2caa203aa4"
 
-# 共鸣云同步使用独立云端数据库；绑定名与 Worker 一致，详见 docs/workers-deployment.md。
+# 共鸣云同步使用独立云端数据库；绑定名与 Pages 一致，详见 docs/pages-deployment.md。
 [[d1_databases]]
 binding = "RESONANCE_DB"
 database_name = "wxnn-resonance"
@@ -25,41 +21,9 @@ binding = "ERROR_DB"
 database_name = "wxnn-errors"
 database_id = "578e261f-9503-4812-815c-b96d0bd507fc"
 migrations_dir = "migrations-errors"
-# 开启步骤及密钥见 docs/workers-deployment.md。
-
-[assets]
-directory = "./dist"
-binding = "ASSETS"
-html_handling = "none"
-not_found_handling = "none"
-run_worker_first = ["/api", "/api/*"]
-
-[observability]
-enabled = true
-head_sampling_rate = 1
-redact_query_string = false
-
-[observability.logs]
-enabled = true
-head_sampling_rate = 1
-invocation_logs = true
-persist = true
-
-[observability.traces]
-enabled = true
-head_sampling_rate = 0.1
-persist = true
-
-[observability.issue_detection]
-enabled = true
-
-[version_metadata]
-binding = "VERSION_METADATA"
+# 开启步骤及密钥见 docs/pages-deployment.md。
 
 [vars]
 ERROR_REPORTING_ENABLED = "true"
 ERROR_MAX_DAILY_EVENTS = "1000"
 ERROR_DEPLOYMENT_ENV = "production"
-
-[triggers]
-crons = ["25 19 * * *"]

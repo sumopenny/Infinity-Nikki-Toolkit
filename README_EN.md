@@ -24,7 +24,7 @@
 
 **Official website (introduction and screenshots): [https://nikki3.pages.dev/](https://nikki3.pages.dev/)**
 
-Use the toolkit here: [https://nikkicube.cc.cd/](https://nikkicube.cc.cd/)
+Use the toolkit here: [https://nikkicube.pages.dev/](https://nikkicube.pages.dev/)
 
 Open it directly without downloading anything. Local features need no sign-in. Outfits, home schemes, camera parameters, and Nikki Archive need no album selection; choose an album only for browsing game photos, and sign in only for resonance and wardrobe cloud sync.
 
@@ -40,6 +40,8 @@ For local use, see [Local installation](#local-installation).
 | Automatically read in-game outfit codes | Unavailable | X6Game authorization required |
 | Clean game files | Unavailable | X6Game authorization required |
 
+[Pages deployment and database configuration](docs/pages-deployment.md)
+
 ## Official website showcase
 
 <div align="center">
@@ -48,7 +50,7 @@ For local use, see [Local installation](#local-installation).
   <p><sub>Left · Light mode ｜ Right · Dark mode: introduction, features and toolkit entry</sub></p>
 </div>
 
-Visit the [official website](https://nikki3.pages.dev/) for the introduction and full interface showcase. Key interfaces are shown below. For detailed tutorials, open [NikkiCube](https://nikkicube.cc.cd/) and use the in-app help and module import guides.
+Visit the [official website](https://nikki3.pages.dev/) for the introduction and full interface showcase. Key interfaces are shown below. For detailed tutorials, open [NikkiCube](https://nikkicube.pages.dev/) and use the in-app help and module import guides.
 
 ## Mobile
 
@@ -359,7 +361,7 @@ Install [Node.js LTS version 22 or newer](https://nodejs.org/) with the default 
 
 If the launcher is unavailable, run `start\Start-Remote-D1-Website.bat`, or use the commands below. Resource updates require network access; failed updates keep the existing local resources.
 
-The local site connects to the online service for Likes, shared cloud accounts, and resonance/wardrobe cloud sync. These actions affect real online data. The default service is `https://nikkicube.cc.cd`.
+The local site connects to the online service for Likes, shared cloud accounts, and resonance/wardrobe cloud sync. These actions affect real online data. The default service is `https://nikkicube.pages.dev`; no local D1 setup or startup is required. Override it with `REMOTE_API_ORIGIN` if needed. Browser-local storage is unchanged, and automated tests still use isolated databases.
 
 ### Development Commands
 
@@ -369,8 +371,7 @@ Run these commands in the project root:
 
 ```bash
 npm install                # Install dependencies
-set REMOTE_API_ORIGIN=https://nikkicube.cc.cd
-npm run dev:remote         # Start locally with the online service
+npm run dev                # Start locally using nikkicube.pages.dev by default
 npm test                   # Run automated tests
 npm run build              # Type-check and build
 npm run build:cloudflare   # Update resources and build for Cloudflare

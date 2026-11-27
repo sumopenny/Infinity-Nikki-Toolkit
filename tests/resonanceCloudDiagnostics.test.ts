@@ -1,4 +1,3 @@
-import worker, { type Env } from '../worker/index'
 import { afterEach, expect, it, vi } from 'vitest'
 import { handleCloud, type CloudDB } from '../functions/_lib/resonanceCloud'
 afterEach(() => vi.restoreAllMocks())
@@ -54,16 +53,3 @@ it.each(['snapshot', 'upload', 'delete'])(
     expect(prepare).not.toHaveBeenCalled()
   }
 )
-
-it('returns 404 for the removed wardrobe endpoint without contacting storage or assets', async () => {
-  const fetch = vi.fn(),
-    prepare = vi.fn()
-  const response = await worker.fetch(
-    new Request('https://example.test/api/wardrobe/cloud?action=summary'),
-    { ASSETS: { fetch }, RESONANCE_DB: { prepare } } as unknown as Env,
-    { waitUntil() {} }
-  )
-  expect(response.status).toBe(404)
-  expect(prepare).not.toHaveBeenCalled()
-  expect(fetch).not.toHaveBeenCalled()
-})
