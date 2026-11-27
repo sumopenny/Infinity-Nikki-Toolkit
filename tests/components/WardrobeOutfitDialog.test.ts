@@ -185,3 +185,10 @@ it('opens the animation for base and evolved outfits and closes the detail host'
   expect(wrapper.text()).not.toContain('观看满进动画')
   wrapper.unmount()
 })
+
+vi.mock('../../src/utils/bilibiliEvolution', async (original) => ({
+  ...(await original<typeof import('../../src/utils/bilibiliEvolution')>()),
+  readBilibiliEvolution: vi.fn(async () => {
+    throw new Error('offline')
+  })
+}))

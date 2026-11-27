@@ -6,6 +6,11 @@ import {
   animationSyncStatus,
   loadEvolutionAnimations
 } from '../../src/utils/evolutionAnimations'
+import { readBilibiliEvolution } from '../../src/utils/bilibiliEvolution'
+vi.mock('../../src/utils/bilibiliEvolution', async (original) => ({
+  ...(await original<typeof import('../../src/utils/bilibiliEvolution')>()),
+  readBilibiliEvolution: vi.fn()
+}))
 const rows = [
   {
     version: '3.0',
@@ -29,10 +34,7 @@ const rows = [
 beforeEach(() => {
   animations.splice(0)
   animationSyncStatus.value = 'idle'
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => Response.json(rows))
-  )
+  vi.mocked(readBilibiliEvolution).mockReset().mockResolvedValue(rows)
 })
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -47,7 +49,7 @@ it('starts empty and renders Bilibili results without autoplay', async () => {
   await loadEvolutionAnimations(true)
   await flushPromises()
   expect(wrapper.findAll('.animation-card')).toHaveLength(2)
-  expect(wrapper.get('h2').text()).toBe('测试套装')
+  expect(wrapper.get('h2').text()).toBe('【限定共鸣】测试套装')
   expect(wrapper.find('iframe').exists()).toBe(false)
   await wrapper.get('.animation-cover').trigger('click')
   expect(wrapper.emitted('update:selectedCid')?.at(-1)).toEqual(['202'])
@@ -56,7 +58,7 @@ it('starts empty and renders Bilibili results without autoplay', async () => {
   wrapper.unmount()
 })
 it('shows an empty error and recovers through Retry', async () => {
-  vi.mocked(fetch).mockRejectedValue(new Error('offline'))
+  vi.mocked(readBilibiliEvolution).mockRejectedValue(new Error('offline'))
   const wrapper = mount(EvolutionAnimations, {
     props: { selectedCid: '', loadOnEntry: false, language: 'zh' }
   })
@@ -65,7 +67,7 @@ it('shows an empty error and recovers through Retry', async () => {
   expect(wrapper.text()).toContain('暂时无法读取')
   expect(wrapper.find('iframe').exists()).toBe(false)
   expect(wrapper.findAll('.animation-card')).toHaveLength(0)
-  vi.mocked(fetch).mockResolvedValue(Response.json(rows))
+  vi.mocked(readBilibiliEvolution).mockResolvedValue(rows)
   await wrapper.get('.animation-sync button').trigger('click')
   await flushPromises()
   expect(wrapper.findAll('.animation-card')).toHaveLength(2)
@@ -79,15 +81,15 @@ it('keeps CID selection across reordering and avoids autoplay when that CID disa
   await loadEvolutionAnimations(true)
   await flushPromises()
   expect(wrapper.get('iframe').attributes('src')).toContain('p=2&autoplay=0')
-  vi.mocked(fetch).mockResolvedValue(Response.json([{ ...rows[0], page: 5 }]))
+  vi.mocked(readBilibiliEvolution).mockResolvedValue([{ ...rows[0], page: 5 }])
   await loadEvolutionAnimations(true)
   await flushPromises()
   expect(wrapper.get('iframe').attributes('src')).toContain('p=5&autoplay=0')
-  vi.mocked(fetch).mockResolvedValue(Response.json([rows[1]]))
+  vi.mocked(readBilibiliEvolution).mockResolvedValue([rows[1]])
   await loadEvolutionAnimations(true)
   await flushPromises()
   expect(wrapper.find('iframe').exists()).toBe(false)
-  expect(wrapper.get('h2').text()).toBe('旧套装')
+  expect(wrapper.get('h2').text()).toBe('【限定共鸣】旧套装')
   wrapper.unmount()
 })
 it('keeps full-screen permissions and recovers visually when a cover fails', async () => {

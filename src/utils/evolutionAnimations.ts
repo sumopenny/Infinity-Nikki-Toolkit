@@ -1,6 +1,6 @@
 import { reactive, ref, type InjectionKey } from 'vue'
 import type { WardrobeEntry } from './wardrobe/wardrobeCatalog'
-import { animationBvid, validateEvolutionParts, type EvolutionPart } from './bilibiliEvolution'
+import { animationBvid, readBilibiliEvolution, type EvolutionPart } from './bilibiliEvolution'
 
 export type EvolutionAnimation = EvolutionPart
 function sortAnimations(a: EvolutionAnimation, b: EvolutionAnimation) {
@@ -21,21 +21,10 @@ export function loadEvolutionAnimations(force = false): Promise<void> {
   animationSyncStatus.value = 'loading'
   pending = (async () => {
     try {
-      const response = await fetch('/api/evolution-animations', {
-        signal: AbortSignal.timeout(10000),
-        cache: force ? 'reload' : 'default'
-      })
-      if (!response.ok) throw new Error('Animation list unavailable')
-      const next = validateEvolutionParts(await response.json()).sort(sortAnimations)
+      const next = (await readBilibiliEvolution()).sort(sortAnimations)
       animations.splice(0, animations.length, ...next)
-      const stale = response.headers.get('x-animation-stale') === 'true'
-      animationSyncStatus.value = stale ? 'error' : 'ready'
-      // 沿用源数据抓取时间，避免浏览器与页面缓存逐层延长五分钟窗口。
-      if (!stale)
-        refreshedAt = Math.min(
-          Date.now(),
-          Number(response.headers.get('x-fetched-at')) || Date.now()
-        )
+      animationSyncStatus.value = 'ready'
+      refreshedAt = Date.now()
     } catch {
       animationSyncStatus.value = 'error'
     } finally {

@@ -1,6 +1,55 @@
 /** 维护同一个分 P 合集即可更新网站；不接受客户端传入任意上游地址。 */
 export const animationBvid = 'BV1p1sC6ZE6a'
 
+/** B 站提供的 JSONP 接口由浏览器直读，避免 Cloudflare 出口收到 412；不使用第三方代理。 */
+export function readBilibiliEvolution(): Promise<EvolutionPart[]> {
+  return new Promise((resolve, reject) => {
+    const callback = `__nikkiEvolution_${crypto.randomUUID().replaceAll('-', '')}`
+    const callbacks = window as unknown as Record<string, unknown>
+    const script = document.createElement('script')
+    let settled = false
+    const finish = (error?: Error, parts?: EvolutionPart[], timedOut = false) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      script.remove()
+      script.onerror = script.onload = null
+      if (timedOut) {
+        // 移除 script 不保证已在途脚本不会执行；短暂保留空回调，迟到结果不能覆盖重试。
+        callbacks[callback] = () => undefined
+        window.setTimeout(() => {
+          delete callbacks[callback]
+        }, 60000)
+      } else delete callbacks[callback]
+      if (error) reject(error)
+      else resolve(parts!)
+    }
+    const timer = window.setTimeout(
+      () => finish(new Error('Bilibili request timed out'), undefined, true),
+      10000
+    )
+    callbacks[callback] = (value: unknown) => {
+      try {
+        finish(undefined, parseBilibiliEvolution(value))
+      } catch {
+        finish(new Error('Bilibili returned an invalid animation list'))
+      }
+    }
+    script.async = true
+    script.referrerPolicy = 'no-referrer'
+    script.src = `https://api.bilibili.com/x/web-interface/view?bvid=${animationBvid}&jsonp=jsonp&callback=${callback}`
+    script.onerror = () => finish(new Error('Bilibili request failed'))
+    script.onload = () => {
+      if (!settled) finish(new Error('Bilibili callback missing'))
+    }
+    try {
+      document.head.append(script)
+    } catch {
+      finish(new Error('Bilibili script could not be loaded'))
+    }
+  })
+}
+
 export interface EvolutionPart {
   version: string
   name: string
@@ -61,15 +110,17 @@ export function validateEvolutionParts(value: unknown): EvolutionPart[] {
   return value
 }
 
-/** 一次 view 请求包含全部分 P；非动画标题忽略，损坏/空结果不覆盖可用缓存。 */
+/** 分 P 接口一次返回完整列表；非动画标题忽略，损坏/空结果不覆盖可用缓存。 */
 export function parseBilibiliEvolution(value: unknown): EvolutionPart[] {
   const body = value as {
     code?: number
     data?: { pages?: Array<Record<string, unknown>>; pic?: string }
   } | null
-  if (body?.code !== 0 || !Array.isArray(body.data?.pages)) throw new Error('Bilibili unavailable')
+  const pages = body?.data?.pages
+  const cover = body?.data?.pic
+  if (body?.code !== 0 || !Array.isArray(pages)) throw new Error('Bilibili unavailable')
   const parts: EvolutionPart[] = []
-  for (const p of body.data.pages) {
+  for (const p of pages) {
     if (!p || typeof p.part !== 'string') continue
     const title = p.part.trim().match(/^【(\d+\.\d+)([^】]+)】\s*(.+?)\s*[-－—]\s*满进动画\s*$/)
     if (!title) continue
@@ -80,7 +131,7 @@ export function parseBilibiliEvolution(value: unknown): EvolutionPart[] {
       page: p.page as number,
       cid: String(p.cid ?? ''),
       duration: p.duration as number,
-      thumbnail: thumbnail(p.first_frame) || thumbnail(body.data.pic)
+      thumbnail: thumbnail(p.first_frame) || thumbnail(cover)
     })
   }
   return validateEvolutionParts(parts)

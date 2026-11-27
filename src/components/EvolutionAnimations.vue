@@ -26,6 +26,8 @@ const groups = computed(() =>
   }))
 )
 const text = (zh: string, en: string) => (props.language === 'zh' ? zh : en)
+const title = (item: EvolutionAnimation) =>
+  item.source ? `【${item.source}】${item.name}` : item.name
 const duration = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 async function scrollToPlayer() {
@@ -69,7 +71,7 @@ onMounted(() => {
         <iframe
           v-if="loaded && selected.cid === selectedCid"
           :src="animationPlayerUrl(selected)"
-          :title="selected.name"
+          :title="title(selected)"
           allow="
             fullscreen https://player.bilibili.com https://www.bilibili.com;
             picture-in-picture;
@@ -81,7 +83,7 @@ onMounted(() => {
           type="button"
           class="animation-cover"
           @click="select(selected)"
-          :aria-label="text('播放', 'Play') + ' ' + selected.name"
+          :aria-label="text('播放', 'Play') + ' ' + title(selected)"
         >
           <img
             v-if="selected.thumbnail && !failedImages.has(selected.thumbnail)"
@@ -95,7 +97,7 @@ onMounted(() => {
       </div>
       <div class="animation-caption">
         <div class="animation-title"
-          ><h2>{{ selected.name }}</h2
+          ><h2>{{ title(selected) }}</h2
           ><span>{{ selected.version }} · {{ duration(selected.duration) }}</span></div
         >
         <a :href="animationWatchUrl(selected)" target="_blank" rel="noopener noreferrer">
@@ -125,13 +127,13 @@ onMounted(() => {
               <Play v-else :size="24" aria-hidden="true" />
               <span class="animation-duration">{{ duration(item.duration) }}</span>
             </span>
-            <span class="animation-name">{{ item.name }}</span>
+            <span class="animation-name">{{ title(item) }}</span>
           </button>
           <a
             :href="animationWatchUrl(item)"
             target="_blank"
             rel="noopener noreferrer"
-            :aria-label="text('在 B 站观看', 'Watch on Bilibili') + ' ' + item.name"
+            :aria-label="text('在 B 站观看', 'Watch on Bilibili') + ' ' + title(item)"
           >
             {{ text('在 B 站观看', 'Watch on Bilibili') }}<ExternalLink :size="12" />
           </a>
