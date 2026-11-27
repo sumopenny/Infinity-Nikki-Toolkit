@@ -111,7 +111,7 @@ export async function prepareWardrobeSnapshot(
   const previous = await receipt(db, userId, id)
   if (previous && previous.digest !== fingerprint) fail(409, 'CONFLICT')
   if (previous?.committed_revision != null) {
-    return { kind: 'replayed', revision: previous.committed_revision }
+    return { kind: 'replayed' }
   }
   stage('revision-read')
   await db
@@ -172,8 +172,7 @@ export async function prepareWardrobeSnapshot(
   const claimed = await receipt(db, userId, id)
   if (!claimed) fail(429, 'UPLOAD_PENDING')
   if (claimed.digest !== fingerprint) fail(409, 'CONFLICT')
-  if (claimed.committed_revision != null)
-    return { kind: 'replayed', revision: claimed.committed_revision }
+  if (claimed.committed_revision != null) return { kind: 'replayed' }
   const chunks: string[] = []
   let chunk: string[] = [],
     bytes = 2
@@ -202,5 +201,5 @@ export async function prepareWardrobeSnapshot(
           .bind(userId, id, value, userId, id)
       )
     )
-  return { kind: 'staged', count: rows.length, fingerprint, createdAt: now }
+  return { kind: 'staged', count: rows.length, fingerprint }
 }

@@ -22,6 +22,10 @@
 
 服务端诊断使用 Pages 的 `CF_PAGES_COMMIT_SHA` 关联发布；可用 `ERROR_SERVER_BUILD_ID` / `ERROR_SERVER_COMMIT` 显式覆盖。前端 source map 不公开。
 
+兼容日期统一为 `2026-11-27`，运行时测试直接读取 `wrangler.toml`，避免测试与部署行为不一致。构建 Node 版本仍由 `.node-version` 指定为 22（工具链最低要求 22.12）。Wrangler 更新为 4.168.0；其默认 workerd 只到 11 月 23 日，因此 package.json 暂以 overrides 固定 workerd 1.20261127.1，确保本地能验证目标日期。后续 Wrangler 自带运行时达到该日期后可移除覆盖。
+
+兼容性验证覆盖隔离 D1、Pages 路由与现有取消/重试逻辑。真实客户端断线触发 `Request.signal` 的行为尚未确认：本地 Miniflare HTTP 探针未观察到信号，不能据此保证线上断线能立即取消上游请求；上线前应在预览部署单独验证。
+
 ## 路由与本地验证
 
 构建自动生成 `dist/_routes.json`，实际存在的非 HTML 静态文件直接由 Pages 返回，不调用 Functions；API、页面和缺失资源继续进入 middleware。规则总数最多 100 条，超限或路径过长的文件继续走 middleware，不扩大通配符。无需手动维护资源清单。

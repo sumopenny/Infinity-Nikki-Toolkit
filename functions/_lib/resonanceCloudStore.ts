@@ -37,7 +37,7 @@ export async function prepareResonanceSnapshot(
     .first<{ digest: string; committed_revision: number | null }>()
   if (previous && previous.digest !== fingerprint) fail(409, 'CONFLICT')
   if (previous?.committed_revision != null) {
-    return { kind: 'replayed', revision: previous.committed_revision }
+    return { kind: 'replayed' }
   }
   stage('revision-read')
   const current = await db
@@ -92,5 +92,5 @@ export async function prepareResonanceSnapshot(
           .bind(userId, id, value)
       )
     )
-  return { kind: 'staged', count: rows.length, fingerprint, createdAt: now }
+  return { kind: 'staged', count: rows.length, fingerprint }
 }

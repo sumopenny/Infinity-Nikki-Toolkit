@@ -177,9 +177,9 @@ async function writeArchive(
       statements.push(
         db
           .prepare(
-            `UPDATE ${wardrobe ? 'cloud_wardrobe_state' : 'cloud_users'} SET active_snapshot=?,last_request=?,revision=revision+1,updated_at=? WHERE ${wardrobe ? 'user_id' : 'id'}=? AND ${gate}`
+            `UPDATE ${wardrobe ? 'cloud_wardrobe_state' : 'cloud_users'} SET active_snapshot=?,revision=revision+1,updated_at=? WHERE ${wardrobe ? 'user_id' : 'id'}=? AND ${gate}`
           )
-          .bind(deleting ? null : body.requestId, body.requestId, now, userId, ...gateValues)
+          .bind(deleting ? null : body.requestId, now, userId, ...gateValues)
       )
       statements.push(
         db

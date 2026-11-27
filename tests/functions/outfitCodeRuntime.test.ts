@@ -1,3 +1,4 @@
+import { compatibilityDate } from '../fixtures/runtimeConfig'
 import { pagesBundle } from '../fixtures/pagesBundle'
 import { Miniflare } from 'miniflare'
 import { expect, it } from 'vitest'
@@ -19,7 +20,7 @@ it('Cloudflare 运行时允许固定上游请求、缓存命中，并拒绝重�
       {
         config: {
           name: 'outfit-code-runtime-test',
-          compatibilityDate: '2026-09-19',
+          compatibilityDate,
           manifest: {
             mainModule: 'index.js',
             modules: { 'index.js': { type: 'esm', contents: script } }

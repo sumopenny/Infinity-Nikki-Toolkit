@@ -283,7 +283,7 @@ async function readHomeSchemeBackup(backupFile: File) {
 
 type ValidatedHomeBackup = Awaited<ReturnType<typeof readHomeSchemeBackup>>
 export interface PreparedHomeSchemeBackup {
-  readonly apply: () => Promise<HomeSchemeImportResult>
+  readonly apply: () => Promise<Omit<HomeSchemeImportResult, 'schemes' | 'tags'>>
 }
 interface HomeSchemeImportResult {
   addedCount: number
@@ -319,15 +319,16 @@ export async function prepareHomeSchemeBackup(backupFile: File): Promise<Prepare
 }
 
 export async function importHomeSchemeBackup(backupFile: File): Promise<HomeSchemeImportResult> {
-  return applyHomeSchemeBackup(await readHomeSchemeBackup(backupFile))
+  const counts = await applyHomeSchemeBackup(await readHomeSchemeBackup(backupFile))
+  return { ...counts, ...(await readHomeSchemeLibrary()) }
 }
 
 async function applyHomeSchemeBackup({
   manifest,
   prepared,
   invalidCount
-}: ValidatedHomeBackup): Promise<HomeSchemeImportResult> {
-  const counts = await homeTransaction(
+}: ValidatedHomeBackup): Promise<Omit<HomeSchemeImportResult, 'schemes' | 'tags'>> {
+  return homeTransaction(
     [HOME_SCHEMES_STORE, HOME_IMAGES_STORE, HOME_TAGS_STORE],
     'readwrite',
     async (tx) => {
@@ -368,6 +369,4 @@ async function applyHomeSchemeBackup({
       return { addedCount, duplicateCount, failedCount: invalidCount }
     }
   )
-  const library = await readHomeSchemeLibrary()
-  return { ...counts, ...library }
 }

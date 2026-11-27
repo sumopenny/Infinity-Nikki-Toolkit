@@ -1,8 +1,13 @@
+import { withPhotoWriteLock } from '../../src/utils/file-system/photoWriteLock'
 import { preparePhotoTransfer, runPhotoTransfer } from '../../src/utils/file-system/photoTransfer'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { messages } from '../../src/i18n'
-import { readAlbumMetadata, savePhotoNote, savePhotoFavorites } from '../../src/utils/file-system/photoMetadata'
-import type { PhotoItem } from '../../src/utils/photoGrouping'
+import {
+  readAlbumMetadata,
+  savePhotoNote,
+  savePhotoFavorites
+} from '../../src/utils/file-system/photoMetadata'
+import type { DirectoryPhotoItem } from '../../src/utils/photoGrouping'
 import {
   pickAlbumDirectory,
   readAlbumDirectory,
@@ -65,6 +70,15 @@ class MemoryFileHandle {
       type: this.contents.type,
       lastModified: this.lastModified
     })
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: () =>
+        new Promise<ArrayBuffer>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as ArrayBuffer)
+          reader.onerror = () => reject(reader.error)
+          reader.readAsArrayBuffer(file)
+        })
+    })
     Object.defineProperty(file, 'text', {
       value: () =>
         new Promise<string>((resolve, reject) => {
@@ -85,7 +99,7 @@ class MemoryFileHandle {
           this.writeTracker.peak = Math.max(this.writeTracker.peak, this.writeTracker.active)
         }
         try {
-          if (this.writeTracker) await Promise.resolve()
+          if (this.writeTracker) await new Promise((resolve) => setTimeout(resolve, 10))
           this.contents = data instanceof Blob ? data : new Blob([data])
         } finally {
           if (this.writeTracker) this.writeTracker.active -= 1
@@ -190,7 +204,7 @@ class MemoryDirectoryHandle {
   }
 }
 
-function createPhoto(directory: MemoryDirectoryHandle, name: string): PhotoItem {
+function createPhoto(directory: MemoryDirectoryHandle, name: string): DirectoryPhotoItem {
   const fileHandle = new MemoryFileHandle(name)
   directory.files.set(name, fileHandle)
   const photoFileSize = 5
@@ -922,7 +936,11 @@ it('persists trash notes across reload and restores them under a conflict-free n
   const notes = (await readAlbumMetadata(handle)).photos
   expect(notes[restored.restoredPhotos[0].name].note).toBe('original')
   expect(notes[restored.restoredPhotos[0].name].favorite).toBe(true)
-  expect((await readAlbumDirectory(handle, { messages: messages.zh.fileSystem })).photos.find((item) => item.name === restored.restoredPhotos[0].name)?.favorite).toBe(true)
+  expect(
+    (await readAlbumDirectory(handle, { messages: messages.zh.fileSystem })).photos.find(
+      (item) => item.name === restored.restoredPhotos[0].name
+    )?.favorite
+  ).toBe(true)
   expect(notes[photo.name].note).toBe('replacement')
   expect(notes[reloaded[0].noteKey!]).toBeUndefined()
 })
@@ -1035,4 +1053,69 @@ it('coordinates imports and restores while retaining both same-name photos', asy
       .getFile()
       .then((file) => file.text())
   ).toBe('photo')
+})
+
+it('queues moving and permanent deletion behind the shared photo write lock', async () => {
+  const album = new MemoryDirectoryHandle('album')
+  const photo = createPhoto(album, '2026_06_26_11_22_00.jpeg')
+  let release!: () => void
+  let entered!: () => void
+  const ready = new Promise<void>((resolve) => {
+    entered = resolve
+  })
+  const held = withPhotoWriteLock(async () => {
+    entered()
+    await new Promise<void>((resolve) => {
+      release = resolve
+    })
+  })
+  await ready
+  const read = vi.spyOn(photo.fileHandle, 'getFile')
+  const moving = movePhotosToRecentlyDeleted([photo], new Set())
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(read).not.toHaveBeenCalled()
+  release()
+  await held
+  const moved = await moving
+  expect(moved.succeeded).toHaveLength(1)
+  let unblock!: () => void
+  let locked!: () => void
+  const acquired = new Promise<void>((resolve) => {
+    locked = resolve
+  })
+  const holding = withPhotoWriteLock(async () => {
+    locked()
+    await new Promise<void>((resolve) => {
+      unblock = resolve
+    })
+  })
+  await acquired
+  const deleting = permanentlyDeleteRecentlyDeleted(moved.movedPhotos)
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(album.directories.get('trash')!.files.size).toBe(1)
+  unblock()
+  await holding
+  expect((await deleting).succeeded).toHaveLength(1)
+})
+
+it('preserves changed source bytes and rolls back notes when a trash copy becomes stale', async () => {
+  const album = new MemoryDirectoryHandle('album')
+  const photo = createPhoto(album, '2026_06_26_11_22_00.jpeg')
+  await savePhotoNote(photo.directoryHandle, photo.name, 'keep')
+  const originalRead = photo.fileHandle.getFile.bind(photo.fileHandle)
+  vi.spyOn(photo.fileHandle, 'getFile').mockImplementationOnce(async () => {
+    const snapshot = await originalRead()
+    const writer = await photo.fileHandle.createWritable()
+    await writer.write('newer') // Same size and timestamp: content comparison is required.
+    await writer.close()
+    return snapshot
+  })
+  const result = await movePhotosToRecentlyDeleted([photo], new Set())
+  expect(result.succeeded).toHaveLength(0)
+  expect(result.failedNames).toEqual([photo.name])
+  expect(await (await originalRead()).text()).toBe('newer')
+  expect((await readAlbumMetadata(photo.directoryHandle)).photos[photo.name].note).toBe('keep')
+  expect(album.directories.get('trash')!.files.size).toBe(0)
 })

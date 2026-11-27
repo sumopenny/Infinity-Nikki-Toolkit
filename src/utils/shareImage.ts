@@ -253,7 +253,7 @@ export async function renderShareImage(input: ShareInput): Promise<Blob> {
     ctx.font = `700 ${10.8 * unit}px "Microsoft YaHei", "PingFang SC", sans-serif`
     const websiteLetterSpacing = 0.8 * unit
     let websiteX = left
-    for (const character of 'nikki3.pages.dev') {
+    for (const character of 'nikkicube.pages.dev') {
       ctx.fillText(character, websiteX, top + size + 10 * unit)
       websiteX += ctx.measureText(character).width + websiteLetterSpacing
     }

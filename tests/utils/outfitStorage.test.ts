@@ -229,3 +229,24 @@ it('persists, preserves and clears source links without requiring an image', asy
     'outfit_image_required'
   )
 })
+
+it('initializes default tags and announces only transactions that write', async () => {
+  const { OUTFIT_TAGS_STORE } = await import('../../src/utils/file-system/database')
+  const dispatchEvent = vi.fn()
+  vi.stubGlobal('window', { dispatchEvent })
+  const initial = await readOutfitCollection()
+  expect(
+    await runStoreRequest(OUTFIT_TAGS_STORE, 'readonly', (s) => s.get('default'))
+  ).toEqual(initial.tags)
+  expect(dispatchEvent).toHaveBeenCalledTimes(1)
+  dispatchEvent.mockClear()
+  await readOutfitCollection()
+  await readOutfitSnapshot()
+  await outfitTransaction([OUTFIT_TAGS_STORE], 'readwrite', async (tx) => {
+    await tx.objectStore(OUTFIT_TAGS_STORE).get('default')
+  })
+  expect(dispatchEvent).not.toHaveBeenCalled()
+  await saveOutfitTags([...initial.tags, '新标签'], initial.tags)
+  expect(dispatchEvent).toHaveBeenCalledTimes(1)
+  expect((await readOutfitCollection()).tags).toContain('新标签')
+})

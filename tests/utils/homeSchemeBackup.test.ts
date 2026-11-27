@@ -116,7 +116,7 @@ describe('home scheme ZIP backup', () => {
         ? await (await prepareHomeSchemeBackup(file)).apply()
         : await importHomeSchemeBackup(file)
       expect(restored).toMatchObject({ addedCount: 1, duplicateCount: 0, failedCount: 0 })
-      expect(restored.schemes[0]).toMatchObject({
+      expect((await readHomeSchemeSnapshot()).records[0]).toMatchObject({
         id: saved.id,
         code: saved.code,
         tags: saved.tags,

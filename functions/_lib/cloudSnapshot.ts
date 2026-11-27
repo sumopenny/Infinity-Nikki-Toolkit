@@ -2,5 +2,4 @@
 export type SnapshotStage =
   'validation' | 'receipt-read' | 'revision-read' | 'staging' | 'commit' | 'cleanup'
 export type PreparedSnapshot =
-  | { kind: 'staged'; count: number; fingerprint: string; createdAt: number }
-  | { kind: 'replayed'; revision: number }
+  { kind: 'staged'; count: number; fingerprint: string } | { kind: 'replayed' }

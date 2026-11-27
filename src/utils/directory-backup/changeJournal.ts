@@ -38,6 +38,11 @@ interface Tracking {
 }
 const contexts = new WeakMap<DatabaseTransaction, Tracking>()
 
+/** 只有成功提交且写过业务表的事务才需要通知备份调度。 */
+export function hasJournalChanges(tx: DatabaseTransaction): boolean {
+  return Boolean(contexts.get(tx)?.revisions.size)
+}
+
 /** 只等待 IDB 请求；读配置、写业务、推进修订和合并脏项处于同一个事务。 */
 export async function prepareJournal(tx: DatabaseTransaction): Promise<DatabaseTransaction> {
   const config = (await tx.objectStore(BACKUP_SETTINGS_STORE).get('config')) as

@@ -331,7 +331,7 @@ async function inspectBackup(file: File) {
 }
 
 export interface PreparedOutfitBackup {
-  readonly apply: () => Promise<OutfitImportResult>
+  readonly apply: () => Promise<Omit<OutfitImportResult, 'library'>>
 }
 
 /** 校验结果绑定同一不可变 File，只保留图片元数据；提交时仍读取当前数据库。 */
@@ -343,7 +343,7 @@ export async function prepareOutfitBackup(file: File): Promise<PreparedOutfitBac
 async function importBackup(
   backupFile: File,
   { manifest, images }: Awaited<ReturnType<typeof inspectBackup>>
-): Promise<OutfitImportResult> {
+): Promise<Omit<OutfitImportResult, 'library'>> {
   let failedCount = 0,
     addedCount = 0,
     duplicateCount = 0,
@@ -468,15 +468,15 @@ async function importBackup(
     },
     IMPORT_CONCURRENCY
   )
-  const library = await readOutfitCollection()
-  return {
-    addedCount,
-    duplicateCount,
-    failedCount,
-    rejectedTagCount,
-    library: { ...library, importedSharedCount: 0, failedCount }
-  }
+  return { addedCount, duplicateCount, failedCount, rejectedTagCount }
 }
 export function importOutfitBackup(backupFile: File): Promise<OutfitImportResult> {
-  return withOutfitImportLock(async () => importBackup(backupFile, await inspectBackup(backupFile)))
+  return withOutfitImportLock(async () => {
+    const counts = await importBackup(backupFile, await inspectBackup(backupFile))
+    const library = await readOutfitCollection()
+    return {
+      ...counts,
+      library: { ...library, importedSharedCount: 0, failedCount: counts.failedCount }
+    }
+  })
 }

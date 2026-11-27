@@ -35,7 +35,6 @@ import {
 import { createResonanceExport, parseResonanceFile } from '../resonance/resonanceFile'
 import { loadResonanceRecords, mergeResonanceRecords } from '../resonance/resonanceStorage'
 import type { ResonanceRecord } from '../resonance/resonanceTypes'
-import { releasePhotoUrls } from '../file-system/photoUrl'
 
 const FORMAT = 'infinity-nikki-all-data-backup'
 const { bytes: MAX_BYTES, manifest: MAX_MANIFEST } = ALL_DATA_BACKUP_LIMITS
@@ -283,7 +282,7 @@ export async function applyAllDataBackup(
   resolveWardrobeRegion?: ResolveWardrobeRegion
 ): Promise<ModuleImportResult[] | null> {
   // Resolve interactive choices before saving any module; cancel leaves all data unchanged.
-  const cameraPlan = planCameraImport(await readCameraFavorites(), plan.camera)
+  const cameraPlan = planCameraImport(await readCameraFavorites(false), plan.camera)
   const choices = cameraPlan.conflicts.length ? await resolveConflict(cameraPlan) : {}
   if (choices === null) return null
   // v1 bundles can omit wardrobe entirely; unrelated local data must not block restoration.
@@ -317,7 +316,6 @@ export async function applyAllDataBackup(
           result.skipped += imported.duplicateCount
           result.failed += imported.failedCount
           result.rejectedTags = (result.rejectedTags ?? 0) + imported.rejectedTagCount
-          releasePhotoUrls(imported.library.outfits)
         }
       } else if (module === 'home') {
         for (const part of plan.home) {

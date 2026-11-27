@@ -51,9 +51,12 @@
     "vite": "^5.4.11",
     "vitest": "^2.1.9",
     "vue-tsc": "^2.1.10",
-    "wrangler": "4.149.0"
+    "wrangler": "4.168.0"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
+  },
+  "overrides": {
+    "workerd": "1.20261127.1"
   }
 }

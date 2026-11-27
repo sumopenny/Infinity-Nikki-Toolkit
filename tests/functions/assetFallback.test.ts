@@ -1,3 +1,4 @@
+import { compatibilityDate } from '../fixtures/runtimeConfig'
 import { mkdtemp, mkdir, copyFile, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
@@ -34,7 +35,7 @@ beforeAll(async () => {
       name: 'pages-integration-test',
       modules: true,
       script: pagesBundle(),
-      compatibilityDate: '2026-09-19',
+      compatibilityDate,
       d1Databases: ['DB', 'RESONANCE_DB', 'ERROR_DB'],
       bindings: {
         ERROR_REPORTING_ENABLED: 'true',

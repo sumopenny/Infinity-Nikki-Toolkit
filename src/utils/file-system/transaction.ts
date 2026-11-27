@@ -3,6 +3,7 @@ import { annotateDiagnosticError } from '../errorReporting/errorReporter'
 import { closeDatabase, getDatabase, isDatabaseConnectionLost, type DatabaseMode } from './database'
 import {
   announceBackupChange,
+  hasJournalChanges,
   changedModules,
   journalStores,
   needsJournal,
@@ -68,7 +69,8 @@ async function execute<T, M extends DatabaseMode>(
           : tx
       )
       await done
-      if (tracked) announceBackupChange()
+      if (tracked && hasJournalChanges(tx as DatabaseTransaction<'readwrite'>))
+        announceBackupChange()
       return value
     } catch (error) {
       try {

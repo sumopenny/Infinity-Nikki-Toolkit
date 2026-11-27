@@ -1,3 +1,4 @@
+import { compatibilityDate } from './fixtures/runtimeConfig'
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { build } from 'esbuild'
@@ -60,7 +61,7 @@ beforeAll(async () => {
     convertV4MiniflareOptions({
       modules: true,
       script: bundle.outputFiles[0].text,
-      compatibilityDate: '2026-09-19',
+      compatibilityDate,
       d1Databases: ['RESONANCE_DB']
     })
   )

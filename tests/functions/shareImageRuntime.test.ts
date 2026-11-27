@@ -1,3 +1,4 @@
+import { compatibilityDate } from '../fixtures/runtimeConfig'
 import { pagesBundle } from '../fixtures/pagesBundle'
 import { Miniflare } from 'miniflare'
 import { expect, it } from 'vitest'
@@ -23,7 +24,7 @@ it('serves share images in real workerd and rejects upstream redirects', async (
       {
         config: {
           name: 'share-image-runtime-test',
-          compatibilityDate: '2026-09-19',
+          compatibilityDate,
           manifest: {
             mainModule: 'index.js',
             modules: { 'index.js': { type: 'esm', contents: script } }

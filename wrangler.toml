@@ -1,6 +1,6 @@
 name = "nikkicube"
 pages_build_output_dir = "./dist"
-compatibility_date = "2026-09-19"
+compatibility_date = "2026-11-27"
 
 # Reuse existing production databases; deployment never runs migrations.
 [[d1_databases]]

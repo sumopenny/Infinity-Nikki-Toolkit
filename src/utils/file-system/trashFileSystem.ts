@@ -11,6 +11,7 @@ import {
 import { formatFileSize, releasePhotoUrl } from './photoUrl'
 import { runWithConcurrency } from '../concurrency'
 import { withPhotoWriteLock } from './photoWriteLock'
+import { sha256Hex } from '../sha256'
 import {
   readAlbumMetadata,
   readTrashNotes,
@@ -136,6 +137,13 @@ export async function movePhotosToRecentlyDeleted(
   photos: PhotoItem[],
   favoriteIds: Set<string>
 ): Promise<MoveToTrashResult> {
+  return withPhotoWriteLock(() => moveToTrash(photos, favoriteIds))
+}
+
+async function moveToTrash(
+  photos: PhotoItem[],
+  favoriteIds: Set<string>
+): Promise<MoveToTrashResult> {
   const succeeded: PhotoItem[] = []
   const movedPhotos: RecentlyDeletedPhoto[] = []
   const failedNames: string[] = []
@@ -174,6 +182,7 @@ export async function movePhotosToRecentlyDeleted(
       let stage = 'read-source'
       try {
         const sourceFile = await photo.fileHandle.getFile()
+        const sourceHash = await sha256Hex(await sourceFile.arrayBuffer())
         stage = 'create-trash-file'
         const targetHandle = await trashDirectoryHandle.getFileHandle(trashName, { create: true })
         let note = photo.note ?? ''
@@ -186,7 +195,18 @@ export async function movePhotosToRecentlyDeleted(
             photo.name,
             `trash/${trashName}`,
             '',
-            () => {
+            async () => {
+              stage = 'verify-source'
+              const currentHandle = await photo.directoryHandle.getFileHandle(photo.name)
+              const current = await currentHandle.getFile()
+              if (
+                (currentHandle.isSameEntry &&
+                  !(await currentHandle.isSameEntry(photo.fileHandle))) ||
+                current.size !== sourceFile.size ||
+                current.lastModified !== sourceFile.lastModified ||
+                (await sha256Hex(await current.arrayBuffer())) !== sourceHash
+              )
+                throw new Error('Photo changed while moving to trash')
               stage = 'remove-source'
               return photo.directoryHandle.removeEntry(photo.name)
             },
@@ -392,6 +412,12 @@ async function restorePhotos(
  * 返回：成功删除的回收项和失败文件名。
  */
 export async function permanentlyDeleteRecentlyDeleted(
+  photos: RecentlyDeletedPhoto[]
+): Promise<TrashOperationResult<RecentlyDeletedPhoto>> {
+  return withPhotoWriteLock(() => permanentlyDeletePhotos(photos))
+}
+
+async function permanentlyDeletePhotos(
   photos: RecentlyDeletedPhoto[]
 ): Promise<TrashOperationResult<RecentlyDeletedPhoto>> {
   const succeeded: RecentlyDeletedPhoto[] = []

@@ -74,8 +74,8 @@ describe('diagnostic protocol without a database', () => {
     expect(validateErrorPayload(event).pageOrigin).toBeUndefined()
     expect(validateErrorPayload({ ...event, pageOrigin: 'http://localhost:5173' }).pageOrigin)
       .toBe('http://localhost:5173')
-    expect(validateErrorPayload({ ...event, pageOrigin: 'https://infinity-nikki-album-manager.pages.dev' }).pageOrigin)
-      .toBe('https://infinity-nikki-album-manager.pages.dev')
+    expect(validateErrorPayload({ ...event, pageOrigin: 'https://nikkicube.pages.dev' }).pageOrigin)
+      .toBe('https://nikkicube.pages.dev')
     for (const origin of ['https://example.com/private?token=secret', 'https://user:pass@example.com', 'file:///tmp', 'http://example.com:80/', '']) {
       expect(() => validateErrorPayload({ ...event, pageOrigin: origin })).toThrow('INVALID_REPORT')
     }
