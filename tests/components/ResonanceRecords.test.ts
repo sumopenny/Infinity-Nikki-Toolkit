@@ -134,6 +134,9 @@ it('shows a screenshot only for an empty resonance library, not a rarity miss', 
   const wrapper = mount(ResonanceRecords)
   wrappers.push(wrapper)
   await vi.waitFor(() => expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(true))
+  expect(
+    wrapper.findAllComponents(MobileEmptyScreenshot).map((image) => image.props('page'))
+  ).toEqual(['resonance', 'wardrobe'])
   await saveResonanceRecords([savedRecord])
   await (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
   expect(wrapper.findComponent(MobileEmptyScreenshot).exists()).toBe(false)

@@ -460,6 +460,7 @@ defineExpose({ reload })
         <h3>{{ t.emptyTitle }}</h3>
         <p>{{ t.emptyDescription }}</p>
         <MobileEmptyScreenshot page="resonance" :language="language" />
+        <MobileEmptyScreenshot page="wardrobe" :language="language" />
       </div>
 
       <div v-else-if="!sortedRecords.length" class="resonance-empty">

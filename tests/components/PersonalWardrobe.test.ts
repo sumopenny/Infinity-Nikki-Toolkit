@@ -446,10 +446,12 @@ describe('personal wardrobe interactions', () => {
 
     await storage.updateWardrobe(() => storage.emptyWardrobe())
     await reload()
-    expect(wrapper.find('.wardrobe-initial').exists()).toBe(true)
+    expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+    expect(wrapper.get('.wardrobe-card-status').text()).toContain('未知')
+    expect(wrapper.get('.wardrobe-mobile-summary strong').text()).toBe('—')
     expect(
       wrapper.get('.wardrobe-mobile-filter-bar .collection-tag-select').attributes('disabled')
-    ).toBeDefined()
+    ).toBeUndefined()
     const importButton = document.querySelector<HTMLButtonElement>(
       '#wardrobe-filter-actions .collection-icon-actions > .primary-button'
     )
@@ -1013,18 +1015,66 @@ it('restores automatically changed ownership but preserves a manual choice', asy
   expect(buttonFilter('ownership').textContent).toContain('全部')
 })
 
-it('shows an imported empty wardrobe and returns to the initial view after clearing', async () => {
+it('retries a failed catalog load without importing personal data', async () => {
+  await storage.updateWardrobe(() => storage.emptyWardrobe())
+  await choose('ownership', '全部')
+  vi.spyOn(catalogModule, 'loadWardrobeCatalog').mockRejectedValueOnce(new Error('catalog failed'))
+  await reload()
+  expect(wrapper.text()).toContain('衣橱加载失败或超时')
+  await new DOMWrapper(button('重新加载')).trigger('click')
+  await vi.waitFor(() =>
+    expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
+  )
+  expect(wrapper.get('.wardrobe-card-status').text()).toContain('未知')
+  expect((await storage.loadWardrobe()).imported).toBe(false)
+})
+
+it('keeps browsing available before import and after clearing, and distinguishes an empty import', async () => {
+  await choose('ownership', '全部')
+  await wrapper.setProps({ searchQuery: '10347' })
+  await storage.updateWardrobe(() => storage.emptyWardrobe())
+  const read = vi.spyOn(storage, 'loadWardrobe')
+  const catalog = vi.spyOn(catalogModule, 'loadWardrobeCatalog')
+  await reload()
+  expect(read).toHaveBeenCalledOnce()
+  expect(catalog).toHaveBeenCalledOnce()
+  expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
+  expect(wrapper.findAll('.wardrobe-card').length).toBeGreaterThan(0)
+  expect(
+    wrapper.findAll('.wardrobe-card-status').every((node) => node.text().includes('未知'))
+  ).toBe(true)
+  expect(wrapper.find('progress').exists()).toBe(false)
+  expect(button('清空本地记录')?.disabled).toBe(true)
+  await choose('ownership', '未知')
+  expect(wrapper.findAll('.wardrobe-card').length).toBeGreaterThan(0)
+  const dialog = await openSuit('10347')
+  expect(dialog.text()).toContain('未知')
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  await choose('ownership', '未拥有')
+  expect(wrapper.findAll('.wardrobe-card')).toHaveLength(0)
+
   await storage.updateWardrobe(() => ({ ...storage.emptyWardrobe(), imported: true }))
   await reload()
-  expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
-  expect(wrapper.find('.wardrobe-empty').exists()).toBe(true)
+  expect(wrapper.get('.wardrobe-card-status').text()).toContain('未拥有')
+  expect(wrapper.find('progress').exists()).toBe(true)
+  await choose('ownership', '未知')
+  expect(wrapper.findAll('.wardrobe-card')).toHaveLength(0)
+
   await storage.updateWardrobe(() => storage.emptyWardrobe())
   await reload()
-  expect(wrapper.find('.wardrobe-initial').exists()).toBe(true)
+  expect(wrapper.get('.wardrobe-card-status').text()).toContain('未知')
+  await choose('ownership', '全部')
+  button('部件').click()
+  await flushPromises()
+  expect(wrapper.findAll('.wardrobe-card').length).toBeGreaterThan(0)
+  expect(
+    wrapper.findAll('.wardrobe-card-status').every((node) => node.text().includes('未知'))
+  ).toBe(true)
 })
 
 it.each([false, true])(
-  'checks the saved snapshot before showing skeletons, imported=%s',
+  'uses the same skeleton and catalog load regardless of import, imported=%s',
   async (imported) => {
     wrapper.unmount()
     vi.useFakeTimers()
@@ -1041,28 +1091,15 @@ it.each([false, true])(
       global: { provide: { [archiveMotionDeadlineKey as symbol]: ref(Date.now() + 280) } }
     })
     expect(read).toHaveBeenCalledOnce()
-    expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
-    expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
+    expect(wrapper.find('[data-skeleton-card]').exists()).toBe(true)
     finish({ ...storage.emptyWardrobe(), imported })
     await flushPromises()
     expect(catalog).not.toHaveBeenCalled()
-    if (!imported) {
-      expect(wrapper.find('.wardrobe-initial').exists()).toBe(true)
-      expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
-    } else {
-      expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
-      expect(wrapper.find('[data-skeleton-card]').exists()).toBe(true)
-    }
+    expect(wrapper.find('[data-skeleton-card]').exists()).toBe(true)
     await vi.advanceTimersByTimeAsync(280)
     await flushPromises()
     expect(read).toHaveBeenCalledOnce()
-    if (!imported) {
-      expect(catalog).not.toHaveBeenCalled()
-      expect(wrapper.find('[data-skeleton-card]').exists()).toBe(false)
-    } else {
-      expect(catalog).toHaveBeenCalledOnce()
-      expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
-      expect(wrapper.find('.wardrobe-initial').exists()).toBe(false)
-    }
+    expect(catalog).toHaveBeenCalledOnce()
+    expect(wrapper.find('.content-loaded-layer .wardrobe-grid').exists()).toBe(true)
   }
 )

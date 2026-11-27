@@ -81,7 +81,7 @@ export function useWardrobeFilters(tab: Ref<WardrobeKind>, language: Ref<Languag
             ? [{ value: 'partial', label: text('收集中', 'Partial') }]
             : []),
           { value: 'none', label: text('未拥有', 'Not owned') },
-          ...(tab.value === 'item' ? [{ value: 'unknown', label: text('未知', 'Unknown') }] : [])
+          { value: 'unknown', label: text('未知', 'Unknown') }
         ]
       },
       {

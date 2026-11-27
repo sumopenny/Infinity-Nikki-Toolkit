@@ -242,7 +242,7 @@ Open Resonance records, Personal wardrobe or Makeup catalog from Nikki Archive i
 
 - **Personal wardrobe:** browse original, recolor, and evolution versions. Switch between outfits and pieces, search by name or ID, and filter by rarity, version, item category, or ownership to view details.
 - Use **Show evolution forms** to list all forms or group each family into one card. Your preference is saved. Expand a grouped card to choose a form, or switch forms in outfit and piece details. Desktop outfit details also show source labels.
-- Import a Whim-Log notebook from China or any global server, or wardrobe JSON, and export a separate JSON backup. One notebook preview lets you choose both resonance and wardrobe data. Clearing wardrobe records does not affect resonance. Wardrobe and resonance share an account and one sync dialog, allowing selected modules to upload, download or delete together. The makeup catalog can be browsed without imported data; its static reference images are not part of wardrobe sync saves.
+- Import a Whim-Log notebook from China or any global server, or wardrobe JSON, and export a separate JSON backup. One notebook preview lets you choose both resonance and wardrobe data. Clearing wardrobe records does not affect resonance. Wardrobe and resonance share an account and one sync dialog, allowing selected modules to upload, download or delete together. Wardrobe and makeup catalogs can be browsed without imported data; wardrobe collection status stays unknown until data is imported. Static catalog images are not part of wardrobe sync saves.
 - Check the replacement rules in [Backup and Migration](#backup-and-migration) before importing.
 
 ### Evolution animations

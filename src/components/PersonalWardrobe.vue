@@ -25,7 +25,6 @@ import WardrobeFormPopover from './WardrobeFormPopover.vue'
 import CollectionFilterBar from './CollectionFilterBar.vue'
 import AdaptiveFilterPanel from './AdaptiveFilterPanel.vue'
 import DataImportWindow from './DataImportWindow.vue'
-import MobileEmptyScreenshot from './MobileEmptyScreenshot.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import WardrobeItemDialog from './WardrobeItemDialog.vue'
 import WardrobeOutfitDialog from './WardrobeOutfitDialog.vue'
@@ -121,7 +120,6 @@ const catalog = computed(() =>
     ? wardrobeCatalogForRegion(fullCatalog.value, wardrobeRegionScope(snapshot.value))
     : null
 )
-const snapshotRead = ref(false)
 let finishArchiveMotion!: () => void
 const archiveReady = new Promise<void>((resolve) => {
   finishArchiveMotion = resolve
@@ -385,7 +383,6 @@ async function reload(): Promise<boolean> {
   const version = ++loadVersion
   cancelLoad?.()
   loaded.value = false
-  snapshotRead.value = false
   loadFailed.value = false
   const loadStarted = performance.now()
   let stageStarted = loadStarted
@@ -408,13 +405,10 @@ async function reload(): Promise<boolean> {
     }
   })
   try {
-    // 先读取本地存档；未导入时无需等待图鉴或工具栏动画。
+    // 图鉴始终可浏览；个人存档仅决定收集状态和区服。
     const prepare = async () => {
       const saved = await loadWardrobe(advance)
       if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
-      snapshot.value = saved
-      snapshotRead.value = true
-      if (!hasWardrobeSnapshot(saved)) return { data: null, saved }
       advance('wait-animation')
       await archiveReady
       if (version !== loadVersion) throw new Error('WARDROBE_LOAD_CANCELLED')
@@ -523,8 +517,8 @@ const importText = computed(() => ({
 const showClearConfirm = ref(false),
   clearBase = ref('')
 const hasRecords = computed(() => hasWardrobeSnapshot(snapshot.value))
-watch([loaded, hasRecords], ([ready, hasData]) => {
-  if (!ready || !hasData) mobileFiltersOpen.value = false
+watch(loaded, (ready) => {
+  if (!ready) mobileFiltersOpen.value = false
 })
 async function requestClear() {
   if (blocked.value || !hasRecords.value) return
@@ -559,7 +553,7 @@ async function clearRecords() {
 
 <template>
   <section class="wardrobe-page" aria-labelledby="wardrobe-title">
-    <header class="gallery-header wardrobe-header" :class="{ 'is-empty': !hasRecords }">
+    <header class="gallery-header wardrobe-header">
       <div class="wardrobe-heading">
         <div class="wardrobe-title-row">
           <h2 id="wardrobe-title">{{ text('个人衣橱', 'Personal wardrobe') }}</h2>
@@ -591,7 +585,7 @@ async function clearRecords() {
         @export="exportBackup"
       >
         <template #before-cloud>
-          <label v-if="!compact && loaded && hasRecords" class="wardrobe-evolution-switch">
+          <label v-if="!compact && loaded" class="wardrobe-evolution-switch">
             <span>{{ text('显示进化形态', 'Show evolution forms') }}</span>
             <input v-model="showEvolutions" type="checkbox" role="switch" />
           </label>
@@ -613,9 +607,9 @@ async function clearRecords() {
       actions-id="wardrobe-filter-actions"
       :entries="mobileFilterEntries"
       :active="mobileFilterActive"
-      :count="hasRecords ? filtered.length : 0"
+      :count="filtered.length"
       :language="language"
-      :disabled="blocked || !hasRecords"
+      :disabled="blocked"
       :all-label="text('全部筛选', 'All filters')"
       :select-label="text('筛选衣橱：', 'Filter wardrobe: ')"
       @open="mobileFiltersOpen = true"
@@ -626,7 +620,9 @@ async function clearRecords() {
       <span class="wardrobe-mobile-summary">
         {{ tab === 'outfit' ? text('已集齐', 'Complete') : text('已拥有', 'Owned') }}
         <strong>{{
-          loaded ? (tab === 'outfit' ? stats.outfits : stats.items).toLocaleString(language) : '—'
+          loaded && hasRecords
+            ? (tab === 'outfit' ? stats.outfits : stats.items).toLocaleString(language)
+            : '—'
         }}</strong>
         {{ tab === 'outfit' ? text('套', 'outfits') : text('件', 'pieces') }}
       </span>
@@ -648,7 +644,7 @@ async function clearRecords() {
       >
     </Teleport>
     <AdaptiveFilterPanel
-      v-if="compact && loaded && hasRecords"
+      v-if="compact && loaded"
       :compact="compact"
       top-aligned
       :open="mobileFiltersOpen"
@@ -664,11 +660,7 @@ async function clearRecords() {
       :label="text('正在加载衣橱…', 'Loading wardrobe…')"
     >
       <template #skeleton>
-        <div
-          v-if="snapshotRead && hasRecords"
-          class="wardrobe-grid"
-          :class="{ 'is-pieces': tab === 'item' }"
-        >
+        <div class="wardrobe-grid" :class="{ 'is-pieces': tab === 'item' }">
           <article v-for="index in 6" :key="index" class="wardrobe-card" data-skeleton-card>
             <div class="wardrobe-cover" data-skeleton-block></div>
             <div class="wardrobe-card-body">
@@ -692,17 +684,7 @@ async function clearRecords() {
           {{ text('重新加载', 'Retry') }}
         </button>
       </div>
-      <div v-if="loaded && !hasRecords" class="wardrobe-initial">
-        <h3>{{ text('还没有衣橱数据', 'No wardrobe data yet') }}</h3>
-        <p>{{
-          text(
-            '点击右上角“导入数据”，查看你的套装与部件的收集情况。',
-            'Use Import data in the upper right to import your notebook and view your outfit and item collection.'
-          )
-        }}</p>
-        <MobileEmptyScreenshot page="wardrobe" :language="language" />
-      </div>
-      <template v-if="loaded && hasRecords">
+      <template v-if="loaded">
         <Teleport
           :to="compact ? '#wardrobe-mobile-filter-target' : sidebarTarget || 'body'"
           :disabled="!compact && !sidebarTarget"
@@ -817,7 +799,7 @@ async function clearRecords() {
           </div>
         </Teleport>
         <aside
-          v-if="ownershipNoticeVisible"
+          v-if="hasRecords && ownershipNoticeVisible"
           ref="ownershipNotice"
           class="wardrobe-collection-notice"
           role="note"
@@ -910,7 +892,7 @@ async function clearRecords() {
               <div class="wardrobe-card-status" data-load-block>
                 <span :class="complete(entry) ? 'wardrobe-owned' : ''">
                   {{ status(entry) }}
-                  <small v-if="entry.kind === 'outfit'"
+                  <small v-if="hasRecords && entry.kind === 'outfit'"
                     >{{ ownedCount(entry) }}/{{ entry.parts.length }}</small
                   >
                 </span>
@@ -918,7 +900,7 @@ async function clearRecords() {
               </div>
               <progress
                 data-load-block
-                v-if="entry.kind === 'outfit'"
+                v-if="hasRecords && entry.kind === 'outfit'"
                 :value="ownedCount(entry)"
                 :max="entry.parts.length || 1"
                 :aria-label="text('收集进度', 'Collection progress')"
@@ -1229,25 +1211,6 @@ async function clearRecords() {
   background: var(--line);
   pointer-events: none;
 }
-.wardrobe-header.is-empty {
-  margin-bottom: 18px;
-}
-.wardrobe-initial {
-  display: grid;
-  min-height: 280px;
-  place-items: center;
-  align-content: center;
-  gap: 10px;
-  padding: 32px;
-  border: 1px dashed var(--line);
-  border-radius: var(--ui-radius);
-  color: var(--muted);
-  text-align: center;
-}
-.wardrobe-initial h3,
-.wardrobe-initial p {
-  margin: 0;
-}
 .wardrobe-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
@@ -1432,8 +1395,7 @@ progress::-webkit-progress-value {
 }
 @media (max-width: 899px) {
   /* 复用其他模块的手机筛选栏及操作按钮；桌面标题和侧栏保持原样。 */
-  .wardrobe-header,
-  .wardrobe-header.is-empty {
+  .wardrobe-header {
     display: none;
   }
   /* 白底切换按钮与主标签内的选中项等高、同圆角。 */
