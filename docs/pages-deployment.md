@@ -6,7 +6,7 @@
 
 连接本仓库，生产分支选 `main`，根目录留空，框架选 Vue 或无，构建命令 `npm run build:cloudflare`，输出目录 `dist`。Pages 不填写 `wrangler deploy` 部署命令。Node 版本读取仓库 `.node-version`，无需重复设置。
 
-生产构建变量只需 `VITE_ERROR_REPORTING_ENABLED=true`。Pages 提供 `CF_PAGES_BRANCH` 和 `CF_PAGES_COMMIT_SHA`，代码自动识别 main 为 production；已设置 `ERROR_DEPLOYMENT_ENV=production` 也可保留。不要把 production 构建变量复制到预览环境。前端资源保持同源 `/assets/`。
+`VITE_ERROR_REPORTING_ENABLED=true` 已写入 `wrangler.toml` 的 `[vars]`，由 Pages 在构建时读取，不需要在控制台重复配置普通变量。Pages 提供 `CF_PAGES_BRANCH` 和 `CF_PAGES_COMMIT_SHA`；运行时生产标记也由仓库统一维护。控制台只需配置下面的 Secret。前端资源保持同源 `/assets/`。
 
 生产绑定和运行时普通变量以 `wrangler.toml` 为准：
 
@@ -24,6 +24,8 @@
 
 ## 路由与本地验证
 
+构建自动生成 `dist/_routes.json`，实际存在的非 HTML 静态文件直接由 Pages 返回，不调用 Functions；API、页面和缺失资源继续进入 middleware。规则总数最多 100 条，超限或路径过长的文件继续走 middleware，不扩大通配符。无需手动维护资源清单。
+
 Pages 直接按 `functions/` 文件路由，不再维护单独的 Workers 分发入口。根 middleware 和 `public/404.html` 保证真实文件正常返回、缺失资源返回 no-store 404、普通页面 GET/HEAD 回退首页。未知 API 返回 JSON 404，错误方法返回 405，不会返回静态文件或首页。原有超时、缓存失败降级、认证和云同步冲突处理保留。
 
 - `npm ci` 安装依赖，`npm run build` 检查类型并构建。
@@ -39,7 +41,7 @@ Pages 直接按 `functions/` 文件路由，不再维护单独的 Workers 分发
 
 Pages 没有 Workers scheduled 入口。`.github/workflows/error-retention.yml` 每天 UTC 19:25（北京时间次日 03:25）复用管理员脚本清理过期诊断，也支持手动运行。GitHub 定时任务可能延迟；仓库默认分支须为 main，Actions 须启用。
 
-在仓库 Actions secrets 中配置 `CLOUDFLARE_API_TOKEN`（对应账户的 D1 编辑权限）和 `CLOUDFLARE_ACCOUNT_ID`。工作流只操作 `wxnn-errors`。保留事件 30 天、分组 180 天，批量上限和失败中断逻辑不变。未配置 secrets 或未成功运行时，不能认为自动清理已生效。
+在仓库 Actions secrets 中配置 `ERROR_DIAGNOSTICS_CF_API_TOKEN`（对应账户的 D1 编辑权限）和 `CLOUDFLARE_ACCOUNT_ID`。在 Actions 的仓库 Variables 中设置 `ERROR_DIAGNOSTICS_MAINTENANCE=true` 才启用任务；删除该变量或设为 false 可暂停。工作流仅在 main 执行，只操作 `wxnn-errors`。保留事件 30 天、分组 180 天，批量上限和失败中断逻辑不变。未配置 secrets 或未成功运行时，不能认为自动清理已生效。
 
 管理员可运行 `npm run errors:prune` 只读预览，明确需要删除过期诊断时运行 `npm run errors:prune -- --apply`。迁移验证不执行这些远程命令。
 

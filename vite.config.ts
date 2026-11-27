@@ -5,6 +5,7 @@ import {
 import { onRequestGet as shareImageRequest } from './functions/api/share-image'
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { pagesRoutes } from './scripts/pages-routes'
 import { assertDiagnosticsBuild } from './scripts/error-build-policy.mjs'
 import { errorBuildInfo } from './scripts/error-build'
 import { resonanceCloudProxy } from './scripts/resonance-cloud-proxy'
@@ -137,7 +138,7 @@ export default defineConfig(({ mode, command }) => {
   }
 
   return {
-    plugins: [vue(), localPearpalApi(), pearpalUserscript()],
+    plugins: [vue(), localPearpalApi(), pearpalUserscript(), pagesRoutes()],
     define: { __ERROR_BUILD__: JSON.stringify(diagnosticBuild) },
     build: { sourcemap: false },
     server: {

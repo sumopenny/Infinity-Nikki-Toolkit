@@ -24,6 +24,8 @@ migrations_dir = "migrations-errors"
 # 开启步骤及密钥见 docs/pages-deployment.md。
 
 [vars]
+# Pages 构建从此处读取普通变量，前端诊断开关与运行时配置一起维护。
+VITE_ERROR_REPORTING_ENABLED = "true"
 ERROR_REPORTING_ENABLED = "true"
 ERROR_MAX_DAILY_EVENTS = "1000"
 ERROR_DEPLOYMENT_ENV = "production"

@@ -4,7 +4,7 @@
 
 新版本发布后，旧页面请求已不存在的哈希资源时，通过现有资源错误提示和确认刷新恢复；不保证旧版本资源永久可用。
 
-Pages 使用原生 Functions 路由和根 middleware；public/404.html 关闭隐式 SPA 回退，缺失资源返回 no-store 404，普通页面 GET/HEAD 才回退 /index.html。未知 API 和错误方法不会返回首页。CORS、nosniff 和用户脚本类型由 public/_headers 设置。详见 [Pages 部署](pages-deployment.md)。
+构建从实际产物生成 _routes.json，精确排除现存非 HTML 静态文件，正常资源不调用 Functions；缺失资源与 API 保留原生 Functions 路由和根 middleware。public/404.html 关闭隐式 SPA 回退，缺失资源返回 no-store 404，普通页面 GET/HEAD 才内部读取根路径首页，避免 /index.html 的规范化跳转改变深链 URL。未知 API 和错误方法不会返回首页。CORS、nosniff 和用户脚本类型由 public/_headers 设置。详见 [Pages 部署](pages-deployment.md)。
 
 目录资源使用带哈希的 JSON 文件和可取消的 fetch。每次请求覆盖响应及正文的 12 秒期限；失败任务释放，重试新建请求，成功结果共享。衣橱保留 15 秒整体期限，并在实际执行位置记录 read-storage、wait-animation、load-catalog、resolve-suits、write-storage 的累计耗时。超时后旧调用失效，晚到结果不能覆盖当前视图；不会清空用户存档。
 
