@@ -25,7 +25,7 @@ it.each(['myl.nuanpaper.com', 'pearpal.infoldgames.com'])(
     vi.stubGlobal('fetch', fetchMock)
     run()
     run()
-    expect(document.querySelectorAll('button')).toHaveLength(1)
+    expect(document.querySelectorAll('button')).toHaveLength(2)
     expect(fetchMock).not.toHaveBeenCalled()
     expect(writeText).not.toHaveBeenCalled()
     document.querySelector('button')!.click()
@@ -199,6 +199,69 @@ it.each(['', 'momoToken=t', 'momoNid=i'])(
     expect(fetchMock).not.toHaveBeenCalled()
     expect(document.querySelector('button')!.textContent).toBe('请先登录并确认角色')
     expect(document.querySelector('button')!.disabled).toBe(false)
+  }
+)
+
+it.each(['myl.nuanpaper.com', 'pearpal.infoldgames.com'])(
+  'clears only login data across cookie scopes before reloading on %s',
+  (hostname) => {
+    const reload = vi.fn()
+    vi.stubGlobal('location', { hostname, pathname: '/en/home', reload })
+    vi.stubGlobal('navigator', { language: 'zh-CN' })
+    const alert = vi.fn()
+    vi.stubGlobal('alert', alert)
+    const keys = ['momoToken', 'momoNid', 'TDS_momoToken', 'TDS_momoNid']
+    const local = new Map([...keys.map((key) => [key, 'old'] as const), ['theme', 'dark']])
+    const session = new Map(local)
+    vi.stubGlobal('localStorage', { removeItem: (key: string) => local.delete(key) })
+    vi.stubGlobal('sessionStorage', { removeItem: (key: string) => session.delete(key) })
+    const cookie = vi.spyOn(document, 'cookie', 'get').mockReturnValue('theme=dark')
+    const writes = vi.spyOn(document, 'cookie', 'set').mockImplementation(() => {})
+    run()
+    const clear = document.getElementById('nikki-pearpal-clear-login-button')!
+    expect(clear.textContent).toBe('登录信息过期时点我清理登录信息')
+    expect(writes).not.toHaveBeenCalled()
+    document.body.insertAdjacentHTML('beforeend', '<div id="nikki-pearpal-cookie-result"></div>')
+    clear.click()
+    expect(local).toEqual(new Map([['theme', 'dark']]))
+    expect(session).toEqual(local)
+    for (const key of keys) {
+      for (const path of ['/', '/en', '/en/', '/en/home', '/en/home/']) {
+        for (const domain of ['', hostname, hostname.split('.').slice(1).join('.')]) {
+          expect(writes).toHaveBeenCalledWith(
+            key + '=; Max-Age=0; Path=' + path + (domain ? '; Domain=' + domain : '')
+          )
+        }
+      }
+    }
+    expect(cookie).toHaveBeenCalled()
+    expect(document.getElementById('nikki-pearpal-cookie-result')).toBeNull()
+    expect(reload).toHaveBeenCalledOnce()
+    expect(alert).not.toHaveBeenCalled()
+  }
+)
+
+it.each(['storage blocked', 'cookie remains'])(
+  'allows retry without reloading if %s',
+  (failure) => {
+    const reload = vi.fn()
+    const alert = vi.fn()
+    vi.stubGlobal('location', { hostname: 'myl.nuanpaper.com', pathname: '/home', reload })
+    vi.stubGlobal('navigator', { language: 'en' })
+    vi.stubGlobal('alert', alert)
+    const removeItem = vi.fn(() => {
+      if (failure === 'storage blocked') throw new Error('blocked')
+    })
+    vi.stubGlobal('localStorage', { removeItem })
+    vi.stubGlobal('sessionStorage', { removeItem })
+    vi.spyOn(document, 'cookie', 'set').mockImplementation(() => {})
+    vi.spyOn(document, 'cookie', 'get').mockReturnValue('momoToken=old')
+    run()
+    const clear = document.getElementById('nikki-pearpal-clear-login-button') as HTMLButtonElement
+    clear.click()
+    expect(reload).not.toHaveBeenCalled()
+    expect(alert).toHaveBeenCalledWith(expect.stringContaining('Could not fully clear'))
+    expect(clear.disabled).toBe(false)
   }
 )
 

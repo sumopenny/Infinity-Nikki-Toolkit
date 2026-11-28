@@ -514,6 +514,13 @@ onBeforeUnmount(() => {
                   />
                 </button>
                 <span v-else class="outfit-parse-item-icon is-missing" aria-hidden="true">?</span>
+                <span
+                  v-if="decoded?.customizedItemIds?.includes(item.id)"
+                  class="outfit-parse-custom-badge"
+                  :title="language === 'zh' ? '饰品自定义' : 'Customized accessory'"
+                  :aria-label="language === 'zh' ? '饰品自定义' : 'Customized accessory'"
+                  >自</span
+                >
                 <p class="outfit-parse-item-name">{{ item.name }}</p>
                 <div v-if="item.dyeColors.length" class="outfit-parse-dyes">
                   <span
@@ -756,6 +763,32 @@ onBeforeUnmount(() => {
 
 <style scoped src="../styles/wardrobe-detail-tokens.css"></style>
 <style scoped>
+.outfit-parse-item {
+  position: relative;
+}
+.outfit-parse-custom-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border: 1px solid #d9cbc5;
+  border-radius: 50%;
+  background: #fff;
+  color: #59514d;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+  transition: transform 160ms ease;
+}
+.outfit-parse-item-button:hover ~ .outfit-parse-custom-badge {
+  transform: translateY(-1px);
+}
 .outfit-parse-panel > header {
   gap: 10px;
 }

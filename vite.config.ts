@@ -10,7 +10,6 @@ import { assertDiagnosticsBuild } from './scripts/error-build-policy.mjs'
 import { errorBuildInfo } from './scripts/error-build'
 import { resonanceCloudProxy } from './scripts/resonance-cloud-proxy'
 import { onRequestPost as forwardPearpalRequest } from './functions/api/resonance/pearpal'
-import { onRequest as clearSiteDataRequest } from './functions/api/clear-site-data'
 
 /** 开发与生产发布同一份可安装脚本，直接返回 JS，避免落入 SPA 页面。 */
 function pearpalUserscript(): Plugin {
@@ -37,21 +36,6 @@ function pearpalUserscript(): Plugin {
 /** 本地开发复用图片代理，并为退休的手账代理保留明确的 410 响应。 */
 function localPearpalApi(): Plugin {
   const configure = (server: Pick<ViteDevServer, 'middlewares'>) => {
-    // 本地清理始终留在本地，即使启用了远程 API 代理。
-    server.middlewares.use('/api/clear-site-data', (req, res) => {
-      const response = clearSiteDataRequest({
-        request: new Request(`http://${req.headers.host}/api/clear-site-data`, {
-          method: req.method,
-          headers: {
-            Origin: req.headers.origin ?? '',
-            'X-Site-Reset': String(req.headers['x-site-reset'] ?? '')
-          }
-        })
-      })
-      res.statusCode = response.status
-      response.headers.forEach((value, key) => res.setHeader(key, value))
-      res.end()
-    })
     server.middlewares.use('/api/share-image', async (req, res) => {
       if (req.method !== 'GET') {
         res.statusCode = 405

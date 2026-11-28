@@ -1298,15 +1298,6 @@ describe('App lifecycle coordination', () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const reload = vi.fn()
     vi.stubGlobal('location', { reload })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(null, {
-          status: 204,
-          headers: { 'Clear-Site-Data': '"cache", "cookies", "storage"' }
-        })
-      )
-    )
     sessionStorage.setItem('reset-session', 'saved')
     const favoriteKey = 'infinity-nikki-favorite-photo-ids'
     localStorage.setItem(favoriteKey, JSON.stringify(['original-album/photo.jpg']))
@@ -1363,9 +1354,7 @@ describe('App lifecycle coordination', () => {
       expect(localStorage.length).toBe(0)
       expect(sessionStorage.length).toBe(0)
       expect(reload).toHaveBeenCalledOnce()
-      expect(await runStoreRequest('local-state', 'readonly', (store) => store.count())).toBe(
-        0
-      )
+      expect(await runStoreRequest('local-state', 'readonly', (store) => store.count())).toBe(0)
       for (const [storeName, key] of preserved)
         expect(
           await runStoreRequest(storeName, 'readonly', (store) => store.get(key ?? 'kept'))
@@ -1382,19 +1371,8 @@ describe('App lifecycle coordination', () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const reload = vi.fn()
     vi.stubGlobal('location', { reload })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(null, {
-          status: 204,
-          headers: { 'Clear-Site-Data': '"cache", "cookies", "storage"' }
-        })
-      )
-    )
     localStorage.setItem('reset-cancel', 'saved')
-    await runStoreRequest('local-state', 'readwrite', (store) =>
-      store.put('saved', 'reset-cancel')
-    )
+    await runStoreRequest('local-state', 'readwrite', (store) => store.put('saved', 'reset-cancel'))
     const wrapper = mount(App, {
       attachTo: document.body,
       global: { stubs: { CameraFavorites: true } }
@@ -1406,16 +1384,13 @@ describe('App lifecycle coordination', () => {
       wrapper.getComponent({ name: 'ConfirmDialog' }).vm.$emit('cancel')
       await flushPromises()
       expect(localStorage.getItem('reset-cancel')).toBe('saved')
-      expect(fetch).not.toHaveBeenCalledWith('/api/clear-site-data', expect.anything())
       expect(
         await runStoreRequest('local-state', 'readonly', (store) => store.get('reset-cancel'))
       ).toBe('saved')
       expect(reload).not.toHaveBeenCalled()
     } finally {
       wrapper.unmount()
-      await runStoreRequest('local-state', 'readwrite', (store) =>
-        store.delete('reset-cancel')
-      )
+      await runStoreRequest('local-state', 'readwrite', (store) => store.delete('reset-cancel'))
       vi.unstubAllGlobals()
     }
   })
@@ -1424,15 +1399,6 @@ describe('App lifecycle coordination', () => {
     getSavedAlbumDirectoryHandleMock.mockResolvedValue(null)
     const reload = vi.fn()
     vi.stubGlobal('location', { reload })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(null, {
-          status: 204,
-          headers: { 'Clear-Site-Data': '"cache", "cookies", "storage"' }
-        })
-      )
-    )
     const wrapper = mount(App, {
       attachTo: document.body,
       global: { stubs: { CameraFavorites: true } }

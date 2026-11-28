@@ -1,4 +1,5 @@
 import { decodeLookbookShareCodePathId, decodeLookbookPayload } from './lookbookWasmClient'
+import { parseNativeOutfitPayload } from './nativePayload'
 import { throwIfSignalAborted } from '../abortSignal'
 import {
   cacheGeneration,
@@ -60,6 +61,7 @@ export interface LookbookCloth {
 
 export interface LookbookDecodeResult {
   code: string
+  customizedItemIds?: number[]
   wearingClothes: LookbookCloth[]
   dyeItems: LookbookDyeItem[]
 }
@@ -115,7 +117,10 @@ const isCachedParseResult = (value: unknown, code: string): value is LookbookDec
   if (
     result.code !== code ||
     !Array.isArray(result.wearingClothes) ||
-    !Array.isArray(result.dyeItems)
+    !Array.isArray(result.dyeItems) ||
+    (result.customizedItemIds !== undefined &&
+      (!Array.isArray(result.customizedItemIds) ||
+        !result.customizedItemIds.every((id) => Number.isSafeInteger(id) && id > 0)))
   )
     return false
   return (
@@ -260,6 +265,20 @@ async function requestLookbookSource(
   if (!isCachedParseResult(decoded.value, code))
     throw new OutfitCodeParseError('unavailable', 'Lookbook result failed validation')
   lookbookTiming('source_success', performance.now(), { source })
+
+  if (payload.includes('"attachmentData"')) {
+    const attachments = parseNativeOutfitPayload(payload)?.Content?.Content?.attachmentData
+    decoded.value.customizedItemIds = Object.entries(attachments ?? {})
+      .filter(
+        ([id, value]) =>
+          Number.isSafeInteger(Number(id)) &&
+          Number(id) > 0 &&
+          value !== null &&
+          typeof value === 'object' &&
+          Object.keys(value).length > 0
+      )
+      .map(([id]) => Number(id))
+  }
   return normalizeLookbookResult(decoded.value)
 }
 

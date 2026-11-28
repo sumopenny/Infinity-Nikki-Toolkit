@@ -755,3 +755,39 @@ it('uses makeup part sources and clears them when switching to a part without a 
     wrapper.unmount()
   }
 })
+
+it('marks only customized accessories, including when an image is unavailable', async () => {
+  loadItemCatalogMock.mockResolvedValue(new Map())
+  const wrapper = mount(OutfitParseDialog, {
+    props: {
+      visible: true,
+      code: '1tARmUbRRuR#',
+      language: 'zh',
+      messages: getOutfitMessages('zh'),
+      suppliedResult: {
+        code: '1tARmUbRRuR#',
+        wearingClothes: [2021710041, 1025720062].map((itemId) => ({
+          itemId,
+          clothType: null,
+          outfitId: null
+        })),
+        dyeItems: [],
+        customizedItemIds: [2021710041]
+      }
+    },
+    global: { stubs: { Teleport: true, Transition: true } }
+  })
+  try {
+    await flushPromises()
+    expect(wrapper.findAll('.outfit-parse-custom-badge')).toHaveLength(1)
+    expect(wrapper.get('.outfit-parse-custom-badge').text()).toBe('\u81ea')
+    expect(
+      wrapper.findAll('.outfit-parse-item')[0].find('.outfit-parse-custom-badge').exists()
+    ).toBe(true)
+    expect(
+      wrapper.findAll('.outfit-parse-item')[1].find('.outfit-parse-custom-badge').exists()
+    ).toBe(false)
+  } finally {
+    wrapper.unmount()
+  }
+})

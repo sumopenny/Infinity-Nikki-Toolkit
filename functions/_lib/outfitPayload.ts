@@ -1,35 +1,12 @@
+import { parseNativeOutfitPayload } from '../../src/utils/outfit/nativePayload'
+
 export const MAX_OUTFIT_BODY_BYTES = 1024 * 1024
 
 /** 校验完整原始正文；仅在字符串外转换原生数字映射，返回时仍保留原始字节。 */
 export function isValidOutfitPayload(body: Uint8Array): boolean {
   try {
     const text = new TextDecoder('utf-8', { fatal: true }).decode(body)
-    let json = ''
-    for (let i = 0; i < text.length;) {
-      if (text[i] === '"') {
-        const start = i++
-        while (i < text.length) {
-          if (text[i] === '\\') i += 2
-          else if (text[i++] === '"') break
-        }
-        json += text.slice(start, i)
-      } else if (text.startsWith('[:', i)) {
-        const end = text.indexOf(']', i + 2)
-        if (end < 0) return false
-        const entries = text.slice(i + 2, end).trim()
-        // 游戏 patternData 使用 [:数字ID:数字值,...]；未知语法不写入缓存。
-        if (
-          entries &&
-          !/^\s*-?\d+\s*:\s*-?\d+(?:\.\d+)?\s*(?:,\s*-?\d+\s*:\s*-?\d+(?:\.\d+)?\s*)*$/.test(
-            entries
-          )
-        )
-          return false
-        json += '{' + entries.replace(/(-?\d+)\s*:/g, '"$1":') + '}'
-        i = end + 1
-      } else json += text[i++]
-    }
-    const data = JSON.parse(json)
+    const data = parseNativeOutfitPayload(text)
     const clothes = data?.clothes
     if (Array.isArray(clothes))
       return clothes.every(

@@ -324,3 +324,48 @@ it('preserves a bodyless 404 and rejects oversized Content-Length without cachin
   expect((await onRequestGet(makeContext('488547348102388135'))).status).toBe(502)
   expect(cache.put).not.toHaveBeenCalled()
 })
+
+it('forwards nested accessory customization maps unchanged', async () => {
+  const { cache } = edgeCache()
+  const body =
+    '{"Content":{"Content":{"wearingClothes":[2021710041,1025720062],"patternData":[:1:0],"attachmentData":[:2021710041:{"0":{"BoneName":"escaped \\" [:12:]","Offset":{"Scale3D":{"X":1.06}}}},1025720062:[{"Offset":{"Translation":{"X":-1.95},"Rotation":{"W":0.429}},"nested":[:1:[{},[]]]}]]}}}'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(body))
+  )
+  const response = await onRequestGet(makeContext('541298210100817487'))
+  expect(response.status).toBe(200)
+  expect(await response.text()).toBe(body)
+  expect(cache.put).toHaveBeenCalledOnce()
+})
+
+it.each(['[:1:{"x":[]}]', '[:]'])('accepts attachment map %s', async (attachment) => {
+  const body =
+    '{"Content":{"Content":{"wearingClothes":[1025720062],"attachmentData":' + attachment + '}}}'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(body))
+  )
+  expect((await onRequestGet(makeContext('541298210100817487'))).status).toBe(200)
+})
+
+it.each([
+  '[:1:{"x":[]]]',
+  '[:1:[{}]',
+  '[:1:{} 2:{}]',
+  '[:1:{"x":"unterminated}]',
+  '[:1:{}],',
+  '[:1:{bad:2}]'
+])('rejects malformed accessory maps without caching: %s', async (attachment) => {
+  const { cache } = edgeCache()
+  const body =
+    '{"Content":{"Content":{"wearingClothes":[1025720062],"attachmentData":' + attachment + '}}}'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(body))
+  )
+  const response = await onRequestGet(makeContext('541298210100817487'))
+  expect(response.status).toBe(502)
+  expect(await response.json()).toEqual({ error: 'upstream_invalid_payload' })
+  expect(cache.put).not.toHaveBeenCalled()
+})

@@ -28,7 +28,7 @@ export const appZh: LocaleMessages['app'] = {
   authorizeX6GameStatus: 'X6Game 文件夹授权已完成。',
   x6GameAuthorizationCancelledStatus:
     '已取消 X6Game 文件夹授权。后续进入搭配码界面将不再自动弹出授权窗口，可在当前相册下拉框中点击“授权 X6Game”手动授权。',
-  clearDataDialogTitle: '清除浏览器中的全部数据？',
+  clearDataDialogTitle: '清除本站全部本地数据？',
   clearDataFirstConfirmMessage: '此操作无法撤销，请先导出备份。',
   clearDataSections: [
     {
@@ -36,21 +36,20 @@ export const appZh: LocaleMessages['app'] = {
       items: [
         '搭配、家园方案、共鸣记录、个人衣橱与照片收藏标记',
         '相机参数，以及已保存的图片、封面和标签',
-        '解析缓存、UID、目录授权及设置',
-        '本站 Cookie、云端登录状态及浏览器缓存'
+        '解析缓存、UID、目录授权及设置'
       ]
     },
     {
       title: '会保留',
-      text: '云端账号与存档，电脑原始照片、游戏文件和已导出的备份。'
+      text: '云端账号与存档，电脑原始照片、游戏文件和已导出的备份。云端登录状态可能保留。'
     }
   ],
   clearDataConsequence: '清除完成后，页面将自动刷新并恢复初始状态。',
   clearDataBackup: '先导出备份',
   clearDataConfirm: '清除全部数据',
-  clearDataStatus: '当前浏览器的网站数据已清除，云端存档保留；正在重新加载并恢复初始状态。',
+  clearDataStatus: '本站本地数据已清除，云端存档保留；正在重新加载。',
   clearDataFailed:
-    '清除未完成，部分数据可能已经清除。请检查网络连接后重试；如果仍失败，请通过浏览器设置清除本站数据。',
+    '清除未完成，部分数据可能已经清除。请重试；如果仍失败，请通过浏览器设置清除本站数据。',
   languageUpdated: '语言切换成功。',
   themeUpdated: {
     light: '已切换为浅色主题。',
@@ -162,7 +161,7 @@ export const appEn: LocaleMessages['app'] = {
   authorizeX6GameStatus: 'X6Game folder authorization completed.',
   x6GameAuthorizationCancelledStatus:
     'X6Game folder authorization was canceled. The authorization window will no longer open automatically when entering Outfit Codes; use Authorize X6Game from the Current album menu when needed.',
-  clearDataDialogTitle: 'Clear all data in this browser?',
+  clearDataDialogTitle: 'Clear all local data for this site?',
   clearDataFirstConfirmMessage: 'This cannot be undone. Export a backup first.',
   clearDataSections: [
     {
@@ -170,22 +169,20 @@ export const appEn: LocaleMessages['app'] = {
       items: [
         'Outfits, home schemes, resonance records, personal wardrobe and photo favorites',
         'Camera parameters and saved images, covers and tags',
-        'Parsing caches, UIDs, folder permissions and settings',
-        'Site cookies, cloud sign-in state and browser caches'
+        'Parsing caches, UIDs, folder permissions and settings'
       ]
     },
     {
       title: 'Will be kept',
-      text: 'Your cloud account and saves, original photos and game files on your computer, and exported backups.'
+      text: 'Your cloud account and saves, original photos and game files on your computer, and exported backups. You may remain signed in to the cloud.'
     }
   ],
   clearDataConsequence: 'The page will reload and return to its initial state after clearing.',
   clearDataBackup: 'Export a backup first',
   clearDataConfirm: 'Clear all data',
-  clearDataStatus:
-    'Website data in this browser cleared; cloud saves remain. Reloading to restore the initial state.',
+  clearDataStatus: 'Local site data cleared; cloud saves remain. Reloading.',
   clearDataFailed:
-    'Reset did not complete; some data may already have been cleared. Check your connection and retry. If it still fails, clear this site’s data in browser settings.',
+    'Reset did not complete; some data may already have been cleared. Please retry. If it still fails, clear this site’s data in browser settings.',
   languageUpdated: 'Language updated successfully.',
   themeUpdated: {
     light: 'Switched to light theme.',

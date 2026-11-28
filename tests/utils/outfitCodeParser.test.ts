@@ -510,3 +510,19 @@ describe('lookbook cloth types', () => {
     ])
   })
 })
+
+it('retains customized accessory IDs in persisted results, excluding empty entries', async () => {
+  await clearOutfitCodeParseCache()
+  const body =
+    '{"Content":{"Content":{"wearingClothes":[2021710041,1025720062],"attachmentData":[:2021710041:{"0":{"BoneName":"NP_PAP_AHE_01","Offset":{"Scale3D":{"X":1.06}}}},1025720062:[{"BoneName":"NP_PAP_AHC_01"}],123:{},456:[]]}}}'
+  const save = vi.spyOn(directoryStorage, 'saveOutfitParseResult').mockResolvedValue()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(body))
+  )
+  const result = await parseOutfitCode('1tARmUbRRuR#')
+  expect(result.customizedItemIds).toEqual([1025720062, 2021710041])
+  expect(result.wearingClothes.map((item) => item.itemId)).toEqual([1025720062, 2021710041])
+  await vi.waitFor(() => expect(save).toHaveBeenCalledWith('1tARmUbRRuR#', result))
+  await clearOutfitCodeParseCache()
+})

@@ -62,7 +62,7 @@ export function resonanceUserscript(): string {
 // @author       素茉penny
 // @namespace    infinity-nikki-toolkit
 // @homepageURL  https://nikki3.pages.dev/
-// @version      1.0.4
+// @version      1.0.5
 // @description  点击按钮复制登录凭据，返回 Infinity Nikki Toolkit 粘贴导入。工具网址：https://nikkicube.pages.dev/
 // @match        https://myl.nuanpaper.com/*
 // @match        https://pearpal.infoldgames.com/*
@@ -83,11 +83,19 @@ export function resonanceUserscript(): string {
   button.type = 'button';
   const label = zh ? '获取 Cookie' : 'Get Cookie';
   button.textContent = label;
-  Object.assign(button.style, {
+  const toolbar = document.createElement('div');
+  Object.assign(toolbar.style, {
     position: 'fixed',
     right: '16px',
     bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
     zIndex: '2147483647',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: '8px',
+    maxWidth: 'calc(100vw - 32px)'
+  });
+  Object.assign(button.style, {
     padding: '12px 16px',
     border: '1px solid #fff',
     borderRadius: '12px',
@@ -98,6 +106,48 @@ export function resonanceUserscript(): string {
     maxWidth: 'calc(100vw - 32px)',
     cursor: 'pointer'
   });
+  const clearButton = button.cloneNode(false);
+  clearButton.id = 'nikki-pearpal-clear-login-button';
+  clearButton.textContent = zh
+    ? '登录信息过期时点我清理登录信息'
+    : 'Sign-in expired? Click to clear sign-in information';
+  clearButton.addEventListener('click', () => {
+    if (button.disabled || clearButton.disabled) return;
+    clearButton.disabled = true;
+    document.getElementById('nikki-pearpal-cookie-result')?.remove();
+    try {
+      // 同步清理 SDK 的本地凭据及 Cookie，保留其他设置和数据。
+      const keys = ['momoToken', 'momoNid', 'TDS_momoToken', 'TDS_momoNid'];
+      const domains = ['', location.hostname, location.hostname.split('.').slice(1).join('.')];
+      const paths = new Set(['/']);
+      const parts = location.pathname.split('/');
+      for (let i = 1; i <= parts.length; i++) {
+        const path = parts.slice(0, i).join('/') || '/';
+        paths.add(path);
+        paths.add(path.endsWith('/') ? path : path + '/');
+      }
+      for (const key of keys) {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+        for (const domain of domains) {
+          for (const path of paths) {
+            document.cookie = key + '=; Max-Age=0; Path=' + path +
+              (domain ? '; Domain=' + domain : '');
+          }
+        }
+      }
+      if (document.cookie.split(';').some((entry) => keys.includes(entry.split('=')[0].trim()))) {
+        throw new Error('Sign-in cookies remain');
+      }
+      location.reload();
+    } catch {
+      alert(zh
+        ? '未能完整清理登录信息，请使用官方页面的退出登录功能后重新登录。'
+        : 'Could not fully clear sign-in information. Sign out on the official page, then sign in again.');
+    } finally {
+      clearButton.disabled = false;
+    }
+  });
   // 每次面板持有一份快照；再次复制不重读页面，关闭时移除完整数据。
   function showResult(credentials) {
     const value = JSON.stringify(credentials);
@@ -106,7 +156,7 @@ export function resonanceUserscript(): string {
     Object.assign(host.style, {
       position: 'fixed',
       right: 'max(16px, env(safe-area-inset-right, 0px))',
-      bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+      bottom: (window.innerHeight - toolbar.getBoundingClientRect().top + 12) + 'px',
       width: '360px',
       maxWidth: 'calc(100vw - 32px)',
       zIndex: '2147483647'
@@ -131,6 +181,7 @@ export function resonanceUserscript(): string {
     ].join(' ');
     root.appendChild(style);
     const panel = document.createElement('section');
+    panel.style.maxHeight = 'calc(100dvh - ' + host.style.bottom + ' - 16px)';
     panel.setAttribute('role', 'region');
     panel.setAttribute('aria-label', zh ? '复制的登录凭据' : 'Copied sign-in credentials');
     const title = document.createElement('h2');
@@ -286,7 +337,8 @@ export function resonanceUserscript(): string {
       button.disabled = false;
     }
   });
-  document.body.appendChild(button);
+  toolbar.append(button, clearButton);
+  document.body.appendChild(toolbar);
 })();
 `
 }
