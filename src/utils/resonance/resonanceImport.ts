@@ -150,18 +150,6 @@ function asGachaRows(value: unknown): PearpalRow[] {
   return []
 }
 
-function toPullRow(row: PearpalRow) {
-  return {
-    itemId: String(row.result ?? ''),
-    obtainedAt: '',
-    poolCount: Number(row.pool_cnt),
-    pullsToObtain:
-      Number(row.rarity) === 5
-        ? Number(row.times_from_last_five_stars ?? 0) + 1
-        : Number(row.times_from_last_four_stars ?? 0) + 1
-  }
-}
-
 /** 先核对所选区服的角色 UID，再解压完整手账快照，供共鸣与衣橱各自解析。 */
 export async function fetchPearpalSnapshot(
   credentials: ResonanceCredentials,
@@ -230,13 +218,14 @@ export async function fetchPearpalSnapshot(
 
 /** 从已获取的完整手账解析共鸣，与衣橱共享一次网络请求。 */
 export async function parsePearpalResonance(
-  decoded: { info_from_self?: { gacha_list?: unknown } },
+  decoded: { info_from_self?: { gacha_list?: unknown; cloth_random_box_list?: unknown } },
   onProgress?: (value: ResonanceImportProgress) => void,
   signal?: AbortSignal
 ): Promise<ResonanceImportResult> {
   throwIfSignalAborted(signal)
   const gachaList = asGachaRows(decoded?.info_from_self?.gacha_list)
-  if (!gachaList.length) throw new Error(PEARPAL_NO_RECORDS)
+  const gifts = decoded?.info_from_self?.cloth_random_box_list
+  if (!gachaList.length && !Array.isArray(gifts)) throw new Error(PEARPAL_NO_RECORDS)
 
   const byBanner = new Map<string, PearpalRow[]>()
   for (const row of gachaList) {
@@ -248,21 +237,23 @@ export async function parsePearpalResonance(
     byBanner.set(bannerId, list)
   }
 
-  const { loadResonanceBanners, normalizeBannerPulls, buildResonanceRecords } =
+  const { loadResonanceBanners, normalizePearpalPulls, buildResonanceRecords } =
     await loadResonanceCatalog()
   throwIfSignalAborted(signal)
   const banners = loadResonanceBanners()
-  const targets = banners.filter((banner) => byBanner.has(banner.bannerId))
+  const targets = banners.filter(
+    (banner) =>
+      byBanner.has(banner.bannerId) ||
+      (Array.isArray(gifts) &&
+        gifts.some((row) => row && String(row.card_pool_id) === banner.bannerId))
+  )
   const records: ResonanceRecord[] = []
   let skippedPools = 0
   targets.forEach((banner, index) => {
     onProgress?.({ current: index + 1, total: targets.length, bannerName: banner.name })
     try {
-      // pool_cnt 越小越早；归一化器接收最新记录优先的顺序。
-      const rows = [...(byBanner.get(banner.bannerId) ?? [])].sort(
-        (a, b) => Number(b.pool_cnt) - Number(a.pool_cnt)
-      )
-      const pulls = normalizeBannerPulls(banner.bannerId, rows.map(toPullRow))
+      const rows = byBanner.get(banner.bannerId) ?? []
+      const pulls = normalizePearpalPulls(banner.bannerId, rows as Record<string, unknown>[], gifts)
       const bannerRecords = buildResonanceRecords(banner.bannerId, pulls)
       if (!bannerRecords.length) skippedPools += 1
       records.push(...bannerRecords)

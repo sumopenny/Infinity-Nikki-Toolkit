@@ -10,6 +10,10 @@ export const updateLogZh: FullLocaleMessages['updateLog'] = {
   currentDate: '2026.11.28 更新',
   currentItems: [
     {
+      title: '完善星冕套装共鸣记录。',
+      text: '修复赠送部件合并与星冕抽数统计，优化套装名称和专属卡片样式。请重新获取并导入美鸭梨手帐数据，以更新已保存的部件记录和抽数统计。'
+    },
+    {
       title: '搭配码支持识别自定义饰品。',
       text: '含自定义饰品的部分搭配码会在对应饰品卡片右上角显示圆形「自」标记，方便辨认。'
     },
@@ -88,6 +92,10 @@ export const updateLogEn: FullLocaleMessages['updateLog'] = {
   currentVersion,
   currentDate: 'Updated 2026.11.28',
   currentItems: [
+    {
+      title: 'Improved Crown outfit Resonance records.',
+      text: 'Fixed gift piece merging and Crown pull statistics, and refined outfit names and exclusive card styling. Please fetch and import your Pear-Pal journal data again to update saved piece records and pull statistics.'
+    },
     {
       title: 'Outfit codes now recognize customized accessories.',
       text: 'For supported outfit codes containing customized accessories, a circular “自” badge appears at the top right of the corresponding accessory card for easy identification.'

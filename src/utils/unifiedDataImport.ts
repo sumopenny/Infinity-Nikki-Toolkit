@@ -35,7 +35,7 @@ export async function parseDataPreview(
 ): Promise<DataPreview> {
   const raw = value as {
     format?: string
-    info_from_self?: { suit_list?: unknown; gacha_list?: unknown }
+    info_from_self?: { suit_list?: unknown; gacha_list?: unknown; cloth_random_box_list?: unknown }
     info_from_gm?: { clothes?: unknown }
   } | null
   const wardrobeBackup = raw?.format === 'nikki-personal-wardrobe'
@@ -86,7 +86,7 @@ export async function parseDataPreview(
     checkCurrent()
     result.wardrobe = parseWardrobePearpal(raw, catalog, options.regionScope).snapshot
   }
-  if (raw.info_from_self?.gacha_list) {
+  if (raw.info_from_self?.gacha_list || raw.info_from_self?.cloth_random_box_list) {
     await report('resonance')
     try {
       const parsed = await parsePearpalResonance(raw, undefined, options.signal)

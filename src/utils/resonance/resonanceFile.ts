@@ -53,6 +53,9 @@ function validBackupRecord(value: unknown): value is ResonanceRecord {
           Number.isFinite(part.pullNumber) &&
           part.pullNumber >= 0 &&
           (part.manual === undefined || typeof part.manual === 'boolean') &&
+          (part.gift === undefined ||
+            (typeof part.gift === 'boolean' &&
+              (!part.gift || (part.manual === true && part.pullNumber === 0)))) &&
           (part.acquisitionOrder === undefined ||
             (typeof part.acquisitionOrder === 'number' &&
               Number.isInteger(part.acquisitionOrder) &&
@@ -115,8 +118,13 @@ export async function parseResonanceFile(
   if (!bannerIds.size) throw new Error(RESONANCE_FILE_EMPTY)
   // 标准备份已经包含名称与部件，只有旧版逐抽数据需要下载目录重新组装。
   const { loadResonanceCatalog } = await import('./resonanceCatalog')
-  const { buildResonanceRecords, getBannerMeta, normalizeBannerPulls, resolveOutfit } =
-    await loadResonanceCatalog()
+  const {
+    buildResonanceRecords,
+    getBannerMeta,
+    normalizeBannerPulls,
+    normalizePearpalPulls,
+    resolveOutfit
+  } = await loadResonanceCatalog()
   const records: ResonanceRecord[] = []
   let skippedPools = 0
   for (const bannerId of bannerIds) {
@@ -150,17 +158,7 @@ export async function parseResonanceFile(
       const usePearpal = pearpalTotal > game.length
       let pulls: ResonancePull[]
       if (usePearpal) {
-        const rows = [...pearpal]
-          .sort((a, b) => Number(b.pool_cnt) - Number(a.pool_cnt))
-          .map((row) => ({
-            itemId: String(row.result),
-            poolCount: Number(row.pool_cnt),
-            pullsToObtain:
-              Number(row.rarity) === 5
-                ? Number(row.times_from_last_five_stars ?? 0) + 1
-                : Number(row.times_from_last_four_stars ?? 0) + 1
-          }))
-        pulls = normalizeBannerPulls(bannerId, rows)
+        pulls = normalizePearpalPulls(bannerId, pearpal, value.cloth_random_box_list)
       } else {
         const real = normalizeBannerPulls(bannerId, game)
         // 共鸣录把手动记录放在真实抽卡之前计数，抽数为 0，但仍占第一/第二套位置。

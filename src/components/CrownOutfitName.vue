@@ -18,19 +18,19 @@ onBeforeUnmount(() => stop?.())
 
 <style scoped>
 .crown-outfit-name {
-  --crown-name-colors: linear-gradient(110deg, #8d5c24 0%, #ac743d 32%, #885582 65%, #946025 100%);
+  --crown-name-colors: linear-gradient(110deg, #c58d20 0%, #e3ac32 32%, #885582 65%, #ca9425 100%);
   --crown-name-light: #fff1bd;
   max-width: 100%;
   overflow: hidden;
   text-overflow: inherit;
   white-space: inherit;
   vertical-align: bottom;
-  color: #8d5c24;
+  color: #ad791b;
 }
 :where(:root[data-theme='dark']) .crown-outfit-name {
-  --crown-name-colors: linear-gradient(110deg, #f1d28c 0%, #e9bc72 32%, #d8b7ee 65%, #f1d28c 100%);
+  --crown-name-colors: linear-gradient(110deg, #ffd464 0%, #efc34f 32%, #d8b7ee 65%, #ffd464 100%);
   --crown-name-light: #fff9e6;
-  color: #f1d28c;
+  color: #ffd464;
 }
 .crown-name-shine {
   display: none;

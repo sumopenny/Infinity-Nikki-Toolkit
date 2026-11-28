@@ -179,7 +179,8 @@ function createCatalog({
               ...parts[index]!,
               pullNumber: pull.pullsToObtain,
               acquisitionOrder: order + 1,
-              ...(pull.manual ? { manual: true } : {})
+              ...(pull.manual ? { manual: true } : {}),
+              ...(pull.gift ? { gift: true } : {})
             }
             totalPulls += pull.pullsToObtain
           }
@@ -200,7 +201,71 @@ function createCatalog({
       })
   }
 
+  /** Official gifts occupy their assigned set without contributing to pull statistics. */
+  function normalizePearpalPulls(
+    bannerId: string,
+    rows: Record<string, unknown>[],
+    gifts: unknown = []
+  ): ResonancePull[] {
+    let previousCrown = -1
+    const ordered = [...rows].sort((a, b) => Number(a.pool_cnt) - Number(b.pool_cnt))
+    const normalized = ordered
+      .map((row) => {
+        const crown = Number(row.rarity) === 8
+        const count = Number(row.pool_cnt)
+        const pity = crown
+          ? count - previousCrown
+          : Number(
+              Number(row.rarity) === 5
+                ? (row.times_from_last_five_stars ?? 0)
+                : (row.times_from_last_four_stars ?? 0)
+            ) + 1
+        if (crown) previousCrown = count
+        return { itemId: String(row.result), poolCount: count, pullsToObtain: pity }
+      })
+      .reverse()
+    const pulls = normalizeBannerPulls(bannerId, normalized)
+    const banner = getBannerMeta(bannerId)!
+    const rewards = new Map<string, ResonancePull>()
+    for (const value of Array.isArray(gifts) ? gifts : []) {
+      if (!value || typeof value !== 'object') continue
+      const row = value as Record<string, unknown>
+      const id = String(row.reward_item_id)
+      const resolved = resolveOutfit(banner, id)
+      const round = Number(row.suit_round)
+      const rarity = Number(row.reward_rarity)
+      if (
+        String(row.card_pool_id) !== bannerId ||
+        !resolved ||
+        row.suit_round == null ||
+        (round !== 0 && round !== 1) ||
+        (rarity !== resolved.rarity && !(rarity === 8 && resolved.rarity === 5))
+      )
+        continue
+      const setNumber = (round + 1) as 1 | 2
+      rewards.set(id + ':' + setNumber, {
+        itemId: id,
+        ...resolved,
+        setNumber,
+        pullNumber: 0,
+        pullsToObtain: 0,
+        obtainedAt: '',
+        manual: true,
+        gift: true
+      })
+    }
+    const counts = new Map<string, number>()
+    const real = pulls.flatMap((pull) => {
+      let set = (counts.get(pull.itemId) ?? 0) + 1
+      while (rewards.has(pull.itemId + ':' + set)) set++
+      counts.set(pull.itemId, set)
+      return set <= 2 ? [{ ...pull, setNumber: set as 1 | 2 }] : []
+    })
+    return [...rewards.values(), ...real]
+  }
+
   return {
+    normalizePearpalPulls,
     loadResonanceBanners,
     getBannerMeta,
     resolveOutfit,

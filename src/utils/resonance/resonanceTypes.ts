@@ -16,6 +16,8 @@ export interface ResonancePart {
   acquisitionOrder?: number
   /** 手动补录的部件没有真实抽数，与未获得的 0 区分。 */
   manual?: boolean
+  /** Official gifts occupy their assigned set without contributing to pull statistics. */
+  gift?: boolean
 }
 
 export interface ResonanceSet {
@@ -65,4 +67,6 @@ export interface ResonancePull {
   pullsToObtain: number
   obtainedAt: string
   manual?: boolean
+  /** Official gifts occupy their assigned set without contributing to pull statistics. */
+  gift?: boolean
 }

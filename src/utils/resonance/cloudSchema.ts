@@ -53,6 +53,9 @@ export function validateCloudRecords(value: unknown): asserts value is Resonance
           !url(p.imageUrl) ||
           !number(p.pullNumber) ||
           (p.manual !== undefined && typeof p.manual !== 'boolean') ||
+          (p.gift !== undefined &&
+            (typeof p.gift !== 'boolean' ||
+              (p.gift && (p.manual !== true || p.pullNumber !== 0)))) ||
           (p.acquisitionOrder !== undefined &&
             (!number(p.acquisitionOrder) || p.acquisitionOrder === 0))
         )

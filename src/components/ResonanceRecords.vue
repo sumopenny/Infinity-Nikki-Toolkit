@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CrownOutfitName from './CrownOutfitName.vue'
+import CatalogQuality from './CatalogQuality.vue'
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
 import { vCardReveal } from '../utils/cardReveal'
 import { takeDownloadFiles } from '../utils/backup/downloadFallback'
@@ -255,7 +257,7 @@ function setSummary(set: ResonanceSet) {
     count: parts.length,
     total: known.length ? String(total) : '—',
     average: known.length ? (total / known.length).toFixed(1) : '—',
-    manual: parts.some((part) => part.manual)
+    manual: parts.some((part) => part.manual && !part.gift)
   }
 }
 
@@ -263,6 +265,7 @@ function setSummary(set: ResonanceSet) {
 const recordViews = computed(() =>
   sortedRecords.value.map((record) => ({
     record,
+    isCrown: previewCatalog.value?.byId.get(record.outfitId)?.quality === 8,
     pulls: outfitPulls(record),
     sets: record.sets.map((set) => ({
       setNumber: set.setNumber,
@@ -469,7 +472,9 @@ defineExpose({ reload })
 
       <div v-else class="resonance-list">
         <article
-          v-for="({ record, pulls, currentSet, displayedSets }, recordIndex) in displayedRecords"
+          v-for="(
+            { record, isCrown, pulls, currentSet, displayedSets }, recordIndex
+          ) in displayedRecords"
           :id="`resonance-record-${record.id}`"
           :key="record.id"
           class="resonance-record"
@@ -478,8 +483,17 @@ defineExpose({ reload })
             <div class="resonance-record-title-row">
               <div class="resonance-title-actions">
                 <h3 :title="`${displayName(record.outfitName)} ${t.rarity(record.rarity)}`">
-                  <span class="resonance-outfit-title">{{ displayName(record.outfitName) }}</span>
-                  <span class="resonance-rarity-tag">{{ record.rarity }} ★</span>
+                  <span class="resonance-outfit-title"
+                    ><CrownOutfitName v-if="isCrown">{{
+                      displayName(record.outfitName)
+                    }}</CrownOutfitName
+                    ><template v-else>{{ displayName(record.outfitName) }}</template></span
+                  >
+                  <CatalogQuality v-if="isCrown" :quality="8" :language="language" /><span
+                    v-else
+                    class="resonance-rarity-tag"
+                    >{{ record.rarity }} ★</span
+                  >
                 </h3>
                 <button
                   v-if="makeupByOutfit.has(record.outfitId)"
@@ -556,6 +570,7 @@ defineExpose({ reload })
               <button
                 type="button"
                 class="resonance-outfit-image"
+                :class="{ 'is-crown-quality': isCrown }"
                 :aria-label="displayName(record.outfitName)"
                 @click="openPreview(record.outfitId, 'outfit')"
                 ><CatalogImage
@@ -601,6 +616,7 @@ defineExpose({ reload })
                     data-load-block
                     :class="{
                       'is-even-banner': Number(record.bannerId) % 2 === 0,
+                      'is-crown-quality': isCrown,
                       'is-missing': part.pullNumber === 0 && !part.manual
                     }"
                   >
@@ -614,7 +630,15 @@ defineExpose({ reload })
                     <span
                       class="resonance-pull-number"
                       :class="{ missing: part.pullNumber === 0 && !part.manual }"
-                      >{{ part.manual ? '*' : part.pullNumber }}</span
+                      >{{
+                        part.gift
+                          ? language === 'zh'
+                            ? '赠'
+                            : 'Gift'
+                          : part.manual
+                            ? '*'
+                            : part.pullNumber
+                      }}</span
                     >
                   </button>
                 </div>
@@ -965,6 +989,11 @@ button.resonance-part:focus-visible {
   --part-outline-color: #cec4dd;
   background-image: var(--archive-purple-card-background);
 }
+.resonance-part.is-crown-quality:not(.is-missing) {
+  --part-outline-color: #cec4dd;
+  background-image: url('../../img/crown-part-background.webp');
+  background-size: cover;
+}
 .resonance-part.is-missing {
   --part-outline-color: #d0d0d3;
   background-image: var(--archive-silver-card-background);
@@ -986,6 +1015,9 @@ button.resonance-part:focus-visible {
   color: #fff;
   font-size: 11px;
   font-weight: 800;
+}
+.resonance-part.is-crown-quality .resonance-pull-number:not(.missing) {
+  background: #9273b1;
 }
 .resonance-pull-number.missing {
   background: var(--muted);
@@ -1140,5 +1172,8 @@ button.resonance-part:focus-visible {
   .resonance-record {
     grid-template-columns: clamp(88px, 14vw, 112px) minmax(0, 1fr);
   }
+}
+.resonance-outfit-image.is-crown-quality {
+  background: var(--frame-bg) url('../../img/星冕.webp') center / cover no-repeat;
 }
 </style>
