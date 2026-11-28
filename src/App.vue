@@ -129,6 +129,7 @@ import {
 import UpdateLogDialog from './components/UpdateLogDialogContent.vue'
 import DataStorageReminder from './components/DataStorageReminder.vue'
 import HelpAboutDialog from './components/HelpAboutDialogContent.vue'
+import PrivacyPolicyDialog from './components/PrivacyPolicyDialog.vue'
 import AlbumEntryHelp from './components/AlbumEntryHelp.vue'
 import AlbumViewSwitcher, { type AlbumView } from './components/AlbumViewSwitcher.vue'
 import DesktopHome from './components/DesktopHome.vue'
@@ -327,6 +328,7 @@ const isDataReminderDismissed = ref(readLocalStorage(DATA_REMINDER_DISMISSED_KEY
 const isDataReminderVisible = ref(false)
 const pendingDataReminder = ref(!isDataReminderDismissed.value)
 const isHelpAboutVisible = ref(false)
+const isPrivacyPolicyVisible = ref(false)
 // 标记使用帮助是否从更新记录窗口跳来，关闭帮助后返回更新记录窗口
 const returnToUpdateLog = ref(false)
 const updateLogDismissal = ref<boolean | 'forever'>(
@@ -1849,6 +1851,7 @@ function showPendingDataReminder() {
     !pendingDataReminder.value ||
     isUpdateLogVisible.value ||
     isHelpAboutVisible.value ||
+    isPrivacyPolicyVisible.value ||
     returnToUpdateLog.value
   )
     return
@@ -2306,6 +2309,7 @@ const isStartupNoticeVisible = computed(
   () =>
     isUpdateLogVisible.value ||
     isHelpAboutVisible.value ||
+    isPrivacyPolicyVisible.value ||
     isDataReminderVisible.value ||
     pendingDataReminder.value
 )
@@ -2470,7 +2474,7 @@ function importAllDataFromMenu() {
       @clear-cache="clearCache"
       @clear-data="clearData"
       @export-all-data="allDataBackupRef?.exportData()"
-      @import-all-data="allDataBackupRef?.chooseImport()"
+      @import-all-data="importAllDataFromMenu"
       @refresh-backup-availability="allDataBackupRef?.refreshAvailability()"
       @change-thumbnail-mode="changeThumbnailMode"
       @change-thumbnail-size="changeThumbnailSize"
@@ -2478,6 +2482,7 @@ function importAllDataFromMenu() {
       @toggle-theme="toggleTheme"
       @open-update-log="openUpdateLog"
       @open-help-about="openHelpAbout"
+      @open-privacy-policy="isPrivacyPolicyVisible = true"
       @open-data-reminder="openDataReminder"
       @update-search="searchQuery = $event"
     />
@@ -3521,6 +3526,14 @@ function importAllDataFromMenu() {
       :compact="compactLayout"
       :language="language"
       @close="closeHelpAbout"
+      @after-close="showPendingDataReminder"
+    />
+
+    <PrivacyPolicyDialog
+      :visible="isPrivacyPolicyVisible"
+      :compact="compactLayout"
+      :language="language"
+      @close="isPrivacyPolicyVisible = false"
       @after-close="showPendingDataReminder"
     />
 

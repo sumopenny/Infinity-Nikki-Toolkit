@@ -28,6 +28,7 @@ import {
   Heart,
   History,
   BookOpen,
+  ShieldCheck,
   Music2,
   TvMinimal,
   Moon,
@@ -119,6 +120,7 @@ const emit = defineEmits<{
   changeThumbnailSize: [size: ThumbnailSize]
   openUpdateLog: []
   openHelpAbout: []
+  openPrivacyPolicy: []
   openDataReminder: []
   updateSearch: [value: string]
 }>()
@@ -1180,6 +1182,10 @@ function openDonate() {
                   >
                   <button type="button" @click="runMenuAction(openFeedback)">
                     <Bug :size="16" aria-hidden="true" /><span>{{ messages.feedback }}</span>
+                  </button>
+                  <button type="button" @click="runMenuAction(() => emit('openPrivacyPolicy'))">
+                    <ShieldCheck :size="16" aria-hidden="true" />
+                    <span>{{ language === 'zh' ? '隐私政策' : 'Privacy policy' }}</span>
                   </button>
                   <button type="button" @click="runMenuAction(openDonate)">
                     <Heart :size="16" aria-hidden="true" />
