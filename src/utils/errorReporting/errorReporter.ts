@@ -80,7 +80,7 @@ interface DiagnosticStep {
   responseCode: string | null
 }
 export function createErrorReporter(options: ReporterOptions) {
-  let enabled = options.enabled
+  const enabled = options.enabled
   const now = options.now ?? Date.now
   const crumbs: Breadcrumb[] = []
   const queue: ErrorEventPayload[] = []
@@ -90,7 +90,6 @@ export function createErrorReporter(options: ReporterOptions) {
     pauseUntil = 0,
     suppressed = 0
   let pending: Promise<void> | undefined
-  let controller: AbortController | undefined
   let currentModule = 'application'
   const counts = {
     captured: 0,
@@ -132,9 +131,9 @@ export function createErrorReporter(options: ReporterOptions) {
     }
   }
   async function transmit(event: ErrorEventPayload) {
-    for (let attempt = 0; attempt < 2 && enabled; attempt++) {
+    const serializedBody = JSON.stringify(event)
+    for (let attempt = 0; attempt < 2; attempt++) {
       const currentController = new AbortController()
-      controller = currentController
       let timer: ReturnType<typeof setTimeout> | undefined
       counts.attempts++
       lastDelivery = step('sending', 'request-started', event.eventId)
@@ -146,7 +145,7 @@ export function createErrorReporter(options: ReporterOptions) {
             const response = await transport('/api/errors', {
               method: 'POST',
               headers: { 'content-type': 'application/json', 'X-Error-Report': '1' },
-              body: JSON.stringify(event),
+              body: serializedBody,
               credentials: 'omit',
               cache: 'no-store',
               referrerPolicy: 'no-referrer',
@@ -162,10 +161,6 @@ export function createErrorReporter(options: ReporterOptions) {
             }, 5000)
           })
         ])
-        if (!enabled) {
-          lastDelivery = step('stopped', 'user-disabled', event.eventId)
-          return
-        }
         const { response, body } = result
         const receipt = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
         const code =
@@ -197,10 +192,6 @@ export function createErrorReporter(options: ReporterOptions) {
         }
         if (!response.ok && response.status < 500) return
       } catch (error) {
-        if (!enabled) {
-          lastDelivery = step('stopped', 'user-disabled', event.eventId)
-          return
-        }
         counts.failed++
         lastDelivery = step(
           'failed',
@@ -212,14 +203,13 @@ export function createErrorReporter(options: ReporterOptions) {
         // Never recursively report the reporter's own failures.
       } finally {
         clearTimeout(timer)
-        if (controller === currentController) controller = undefined
       }
     }
   }
   function flush(): Promise<void> {
     if (pending) return pending
     pending = (async () => {
-      while (enabled && queue.length && now() >= pauseUntil) {
+      while (queue.length && now() >= pauseUntil) {
         const event = queue.shift()!
         await transmit(event)
       }
@@ -227,7 +217,7 @@ export function createErrorReporter(options: ReporterOptions) {
       .catch(() => {})
       .finally(() => {
         pending = undefined
-        if (enabled && queue.length && now() >= pauseUntil) void flush()
+        if (queue.length && now() >= pauseUntil) void flush()
       })
     return pending
   }
@@ -238,8 +228,9 @@ export function createErrorReporter(options: ReporterOptions) {
     if (now() < pauseUntil) return skip('backoff')
     counts.captured++
     try {
+      const annotation = diagnosticMetadata(error)
       if (
-        isExpectedError(error) ||
+        isExpectedError(error, annotation.stage ?? metadata.stage) ||
         (metadata.code && isExpectedError(metadata.code))
       ) {
         counts.filtered++
@@ -253,13 +244,13 @@ export function createErrorReporter(options: ReporterOptions) {
         }
         prior = (prior as { cause?: unknown }).cause
       }
-      const annotation = diagnosticMetadata(error)
       const info = { ...annotation, ...metadata, stage: annotation.stage ?? metadata.stage }
       if (
         isOutfitErrorReport(
           info.module ?? currentModule,
           { ...annotation.context, ...metadata.context },
-          info.stage
+          info.stage,
+          info.action
         )
       )
         return skip('outfits-not-reported')
@@ -316,14 +307,20 @@ export function createErrorReporter(options: ReporterOptions) {
         counts.deduplicated++
         return skip('fingerprint-window')
       }
-      while (byteLength(JSON.stringify(event)) > MAX_ERROR_BYTES && event.breadcrumbs.length) {
-        event.breadcrumbs.shift()
-        if (!event.truncated.includes('breadcrumbs')) event.truncated.push('breadcrumbs')
+      let size = byteLength(JSON.stringify(event))
+      if (size > MAX_ERROR_BYTES && event.breadcrumbs.length) {
+        event.truncated.push('breadcrumbs')
+        size = byteLength(JSON.stringify(event))
+        while (size > MAX_ERROR_BYTES && event.breadcrumbs.length) {
+          const removed = event.breadcrumbs.shift()!
+          size -= byteLength(JSON.stringify(removed)) + (event.breadcrumbs.length ? 1 : 0)
+        }
       }
-      if (byteLength(JSON.stringify(event)) > MAX_ERROR_BYTES) {
+      if (size > MAX_ERROR_BYTES) {
         event.context = { stage: event.stage }
         event.truncated.push('context')
       }
+      // Keep an exact final UTF-8 check after trimming.
       if (byteLength(JSON.stringify(event)) > MAX_ERROR_BYTES) {
         counts.invalid++
         return skip('payload-too-large')
@@ -367,14 +364,6 @@ export function createErrorReporter(options: ReporterOptions) {
     setModule(value: string) {
       currentModule = value
       breadcrumb('navigation', 'module-enter', { module: value })
-    },
-    setEnabled(value: boolean) {
-      enabled = value
-      if (!value) {
-        queue.length = 0
-        crumbs.length = 0
-        controller?.abort()
-      }
     }
   }
 }

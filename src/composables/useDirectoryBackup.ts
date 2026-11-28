@@ -1,3 +1,4 @@
+import { reportDirectoryBackupError } from '../utils/directory-backup/diagnostics'
 import { computed, onBeforeUnmount, onMounted, reactive, shallowRef } from 'vue'
 import {
   defaultStates,
@@ -141,12 +142,13 @@ export function runDirectoryBackup(notifyAutomaticSuccess = true): Promise<void>
         autoNoticeActive = false
       }
     } catch (error) {
+      reportDirectoryBackupError(error, 'run')
       serviceError.value = error instanceof Error ? error.message : String(error)
     } finally {
       if (autoNoticeActive) backupNotice('directory-backup-auto-success', null)
       // 最终核验完成前保持 running：避免备份结束与状态回读之间短暂显示红点。
       await refreshDirectoryBackup(true).catch((error) => {
-        serviceError.value = String(error)
+        reportDirectoryBackupError(error, 'refresh-status')
       })
       const fingerprint = [
         serviceError.value,
@@ -183,7 +185,7 @@ export function scheduleDirectoryBackup(refresh = true): void {
     void refreshDirectoryBackup()
       .then(() => scheduleDirectoryBackup(false))
       .catch((error) => {
-        serviceError.value = error instanceof Error ? error.message : String(error)
+        reportDirectoryBackupError(error, 'refresh-status')
       })
     return
   }
@@ -237,9 +239,11 @@ async function checkUnexpectedEmpty(): Promise<void> {
     const counts = await Promise.all(candidates.map(countBrowserRecords))
     if (counts.some((count) => count === 0)) {
       await refreshDirectoryBackup()
-      scheduleDirectoryBackup(false)
+        .then(() => scheduleDirectoryBackup(false))
+        .catch((error) => reportDirectoryBackupError(error, 'refresh-status'))
     }
   } catch (error) {
+    reportDirectoryBackupError(error, 'check-empty')
     serviceError.value = error instanceof Error ? error.message : String(error)
   } finally {
     checkingEmpty = false
@@ -252,6 +256,7 @@ const onFocus = () => {
   foregroundRefresh = refreshDirectoryBackup()
     .then(() => scheduleDirectoryBackup(false))
     .catch((error) => {
+      reportDirectoryBackupError(error, 'refresh-status')
       backupNotice(
         'directory-backup-background-check',
         `备份状态检查失败：${error instanceof Error ? error.message : String(error)}`,
@@ -295,7 +300,7 @@ export function useDirectoryBackupLifecycle() {
         scheduleDirectoryBackup(false)
       })
       .catch((error) => {
-        serviceError.value = String(error)
+        reportDirectoryBackupError(error, 'refresh-status')
       })
       .finally(() => {
         initialStatusLoading.value = false

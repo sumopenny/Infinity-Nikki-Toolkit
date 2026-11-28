@@ -333,3 +333,15 @@ describe('error intake contract without a database', () => {
     }
   })
 })
+
+it('accepts classified final outfit parse failures', async () => {
+  const state = fakeDatabase()
+  const event = sampleEvent()
+  event.module = 'outfits'
+  event.action = 'parse'
+  event.stage = 'network'
+  event.context = { outfitParseFinal: true, attempts: 2, durationMs: 30300 }
+  const response = await handleErrorReport(request(event), state.env)
+  expect(response.status).toBe(201)
+  expect(state.writes()).toBe(1)
+})

@@ -791,3 +791,19 @@ it('marks only customized accessories, including when an image is unavailable', 
     wrapper.unmount()
   }
 })
+
+it.each(['zh', 'en'] as const)('shows classified parse failures in %s', async language => {
+  const { OutfitCodeParseError } = await import('../../src/utils/outfit/outfitCodeParser')
+  const messages = getOutfitMessages(language)
+  for (const reason of ['network','timeout','service','wasm','data'] as const) {
+    parseOutfitCodeMock.mockRejectedValueOnce(new OutfitCodeParseError('unavailable','test',reason))
+    const wrapper = mount(OutfitParseDialog, {
+      props: {visible:true, code:'1tARmUbRRuR#', language, messages},
+      global: {stubs:{Teleport:true, Transition:true}}
+    })
+    try {
+      await flushPromises()
+      expect(wrapper.get('[role="alert"]').text()).toContain(messages.parseFailures[reason])
+    } finally { wrapper.unmount() }
+  }
+})

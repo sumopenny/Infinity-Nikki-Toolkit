@@ -21,6 +21,7 @@ import { loadItemCatalog, type ItemCatalogEntry } from '../utils/outfit/itemCata
 import {
   OutfitCodeParseError,
   parseOutfitCode,
+  type LookbookFailureReason,
   type LookbookDecodeResult
 } from '../utils/outfit/outfitCodeParser'
 import { getClothTypeLabel, inferClothTypeFromItemId } from '../utils/outfit/clothType'
@@ -73,7 +74,14 @@ watch(
 const emit = defineEmits<{ close: []; copy: [code: string] }>()
 
 const status = ref<'loading' | 'success' | 'error'>('loading')
-const errorKind = ref<'invalid' | 'unavailable'>('unavailable')
+const errorKind = ref<'invalid' | LookbookFailureReason>('unavailable')
+const errorMessage = computed(() =>
+  errorKind.value === 'invalid'
+    ? props.messages.parseInvalidCode
+    : errorKind.value === 'unavailable'
+      ? props.messages.parseUnavailable
+      : props.messages.parseFailures[errorKind.value]
+)
 const decoded = ref<LookbookDecodeResult | null>(null)
 const catalog = shallowRef<Map<number, ItemCatalogEntry> | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
@@ -329,7 +337,12 @@ async function startParse() {
     if (currentRequest !== requestId) return
     if (!(error instanceof OutfitCodeParseError && error.kind === 'invalid'))
       captureDiagnosticError(error, { module: 'outfits', action: 'parse', stage: 'decode' })
-    errorKind.value = error instanceof OutfitCodeParseError ? error.kind : 'unavailable'
+    errorKind.value =
+      error instanceof OutfitCodeParseError
+        ? error.kind === 'invalid'
+          ? 'invalid'
+          : error.reason
+        : 'unavailable'
     status.value = 'error'
   }
 }
@@ -472,9 +485,7 @@ onBeforeUnmount(() => {
             </template>
 
             <div v-else-if="status === 'error'" class="outfit-parse-status" role="alert">
-              <p>{{
-                errorKind === 'invalid' ? messages.parseInvalidCode : messages.parseUnavailable
-              }}</p>
+              <p>{{ errorMessage }}</p>
               <button class="primary-button outfit-parse-retry" type="button" @click="startParse">
                 <RefreshCw :size="15" aria-hidden="true" />
                 <span>{{ messages.parseRetry }}</span>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { reportError } from '../utils/errorReporting/errorReporter'
 import CatalogQuality from './CatalogQuality.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { CalendarDays, ChevronRight, Layers, Shirt, Star, X } from 'lucide-vue-next'
@@ -142,8 +143,11 @@ async function openOutfit(id: string) {
     const entry = catalog.byId.get(id)
     if (!entry || entry.kind !== 'outfit') throw new Error('OUTFIT_NOT_FOUND')
     emit('openOutfit', entry, catalog, stored)
-  } catch {
-    if (request.isCurrent()) outfitError.value = true
+  } catch (error) {
+    if (request.isCurrent()) {
+      reportError(error, { module: 'makeup', action: 'load-related-outfit' })
+      outfitError.value = true
+    }
   } finally {
     if (request.isCurrent()) loadingOutfitId.value = ''
   }

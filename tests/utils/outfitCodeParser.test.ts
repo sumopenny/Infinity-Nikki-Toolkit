@@ -155,7 +155,7 @@ describe('parseOutfitCode', () => {
       timeout?: number,
       ...args: unknown[]
     ) => {
-      const timer = original(handler, timeout === 10000 ? 30 : timeout, ...args)
+      const timer = original(handler, timeout === 15000 ? 30 : timeout, ...args)
       return timer
     }) as typeof setTimeout)
     vi.stubGlobal(
@@ -324,7 +324,7 @@ describe('parseOutfitCode', () => {
   it('上游 502 标记 unavailable', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(new Response('upstream unavailable', { status: 502 }))
+      vi.fn().mockImplementation(async () => new Response('upstream unavailable', { status: 502 }))
     )
     await expect(parseOutfitCode(validCode)).rejects.toMatchObject({ kind: 'unavailable' })
   })
@@ -376,12 +376,13 @@ describe('parseOutfitCode', () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce(jsonResponse({ clothes: [] }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(parseOutfitCode(validCode)).rejects.toMatchObject({ kind: 'unavailable' })
     await expect(parseOutfitCode(validCode)).resolves.toMatchObject({ code: normalizedCode })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 })
 

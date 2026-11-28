@@ -195,24 +195,41 @@ function isExpectedMessage(message: string): boolean {
     expectedDirectoryPrefixes.some((prefix) => message.startsWith(prefix))
   )
 }
-/** Outfit diagnostics stay local, including API failures and reports from older clients. */
+/** Only classified final parse failures opt in; other outfit diagnostics stay local. */
 export function isOutfitErrorReport(
   module: unknown,
   context: Record<string, unknown> = {},
-  stage?: unknown
+  stage?: unknown,
+  action?: unknown
 ): boolean {
+  if (
+    module === 'outfits' &&
+    action === 'parse' &&
+    context.outfitParseFinal === true &&
+    ['network', 'wasm', 'decode'].includes(String(stage))
+  )
+    return false
   if (module === 'outfits' || context.module === 'outfits') return true
   return [context.route, context.endpoint, stage].some(
     (value) => typeof value === 'string' && /^\/api\/outfit-code(?:\/|$|[?#])/.test(value)
   )
 }
 
-export function isExpectedError(value: unknown): boolean {
+/** Cancellation is distinct from other expected validation failures. */
+export function isCancelledError(value: unknown, stage?: string): boolean {
+  if (!value || typeof value !== 'object') return false
+  const error = value as { name?: unknown; code?: unknown }
+  return (
+    (error.name === 'AbortError' && stage !== 'indexeddb-transaction') ||
+    (error.name === 'DirectoryAccessError' && error.code === 'cancelled')
+  )
+}
+export function isExpectedError(value: unknown, stage?: string): boolean {
   if (!value || typeof value !== 'object')
     return typeof value === 'string' && isExpectedMessage(value)
   const error = value as { name?: string; message?: string; code?: unknown }
   return (
-    error.name === 'AbortError' ||
+    isCancelledError(value, stage) ||
     error.name === 'DuplicateOutfitCodeError' ||
     (typeof error.message === 'string' && isExpectedMessage(error.message)) ||
     (typeof error.code === 'string' && expected.has(error.code)) ||
@@ -334,6 +351,7 @@ export function validateErrorPayload(input: unknown): ErrorEventPayload {
       data: diagnosticObject(crumb.data)
     }
   })
+  const pageOrigin = validatedPageOrigin(p.pageOrigin)
   return {
     schemaVersion: 1,
     eventId: p.eventId,
@@ -360,9 +378,7 @@ export function validateErrorPayload(input: unknown): ErrorEventPayload {
       causes
     },
     pagePath: diagnosticText(p.pagePath.split(/[?#]/)[0], 256),
-    ...(validatedPageOrigin(p.pageOrigin) !== undefined
-      ? { pageOrigin: validatedPageOrigin(p.pageOrigin) }
-      : {}),
+    ...(pageOrigin !== undefined ? { pageOrigin } : {}),
     device: diagnosticObject(p.device),
     runtime: diagnosticObject(p.runtime),
     network: diagnosticObject(p.network),

@@ -31,6 +31,7 @@ type HelpTask = {
 export type HelpAboutMessages = {
   title: string
   closeAria: string
+  orientationHint: string
   tasksTitle: string
   operations: Record<HelpLayout, readonly HelpOperationGroup[]>
   tasks: Record<HelpTaskId, HelpTask>
@@ -38,6 +39,8 @@ export type HelpAboutMessages = {
 
 export const helpAboutZh: HelpAboutMessages = {
   title: '使用帮助',
+  orientationHint:
+    '手机和平板请竖屏使用，电脑建议横屏浏览；平板请保持竖屏，以获得更好的浏览体验。',
   closeAria: '关闭使用帮助',
   tasksTitle: '我想……',
   operations: {
@@ -174,6 +177,8 @@ export const helpAboutZh: HelpAboutMessages = {
 
 export const helpAboutEn: HelpAboutMessages = {
   title: 'Help',
+  orientationHint:
+    'Please use phones and tablets in portrait orientation. Landscape orientation is recommended for computers. Keep tablets in portrait orientation for a better browsing experience.',
   closeAria: 'Close help',
   tasksTitle: 'I want to…',
   operations: {

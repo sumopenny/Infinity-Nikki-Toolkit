@@ -24,6 +24,14 @@ import {
 } from './adapters'
 import { MODULES, type Entry, type ModuleManifest, type StageManifest } from './disk'
 
+/** Expected input or stale-preview validation; the message remains UI-only. */
+export class BackupValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'BackupValidationError'
+  }
+}
+
 export class BackupStateError extends Error {
   constructor(
     public readonly state: 'protected' | 'permission',

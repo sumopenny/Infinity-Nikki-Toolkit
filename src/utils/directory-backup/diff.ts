@@ -11,6 +11,7 @@ import { ADAPTERS, normalTags, presentImage, type StoredImage } from './adapters
 import { locateRoot } from './engine'
 import { locked } from './coordination'
 import {
+  BackupValidationError,
   BATCH_RECORDS,
   countBrowserRecords,
   loadConfig,
@@ -214,7 +215,7 @@ export async function estimateBackupDiff(
     !final ||
     (await digest(final)) !== result.fingerprint
   )
-    throw new Error('比对期间浏览器数据或电脑备份发生变化，请重新预览')
+    throw new BackupValidationError('比对期间浏览器数据或电脑备份发生变化，请重新预览')
   return result
 }
 export async function confirmEnable(
@@ -223,10 +224,12 @@ export async function confirmEnable(
 ): Promise<BackupConfig> {
   return locked(module, async () => {
     const config = await loadConfig()
-    if (config.binding !== expected.binding) throw new Error('目录绑定已变化，请重新预览')
+    if (config.binding !== expected.binding)
+      throw new BackupValidationError('目录绑定已变化，请重新预览')
     const snapshot = await readDiskSnapshot(config, module)
     const fingerprint = snapshot ? await digest(snapshot.bytes) : ''
-    if (fingerprint !== expected.fingerprint) throw new Error('电脑副本已变化，请重新预览')
+    if (fingerprint !== expected.fingerprint)
+      throw new BackupValidationError('电脑副本已变化，请重新预览')
     const manifest = snapshot ? validateManifest(parseJson(snapshot.bytes), module) : null
     let hasRebuild = false
     if (snapshot) {
@@ -256,7 +259,7 @@ export async function confirmEnable(
           (await (store.get(revisionKey(module)) as Promise<Revision | undefined>))?.revision ?? ''
         const current = await (store.get('config') as Promise<BackupConfig>)
         if (revision !== expected.revision || current?.binding !== expected.binding)
-          throw new Error('浏览器数据在确认期间发生变化，请重新预览')
+          throw new BackupValidationError('浏览器数据在确认期间发生变化，请重新预览')
         const checkpoint = await (store.get(`checkpoint:${module}`) as Promise<
           Checkpoint | undefined
         >)

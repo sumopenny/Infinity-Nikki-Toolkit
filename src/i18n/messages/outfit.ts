@@ -58,6 +58,7 @@ export interface OutfitMessages {
   parseEmpty: string
   parseInvalidCode: string
   parseUnavailable: string
+  parseFailures: Record<'network' | 'timeout' | 'service' | 'wasm' | 'data', string>
   parseRetry: string
   parseClose: string
   parseOpenDetail: (name: string) => string
@@ -175,7 +176,14 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     parseLoading: '正在解析搭配码…',
     parseEmpty: '未解析到搭配部件。',
     parseInvalidCode: '搭配码无效或不存在。',
-    parseUnavailable: '搭配码解析服务经常波动，请稍后刷新网站重试。',
+    parseUnavailable: '搭配码解析失败，请重试。',
+    parseFailures: {
+      network: '网络连接失败，请稍后重试。',
+      timeout: '获取搭配数据超时，请重试。',
+      service: '搭配数据服务暂时不可用，请稍后重试。',
+      wasm: '解析组件加载失败，请重试。',
+      data: '暂时无法解析这条搭配数据。'
+    },
     parseRetry: '重试',
     parseClose: '关闭解析窗口',
     parseOpenDetail: (name) => `查看${name}的部件详情`,
@@ -314,8 +322,14 @@ export const outfitMessages: Record<Language, OutfitMessages> = {
     parseLoading: 'Decoding outfit code…',
     parseEmpty: 'No outfit items were found.',
     parseInvalidCode: 'This outfit code is invalid or does not exist.',
-    parseUnavailable:
-      'The outfit code parsing service is currently unstable. Please refresh the website and try again later.',
+    parseUnavailable: 'Could not decode this outfit code. Please try again.',
+    parseFailures: {
+      network: 'Network connection failed. Please try again later.',
+      timeout: 'Fetching outfit data timed out. Please try again.',
+      service: 'The outfit data service is temporarily unavailable. Please try again later.',
+      wasm: 'The decoder could not be loaded. Please try again.',
+      data: 'This outfit data cannot be decoded at the moment.'
+    },
     parseRetry: 'Retry',
     parseClose: 'Close item list',
     parseOpenDetail: (name) => `View details for ${name}`,

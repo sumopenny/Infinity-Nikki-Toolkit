@@ -100,7 +100,7 @@ watch(
                 >
               </article>
             </section>
-            <section class="update-log-history">
+            <section v-if="messages.history.length" class="update-log-history">
               <h3 class="update-log-section-title">{{ messages.historyTitle }}</h3>
               <article
                 v-for="entry in messages.history"

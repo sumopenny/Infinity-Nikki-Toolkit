@@ -1405,7 +1405,8 @@ async function clearCache() {
   if (isAnyFileOperationBusy.value) return
   const confirmed = await openConfirmDialog({
     title: locale.value.app.clearCacheDialogTitle,
-    message: locale.value.app.clearCacheConfirmMessage,
+    message: '',
+    sections: locale.value.app.clearCacheSections,
     tone: 'warning',
     confirmLabel: locale.value.topBar.clearCache,
     cancelLabel: locale.value.app.dialogCancel
@@ -1495,7 +1496,8 @@ async function clearData() {
       })
       // 整页重新初始化，避免收藏、筛选、目录句柄和解析器继续使用旧的内存状态。
       location.reload()
-    } catch {
+    } catch (error) {
+      captureDiagnosticError(error, { module: 'app', action: 'clear-site-data' })
       publishStatus({ type: 'custom', message: locale.value.app.clearDataFailed, tone: 'error' })
     } finally {
       suppressLocalPersistence = false
@@ -2481,18 +2483,50 @@ function importAllDataFromMenu() {
     />
 
     <div
-      v-if="compactLayout && !directorySupported && activeView === 'outfits' && !outfits.length"
+      v-if="
+        compactLayout &&
+        !directorySupported &&
+        ((activeView === 'outfits' && !outfits.length) ||
+          (activeView === 'home' && !homeSchemesCount) ||
+          (isCameraFavoritesView && !cameraFavoriteCodes.length))
+      "
       class="mobile-import-start"
-      ><p>{{
-        mobileText(
-          '从电脑迁移数据，或直接添加你的第一套搭配。',
-          'Import your desktop collection or add your first outfit.'
-        )
-      }}</p
-      ><button type="button" :disabled="allBackupDisabled" @click="importAllDataFromMenu">{{
-        locale.topBar.importAllData
-      }}</button></div
     >
+      <div class="mobile-import-start-heading">
+        <svg
+          class="mobile-import-start-devices"
+          viewBox="0 0 76 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4" width="22" height="15" rx="1.5" />
+          <path d="M1 22h26M3 19l-2 3m24-3 2 3" />
+          <rect x="34" y="2" width="17" height="21" rx="2" />
+          <path d="M41 20h3" />
+          <rect x="60" y="5" width="12" height="18" rx="2" />
+          <path d="M65 20h2" />
+        </svg>
+        <strong>{{
+          mobileText('跨设备、跨浏览器迁移数据', 'Move data between devices and browsers')
+        }}</strong>
+      </div>
+      <p>{{
+        mobileText(
+          '不同设备、浏览器之间，都可以通过「更多」中的「导出全部数据」导出备份文件，进行数据迁移。',
+          'To move data between devices and browsers, open “More” and select “Export all data” to create a backup file.'
+        )
+      }}</p>
+      <p class="mobile-import-start-hint">{{
+        mobileText(
+          '在新浏览器中点击「更多」→「导入全部数据」完成数据迁移。',
+          'In the new browser, select “More” → “Import all data” to complete the data transfer.'
+        )
+      }}</p>
+    </div>
     <AllDataBackup
       ref="allDataBackupRef"
       :language="language"

@@ -147,6 +147,7 @@ async function moveToTrash(
   const succeeded: PhotoItem[] = []
   const movedPhotos: RecentlyDeletedPhoto[] = []
   const failedNames: string[] = []
+  let firstFailure: { error: unknown; stage: string } | undefined
   if (!photos.length) return { succeeded, movedPhotos, failedNames }
 
   const writablePhotos = photos.filter(isDirectoryPhoto)
@@ -240,7 +241,7 @@ async function moveToTrash(
           } satisfies RecentlyDeletedPhoto
         }
       } catch (error) {
-        reportError(error, { module: 'album-trash', action: 'move', stage })
+        firstFailure ??= { error, stage }
         return { source: photo, moved: null }
       }
     },
@@ -256,6 +257,13 @@ async function moveToTrash(
     }
   }
 
+  if (firstFailure)
+    reportError(firstFailure.error, {
+      module: 'album-trash',
+      action: 'move',
+      stage: firstFailure.stage,
+      context: { failedCount: failedNames.length, succeededCount: succeeded.length }
+    })
   return { succeeded, movedPhotos, failedNames }
 }
 
@@ -310,6 +318,7 @@ async function restorePhotos(
   const succeeded: RecentlyDeletedPhoto[] = []
   const restoredPhotos: PhotoItem[] = []
   const failedNames: string[] = []
+  let firstFailure: { error: unknown; stage: string } | undefined
   const reservedNames = new Set<string>()
   await readAlbumMetadata(albumDirectoryHandle)
 
@@ -386,7 +395,7 @@ async function restorePhotos(
         releasePhotoUrl(photo)
         return { source: photo, restored: restoredPhoto }
       } catch (error) {
-        reportError(error, { module: 'album-trash', action: 'restore', stage })
+        firstFailure ??= { error, stage }
         if (restoreName) reservedNames.delete(restoreName)
         return { source: photo, restored: null }
       }
@@ -403,6 +412,13 @@ async function restorePhotos(
     }
   }
 
+  if (firstFailure)
+    reportError(firstFailure.error, {
+      module: 'album-trash',
+      action: 'restore',
+      stage: firstFailure.stage,
+      context: { failedCount: failedNames.length, succeededCount: succeeded.length }
+    })
   return { succeeded, restoredPhotos, failedNames }
 }
 
@@ -422,6 +438,7 @@ async function permanentlyDeletePhotos(
 ): Promise<TrashOperationResult<RecentlyDeletedPhoto>> {
   const succeeded: RecentlyDeletedPhoto[] = []
   const failedNames: string[] = []
+  let firstFailure: { error: unknown; stage: string } | undefined
   for (const album of new Set(photos.map((photo) => photo.albumDirectoryHandle))) {
     if (album) await readAlbumMetadata(album)
   }
@@ -434,7 +451,7 @@ async function permanentlyDeletePhotos(
         releasePhotoUrl(photo)
         return { photo, succeeded: true }
       } catch (error) {
-        reportError(error, { module: 'album-trash', action: 'delete' })
+        firstFailure ??= { error, stage: 'delete-file' }
         return { photo, succeeded: false }
       }
     },
@@ -445,6 +462,14 @@ async function permanentlyDeletePhotos(
     if (result.succeeded) succeeded.push(result.photo)
     else failedNames.push(result.photo.originalName)
   }
+
+  if (firstFailure)
+    reportError(firstFailure.error, {
+      module: 'album-trash',
+      action: 'delete',
+      stage: firstFailure.stage,
+      context: { failedCount: failedNames.length, succeededCount: succeeded.length }
+    })
 
   // 文件仍按十并发删除；之后一次清理各相册的回收备注，不让写锁串行化文件 IO。
   const albums = new Set(succeeded.map((photo) => photo.albumDirectoryHandle).filter(Boolean))

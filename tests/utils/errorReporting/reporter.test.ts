@@ -250,13 +250,6 @@ describe('in-memory error reporter', () => {
     expect(() => reporter.report(error, { module: 'test', action: 'save' })).not.toThrow()
     await expect(reporter.flush()).resolves.toBeUndefined()
   })
-  it('opt-out immediately stops future reports', async () => {
-    const { reporter, transport } = setup()
-    reporter.setEnabled(false)
-    reporter.report(new Error('failure'), { module: 'test', action: 'save' })
-    await reporter.flush()
-    expect(transport).not.toHaveBeenCalled()
-  })
 })
 
 describe('diagnostic state and acknowledgement regression coverage', () => {
@@ -351,9 +344,9 @@ describe('diagnostic state and acknowledgement regression coverage', () => {
     const { reporter, transport } = setup()
     reporter.report(new DOMException('cancel', 'AbortError'))
     expect(reporter.snapshot().lastCapture?.reason).toBe('expected-error')
-    reporter.setEnabled(false)
-    reporter.report(new Error('hidden'))
-    expect(reporter.snapshot().lastCapture?.reason).toBe('disabled')
+    const disabled = setup([], false)
+    disabled.reporter.report(new Error('hidden'))
+    expect(disabled.reporter.snapshot().lastCapture?.reason).toBe('disabled')
     await reporter.flush()
     expect(transport).not.toHaveBeenCalled()
   })
@@ -395,4 +388,31 @@ describe('diagnostic state and acknowledgement regression coverage', () => {
     expect(reporter.snapshot().lastDelivery?.reason).toBe('timeout')
     expect(reporter.snapshot().counters.accepted).toBe(0)
   })
+})
+
+it('uploads only opted-in final parse errors once', async () => {
+  const { reporter, payloads } = setup()
+  const error = annotateDiagnosticError(new Error('Lookbook request timed out'), {
+    module: 'outfits', action: 'parse', stage: 'network', code: 'timeout',
+    context: { outfitParseFinal: true, attempts: 2, durationMs: 30300 }
+  })
+  expect(reporter.report(error)).not.toBeNull()
+  expect(reporter.report(error)).toBeNull()
+  await reporter.flush()
+  expect(payloads).toHaveLength(1)
+  expect(payloads[0].context).toMatchObject({attempts:2, outfitParseFinal:true})
+})
+
+it('trims multibyte breadcrumbs to the byte limit and still delivers a valid report', async () => {
+  const { reporter, payloads } = setup()
+  for (let i = 0; i < 30; i++)
+    reporter.breadcrumb('test', 'step', { index: i, detail: '汉'.repeat(1300) })
+  expect(reporter.report(new Error('Large breadcrumb history'))).not.toBeNull()
+  await reporter.flush()
+  expect(payloads).toHaveLength(1)
+  const event = payloads[0]
+  expect(event.truncated).toContain('breadcrumbs')
+  expect(event.breadcrumbs.length).toBeLessThan(30)
+  expect(event.breadcrumbs.at(-1)?.data.index).toBe(29)
+  expect(new TextEncoder().encode(JSON.stringify(event)).byteLength).toBeLessThanOrEqual(64 * 1024)
 })

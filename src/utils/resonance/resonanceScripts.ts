@@ -62,7 +62,7 @@ export function resonanceUserscript(): string {
 // @author       素茉penny
 // @namespace    infinity-nikki-toolkit
 // @homepageURL  https://nikki3.pages.dev/
-// @version      1.0.5
+// @version      1.0.6
 // @description  点击按钮复制登录凭据，返回 Infinity Nikki Toolkit 粘贴导入。工具网址：https://nikkicube.pages.dev/
 // @match        https://myl.nuanpaper.com/*
 // @match        https://pearpal.infoldgames.com/*
@@ -111,41 +111,87 @@ export function resonanceUserscript(): string {
   clearButton.textContent = zh
     ? '登录信息过期时点我清理登录信息'
     : 'Sign-in expired? Click to clear sign-in information';
-  clearButton.addEventListener('click', () => {
+  clearButton.title = zh
+    ? '清理此官方站点可访问的本地数据和设置，然后返回首页重新登录。'
+    : 'Clear accessible local data and settings for this official site, then return home to sign in.';
+  clearButton.addEventListener('click', async () => {
     if (button.disabled || clearButton.disabled) return;
-    clearButton.disabled = true;
+    button.disabled = clearButton.disabled = true;
+    const clearLabel = clearButton.textContent;
+    clearButton.textContent = zh ? '正在清理…' : 'Clearing…';
     document.getElementById('nikki-pearpal-cookie-result')?.remove();
-    try {
-      // 同步清理 SDK 的本地凭据及 Cookie，保留其他设置和数据。
-      const keys = ['momoToken', 'momoNid', 'TDS_momoToken', 'TDS_momoNid'];
-      const domains = ['', location.hostname, location.hostname.split('.').slice(1).join('.')];
-      const paths = new Set(['/']);
-      const parts = location.pathname.split('/');
-      for (let i = 1; i <= parts.length; i++) {
-        const path = parts.slice(0, i).join('/') || '/';
-        paths.add(path);
-        paths.add(path.endsWith('/') ? path : path + '/');
+    const failed = [];
+    // 各项独立执行；不支持、删除受阻或超时都明确报告，避免一直等待。
+    async function clear(name, action) {
+      let timer;
+      try {
+        await Promise.race([
+          Promise.resolve().then(action),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), 5000); })
+        ]);
+      } catch {
+        failed.push(name);
+      } finally {
+        clearTimeout(timer);
       }
-      for (const key of keys) {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-        for (const domain of domains) {
-          for (const path of paths) {
-            document.cookie = key + '=; Max-Age=0; Path=' + path +
-              (domain ? '; Domain=' + domain : '');
+    }
+    try {
+      await clear('Service Worker', async () => {
+        if (!navigator.serviceWorker) return;
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      });
+      await Promise.all([
+        clear('Cache Storage', async () => {
+          if (!window.caches) return;
+          await Promise.all((await caches.keys()).map((name) => caches.delete(name)));
+        }),
+        clear('IndexedDB', async () => {
+          if (!window.indexedDB) return;
+          if (!indexedDB.databases) throw new Error('Database listing unavailable');
+          await Promise.all((await indexedDB.databases()).map(({ name }) => new Promise((resolve, reject) => {
+            if (!name) { resolve(); return; }
+            const request = indexedDB.deleteDatabase(name);
+            request.onsuccess = () => resolve();
+            request.onerror = request.onblocked = () => reject(new Error('Database deletion failed'));
+          })));
+        })
+      ]);
+      // 最后清理同步存储，尽量减少页面在等待期间回写旧状态。
+      await clear('localStorage', () => localStorage.clear());
+      await clear('sessionStorage', () => sessionStorage.clear());
+      await clear('Cookie', () => {
+        const keys = new Set(document.cookie.split(';').map((entry) => entry.split('=')[0].trim()).filter(Boolean));
+        const domains = ['', location.hostname, location.hostname.split('.').slice(1).join('.')];
+        const paths = new Set(['/']);
+        const parts = location.pathname.split('/');
+        for (let i = 1; i <= parts.length; i++) {
+          const path = parts.slice(0, i).join('/') || '/';
+          paths.add(path);
+          paths.add(path.endsWith('/') ? path : path + '/');
+        }
+        for (const key of keys) {
+          for (const domain of domains) {
+            for (const path of paths) {
+              document.cookie = key + '=; Max-Age=0; Path=' + path +
+                (domain ? '; Domain=' + domain : '');
+            }
           }
         }
+        if (document.cookie.trim()) throw new Error('Cookies remain');
+      });
+      if (failed.length) {
+        alert(zh
+          ? '部分数据未能清理：' + failed.join('、') + '。将返回首页，请重新登录；若仍失败，请关闭其他美鸭梨页面，并通过浏览器设置清除此站点数据。'
+          : 'Some data could not be cleared: ' + failed.join(', ') + '. Returning home to sign in. If it still fails, close other Pear-Pal tabs and clear this site’s data in browser settings.');
       }
-      if (document.cookie.split(';').some((entry) => keys.includes(entry.split('=')[0].trim()))) {
-        throw new Error('Sign-in cookies remain');
-      }
-      location.reload();
-    } catch {
-      alert(zh
-        ? '未能完整清理登录信息，请使用官方页面的退出登录功能后重新登录。'
-        : 'Could not fully clear sign-in information. Sign out on the official page, then sign in again.');
+      // 不保留 query/hash，避免官方 SDK 从旧链接恢复登录凭据。
+      location.replace(location.hostname === 'myl.nuanpaper.com'
+        ? 'https://myl.nuanpaper.com/home'
+        : 'https://pearpal.infoldgames.com/en/home');
     } finally {
-      clearButton.disabled = false;
+      button.disabled = clearButton.disabled = false;
+      clearButton.textContent = clearLabel;
     }
   });
   // 每次面板持有一份快照；再次复制不重读页面，关闭时移除完整数据。

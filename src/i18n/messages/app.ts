@@ -22,8 +22,20 @@ export const appZh: LocaleMessages['app'] = {
   copyFailed: (value) => `复制失败，请手动复制：${value}`,
   operationNoticeCloseAria: '关闭操作提示',
   clearCacheDialogTitle: '清除缓存',
-  clearCacheConfirmMessage:
-    '只清除保存在当前浏览器中的搭配码、家园方案码和照片动作解析缓存，不会影响其他授权、设置或电脑里的文件。',
+  clearCacheSections: [
+    {
+      title: '将清除',
+      items: [
+        '搭配码、家园方案码解析缓存：再次解析相同的码时，需要重新获取解析结果。',
+        '照片动作识别缓存：重置正在进行的识别任务，后续查看照片动作信息时需要重新识别。',
+        '服装详情、妆容图鉴临时数据：后续查看相关详情时，需要重新加载或整理数据。'
+      ]
+    },
+    {
+      title: '不会影响',
+      text: '已保存的搭配、家园方案、相机参数、共鸣记录、衣橱数据、照片收藏，以及目录授权、设置、登录状态和电脑文件。'
+    }
+  ],
   clearCacheStatus: '搭配码、家园方案码和照片动作解析缓存已清除。',
   authorizeX6GameStatus: 'X6Game 文件夹授权已完成。',
   x6GameAuthorizationCancelledStatus:
@@ -155,8 +167,20 @@ export const appEn: LocaleMessages['app'] = {
   copyFailed: (value) => `Copy failed. Copy manually: ${value}`,
   operationNoticeCloseAria: 'Close operation update',
   clearCacheDialogTitle: 'Clear cache',
-  clearCacheConfirmMessage:
-    'This only clears the outfit-code, home-scheme-code, and photo-action parse caches stored in this browser. Other authorizations, settings, and files on your computer are not affected.',
+  clearCacheSections: [
+    {
+      title: 'Will be cleared',
+      items: [
+        'Outfit-code and home-scheme-code parsing caches: parsing the same code again will require fetching the results again.',
+        'Photo action recognition caches: ongoing recognition tasks will be reset. Photo actions will need to be identified again when viewed later.',
+        'Temporary clothing detail and makeup catalog data: related details will need to be loaded or processed again when viewed later.'
+      ]
+    },
+    {
+      title: 'Will not be affected',
+      text: 'Saved outfits, home schemes, camera parameters, resonance records, wardrobe data and photo favorites, as well as folder permissions, settings, sign-in state and files on your computer.'
+    }
+  ],
   clearCacheStatus: 'Outfit-code, home-scheme-code, and photo-action parse caches cleared.',
   authorizeX6GameStatus: 'X6Game folder authorization completed.',
   x6GameAuthorizationCancelledStatus:

@@ -10,6 +10,7 @@ import {
 } from './changeJournal'
 import { buildModuleCopy, locateRoot, permission } from './engine'
 import {
+  BackupValidationError,
   browserBaseline,
   assertBrowserBaseline,
   type BrowserBaseline,
@@ -128,7 +129,7 @@ export async function rebuildBackupDirectory(
   progress: (text: string) => void,
   expected?: BrowserBaseline
 ): Promise<void> {
-  if (!(await permission(handle))) throw new Error('重建需要目录写入权限')
+  if (!(await permission(handle))) throw new BackupValidationError('重建需要目录写入权限')
   await withAllBackupLocks(async () => {
     const config = await loadConfig()
     let root: FileSystemDirectoryHandle | null

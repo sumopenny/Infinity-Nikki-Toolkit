@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { reportDirectoryBackupError } from '../utils/directory-backup/diagnostics'
+import { diagnosticMetadata } from '../utils/errorReporting/errorReporter'
+import { isCancelledError } from '../utils/errorReporting/schema'
 import { useModuleOperation } from '../composables/useOperationCoordinator'
 import ConfirmDialog from './ConfirmDialog.vue'
 import TreeCollapse from './TreeCollapse.vue'
@@ -46,6 +49,8 @@ import {
   type RestorePreview
 } from '../utils/directory-backup/restore'
 import {
+  BackupValidationError,
+  BackupStateError,
   browserBaseline,
   backupDirectorySource,
   type BrowserBaseline
@@ -158,11 +163,13 @@ function finishNotice(text: string | null = null, tone: 'success' | 'error' | 'i
 function announce(text: string, error = false) {
   finishNotice(text, error ? 'error' : 'success')
 }
-function report(error: unknown) {
-  if ((error as DOMException).name === 'AbortError') return
+function report(error: unknown, action: string) {
+  if (isCancelledError(error, diagnosticMetadata(error).stage)) return
+  reportDirectoryBackupError(error, action)
   announce(error instanceof Error ? error.message : String(error), true)
 }
-function reportRecovery(error: unknown) {
+function reportRecovery(error: unknown, action: string) {
+  reportDirectoryBackupError(error, action)
   recoveryError.value = error instanceof Error ? error.message : String(error)
   finishNotice(recoveryError.value, 'error')
 }
@@ -209,6 +216,7 @@ async function runManualBackup() {
       state === 'warning' ? 'error' : state === 'success' ? 'success' : 'info'
     )
   } catch (error) {
+    reportDirectoryBackupError(error, 'manual-run')
     notifyBackup(
       BACKUP_RUN_SOURCE,
       error instanceof Error ? error.message : String(error),
@@ -284,7 +292,7 @@ async function selectDirectory() {
     )
     scheduleDirectoryBackup(false)
   } catch (error) {
-    report(error)
+    report(error, 'select-directory')
   } finally {
     busy.value = false
     finishNotice()
@@ -297,7 +305,7 @@ async function restorePicker() {
     beginNotice(t('正在读取并校验备份…', 'Reading and verifying backup…'))
     await showPreview(handle, 'restore')
   } catch (error) {
-    report(error)
+    report(error, 'preview-restore')
   } finally {
     busy.value = false
     finishNotice()
@@ -308,7 +316,8 @@ async function authorize() {
   beginNotice(t('正在重新授权备份目录…', 'Reauthorizing backup directory…'))
   try {
     if (!(await permission(config.value.handle, true)))
-      throw new Error(
+      throw new BackupStateError(
+        'permission',
         t(
           '未授予目录权限，浏览器中的数据仍然保留。',
           'Folder permission was not granted. Browser data is unchanged.'
@@ -318,7 +327,7 @@ async function authorize() {
     await runDirectoryBackup()
     announce(t('备份目录权限已更新。', 'Backup folder permission updated.'))
   } catch (error) {
-    report(error)
+    report(error, 'authorize')
   } finally {
     finishNotice()
   }
@@ -367,7 +376,8 @@ async function toggleModule(module: BackupModule) {
       return
     }
     if (current.handle && !(await permission(current.handle, true)))
-      throw new Error(
+      throw new BackupStateError(
+        'permission',
         t(
           '请先授予目录权限；编辑不受影响。',
           'Please grant folder permission. Editing is unaffected.'
@@ -390,7 +400,7 @@ async function toggleModule(module: BackupModule) {
     await refreshDirectoryBackup()
     if (current.handle) scheduleDirectoryBackup(false)
   } catch (error) {
-    report(error)
+    report(error, 'toggle-module')
   } finally {
     busy.value = false
     finishNotice()
@@ -403,7 +413,7 @@ async function inspectCurrent() {
   try {
     await showPreview(config.value.handle, 'inspect')
   } catch (error) {
-    report(error)
+    report(error, 'inspect')
   } finally {
     busy.value = false
     finishNotice()
@@ -453,8 +463,10 @@ async function pauseOrResume() {
       )
     }
   } catch (error) {
-    report(error)
-    await refreshDirectoryBackup()
+    report(error, 'pause')
+    await refreshDirectoryBackup().catch((error) =>
+      reportDirectoryBackupError(error, 'refresh-status')
+    )
   } finally {
     busy.value = false
     finishNotice()
@@ -475,13 +487,16 @@ async function resume(module: BackupModule) {
     return
   try {
     if (!(await permission(handle, true)))
-      throw new Error(t('未取得来源目录写入权限。', 'Write permission was not granted.'))
+      throw new BackupStateError(
+        'permission',
+        t('未取得来源目录写入权限。', 'Write permission was not granted.')
+      )
     busy.value = true
     beginNotice(t('正在续写并校验来源目录…', 'Resuming and verifying source folder…'))
     await resumeSource(handle, module)
     await showPreview(handle, recoveryMode.value)
   } catch (error) {
-    reportRecovery(error)
+    reportRecovery(error, 'resume-source')
   } finally {
     busy.value = false
     finishNotice()
@@ -531,8 +546,10 @@ async function confirmRestore() {
       )
     )
   } catch (error) {
-    reportRecovery(error)
-    await refreshDirectoryBackup()
+    reportRecovery(error, 'restore')
+    await refreshDirectoryBackup().catch((error) =>
+      reportDirectoryBackupError(error, 'refresh-status')
+    )
   } finally {
     busy.value = false
     recoveryProgress.value = ''
@@ -549,7 +566,7 @@ async function useExisting() {
     const marker = await inspectRoot(handle)
     const preview = recoveryPreview.value
     if (!marker || marker.backupId !== preview.backupId || marker.sourceId !== preview.sourceId)
-      throw new Error(
+      throw new BackupValidationError(
         t('目录在预览后已变化，请重新预览', 'The folder changed after preview. Please check again.')
       )
     if (
@@ -585,7 +602,7 @@ async function useExisting() {
           throw new Error(titleFor(module) + '：' + item.message)
         const diff = await estimateBackupDiff(prospective, module)
         if (item?.ready && item.fingerprint !== diff.fingerprint)
-          throw new Error(
+          throw new BackupValidationError(
             t(
               '目录在预览后已变化，请重新预览',
               'The folder changed after preview. Please check again.'
@@ -615,7 +632,7 @@ async function useExisting() {
     )
     scheduleDirectoryBackup(false)
   } catch (error) {
-    reportRecovery(error)
+    reportRecovery(error, 'bind-existing')
   } finally {
     busy.value = false
     finishNotice()
@@ -635,7 +652,7 @@ async function rebuildCurrent() {
       )
     )
   } catch (error) {
-    reportRecovery(error)
+    reportRecovery(error, 'rebuild-baseline')
     return
   } finally {
     finishNotice()
@@ -673,7 +690,8 @@ async function rebuildCurrent() {
   )
     return
   try {
-    if (!(await permission(handle, true))) throw new Error('未授予目录写入权限')
+    if (!(await permission(handle, true)))
+      throw new BackupStateError('permission', '未授予目录写入权限')
     busy.value = true
     beginNotice(t('正在重建并校验电脑备份…', 'Rebuilding and verifying backup…'))
     recoveryError.value = ''
@@ -697,7 +715,7 @@ async function rebuildCurrent() {
     )
     scheduleDirectoryBackup(false)
   } catch (error) {
-    reportRecovery(error)
+    reportRecovery(error, 'rebuild')
   } finally {
     busy.value = false
     recoveryProgress.value = ''

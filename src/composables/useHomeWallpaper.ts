@@ -1,3 +1,4 @@
+import { reportError, trackDiagnostic } from '../utils/errorReporting/errorReporter'
 import { computed, onMounted, onScopeDispose, ref, shallowRef } from 'vue'
 import { defaultWallpaperId, homeWallpapers, wallpaperUrl } from '../data/homeWallpapers'
 import { readCustomWallpaper, writeCustomWallpaper } from '../utils/homeWallpaperStorage'
@@ -26,7 +27,11 @@ function normalizeBlur(value: unknown) {
 }
 
 function readSettings(): Settings {
-  const defaults = { wallpaperId: defaultWallpaperId(), textLightness: defaultLightness, backgroundBlur: 0 }
+  const defaults = {
+    wallpaperId: defaultWallpaperId(),
+    textLightness: defaultLightness,
+    backgroundBlur: 0
+  }
   try {
     const stored = readLocalStorage(key)
     if (!stored) return defaults
@@ -123,38 +128,54 @@ export function useHomeWallpaper(notify: (failure: Failure) => void) {
     return customRead
   }
 
-  async function select(id: WallpaperId, force = false) {
-    if (disposed || uploading.value || (!force && id === selected.value && !pending.value))
-      return false
+  // One request owns restoration and its fallback; a newer selection cancels both.
+  async function applySelection(ids: WallpaperId[]) {
+    if (disposed || uploading.value) return false
     const task = request.begin()
-    pending.value = id
     try {
-      const preset = homeWallpapers.find((item) => item.id === id)
-      const url = id === 'custom' ? await loadCustom() : preset ? wallpaperUrl(preset) : ''
-      if (!task.isCurrent()) return false
-      if (id !== null && !url) throw new Error('Wallpaper unavailable')
-      if (url) await preloadWallpaper(url, task.signal)
-      if (!task.isCurrent()) return false
-      source.value = url
-      selected.value = id
-      persist()
-      return true
-    } catch {
-      if (task.isCurrent()) notify('load')
+      for (const [index, id] of ids.entries()) {
+        pending.value = id
+        try {
+          const preset = homeWallpapers.find((item) => item.id === id)
+          const url = id === 'custom' ? await loadCustom() : preset ? wallpaperUrl(preset) : ''
+          if (!task.isCurrent()) return false
+          if (id !== null && !url) throw new Error('Wallpaper unavailable')
+          if (url) await preloadWallpaper(url, task.signal)
+          if (!task.isCurrent()) return false
+          source.value = url
+          selected.value = id
+          persist()
+          return true
+        } catch (error) {
+          if (!task.isCurrent()) return false
+          if (index === ids.length - 1) {
+            reportError(error, { module: 'home-wallpaper', action: 'load' })
+            notify('load')
+          } else {
+            // A failed custom read remains diagnosable even if a preset can be displayed.
+            if (id === 'custom')
+              reportError(error, { module: 'home-wallpaper', action: 'load-custom' })
+            trackDiagnostic('home-wallpaper', 'fallback')
+          }
+        }
+      }
       return false
     } finally {
       if (task.isCurrent()) pending.value = null
     }
   }
 
+  async function select(id: WallpaperId) {
+    if (id === selected.value && !pending.value) return false
+    return applySelection([id])
+  }
+
   async function restore() {
-    const taskId = settings.wallpaperId
-    if (taskId === null) return
-    const ok = await select(taskId, true)
-    if (!ok && !disposed && !pending.value && selected.value === null && !uploading.value) {
-      const fallback = defaultWallpaperId()
-      if (fallback && fallback !== taskId) await select(fallback, true)
-    }
+    if (settings.wallpaperId === null) return
+    const ids = [settings.wallpaperId, defaultWallpaperId()].filter(
+      (id, index, values) => id !== null && values.indexOf(id) === index
+    )
+    await applySelection(ids)
   }
 
   async function upload(file: File) {
@@ -190,8 +211,11 @@ export function useHomeWallpaper(notify: (failure: Failure) => void) {
       candidate = ''
       if (old) URL.revokeObjectURL(old)
       persist()
-    } catch {
-      if (task.isCurrent()) notify(saving ? 'storage' : 'upload')
+    } catch (error) {
+      if (task.isCurrent()) {
+        if (saving) reportError(error, { module: 'home-wallpaper', action: 'save' })
+        notify(saving ? 'storage' : 'upload')
+      }
     } finally {
       if (candidate) URL.revokeObjectURL(candidate)
       if (task.isCurrent()) uploading.value = false
@@ -201,8 +225,11 @@ export function useHomeWallpaper(notify: (failure: Failure) => void) {
   async function prepareCustom() {
     try {
       await loadCustom()
-    } catch {
-      if (!disposed) notify('load')
+    } catch (error) {
+      if (!disposed) {
+        reportError(error, { module: 'home-wallpaper', action: 'load-custom' })
+        notify('load')
+      }
     }
   }
 
@@ -216,7 +243,7 @@ export function useHomeWallpaper(notify: (failure: Failure) => void) {
 
   async function reset() {
     if (uploading.value) return
-    const ok = await select(defaultWallpaperId(), true)
+    const ok = await applySelection([defaultWallpaperId()])
     if (ok && !disposed) {
       lightness.value = defaultLightness
       blur.value = 0

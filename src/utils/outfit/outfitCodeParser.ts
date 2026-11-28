@@ -1,6 +1,11 @@
-import { decodeLookbookShareCodePathId, decodeLookbookPayload } from './lookbookWasmClient'
+import {
+  warmLookbookParser,
+  decodeLookbookShareCodePathId,
+  decodeLookbookPayload
+} from './lookbookWasmClient'
 import { parseNativeOutfitPayload } from './nativePayload'
 import { throwIfSignalAborted } from '../abortSignal'
+import { annotateDiagnosticError } from '../errorReporting/errorReporter'
 import {
   cacheGeneration,
   isCurrentCacheGeneration,
@@ -18,7 +23,7 @@ import { lookbookTiming, measureLookbook } from './lookbookDiagnostics'
 
 const LOOKBOOK_DATA_PROXY_BASE_URL = '/api/outfit-code'
 const LOOKBOOK_CODE_PATTERN = /^[A-Za-z0-9]{11}#$/
-const LOOKBOOK_REQUEST_TIMEOUT_MS = 10000
+const LOOKBOOK_REQUEST_TIMEOUT_MS = 15_000
 
 const parsedResultCache = new Map<string, LookbookDecodeResult>()
 const pendingParseRequests = new Map<string, Promise<LookbookDecodeResult>>()
@@ -26,11 +31,20 @@ const pendingCacheWrites = new Set<Promise<void>>()
 let parseCacheGeneration = 0
 
 export type LookbookParseError = 'invalid' | 'unavailable'
+export type LookbookFailureReason =
+  'network' | 'timeout' | 'service' | 'wasm' | 'data' | 'unavailable'
 
 export class OutfitCodeParseError extends Error {
   readonly kind: LookbookParseError
 
-  constructor(kind: LookbookParseError, message: string) {
+  constructor(
+    kind: LookbookParseError,
+    message: string,
+    readonly reason: LookbookFailureReason = 'unavailable',
+    readonly retryable = false,
+    readonly httpStatus?: number,
+    readonly upstreamCode?: string
+  ) {
     super(message)
     this.name = 'OutfitCodeParseError'
     this.kind = kind
@@ -155,102 +169,188 @@ const isCachedParseResult = (value: unknown, code: string): value is LookbookDec
   )
 }
 
-/** 只请求同源官方数据代理；超时覆盖响应正文及本地解析。 */
+/** One shared parse owns at most two network attempts; WASM has its own loader timeout. */
 async function requestLookbookParse(code: string): Promise<LookbookDecodeResult> {
-  let pathId: string | null
-  try {
-    pathId = await measureLookbook('share_code_decode', () => decodeLookbookShareCodePathId(code))
-  } catch (error) {
-    throw new OutfitCodeParseError(
-      'unavailable',
-      'Lookbook share-code decoding failed: ' +
-        (error instanceof Error ? error.message : String(error))
-    )
-  }
-  if (!pathId) {
-    throw new OutfitCodeParseError('invalid', 'Invalid lookbook code: ' + code)
-  }
-
+  const pathId = await measureLookbook('share_code_decode', () =>
+    decodeLookbookShareCodePathId(code)
+  )
+  if (!pathId) throw new OutfitCodeParseError('invalid', 'Invalid lookbook code')
+  const started = performance.now()
   const controller = new AbortController()
+  let attempts = 0
+  const request = async () => {
+    for (;;) {
+      throwIfSignalAborted(controller.signal)
+      attempts++
+      try {
+        return await requestLookbookPayload(
+          LOOKBOOK_DATA_PROXY_BASE_URL + '/' + pathId,
+          controller.signal
+        )
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          attempts >= 2 ||
+          !(error instanceof OutfitCodeParseError) ||
+          !error.retryable
+        )
+          throw error
+        lookbookTiming('network_retry', started, { attempt: attempts, reason: error.reason })
+        await new Promise((resolve) => setTimeout(resolve, 300))
+      }
+    }
+  }
+  try {
+    const [payload] = await Promise.all([
+      request(),
+      warmLookbookParser().catch(() => {
+        throw new OutfitCodeParseError('unavailable', 'Lookbook parser loading failed', 'wasm')
+      })
+    ])
+    return await normalizeLookbookPayload(code, payload)
+  } catch (error) {
+    if (error instanceof OutfitCodeParseError && error.kind !== 'invalid') {
+      annotateDiagnosticError(error, {
+        module: 'outfits',
+        action: 'parse',
+        stage: error.reason === 'wasm' ? 'wasm' : error.reason === 'data' ? 'decode' : 'network',
+        code: error.reason,
+        context: {
+          outfitParseFinal: true,
+          durationMs: Math.round(performance.now() - started),
+          attempts,
+          status: error.httpStatus,
+          upstreamCode: error.upstreamCode
+        }
+      })
+    }
+    throw error
+  } finally {
+    controller.abort()
+  }
+}
+
+/** Timeout covers headers and body only, including fetch implementations that stall. */
+async function requestLookbookPayload(url: string, signal: AbortSignal): Promise<string> {
+  const controller = new AbortController()
+  const abort = () => controller.abort(signal.reason)
+  signal.addEventListener('abort', abort, { once: true })
+  if (signal.aborted) abort()
   let onAbort!: () => void
   const cancelled = new Promise<never>((_, reject) => {
-    onAbort = () => reject(new OutfitCodeParseError('unavailable', 'Lookbook request timed out'))
+    onAbort = () => reject(controller.signal.reason)
     controller.signal.addEventListener('abort', onAbort, { once: true })
+    if (controller.signal.aborted) onAbort()
   })
-  const timer = setTimeout(() => controller.abort(), LOOKBOOK_REQUEST_TIMEOUT_MS)
+  const timer = setTimeout(
+    () =>
+      controller.abort(
+        new OutfitCodeParseError('unavailable', 'Lookbook request timed out', 'timeout', true)
+      ),
+    LOOKBOOK_REQUEST_TIMEOUT_MS
+  )
   try {
     return await Promise.race([
-      requestLookbookSource(
-        code,
-        LOOKBOOK_DATA_PROXY_BASE_URL + '/' + pathId,
-        controller.signal,
-        'proxy'
-      ),
+      (async () => {
+        const started = performance.now()
+        const response = await measureLookbook('request_headers', () =>
+          fetch(url, {
+            signal: controller.signal,
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+            headers: { Accept: 'application/json, application/octet-stream' }
+          })
+        )
+        lookbookTiming('proxy_response', started, {
+          status: response.status,
+          source: 'proxy',
+          cache: response.headers.get('x-outfit-cache'),
+          serverTiming: response.headers.get('server-timing')
+        })
+        if ([400, 404, 499].includes(response.status)) {
+          void response.body?.cancel().catch(() => undefined)
+          if (response.status === 499)
+            throw new DOMException('Lookbook request cancelled', 'AbortError')
+          throw new OutfitCodeParseError(
+            'invalid',
+            'Invalid lookbook code',
+            'service',
+            false,
+            response.status
+          )
+        }
+        const payload = await measureLookbook('response_body', () => response.text())
+        if (response.ok) return payload
+        let upstreamCode: string | undefined
+        try {
+          const value = JSON.parse(payload)?.error
+          if (
+            [
+              'upstream_timeout',
+              'upstream_unavailable',
+              'upstream_rejected',
+              'upstream_invalid_payload',
+              'upstream_body_too_large',
+              'request_aborted'
+            ].includes(value)
+          )
+            upstreamCode = value
+        } catch {
+          /* Error pages need not be JSON. */
+        }
+        const dataError =
+          upstreamCode === 'upstream_invalid_payload' || upstreamCode === 'upstream_body_too_large'
+        if (upstreamCode === 'request_aborted')
+          throw new DOMException('Lookbook request cancelled', 'AbortError')
+        throw new OutfitCodeParseError(
+          'unavailable',
+          'Lookbook object request failed with ' +
+            response.status +
+            (upstreamCode ? ' (' + upstreamCode + ')' : ''),
+          dataError
+            ? 'data'
+            : response.status === 504 || upstreamCode === 'upstream_timeout'
+              ? 'timeout'
+              : 'service',
+          !dataError && [502, 503, 504].includes(response.status),
+          response.status,
+          upstreamCode
+        )
+      })(),
       cancelled
     ])
+  } catch (error) {
+    if (controller.signal.aborted) throw controller.signal.reason
+    if (
+      error instanceof OutfitCodeParseError ||
+      (error instanceof Error && error.name === 'AbortError')
+    )
+      throw error
+    throw new OutfitCodeParseError(
+      'unavailable',
+      'Lookbook network request failed',
+      'network',
+      true
+    )
   } finally {
     clearTimeout(timer)
+    signal.removeEventListener('abort', abort)
     controller.signal.removeEventListener('abort', onAbort)
     controller.abort()
   }
 }
 
-/** 完整读取、WASM 解析和结构校验都成功后才返回结果。 */
-async function requestLookbookSource(
+async function normalizeLookbookPayload(
   code: string,
-  url: string,
-  signal: AbortSignal,
-  source: string
+  payload: string
 ): Promise<LookbookDecodeResult> {
-  let response: Response
-  try {
-    const started = performance.now()
-    response = await measureLookbook('request_headers', () =>
-      fetch(url, {
-        signal,
-        credentials: 'omit',
-        referrerPolicy: 'no-referrer',
-        headers: { Accept: 'application/json, application/octet-stream' }
-      })
-    )
-    lookbookTiming('proxy_response', started, {
-      status: response.status,
-      source,
-      cache: response.headers.get('x-outfit-cache'),
-      serverTiming: response.headers.get('server-timing')
-    })
-  } catch (error) {
-    throw new OutfitCodeParseError(
-      'unavailable',
-      `Lookbook request failed: ${error instanceof Error ? error.message : String(error)}`
-    )
-  }
-
-  if (!response.ok) {
-    const codeRejected = response.status === 404 || response.status === 400
-    throw new OutfitCodeParseError(
-      codeRejected ? 'invalid' : 'unavailable',
-      `Lookbook object request failed with ${response.status}`
-    )
-  }
-
-  let payload: string
-  try {
-    payload = await measureLookbook('response_body', () => response.text())
-  } catch {
-    throw new OutfitCodeParseError('unavailable', 'Lookbook upstream response could not be read')
-  }
-
   let decoded
   try {
     decoded = await measureLookbook('payload_decode', () =>
       decodeLookbookPayload<LookbookDecodeResult>(code, payload)
     )
-  } catch (error) {
-    throw new OutfitCodeParseError(
-      'unavailable',
-      `Lookbook WASM normalization failed: ${error instanceof Error ? error.message : String(error)}`
-    )
+  } catch {
+    throw new OutfitCodeParseError('unavailable', 'Lookbook WASM normalization failed', 'data')
   }
   if (!decoded.ok) {
     const message =
@@ -259,15 +359,23 @@ async function requestLookbookSource(
         : decoded.errorCode === 'clothes_missing'
           ? 'Lookbook upstream response is missing clothes'
           : `Lookbook upstream response could not be normalized (${decoded.errorCode})`
-    throw new OutfitCodeParseError('unavailable', message)
+    throw new OutfitCodeParseError('unavailable', message, 'data')
   }
-  throwIfSignalAborted(signal)
   if (!isCachedParseResult(decoded.value, code))
-    throw new OutfitCodeParseError('unavailable', 'Lookbook result failed validation')
-  lookbookTiming('source_success', performance.now(), { source })
+    throw new OutfitCodeParseError('unavailable', 'Lookbook result failed validation', 'data')
+  lookbookTiming('source_success', performance.now(), { source: 'proxy' })
 
   if (payload.includes('"attachmentData"')) {
-    const attachments = parseNativeOutfitPayload(payload)?.Content?.Content?.attachmentData
+    let attachments
+    try {
+      attachments = parseNativeOutfitPayload(payload)?.Content?.Content?.attachmentData
+    } catch {
+      throw new OutfitCodeParseError(
+        'unavailable',
+        'Lookbook attachment data could not be parsed',
+        'data'
+      )
+    }
     decoded.value.customizedItemIds = Object.entries(attachments ?? {})
       .filter(
         ([id, value]) =>
@@ -294,6 +402,25 @@ export async function readCachedOutfitResult(code: string): Promise<LookbookDeco
   }
 }
 
+/** A slow optional cache must not block online parsing or overwrite its result later. */
+async function readParseCacheWithTimeout(code: string): Promise<LookbookDecodeResult | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const started = performance.now()
+  try {
+    return await Promise.race([
+      measureLookbook('indexeddb_read', () => readCachedOutfitResult(code)),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => {
+          lookbookTiming('indexeddb_timeout', started)
+          resolve(null)
+        }, 1000)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** 解析搭配码；成功结果持久化到 IndexedDB，存储不可用时回退到在线请求。 */
 export async function parseOutfitCode(rawCode: string): Promise<LookbookDecodeResult> {
   const code = normalizeLookbookCode(rawCode)
@@ -313,9 +440,7 @@ export async function parseOutfitCode(rawCode: string): Promise<LookbookDecodeRe
   const isCurrent = () =>
     localGeneration === parseCacheGeneration && isCurrentCacheGeneration(generation)
   const request = (async () => {
-    const resultFromCache = await measureLookbook('indexeddb_read', () =>
-      readCachedOutfitResult(code)
-    )
+    const resultFromCache = await readParseCacheWithTimeout(code)
     if (resultFromCache) {
       if (isCurrent()) parsedResultCache.set(code, resultFromCache)
       lookbookTiming('indexeddb_cache_hit', performance.now())

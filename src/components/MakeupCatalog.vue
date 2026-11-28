@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { reportError } from '../utils/errorReporting/errorReporter'
 import CatalogQuality from './CatalogQuality.vue'
 import { catalogQualityLabel } from '../utils/catalogQuality'
 import { vSegmentedIndicator } from '../utils/segmentedIndicator'
@@ -118,8 +119,11 @@ async function load() {
     parts.value = data.parts
     relations.value = data.relations
     relatedOutfits.value = data.relatedOutfits
-  } catch {
-    if (!disposed) failed.value = true
+  } catch (error) {
+    if (!disposed) {
+      reportError(error, { module: 'makeup', action: 'load-catalog' })
+      failed.value = true
+    }
   } finally {
     if (!disposed) loading.value = false
   }

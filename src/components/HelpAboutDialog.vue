@@ -124,6 +124,7 @@ function closeDialog() {
             </button>
           </header>
           <div ref="bodyRef" class="help-about-body">
+            <h3>{{ messages.orientationHint }}</h3>
             <div class="help-about-operations">
               <section v-for="group in operations" :key="group.kind" :class="`is-${group.kind}`">
                 <h3>

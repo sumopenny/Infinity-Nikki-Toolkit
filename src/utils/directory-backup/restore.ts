@@ -1,3 +1,4 @@
+import { reportDirectoryBackupError } from './diagnostics'
 import { readRoot, jsonBytes as rootJsonBytes } from './disk'
 import {
   runStoreRequest,
@@ -19,6 +20,7 @@ import { ADAPTERS, assertTags, normalTags, presentImage, type StoredImage } from
 import { locked, withExclusiveBusiness } from './coordination'
 import { locateRoot, permission } from './engine'
 import {
+  BackupValidationError,
   acknowledgeStage,
   backupDirectorySource,
   setting,
@@ -91,9 +93,10 @@ interface RestoreMeta {
   ready: true
 }
 export async function sourceRoot(handle: FileSystemDirectoryHandle) {
-  if (!(await permission(handle, false, true))) throw new Error('没有备份目录读取权限')
+  if (!(await permission(handle, false, true)))
+    throw new BackupValidationError('没有备份目录读取权限')
   const root = await locateRoot(handle)
-  if (!root) throw new Error('没有找到暖立方备份目录')
+  if (!root) throw new BackupValidationError('没有找到暖立方备份目录')
   const bytes = rootJsonBytes(await readRoot(root)).buffer as ArrayBuffer
   return {
     root,
@@ -302,7 +305,7 @@ export async function verifyModule(
   }
   const final = await readBytes(dir, '_系统/备份信息.json', MAX_JSON_BYTES)
   if (!final || (await digest(final)) !== fingerprint)
-    throw new Error('校验期间目录发生变化，请重新预览')
+    throw new BackupValidationError('校验期间目录发生变化，请重新预览')
   return { manifest, fingerprint, images }
 }
 export async function previewRestore(handle: FileSystemDirectoryHandle): Promise<RestorePreview> {
@@ -351,6 +354,7 @@ export async function previewRestore(handle: FileSystemDirectoryHandle): Promise
       item.canResume = false
       if (error instanceof ModuleNotReadyError) item.reason = error.reason
       item.missing = (error as DOMException).name === 'NotFoundError'
+      if (!item.reason && !item.missing) reportDirectoryBackupError(error, 'verify', module)
       item.message =
         (error as DOMException).name === 'NotFoundError'
           ? '未发现此模块备份'
@@ -361,7 +365,7 @@ export async function previewRestore(handle: FileSystemDirectoryHandle): Promise
     modules.push(item)
   }
   if ((await sourceRoot(handle)).fingerprint !== rootFingerprint)
-    throw new Error('来源目录身份已变化，请重新预览')
+    throw new BackupValidationError('来源目录身份已变化，请重新预览')
   return { backupId: info.backupId, sourceId: info.sourceId, rootFingerprint, modules }
 }
 async function deleteTemp(module: BackupModule) {
@@ -406,7 +410,8 @@ async function stageModule(
     if (bytes >= BATCH_IMAGE_BYTES) await flush()
   })
   await flush()
-  if (result.fingerprint !== expected) throw new Error('暂存过程中来源发生变化，请重新预览')
+  if (result.fingerprint !== expected)
+    throw new BackupValidationError('暂存过程中来源发生变化，请重新预览')
   await saveStaged([
     {
       module,
@@ -453,7 +458,7 @@ async function commitRestore(
       meta.baseline !== expectedBaseline ||
       revision !== expectedBaseline
     )
-      throw new Error('正式数据或恢复暂存已变化，请重新预览；原数据未清空')
+      throw new BackupValidationError('正式数据或恢复暂存已变化，请重新预览；原数据未清空')
     await tx.objectStore(a.records).clear()
     await tx.objectStore(a.images).clear()
     await tx.objectStore(a.tags).clear()
@@ -507,7 +512,8 @@ async function commitRestore(
 
 export async function resumeSource(handle: FileSystemDirectoryHandle, module: BackupModule) {
   if (!MODULES.includes(module)) throw new Error('未知模块')
-  if (!(await permission(handle))) throw new Error('请先授权对恢复来源目录的写入权限')
+  if (!(await permission(handle)))
+    throw new BackupValidationError('请先授权对恢复来源目录的写入权限')
   return locked(module, async () => {
     const { root, info } = await sourceRoot(handle),
       dir = await moduleDirectory(root, module)
@@ -556,10 +562,10 @@ export async function restoreSelected(
         withExclusiveBusiness([module], async () => {
           const { root, info, fingerprint } = await sourceRoot(handle)
           if (info.backupId !== preview.backupId || fingerprint !== preview.rootFingerprint)
-            throw new Error('恢复来源身份已变化，请重新预览')
+            throw new BackupValidationError('恢复来源身份已变化，请重新预览')
           const baseline = await readRevision(module)
           if (baseline !== expected.browserFingerprint)
-            throw new Error('浏览器数据在预览后发生变化，请重新预览')
+            throw new BackupValidationError('浏览器数据在预览后发生变化，请重新预览')
           const token = createUuid()
           await deleteTemp(module)
           try {
@@ -570,7 +576,7 @@ export async function restoreSelected(
               checked.fingerprint !== expected.fingerprint ||
               (await sourceRoot(handle)).fingerprint !== preview.rootFingerprint
             )
-              throw new Error('来源在恢复期间发生变化，请重新预览')
+              throw new BackupValidationError('来源在恢复期间发生变化，请重新预览')
             progress(`正在提交${MODULE_LABELS[module]}……`)
             await commitRestore(module, token, baseline)
           } catch (error) {
@@ -587,7 +593,8 @@ export async function restoreSelected(
       announceBackupChange()
       const text = error instanceof Error ? error.message : String(error)
       throw new Error(
-        restored.length ? `已完成：${restored.join('、')}。其余模块未替换：${text}` : text
+        restored.length ? `已完成：${restored.join('、')}。其余模块未替换：${text}` : text,
+        { cause: error }
       )
     }
   }

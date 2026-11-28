@@ -51,7 +51,8 @@ describe('device-specific help', () => {
     'starts desktop help in %s with mouse and keyboard rows',
     (language) => {
       create(language, false)
-      expect(helpBody().firstElementChild?.className).toBe('help-about-operations')
+      expect(helpBody().firstElementChild?.textContent).toBe(messages[language].orientationHint)
+      expect(helpBody().children[1]?.className).toBe('help-about-operations')
       expect(operationHeadings()).toEqual(
         language === 'zh' ? ['鼠标操作', '快捷键'] : ['Mouse controls', 'Keyboard shortcuts']
       )
@@ -83,7 +84,8 @@ describe('device-specific help', () => {
     'starts compact help in %s with gestures and mobile paths',
     (language) => {
       create(language, true)
-      expect(helpBody().firstElementChild?.className).toBe('help-about-operations')
+      expect(helpBody().firstElementChild?.textContent).toBe(messages[language].orientationHint)
+      expect(helpBody().children[1]?.className).toBe('help-about-operations')
       expect(operationHeadings()).toEqual([language === 'zh' ? '手势操作' : 'Touch gestures'])
       expect(helpBody().querySelectorAll('.help-about-operation')).toHaveLength(5)
       expect(helpBody().querySelector('kbd')).toBeNull()

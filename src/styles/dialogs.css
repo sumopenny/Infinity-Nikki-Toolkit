@@ -1515,7 +1515,7 @@
   color: var(--dialog-accent);
   font-weight: 600;
 }
-.confirm-dialog-section {
+.confirm-dialog-section:not(:first-child) {
   margin-top: 20px;
 }
 .confirm-dialog-section + .confirm-dialog-section {

@@ -1,3 +1,4 @@
+import { reportDirectoryBackupError } from './diagnostics'
 import { readRoot, readRootIdentity, writeRoot } from './disk'
 import { cloneJsonData } from '../cloneJsonData'
 import {
@@ -10,6 +11,7 @@ import { announceBackupChange, type BackupModule, type DirtyChange } from './cha
 import { ADAPTERS, checkedImage, presentImage } from './adapters'
 import { locked, withAllBackupLocks, withExclusiveBusiness } from './coordination'
 import {
+  BackupValidationError,
   BATCH_RECORDS,
   browserBaseline,
   backupDirectorySource,
@@ -92,7 +94,9 @@ export function supportsBackup(): boolean {
 }
 export async function pickDirectory(readonly = false): Promise<FileSystemDirectoryHandle> {
   if (!supportsBackup())
-    throw new Error('此浏览器不支持电脑目录自动备份；编辑和 ZIP 导入导出仍可正常使用。')
+    throw new BackupValidationError(
+      '此浏览器不支持电脑目录自动备份；编辑和 ZIP 导入导出仍可正常使用。'
+    )
   return window.showDirectoryPicker!({
     mode: readonly ? 'read' : 'readwrite',
     id: 'nuan-original-backup'
@@ -121,7 +125,7 @@ export async function inspectRoot(handle: FileSystemDirectoryHandle): Promise<Ro
 }
 /** 只读校验目录及绑定；空目录仅允许用于尚未建立的备份。 */
 async function checkedRoot(config: BackupConfig): Promise<RootManifest | null> {
-  if (!config.handle) throw new Error('请先选择备份目录')
+  if (!config.handle) throw new BackupValidationError('请先选择备份目录')
   if (!(await permission(config.handle)))
     throw new BackupStateError('permission', '目录授权失效，请点击重新授权')
   const marker = await inspectRoot(config.handle)
@@ -136,7 +140,7 @@ async function checkedRoot(config: BackupConfig): Promise<RootManifest | null> {
   if (config.backupId) throw new Error('原备份目录已移动或被删除，请重新选择目录。')
   for await (const _entry of config.handle.entries()) {
     void _entry
-    throw new Error(
+    throw new BackupValidationError(
       '当前文件夹不是有效的暖立方备份目录。请新建一个空文件夹用于备份，或重新选择正确的文件夹。'
     )
   }
@@ -152,6 +156,7 @@ export async function checkBackupDirectory(
     await checkedRoot(config)
     return null
   } catch (error) {
+    reportDirectoryBackupError(error, 'check-directory')
     return { state: backupErrorState(error), error: messageFor(error) }
   }
 }
@@ -197,20 +202,21 @@ export async function bindDirectory(
     if (!marker) {
       for await (const _entry of handle.entries()) {
         void _entry
-        throw new Error(
+        throw new BackupValidationError(
           '当前文件夹不是有效的暖立方备份目录。请新建一个空文件夹用于备份，或重新选择正确的文件夹。'
         )
       }
     }
     const config = await loadConfig()
     if (marker && marker.sourceId !== config.sourceId && expected?.sourceId !== marker.sourceId)
-      throw new Error('发现已有存档，请先预览并确认使用该目录。')
+      throw new BackupValidationError('发现已有存档，请先预览并确认使用该目录。')
     if (expected?.sourceId !== undefined && expected.sourceId !== marker?.sourceId)
-      throw new Error('目录在预览后已变化，请重新预览')
+      throw new BackupValidationError('目录在预览后已变化，请重新预览')
     const revisions: Partial<Record<BackupModule, string>> = {}
     const fingerprints: Partial<Record<BackupModule, string>> = {}
     if (expected) {
-      if (marker?.backupId !== expected.backupId) throw new Error('目录在预览后已变化，请重新预览')
+      if (marker?.backupId !== expected.backupId)
+        throw new BackupValidationError('目录在预览后已变化，请重新预览')
       const root = await locateRoot(handle)
       for (const module of MODULES) {
         if (!expected.enabled[module]) continue
@@ -228,7 +234,8 @@ export async function bindDirectory(
             if ((error as DOMException).name !== 'NotFoundError') throw error
           }
         }
-        if (preview.fingerprint !== fingerprint) throw new Error('目录在预览后已变化，请重新预览')
+        if (preview.fingerprint !== fingerprint)
+          throw new BackupValidationError('目录在预览后已变化，请重新预览')
         revisions[module] = preview.revision
         fingerprints[module] = fingerprint
       }
@@ -241,7 +248,7 @@ export async function bindDirectory(
             (current.binding !== expected.binding ||
               MODULES.some((module) => current.enabled[module] !== expected.enabled[module])))
         )
-          throw new Error('备份设置在预览后已变化，请重新预览')
+          throw new BackupValidationError('备份设置在预览后已变化，请重新预览')
         current.handle = handle
         current.directoryName = handle.name
         current.binding = createUuid()
@@ -761,6 +768,7 @@ export async function syncModule(
         progress.state = 'disabled'
         progress.error = undefined
       } else {
+        reportDirectoryBackupError(error, 'sync', module)
         progress.error = messageFor(error)
         progress.state = backupErrorState(error)
         await runStoreRequest(BACKUP_SETTINGS_STORE, 'readwrite', (store) =>
@@ -818,6 +826,7 @@ export async function readModuleStatus(
       const dir = await moduleDirectory(config.handle, module)
       await guardUnexpectedEmpty(config, dir, module)
     } catch (cause) {
+      reportDirectoryBackupError(cause, 'check-empty', module)
       status.error = messageFor(cause)
       status.state = backupErrorState(cause)
       return status

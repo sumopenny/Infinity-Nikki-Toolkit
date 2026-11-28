@@ -94,7 +94,7 @@ useModalFocus(visible, panelRef, () => emit('cancel'), undefined, initialFocus)
             </button>
           </header>
           <div class="confirm-dialog-content">
-            <p :class="{ 'confirm-dialog-risk': sections?.length && tone === 'danger' }">{{
+            <p v-if="message" :class="{ 'confirm-dialog-risk': sections?.length && tone === 'danger' }">{{
               message
             }}</p>
             <section

@@ -35,7 +35,7 @@ export interface FullLocaleMessages {
     copyFailed: (value: string) => string
     operationNoticeCloseAria: string
     clearCacheDialogTitle: string
-    clearCacheConfirmMessage: string
+    clearCacheSections: Array<{ title: string; items?: string[]; text?: string }>
     clearCacheStatus: string
     authorizeX6GameStatus: string
     x6GameAuthorizationCancelledStatus: string

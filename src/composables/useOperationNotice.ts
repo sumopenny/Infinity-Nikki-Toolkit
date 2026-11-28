@@ -1,11 +1,11 @@
 import { isDatabaseConnectionLost, isDatabaseVersionMismatch } from '../utils/file-system/database'
-import { reportError } from '../utils/errorReporting/errorReporter'
+import { reportError, diagnosticMetadata } from '../utils/errorReporting/errorReporter'
+import { isCancelledError } from '../utils/errorReporting/schema'
 import { createOperationCoordinator, type OperationCoordinator } from './useOperationCoordinator'
 // 操作通知状态机：统一管理操作忙碌状态、提示文案、错误映射和通知生命周期。
 import { computed, ref, type ComputedRef } from 'vue'
 import type { LocaleMessages, StatusPrefix, StatusSuffix } from '../i18n'
 import type { OperationNoticeTone } from '../components/OperationNotice.vue'
-import { DirectoryAccessError } from '../utils/file-system/directoryErrors'
 
 export type StatusTone = OperationNoticeTone
 export interface OperationNoticeItem {
@@ -243,15 +243,16 @@ export function useOperationNotice(
 
   const isUserCancelledFilePicker = (error: unknown): boolean => {
     if (!(error instanceof Error)) return false
-    return error.name === 'AbortError' || error.message === locale.value.fileSystem.abortSelection
+    return (
+      isCancelledError(error, diagnosticMetadata(error).stage) ||
+      error.message === locale.value.fileSystem.abortSelection
+    )
   }
 
   const createErrorStatus = (error: unknown, fallback: StatusState): StatusState => {
-    if (error instanceof DirectoryAccessError && error.code === 'cancelled') {
-      return { type: 'custom', message: locale.value.fileSystem.abortSelection, tone: 'info' }
-    }
     if (isUserCancelledFilePicker(error))
       return { type: 'custom', message: locale.value.fileSystem.abortSelection, tone: 'info' }
+    reportError(error, { action: activeOperation.value ?? fallback.type })
     if (isDatabaseVersionMismatch(error))
       return {
         type: 'custom',
@@ -259,7 +260,6 @@ export function useOperationNotice(
         tone: 'error',
         source: 'database-version'
       }
-    reportError(error, { action: activeOperation.value ?? fallback.type })
     if (isDatabaseConnectionLost(error))
       return { type: 'custom', message: locale.value.app.databaseDisconnected, tone: 'error' }
     if (!(error instanceof Error)) return fallback
